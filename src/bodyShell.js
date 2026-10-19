@@ -1451,8 +1451,9 @@ export function buildChevalierBody(mats) {
   const finMat = new THREE.MeshPhysicalMaterial({ color: 0x5b6070, roughness: 0.45, metalness: 0.3, clearcoat: 0.5, side: THREE.DoubleSide });
   const lamp = decal(0xf4f7ff, { emissive: 0xc8d8ff, emissiveIntensity: 0.55, metalness: 0.2, roughness: 0.08 });
   // iter-05：燈罩（半透明灰白、低自發光）與 LED 燈條（高亮）分開，燈具才有層次
+  // iter-26：尾燈燈殼內底（深煙燻黑，讓細 LED 線對比清楚，不再整塊發白）
+  const tailBaseMat = decal(0x15171c, { roughness: 0.2, metalness: 0.4, clearcoat: 0.6 });
   const seam = decal(0x05060a, { roughness: 0.7, clearcoat: 0.0 });
-  const lens = decal(0x9aa3b0, { emissive: 0x3a4250, emissiveIntensity: 0.3, metalness: 0.6, roughness: 0.12 });
   const led = decal(0xffffff, { emissive: 0xeaf2ff, emissiveIntensity: 1.0, metalness: 0.0, roughness: 0.2, polygonOffsetFactor: -4, polygonOffsetUnits: -4 });
   // iter-14：頭燈鍍鉻反射底與透明燈罩
   const reflectorMat = decal(0xdfe4ec, { metalness: 1.0, roughness: 0.14, clearcoat: 0.0 });
@@ -1542,10 +1543,17 @@ export function buildChevalierBody(mats) {
     }, lampCoverMat, side, (s, v) => 0.07 + 0.73 * Math.sqrt(Math.sin(Math.PI * v)) * Math.min(1, s / 0.08, (1 - s) / 0.12), { nu: 14, ownNormals: true }));
     // 尾燈（ref_chevalier-ma_rear34：透明白色細長 LED 燈，外圍黑色燈殼）
     // iter-05：尾燈改「黑色燈殼＋燈罩＋2 條縱向 LED」（ref rear34：車尾上緣兩角的細長 LED 尾燈）
-    g.add(ribbon(-54.8, BODY_REAR_X, (x, s) => [0.37 + 0.02 * s, 0.62], black, side, 0.06, { nu: 8 }));
-    g.add(ribbon(-56.2, BODY_REAR_X, (x, s) => [0.41 + 0.03 * (1 - s), 0.585], lens, side, 0.14, { nu: 8 }));
-    g.add(ribbon(-57, BODY_REAR_X - 0.01, (x, s) => [0.455, 0.475], led, side, 0.24, { nu: 2 }));
-    g.add(ribbon(-58.5, BODY_REAR_X - 0.01, (x, s) => [0.53, 0.545], led, side, 0.24, { nu: 2 }));
+    // iter-26：盲評 #2「尾燈白色方框粗糙、參考是細長 LED 尾燈」→ 改為貼著車尾後緣、沿橫向（u）拉長的細楔形燈
+    //   （ref rear34：外側較高、往車中線收尖；燈罩內 3 條沿燈長方向的細 LED 線）。燈長 u 0.42→0.605、x 方向外側 2.6 mm、內側約 1 mm（推估：依 ref rear34 目視比例）
+    /** @type {(x: number) => number} 尾燈前緣（朝車頭那側）在 x 處的內端 u：越靠車尾越往中線延伸，形成楔形 */
+    const tailInnerU = (x) => 0.585 - 0.165 * Math.min(1, Math.max(0, (-60.3 - x) / 1.6));
+    const tailOuterU = 0.605;
+    g.add(ribbon(-60.0, BODY_REAR_X + 0.05, (x) => [tailInnerU(x) - 0.016, tailOuterU + 0.014], black, side, 0.06, { nu: 12 }));
+    g.add(ribbon(-60.3, BODY_REAR_X + 0.3, (x) => [tailInnerU(x), tailOuterU], tailBaseMat, side, 0.1, { nu: 12 }));
+    for (const xl of [-60.9, -61.6, -62.3]) {
+      g.add(ribbon(xl + 0.09, xl - 0.09, (x) => [tailInnerU(x) + 0.01, tailOuterU - 0.006], led, side, 0.22, { nu: 12 }));
+    }
+    g.add(ribbon(-60.2, BODY_REAR_X + 0.2, (x) => [tailInnerU(x) - 0.006, tailOuterU + 0.006], lampCoverMat, side, (s, v) => 0.12 + 0.3 * Math.sqrt(Math.sin(Math.PI * v)) * Math.min(1, s / 0.15, (1 - s) / 0.15), { nu: 14, ownNormals: true }));
     // 車尾鴨尾擾流：沿車尾上緣立起 1.3 mm、往後傾 1 mm 的唇邊（車身色）
     g.add(edgeWall(BODY_REAR_X + 0.35, 0, 0.36, 1.3, 1.0, lipMat, side));
     // 後甲板散熱口（ref rear34：座艙後方兩側的深色斜鰭片）：深色底板＋3 片鰭片
