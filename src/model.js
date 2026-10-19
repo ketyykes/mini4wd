@@ -122,7 +122,8 @@ function makeMaterials() {
     rimBarrel: new THREE.MeshStandardMaterial({ color: 0x4a4e55, roughness: 0.5, metalness: 0.6 }),
     // iter-07：輪胎外側壁（程序化貼圖：細肋紋＋凸起字樣，同一張圖兼作 bump）
     tireWall: tireSidewallMaterial(),
-    motorCan: new THREE.MeshStandardMaterial({ color: 0xc9ccd0, roughness: 0.25, metalness: 0.9 }),
+    // iter-10：罐身改亮銀髮絲面（roughness 0.25 → 0.34）——0.25 時底面平面反射到深色檯面，罐身讀成深灰
+    motorCan: new THREE.MeshStandardMaterial({ color: 0xd4d8de, roughness: 0.34, metalness: 0.85 }),
     motorCap: new THREE.MeshStandardMaterial({ color: 0xe8e2d0, roughness: 0.6 }),
     steel: new THREE.MeshStandardMaterial({ color: 0xb8bcc2, roughness: 0.3, metalness: 0.95 }),
     pinion: new THREE.MeshStandardMaterial({ color: 0x8a4fd0, roughness: 0.5 }),
@@ -597,7 +598,8 @@ function buildChassis(mats) {
   // 所有底面細節都在底板下緣 y0（離地 2.2 mm，SPEC 1.2）之上，不影響離地高度
   const gearWin = (sx) => roundedRect(sx * (gt.counterX + 3), -3.5, 32, 19, 3);
   const openings = [
-    roundedRect(0, 0, 27, 15, 3),
+    // iter-10：馬達窗加寬到 27 × 21 mm（z 向涵蓋 130 罐身全寬 20.1 mm），從底面看到完整的罐身＋端蓋
+    roundedRect(0, 0, 27, 21, 3),
     gearWin(-1),
     gearWin(1),
     roundedRect(0, 19, 48, 12, 2.5),
@@ -750,26 +752,10 @@ function buildChassis(mats) {
       g.add(dimple);
     }
   }
-  // iter-09：馬達蓋（ref MA：底面中央的馬達固定蓋，兩條縱向散熱槽露出馬達外殼，外圈有橢圓凸緣與固定螺絲）
-  {
-    const slots = [roundedRect(0, -3.4, 17, 3.2, 1.4), roundedRect(0, 3.4, 17, 3.2, 1.4)];
-    const mcover = extrudeXZ(roundedRect(0, 0, 29, 17, 4), 0.9, mats.chassisDark, slots);
-    mcover.position.y = y0 + 0.12;
-    g.add(mcover);
-    // 橢圓凸緣
-    const ring = [];
-    const ringIn = [];
-    for (let k = 0; k < 40; k++) {
-      const a = (k / 40) * Math.PI * 2;
-      ring.push([Math.cos(a) * 13.6, Math.sin(a) * 7.6]);
-      ringIn.push([Math.cos(a) * 12.6, Math.sin(a) * 6.8]);
-    }
-    const flange = extrudeXZ(ring, 0.15, mats.chassis, [ringIn]);
-    flange.position.y = y0 + 0.0;
-    g.add(flange);
-    for (const sx of [-1, 1]) {
-      g.add(screwHead(mats, sx * 12.2, y0 + 0.5, 0, 1.0).rotateX(Math.PI));
-    }
+  // iter-10：拿掉 iter-09 的馬達蓋（兩條散熱槽露出罐身，reviewer 說像兩根電池）；
+  // 改成開放的馬達窗，窗兩端（z 向）各一顆固定螺絲，罐身與端蓋本體見下方「雙軸馬達」
+  for (const sz of [-1, 1]) {
+    g.add(screwHead(mats, 0, y0 + 0.5, sz * 12.0, 0.9).rotateX(Math.PI));
   }
   // ---- 齒輪箱蓋（iter-03；iter-06 改成大檢視窗）----
   // iter-06：reviewer「齒輪只見兩小窗綠色」→ 齒輪箱底蓋改為外框＋大開口（不再用煙燻片），
@@ -816,7 +802,8 @@ function buildChassis(mats) {
     // iter-09：電池艙側壁（側視可見的底盤厚度；reviewer「側面只是一條細黑邊」）：
     // x-y 輪廓板，兩端沿輪胎外 2.5 mm 的圓弧內凹（MA 側面在前後輪處是弧形缺口），高到車殼底緣內側；
     // 板面有 3 個內凹窗（深色底）＋窗間立肋＋上緣倒角條，讀起來是有厚度的成型件而非細線
-    const topY = 6.9;
+    // iter-12：車殼下緣 6.4 → 8.6 mm（ref side-high：車門下方露出一整條黑色底盤側裙）→ 側壁頂 6.9 → 9.4 mm，窗與倒角條跟著上移
+    const topY = 9.4;
     const wheelY = spec.tire.diameter_mm / 2;
     const arcR = wheelY + 2.5;
     const prof = [];
@@ -830,14 +817,15 @@ function buildChassis(mats) {
       const y = y0 + ((topY - y0) * k) / nA;
       prof.push([-hw + Math.sqrt(arcR * arcR - (y - wheelY) ** 2), y]);
     }
-    const winHoles = [-13, 0, 13].map((wx) => roundedRect(wx, y0 + 2.3, 9, 2.4, 0.9));
+    const winY = y0 + 3.0;
+    const winHoles = [-13, 0, 13].map((wx) => roundedRect(wx, winY, 9, 3.0, 1.0));
     const wallZ = sz > 0 ? 35.0 : -36.2;
     const sideWall = extrudeXY(prof, 1.2, mats.chassis, winHoles);
     sideWall.position.z = wallZ;
     g.add(sideWall);
     // 內凹窗底（深色，往內 0.8 mm）
     for (const wx of [-13, 0, 13]) {
-      const back = extrudeXY(roundedRect(wx, y0 + 2.3, 9.4, 2.8, 1.0), 0.3, mats.chassisDark);
+      const back = extrudeXY(roundedRect(wx, winY, 9.4, 3.4, 1.1), 0.3, mats.chassisDark);
       back.position.z = sz > 0 ? 34.6 : -34.9;
       g.add(back);
     }
@@ -848,10 +836,26 @@ function buildChassis(mats) {
       g.add(rib);
     }
     // 上緣倒角條（略亮，接受頂光形成細高光線）
-    const chamfer = new THREE.Mesh(new THREE.BoxGeometry(2 * (hw - Math.sqrt(arcR * arcR - (5.6 - wheelY) ** 2)), 0.6, 0.5), mats.roller);
-    chamfer.position.set(0, 5.6, sz * 36.3);
+    const chamferY = 7.4;
+    const chamfer = new THREE.Mesh(new THREE.BoxGeometry(2 * (hw - Math.sqrt(arcR * arcR - (chamferY - wheelY) ** 2)), 0.6, 0.5), mats.roller);
+    chamfer.position.set(0, chamferY, sz * 36.3);
     chamfer.rotation.x = sz * 0.6;
     g.add(chamfer);
+    // iter-12：側邊支撐塊（ref side-high：車門下方、兩輪之間偏後的黑色方塊，頂面有 2 個孔）
+    // 位置由擬合相機量測（推估 ±1 mm）：x −10 … −20、頂面 y ≈ 7、外側面 z ≈ ∓38；底到底盤最低面 y0
+    const blockTop = 7.6;
+    const block = new THREE.Mesh(new THREE.BoxGeometry(10, blockTop - y0, 5.8), mats.chassis);
+    block.position.set(-15, (blockTop + y0) / 2, sz * 35.9);
+    g.add(block);
+    for (const hx of [-12.4, -17.6]) {
+      const hole = new THREE.Mesh(new THREE.CylinderGeometry(1.15, 1.15, 0.12, 20), mats.chassisDark);
+      hole.position.set(hx, blockTop + 0.02, sz * 36.4);
+      g.add(hole);
+      const rim = new THREE.Mesh(new THREE.TorusGeometry(1.25, 0.18, 8, 24), mats.roller);
+      rim.rotation.x = Math.PI / 2;
+      rim.position.set(hx, blockTop + 0.05, sz * 36.4);
+      g.add(rim);
+    }
   }
   // 內層上蓋（馬達、電池上方的底盤頂板，深色），擋住從開口往上看到的車殼內面
   const deck = extrudeXZ(roundedRect(0, 0, 52, 48, 4), 1.2, mats.chassisDark);
@@ -981,23 +985,48 @@ function buildChassis(mats) {
   }
 
   // ---- 雙軸馬達（置中、軸向沿 x，130 型外殼平面朝上下）----
+  // iter-10：罐身改為真正的 130 型截面（圓 ∩ 上下平面，原本是縮放圓柱＝橢圓，從底面看像圓柱電池），
+  // 擠出時帶小倒角（罐口捲邊）；端蓋米白、截面略小；兩端有軸承座凸台，軸從兩端伸出（ref_ma-chassis_tamiya.jpg）
   const m = comp.motor;
-  const can = new THREE.Mesh(new THREE.CylinderGeometry(m.dia / 2, m.dia / 2, m.length - 6, 40), mats.motorCan);
-  can.scale.set(m.flat / m.dia, 1, 1);
-  can.rotation.z = Math.PI / 2;
+  /** @type {(r: number, f: number, len: number, mat: THREE.Material, bevel: number) => THREE.Mesh} 130 型截面（圓 ∩ |y| ≤ f/2）沿 x 擠出 */
+  const motorSection = (r, f, len, mat, bevel) => {
+    const pts = [];
+    for (let k = 0; k < 72; k++) {
+      const a = (k / 72) * Math.PI * 2;
+      const p = [r * Math.cos(a), Math.max(-f / 2, Math.min(f / 2, r * Math.sin(a)))];
+      const last = pts[pts.length - 1];
+      if (!last || Math.abs(last[0] - p[0]) > 1e-6 || Math.abs(last[1] - p[1]) > 1e-6) {
+        pts.push(p);
+      }
+    }
+    const shape = new THREE.Shape(pts.map(([u, v]) => new THREE.Vector2(u, v)));
+    const geo = new THREE.ExtrudeGeometry(shape, { depth: len - 2 * bevel, bevelEnabled: bevel > 0, bevelThickness: bevel, bevelSize: bevel, bevelSegments: 3, curveSegments: 12 });
+    geo.translate(0, 0, -(len - 2 * bevel) / 2);
+    geo.rotateY(Math.PI / 2);
+    return new THREE.Mesh(geo, mat);
+  };
+  const canLen = m.length - 6;
+  const can = motorSection(m.dia / 2 - 0.4, m.flat - 0.8, canLen, mats.motorCan, 0.4);
   can.position.set(m.x + 3, m.y, m.z);
   g.add(can);
-  // 外殼上的散熱開孔與壓痕（底面開口看得到）
-  for (const dz of [-4.5, 4.5]) {
-    const slot = new THREE.Mesh(new THREE.BoxGeometry(5, 0.3, 2.2), mats.chassisDark);
-    slot.position.set(m.x + 7, m.y - m.flat / 2 - 0.05, dz);
-    g.add(slot);
-  }
-  const capMesh = new THREE.Mesh(new THREE.CylinderGeometry(m.dia / 2 - 0.3, m.dia / 2 - 0.3, 6, 40), mats.motorCap);
-  capMesh.scale.set(m.flat / m.dia, 1, 1);
-  capMesh.rotation.z = Math.PI / 2;
+  // 罐身端面軸承座凸台（銀）＋端蓋軸承座凸台（米白）
+  const canBoss = new THREE.Mesh(new THREE.CylinderGeometry(3.0, 3.0, 1.2, 28), mats.motorCan);
+  canBoss.rotation.z = Math.PI / 2;
+  canBoss.position.set(m.x + m.length / 2 + 0.5, m.y, m.z);
+  g.add(canBoss);
+  const capMesh = motorSection(m.dia / 2 - 0.6, m.flat - 1.4, 6, mats.motorCap, 0.3);
   capMesh.position.set(m.x - m.length / 2 + 3, m.y, m.z);
   g.add(capMesh);
+  const capBoss = new THREE.Mesh(new THREE.CylinderGeometry(2.6, 2.6, 1.2, 28), mats.motorCap);
+  capBoss.rotation.z = Math.PI / 2;
+  capBoss.position.set(m.x - m.length / 2 - 0.5, m.y, m.z);
+  g.add(capBoss);
+  // 端蓋底面的碳刷座凸塊（米白，兩塊）
+  for (const dz of [-4.2, 4.2]) {
+    const bump = new THREE.Mesh(new THREE.BoxGeometry(3.2, 0.8, 2.6), mats.motorCap);
+    bump.position.set(m.x - m.length / 2 + 3, m.y - (m.flat - 1.4) / 2 - 0.3, dz);
+    g.add(bump);
+  }
   // 馬達端子（銅片）
   for (const dz of [-5, 5]) {
     const term = new THREE.Mesh(new THREE.BoxGeometry(1.2, 4, 2), mats.copper);
@@ -1184,7 +1213,9 @@ export function buildTrackModel(track) {
   // iter-09：塑膠質感（reviewer「賽道平面單色、無塑膠質感」）——半光澤 ABS：
   //   roughness 0.62 → 0.34 基準＋大尺度（約 24 mm）粗糙度斑駁（射出成型件表面光澤不均）、
   //   細顆粒（0.3 mm）顏色 ±3% 噪點與極低強度法線擾動（霧面細紋），再加一層低強度清漆讓燈箱在路面上反射成柔和光帶
-  const plasticMat = new THREE.MeshPhysicalMaterial({ vertexColors: true, roughness: 0.34, metalness: 0.0, clearcoat: 0.6, clearcoatRoughness: 0.2, envMapIntensity: 1.8, side: THREE.DoubleSide });
+  // iter-10：壓下紅色車道遠端的過曝泛粉白——specularIntensity 1 → 0.5、clearcoat 0.6 → 0.35、envMapIntensity 1.8 → 1.2
+  //   （遠端掠射角的燈箱反射疊在飽和紅上變粉白；只調 envMap／clearcoat 時幾乎沒改善，主因是底層 F0 鏡面）
+  const plasticMat = new THREE.MeshPhysicalMaterial({ vertexColors: true, roughness: 0.34, metalness: 0.0, specularIntensity: 0.5, clearcoat: 0.35, clearcoatRoughness: 0.2, envMapIntensity: 1.2, side: THREE.DoubleSide });
   applyPlasticGrain(plasticMat);
   for (const m of track.wallMeshes) {
     const geo = new THREE.BufferGeometry();

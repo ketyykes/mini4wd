@@ -66,17 +66,21 @@ export const BODY_REAR_X = -63;
 const HALF_WIDTH = [[73, 30], [66, 35], [56, 37.5], [46, 39.5], [36, 40], [24, 39.3], [12, 38.2], [0, 38], [-12, 39.4], [-24, 41.8], [-34, 43], [-44, 43], [-52, 41.8], [-58, 39.2], [-63, 34.5]];
 /** 中線高度：鼻端（厚）→ 引擎蓋 → 座艙下緣 → 後甲板往車尾下降 */
 // iter-07：後甲板加高、車尾不再往下收（ref side-high：座艙後方到車尾近乎水平，尾端厚實）→ −34…−63 中線 +1…+3.5 mm
-const CENTER_Y = [[73, 14], [66, 16.5], [56, 18.5], [46, 20.5], [36, 21.8], [24, 23], [12, 24.6], [0, 25.6], [-12, 26.6], [-24, 28.2], [-34, 29.8], [-44, 30.8], [-52, 30.2], [-58, 28.4], [-63, 25.0]];
+// iter-11：擋風玻璃下緣（中線）24.6 → 27.2 mm（推估：ref side-high 像素量測反推 x ≈ 18 mm 處約 27.4 mm，見 ITERATION_LOG iter-11），
+//   引擎蓋後段（x 36…12）跟著墊高 1.2–2.6 mm，減少前葉子板到座艙的凹腰；座艙下方（x ≤ 0）不動
+const CENTER_Y = [[73, 14], [66, 16.5], [56, 18.5], [46, 20.8], [36, 23.0], [24, 25.4], [12, 27.2], [0, 25.6], [-12, 26.6], [-24, 28.2], [-34, 29.8], [-44, 30.8], [-52, 30.2], [-58, 28.4], [-63, 25.0]];
 /** 葉子板稜線高度：前輪上方隆起高於引擎蓋（鼻端仍高），後輪上方再隆起後往車尾下降 */
 // iter-07：後葉子板稜線加高（ref side-high：後輪上方隆起約為車頂高的 85–90%）
-const FENDER_Y = [[73, 18.5], [66, 24], [56, 28.5], [46, 30.5], [36, 30.5], [24, 28.5], [12, 27.0], [0, 26.8], [-12, 28.4], [-24, 31.2], [-34, 33.4], [-44, 34.0], [-52, 33.0], [-58, 30.6], [-63, 27.0]];
+// iter-11：前葉子板稜線 30.5 → 31.5 mm（ref 量測約 30.6–31.0，取略高補償俯拍誤差）、座艙前方腰線 x 24…−12 墊高 0.8–1.8 mm（減少凹腰）；後段不變
+const FENDER_Y = [[73, 18.5], [66, 24.4], [56, 29.3], [46, 31.5], [36, 31.5], [24, 30.0], [12, 28.8], [0, 28.2], [-12, 29.2], [-24, 31.2], [-34, 33.4], [-44, 34.0], [-52, 33.0], [-58, 30.6], [-63, 27.0]];
 /** 稜線位置（佔半寬的比例） */
 const FENDER_Z = [[73, 0.8], [56, 0.76], [36, 0.77], [12, 0.86], [-12, 0.86], [-34, 0.79], [-63, 0.76]];
 /** 側面最寬處的高度 */
 const SIDE_Y = [[73, 12.5], [66, 13], [56, 13], [46, 14], [-50, 14], [-58, 13.5], [-63, 13]];
 /** 車殼底緣：iter-02 為 5.6 mm，與底盤側框之間縫隙偏大 → 4.4 mm（底板上緣 3.7 mm） */
 // iter-05：reviewer「車殼底緣離底盤太近像一整塊」（ref side-high：車殼下方露出一層黑色底盤側框）→ 4.4 → 6.4 mm
-const BOTTOM_Y = 6.4;
+// iter-12：ref side-high 擬合相機量測（推估 ±0.5 mm）：車門下緣（x ≈ 3、近側）y ≈ 8.8 mm，下方露出黑色底盤側裙 → 6.4 → 8.6 mm
+const BOTTOM_Y = 8.6;
 /** 輪拱半徑：iter-02 輪胎外 2.5 mm 間隙偏大 → 1.8 mm */
 // iter-05：reviewer「輪胎露出比例小、輪拱開口大」（ref side-high：輪拱開口明顯大於輪胎）→ 1.8 → 2.8 mm
 // iter-07：reviewer「輪拱上緣空隙偏大」→ 2.8 → 1.8 mm
@@ -149,7 +153,10 @@ export function bodyPoint(x, u, side = 1) {
 // 避免反光出現折線）；鼻端 73 → 約 69.9 mm
 const NOSE_START = 50;
 const NOSE_RAMP = 12;
-const NOSE_SHRINK = 0.18;
+// iter-12：以擬合相機量 ref side-high（scripts/diag/measure_ref.mjs，推估 ±1 mm）：近側車鼻（大燈前端、下緣角）x ≈ 67.5–68.5 mm，
+//   前導輪 x ≈ 70.6–72.0（與本模型 71.5 一致）→ 參考車鼻到前導輪中心約 3–4 mm；本模型車鼻 69.9 → 只剩 1.6 mm。
+//   壓縮斜率 0.18 → 0.30：車鼻 69.9 → 67.9 mm（導輪位置是物理規格，不動）
+const NOSE_SHRINK = 0.30;
 /** @type {(x: number) => number} 設計座標 x → 實際 x（只影響車頭） */
 const noseMap = (x) => {
   const d = x - NOSE_START;
@@ -647,7 +654,8 @@ const CABIN_X0 = 15;
 const CABIN_X1 = -48;
 // 車頂板多一層 ROOF_LIFT，座艙面整體降 0.6 mm，使含車頂板與貼紙的最高點維持 SPEC 1.12 外框高 38 mm
 // iter-07：座艙後段加高（車頂往後延伸到尾端前才下降，ref side-high），最高點 37.1 mm 不變（全高 38 mm，SPEC 1.2）
-const CABIN_TOP = [[15, 24.6], [8, 29.8], [0, 34.0], [-8, 36.2], [-16, 37.0], [-26, 37.1], [-36, 36.9], [-44, 36.2], [-48, 35.4]];
+// iter-11：擋風玻璃下緣 24.6 → 27.2、x = 0 處 34.0 → 35.0（ref 量測：車頂前緣 x ≈ 0、中線約 34.8），座艙泡往前飽滿；最高點 37.1 不變
+const CABIN_TOP = [[15, 27.2], [8, 31.6], [0, 35.0], [-8, 36.6], [-16, 37.0], [-26, 37.1], [-36, 36.9], [-44, 36.2], [-48, 35.4]];
 const CABIN_TOP_W = [[15, 17], [0, 19], [-16, 19.5], [-36, 19.2], [-44, 17.8], [-48, 17.0]];
 const CABIN_BASE_W = [[15, 27], [0, 30], [-16, 31], [-36, 31.5], [-44, 30], [-48, 29.5]];
 /** 車頂板（車身色、比座艙玻璃面高 0.7 mm 的獨立一層）的 x 範圍與 u 範圍 */
@@ -875,6 +883,20 @@ function buildCabinInterior(tubMat, seatMat) {
   for (const side of [1, -1]) {
     g.add(gridGeometryMesh(60, 14, (i, j) => tubPoint(x0 + ((x1 - x0) * i) / 60, j / 14, side), tubMat));
   }
+  // iter-12：車門內飾板（深灰）——玻璃改 alpha 半透明後，透過側窗看到的是車殼頂面（藍漆反光），
+  // 實車側窗內是深色車門內側。
+  // 在玻璃內側 0.25 mm 加一片與側窗平行的內飾板蓋住車殼，透過玻璃看成均勻的深色車門內側（ref side-high 側窗內為均勻深色）
+  const doorMat = Object.assign(seatMat.clone(), { side: THREE.DoubleSide });
+  for (const side of [1, -1]) {
+    const dx0 = -31.2;
+    const dx1 = 12.2;
+    const doorPoint = (i, j) => {
+      const x = dx0 + ((dx1 - dx0) * i) / 40;
+      const u = 0.52 + (0.48 * j) / 10;
+      return cabinPoint(x, u, side).addScaledVector(cabinNormal(x, u, side), -0.25);
+    };
+    g.add(gridGeometryMesh(40, 10, doorPoint, doorMat));
+  }
   /** @type {(x: number) => number} 中線處底殼高度 */
   const floorY = (x) => tubPoint(x, 0, 1).y;
   // 儀表板：擋風玻璃下緣的橫向圓角塊
@@ -1071,13 +1093,14 @@ function buildWheelWells(mat) {
  * 珠光漆視角顏色漸層（iter-06）：在法線計算後依 N·V 把底色由正視的亮寶藍漸變到掠射的深紫，
  * 只改 diffuseColor，不動法線，因此不會產生 iter-04 那種反光扭曲
  * iter-09：加入細金屬片（metallic flake）——以物件座標切成約 PAINT_FLAKE_MM 的小格，每格一個雜湊值：
- *   (1) 底漆顏色亮度 ±10% 顏色噪點；(2) 底漆層（非清漆層）法線極低強度隨機偏轉 → 高光區出現細碎閃點。
+ *   (1) 底漆顏色亮度噪點（iter-10：±3%）；(2) 底漆層（非清漆層）法線極低強度隨機偏轉 → 高光區出現細碎閃點。
  *   three.js 的清漆法線取自 nonPerturbedNormal（clearcoat_normal_fragment_begin），
  *   所以清漆層的環境反射（燈箱倒影）仍是平滑曲面、不會扭曲（iter-04 粒子法線貼圖同時擾動兩層才扭曲）
  * @type {(mat: THREE.MeshPhysicalMaterial) => void}
  */
-const PAINT_FLAKE_MM = 0.12;
-const PAINT_FLAKE_TILT = 0.08;
+// iter-10：顆粒 0.12 → 0.06 mm、偏轉 0.08 → 0.06（reviewer「顆粒略粗有雜訊感」）
+const PAINT_FLAKE_MM = 0.06;
+const PAINT_FLAKE_TILT = 0.06;
 const applyPaintFlop = (mat) => {
   mat.onBeforeCompile = (shader) => {
     shader.uniforms.flopFace = { value: new THREE.Color(0x3352f2) };
@@ -1096,7 +1119,7 @@ const applyPaintFlop = (mat) => {
           diffuseColor.rgb = mix(flopEdge, flopFace, flop);
           vec3 cell = floor(vFlakePos / ${PAINT_FLAKE_MM.toFixed(3)});
           vec3 hs = fract(sin(vec3(dot(cell, vec3(127.1, 311.7, 74.7)), dot(cell, vec3(269.5, 183.3, 246.1)), dot(cell, vec3(113.5, 271.9, 124.6)))) * 43758.5453);
-          diffuseColor.rgb *= 0.95 + 0.1 * hs.x;
+          diffuseColor.rgb *= 0.97 + 0.06 * hs.x;
           normal = normalize(normal + ${PAINT_FLAKE_TILT.toFixed(3)} * (hs - 0.5));
         }`,
       );
@@ -1113,13 +1136,15 @@ export function buildChevalierBody(mats) {
   g.name = 'body';
   // iter-06：金屬珠光漆＋清漆層。不用金屬粒子法線貼圖（iter-04 反光扭曲主因），改用：
   //   底漆層 metalness 0.62／roughness 0.3（金屬底色的柔和寬高光）＋清漆 clearcoat 1.0／clearcoatRoughness 0.12（清楚但不過銳的燈箱反射；0.04 時俯視引擎蓋高光邊緣出現波紋）
+  //   iter-10：底漆 roughness 0.3 → 0.24、清漆 clearcoatRoughness 0.12 → 0.03（reviewer「光澤降為半光澤、rear34 反光不夠銳利」；
+  //   診斷：0.07 時 PMREM 取樣的燈箱倒影仍明顯糊掉，0.02–0.03 才有清楚邊緣；俯視引擎蓋檢查無 iter-06 的波紋）
   //   ＋視角顏色漸層（applyPaintFlop：正視亮寶藍、掠射轉深紫，珠光漆的 flop 效果）＋溫和 iridescence 與紫色 sheen
   const paint = new THREE.MeshPhysicalMaterial({
     color: 0x1f30a8,
-    roughness: 0.3,
+    roughness: 0.24,
     metalness: 0.62,
     clearcoat: 1.0,
-    clearcoatRoughness: 0.12,
+    clearcoatRoughness: 0.03,
     envMapIntensity: 0.85,
     iridescence: 0.25,
     iridescenceIOR: 1.3,
@@ -1138,7 +1163,13 @@ export function buildChevalierBody(mats) {
   // iter-09：座艙玻璃由不透明褐色金屬片改為透明煙燻玻璃（reviewer：「座艙玻璃不透明褐色片」）：
   //   transmission 0.9＋灰褐色調（color 為透射染色）→ 透過玻璃看得到座艙內裝深色輪廓；
   //   metalness 0、roughness 0.03、clearcoat 1 → 表面仍有棚拍燈箱的清楚倒影
-  const glass = new THREE.MeshPhysicalMaterial({ color: 0x5e5a54, roughness: 0.03, metalness: 0.0, transmission: 0.9, thickness: 0.4, ior: 1.5, envMapIntensity: 1.0, clearcoat: 1.0, clearcoatRoughness: 0.03, side: THREE.DoubleSide });
+  //   iter-10：色調改回參考的香檳／古銅煙燻（ref_chevalier-ma_front34／side-high）：透射染色 0xc9a67e、暖色 specularColor、
+  //   transmission 0.88、metalness 0.08（試過 metalness 0.3／transmission 0.75 → 像不透明卡其色板、看不到內裝，已撤回）
+  //   iter-12：reviewer「sidehigh 玻璃內有不明深色斑」。逐項排除（拿掉內裝、玻璃不收／不投陰影、envMapIntensity 0、清漆 0、
+  //   厚度 0、紅色測試片放在玻璃內 0.25 mm）後確認：深色橢圓斑出在 transmission 取樣（測試片被斑蓋住，玻璃隱藏時則完整可見）。
+  //   改用一般 alpha 半透明（transmission 0、opacity 0.72、深茶色 0x4a3d2e）：斑淡成柔和的倒影漸層，
+  //   側窗讀成 ref side-high 那種「深色煙燻＋燈箱倒影」，內側另加深灰車門內飾板（buildCabinInterior）
+  const glass = new THREE.MeshPhysicalMaterial({ color: 0x4a3d2e, specularColor: 0xffd3a0, roughness: 0.04, metalness: 0.08, transmission: 0.0, transparent: true, opacity: 0.72, depthWrite: false, ior: 1.5, envMapIntensity: 1.0, clearcoat: 1.0, clearcoatRoughness: 0.03, side: THREE.DoubleSide });
   const interiorTub = new THREE.MeshStandardMaterial({ color: 0x141518, roughness: 0.85, metalness: 0.0, side: THREE.DoubleSide });
   const interiorSeat = new THREE.MeshStandardMaterial({ color: 0x2c2e33, roughness: 0.6, metalness: 0.0 });
   const decal = (color, extra = {}) =>
