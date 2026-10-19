@@ -63,13 +63,18 @@ export const BODY_REAR_X = -63;
 //   車尾：後甲板往車尾下降、平面收窄（尾燈面低而圓）→ 車尾中線 28 → 21.5、稜線 28.4 → 23.5、尾端半寬 35 → 31.5
 // iter-07：reviewer「後段座艙與尾部隆起不夠、尾部缺寬大後輪拱外擴」（ref side-high / rear34：後葉子板明顯外擴、車尾厚實方正）
 //   後段半寬 −24…−63：41/42/41.6/39.8/36.5/31.5 → 41.8/43/43/41.8/39.2/34.5（全寬 86 mm，仍小於導輪跨距 97 mm）
-const HALF_WIDTH = [[73, 30], [66, 35], [56, 37.5], [46, 39.5], [36, 40], [24, 39.3], [12, 38.2], [0, 38], [-12, 39.4], [-24, 41.8], [-34, 43], [-44, 43], [-52, 41.8], [-58, 39.2], [-63, 34.5]];
+// iter-08：reviewer「俯視後半段太寬太圓」→ 後段最寬 43 → 41.4（全寬 86 → 82.8 mm，介於 iter-06 與 iter-07 之間），
+//   尾端維持 34 讓收尾較方（不再大幅內收成圓弧）
+const HALF_WIDTH = [[73, 30], [66, 35], [56, 37.5], [46, 39.5], [36, 40], [24, 39.3], [12, 38.2], [0, 38], [-12, 39.0], [-24, 40.6], [-34, 41.4], [-44, 41.2], [-52, 40.0], [-58, 37.6], [-63, 34.0]];
 /** 中線高度：鼻端（厚）→ 引擎蓋 → 座艙下緣 → 後甲板往車尾下降 */
 // iter-07：後甲板加高、車尾不再往下收（ref side-high：座艙後方到車尾近乎水平，尾端厚實）→ −34…−63 中線 +1…+3.5 mm
-const CENTER_Y = [[73, 14], [66, 16.5], [56, 18.5], [46, 20.5], [36, 21.8], [24, 23], [12, 24.6], [0, 25.6], [-12, 26.6], [-24, 28.2], [-34, 29.8], [-44, 30.8], [-52, 30.2], [-58, 28.4], [-63, 25.0]];
+// iter-08：reviewer「側面車頭圓鈍，參考較尖較低」（ref side-high / front34：鼻端低、由前輪上方往鼻端成楔形下降）
+//   鼻端中線 14 → 12.2、66 mm 處 16.5 → 14.8
+const CENTER_Y = [[73, 12.2], [66, 14.8], [56, 17.6], [46, 20.2], [36, 21.8], [24, 23], [12, 24.6], [0, 25.6], [-12, 26.6], [-24, 28.2], [-34, 29.8], [-44, 30.8], [-52, 30.2], [-58, 28.4], [-63, 25.0]];
 /** 葉子板稜線高度：前輪上方隆起高於引擎蓋（鼻端仍高），後輪上方再隆起後往車尾下降 */
 // iter-07：後葉子板稜線加高（ref side-high：後輪上方隆起約為車頂高的 85–90%）
-const FENDER_Y = [[73, 18.5], [66, 24], [56, 28.5], [46, 30.5], [36, 30.5], [24, 28.5], [12, 27.0], [0, 26.8], [-12, 28.4], [-24, 31.2], [-34, 33.4], [-44, 34.0], [-52, 33.0], [-58, 30.6], [-63, 27.0]];
+// iter-08：前葉子板稜線往鼻端壓低成楔形（鼻端 18.5 → 15、66 mm 處 24 → 20.8、56 mm 處 28.5 → 26.6）
+const FENDER_Y = [[73, 15.0], [66, 20.8], [56, 26.6], [46, 29.6], [36, 30.2], [24, 28.5], [12, 27.0], [0, 26.8], [-12, 28.4], [-24, 31.2], [-34, 33.4], [-44, 34.0], [-52, 33.0], [-58, 30.6], [-63, 27.0]];
 /** 稜線位置（佔半寬的比例） */
 const FENDER_Z = [[73, 0.8], [56, 0.76], [36, 0.77], [12, 0.86], [-12, 0.86], [-34, 0.79], [-63, 0.76]];
 /** 側面最寬處的高度 */
@@ -149,7 +154,8 @@ export function bodyPoint(x, u, side = 1) {
 // 避免反光出現折線）；鼻端 73 → 約 69.9 mm
 const NOSE_START = 50;
 const NOSE_RAMP = 12;
-const NOSE_SHRINK = 0.18;
+// iter-08：0.18 → 0.26（鼻端 69.9 → 約 68.6 mm），讓前保桿與導輪架相對車鼻更往前突出（ref side-high）
+const NOSE_SHRINK = 0.26;
 /** @type {(x: number) => number} 設計座標 x → 實際 x（只影響車頭） */
 const noseMap = (x) => {
   const d = x - NOSE_START;
@@ -647,13 +653,15 @@ const CABIN_X0 = 15;
 const CABIN_X1 = -48;
 // 車頂板多一層 ROOF_LIFT，座艙面整體降 0.6 mm，使含車頂板與貼紙的最高點維持 SPEC 1.12 外框高 38 mm
 // iter-07：座艙後段加高（車頂往後延伸到尾端前才下降，ref side-high），最高點 37.1 mm 不變（全高 38 mm，SPEC 1.2）
-const CABIN_TOP = [[15, 24.6], [8, 29.8], [0, 34.0], [-8, 36.2], [-16, 37.0], [-26, 37.1], [-36, 36.9], [-44, 36.2], [-48, 35.4]];
+// iter-08：reviewer「MIDSHIP AERO 頂蓋應是明顯凸起的箱形」→ 車頂板改為垂直抬高 ROOF_LIFT 2.4 mm 的箱體（直立側壁），
+//   座艙面在車頂板範圍（x ≤ 0）降 1.7 mm，使最高點（座艙 35.4＋箱體 2.4＋碳纖片 0.15）≈ 37.95 mm，全高仍 ≤ 38 mm（SPEC 1.2）
+const CABIN_TOP = [[15, 24.6], [8, 29.6], [0, 32.6], [-8, 34.5], [-16, 35.3], [-26, 35.4], [-36, 35.2], [-44, 34.5], [-48, 33.7]];
 const CABIN_TOP_W = [[15, 17], [0, 19], [-16, 19.5], [-36, 19.2], [-44, 17.8], [-48, 17.0]];
 const CABIN_BASE_W = [[15, 27], [0, 30], [-16, 31], [-36, 31.5], [-44, 30], [-48, 29.5]];
 /** 車頂板（車身色、比座艙玻璃面高 0.7 mm 的獨立一層）的 x 範圍與 u 範圍 */
 const ROOF_X0 = -6;
 const ROOF_U = 0.46;
-const ROOF_LIFT = 0.7;
+const ROOF_LIFT = 2.4;
 
 /** 座艙截面上的點；u：0 中線 → 1 與車殼交接處 */
 export function cabinPoint(x, u, side = 1) {
@@ -694,14 +702,16 @@ const CABIN_SURF = { point: cabinPoint, normal: cabinNormal };
  * 沿座艙曲面上一條路徑立起的薄牆（車頂板的側面／前緣立面）
  * @param {(t: number) => [number, number]} path t ∈ [0,1] → [x, u]
  * @param {number} n 分段數
- * @param {number} h 沿法向高度（mm）
+ * @param {number} h 垂直（+y）高度（mm；iter-08 起由沿法向改為垂直）
  */
 function liftWall(path, n, h, mat, side) {
   const pos = [];
   for (let k = 0; k <= n; k++) {
     const [x, u] = path(k / n);
     const p = cabinPoint(x, u, side);
-    const q = p.clone().addScaledVector(cabinNormal(x, u, side), h);
+    // iter-08：改為垂直（+y）抬高，車頂箱體側壁直立
+    const q = p.clone();
+    q.y += h;
     pos.push(p.x, p.y, p.z, q.x, q.y, q.z);
   }
   const idx = [];
@@ -767,11 +777,13 @@ function buildCabin(bodyMat, glassMat, trimMat) {
   const paintTwo = bodyMat.clone();
   paintTwo.side = THREE.DoubleSide;
   const cab = { surf: CABIN_SURF };
+  // iter-08：車頂箱體頂面＝座艙面垂直上移 ROOF_LIFT（與碳纖片、MIDSHIP AERO 貼紙的 +y 抬高一致）
+  const roofSurf = { surf: { point: (x, u, sd) => cabinPoint(x, u, sd).setY(cabinPoint(x, u, sd).y + ROOF_LIFT), normal: cabinNormal } };
   for (const side of [1, -1]) {
-    g.add(ribbon(ROOF_X0, CABIN_X1, () => [0, ROOF_U], paintTwo, side, ROOF_LIFT, { ...cab, nu: 12 }));
-    // 車頂板側面立面（u = ROOF_U）與前緣立面（x = ROOF_X0）
-    g.add(liftWall((t) => [ROOF_X0 + (CABIN_X1 - ROOF_X0) * t, ROOF_U], 60, ROOF_LIFT, trimMat, side));
-    g.add(liftWall((t) => [ROOF_X0, ROOF_U * t], 16, ROOF_LIFT, trimMat, side));
+    g.add(ribbon(ROOF_X0, CABIN_X1, () => [0, ROOF_U], paintTwo, side, 0, { ...roofSurf, nu: 12 }));
+    // 車頂箱體側壁（u = ROOF_U）與前緣立面（x = ROOF_X0），iter-08 改車身色直立壁
+    g.add(liftWall((t) => [ROOF_X0 + (CABIN_X1 - ROOF_X0) * t, ROOF_U], 60, ROOF_LIFT, paintTwo, side));
+    g.add(liftWall((t) => [ROOF_X0, ROOF_U * t], 16, ROOF_LIFT, paintTwo, side));
     // 車頂板前緣下方的擋風玻璃上框
     g.add(ribbon(ROOF_X0 + 1.4, ROOF_X0, () => [0, ROOF_U + 0.02], trimMat, side, 0.15, { ...cab, nu: 12 }));
     // A 柱（車身色）＋兩側黑色細框
@@ -796,7 +808,7 @@ function buildCabin(bodyMat, glassMat, trimMat) {
       const u = j / n;
       const p = cabinPoint(CABIN_X1, u, 1);
       if (u <= ROOF_U) {
-        p.addScaledVector(cabinNormal(CABIN_X1, u, 1), ROOF_LIFT);
+        p.y += ROOF_LIFT;
       }
       pts.push(p);
     }
