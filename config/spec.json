@@ -1,0 +1,169 @@
+{
+  "_readme": "Track A 唯一的規格設定檔。模型（Three.js，單位 mm）與物理（Rapier，單位 SI）都從這裡讀取。*_src 註明來源：『SPEC x.y』表示 SPEC.md 第 1 部分對應小節（多為 1.12 建議預設參數）；『推估』表示 SPEC 沒有，附依據。參考車款：Tamiya Chevalier（MA 底盤）。",
+
+  "rules": {
+    "maxLength_mm": 165,
+    "maxLength_mm_src": "SPEC 1.1 [REG]：車長 < 165 mm",
+    "maxWidth_mm": 105,
+    "maxWidth_mm_src": "SPEC 1.1 [REG]：車寬 < 105 mm",
+    "maxHeight_mm": 70,
+    "maxHeight_mm_src": "SPEC 1.1 [REG]：車高 < 70 mm",
+    "minMassWithBatteryMotor_g": 90,
+    "minMassWithBatteryMotor_g_src": "SPEC 1.1 [REG]：含電池與馬達最低 90 g",
+    "referenceTotalMass_g": 118,
+    "referenceTotalMass_g_src": "SPEC 1.12：總重（含電池）118 g",
+    "minGroundClearance_mm": 1,
+    "minGroundClearance_mm_src": "SPEC 1.1 [REG]：最低離地 1 mm"
+  },
+
+  "battery": {
+    "cells": 2,
+    "cells_src": "SPEC 1.12：2 × Tamiya Neo Champ",
+    "nominalCellVoltage_V": 1.2,
+    "nominalCellVoltage_V_src": "SPEC 1.3",
+    "capacity_mAh": 950,
+    "capacity_mAh_src": "SPEC 1.3 / 1.12：Neo Champ ≥ 950 mAh",
+    "cellInternalResistance_ohm": 0.04,
+    "cellInternalResistance_ohm_src": "SPEC 1.12：DC 內阻 40 mΩ/顆（推估）",
+    "cellOcvCurve": [[0.0, 1.00], [0.05, 1.05], [0.10, 1.12], [0.20, 1.18], [0.50, 1.23], [0.80, 1.27], [0.90, 1.30], [1.00, 1.40]],
+    "cellOcvCurve_src": "SPEC 1.3：開路電壓 vs SOC 分段線性表（推估）",
+    "cutoffCellVoltage_V": 1.0,
+    "cutoffCellVoltage_V_src": "SPEC 1.3：截止 1.0 V/顆",
+    "cellMass_g": 19,
+    "cellMass_g_src": "SPEC 1.3：Neo Champ 約 19 g/顆",
+    "cellDiameter_mm": 14.35,
+    "cellLength_mm": 50.5,
+    "cellSize_src": "SPEC 1.9 引用 Eneloop 規格書直徑 14.35 mm；長度 50.5 mm 為 AA 通用尺寸（推估）"
+  },
+
+  "motor": {
+    "name": "套件普通馬達（以 Mabuchi FA-130RA-18100 數值建模）",
+    "name_src": "SPEC 1.4 / 1.12",
+    "ratedVoltage_V": 3.0,
+    "noLoadRpm_atRated": 12300,
+    "noLoadRpm_atRated_src": "SPEC 1.4 / 1.12：ω0 @3V = 12,300 rpm",
+    "stallTorque_atRated_Nm": 0.00353,
+    "stallTorque_atRated_Nm_src": "SPEC 1.4 / 1.12：τ_stall @3V = 3.53 mN·m",
+    "stallCurrent_atRated_A": 2.10,
+    "stallCurrent_atRated_A_src": "SPEC 1.4 / 1.12：I_stall @3V = 2.10 A（R_m = 3/2.1 ≈ 1.43 Ω）",
+    "noLoadCurrent_A": 0.15,
+    "noLoadCurrent_A_src": "SPEC 1.4：I0 = 0.15 A",
+    "coastMotorDrag": false,
+    "coastMotorDrag_src": "SPEC 1.12 的線性馬達模型忽略 I0；斷電滑行時是否計入馬達內部摩擦（Kt·I0 經齒輪放大）由此開關控制，預設依 SPEC 不計入。開啟時的敏感度寫在 ITERATION_LOG.md",
+    "mass_g": 18,
+    "mass_g_src": "SPEC 1.4：約 18 g（推估）",
+    "body_mm": { "diameter": 20.1, "flat": 15.1, "length": 25.0, "shaftDiameter": 2.0 },
+    "body_mm_src": "推估：130 型馬達外殼常見尺寸 20.1 × 15.1 × 25 mm"
+  },
+
+  "drivetrain": {
+    "gearRatios": [3.5, 3.7, 4.0, 4.2, 5.0],
+    "gearRatios_src": "SPEC 1.5",
+    "standardGearRatio": 3.5,
+    "standardGearRatio_src": "SPEC 1.12：G = 3.5（Chevalier 標配）",
+    "gearEfficiency": 0.8,
+    "gearEfficiency_src": "SPEC 1.12：η = 0.80（推估）"
+  },
+
+  "bearings": {
+    "shaftRadius_mm": 1.0,
+    "shaftRadius_mm_src": "SPEC 1.6：輪軸直徑 2 mm",
+    "bushingFrictionCoeff": 0.20,
+    "bushingFrictionCoeff_src": "SPEC 1.12：塑膠軸承 0.20（推估）",
+    "ballBearingFrictionCoeff": 0.003,
+    "ballBearingFrictionCoeff_src": "SPEC 1.12：培林 0.003（推估）"
+  },
+
+  "tire": {
+    "diameter_mm": 26.0,
+    "diameter_mm_src": "SPEC 1.7 / 1.12：小徑 low profile 26 mm",
+    "width_mm": 9.0,
+    "width_mm_src": "SPEC 1.12：9 mm（推估）",
+    "rimDiameter_mm": 18.0,
+    "rimDiameter_mm_src": "推估：low profile 胎厚約 4 mm",
+    "frictionCoeff": 0.7,
+    "frictionCoeff_src": "SPEC 1.12：μ = 0.7（推估）",
+    "rollingResistanceCoeff": 0.02,
+    "rollingResistanceCoeff_src": "SPEC 1.12：C_rr = 0.02（推估）",
+    "slipAngleSaturation_rad": 0.1,
+    "slipAngleSaturation_rad_src": "推估：小型橡膠胎側向力約在 5–6° 滑移角飽和（tanh 模型的特徵角）",
+    "mass_g": 3.0,
+    "mass_g_src": "推估：輪框＋輪胎每顆約 3 g"
+  },
+
+  "aero": {
+    "airDensity": 1.2,
+    "airDensity_src": "SPEC 1.11",
+    "dragCoeff": 0.6,
+    "dragCoeff_src": "SPEC 1.11 / 1.12",
+    "frontalArea_mm2": 2600,
+    "frontalArea_mm2_src": "SPEC 1.11 / 1.12：2.6×10⁻³ m²"
+  },
+
+  "chassis": {
+    "wheelbase_mm": 80.0,
+    "wheelbase_mm_src": "SPEC 1.2 / 1.12：MA 軸距 80 mm",
+    "trackWidth_mm": 59.5,
+    "trackWidth_mm_src": "SPEC 1.2 / 1.12：MA 輪距 59.5 mm（視為左右輪胎中心距）",
+    "overallLength_mm": 156,
+    "overallWidth_mm": 97,
+    "overallHeight_mm": 38,
+    "overall_src": "SPEC 1.12：外框 156 × 97 × 38 mm（最寬點為導輪）",
+    "groundClearance_mm": 2.2,
+    "groundClearance_mm_src": "SPEC 1.2 / 1.12：2.2 mm",
+    "plateThickness_mm": 1.5,
+    "plateThickness_mm_src": "SPEC 1.9：底板厚約 1.5 mm（推估）",
+    "rollerDiameter_mm": 13.0,
+    "rollerDiameter_mm_src": "SPEC 1.12：13 mm（推估）",
+    "rollerHeight_mm": 6.5,
+    "rollerHeight_mm_src": "推估：13 mm 導輪厚度約 6–7 mm",
+    "rollerCenterHeight_mm": 10.0,
+    "rollerCenterHeight_mm_src": "SPEC 1.8：與牆接觸高度離地約 8–15 mm（推估）",
+    "rearUpperRollerHeight_mm": 18.0,
+    "rearUpperRollerHeight_mm_src": "SPEC 1.8：後保桿上下 2 顆疊放（推估高度）",
+    "massChassisBodyMisc_g": 50,
+    "massChassisBodyMisc_g_src": "推估：SPEC 1.12 不含電池 80 g − 馬達 18 g − 輪子 12 g",
+    "comHeight_mm": 13.0,
+    "comHeight_mm_src": "SPEC 1.9 / 1.12：13 mm（推估）"
+  },
+
+  "body": {
+    "length_mm": 140.0,
+    "width_mm": 80.0,
+    "height_mm": 38.0,
+    "_src": "推估：依 SPEC 1.12 外框（高 38 mm）與 Chevalier 參考照片比例；長寬為車殼本體（不含保桿導輪）"
+  },
+
+  "track": {
+    "laneWidth_mm": 115.0,
+    "laneWidth_mm_src": "SPEC 1.10：車道寬 115 mm",
+    "wallThickness_mm": 10.0,
+    "wallThickness_mm_src": "SPEC 1.10：牆厚約 10 mm（推估）",
+    "wallHeight_mm": 50.0,
+    "wallHeight_mm_src": "SPEC 1.10：牆高 50 mm",
+    "lanes": 3,
+    "straightLength_mm": 1700.0,
+    "straightLength_mm_src": "SPEC 1.10 / 1.12：直線每側約 1.7 m（推估）",
+    "curveRadiusMidLane_mm": 510.0,
+    "curveRadiusMidLane_mm_src": "SPEC 1.10 / 1.12：彎道中心半徑 0.38 / 0.51 / 0.63 m（推估）",
+    "laneChangerStart_mm": 450.0,
+    "laneChangerLength_mm": 800.0,
+    "laneChangerLength_mm_src": "推估：iter-00 簡化為地面斜向導牆換道段（內、中線道往外移一線道）；外側線道走 80 mm 高立體橋（SPEC 1.10），iter-00 只做外觀",
+    "bridgeHeight_mm": 80.0,
+    "bridgeHeight_mm_src": "SPEC 1.10：橋面約 80 mm（推估）",
+    "wallFriction": 0.3,
+    "wallFriction_src": "SPEC 1.8：塑膠對塑膠滑動約 0.3",
+    "rollerFriction": 0.05,
+    "rollerFriction_src": "SPEC 1.8 / 1.12：導輪–牆等效摩擦 0.05（推估）",
+    "rollerRestitution": 0.1,
+    "rollerRestitution_src": "推估：塑膠導輪撞擊 ABS 牆的恢復係數偏低"
+  },
+
+  "sim": {
+    "dt_s": 0.001,
+    "gravity": 9.81,
+    "suspensionStaticDeflection_mm": 0.3,
+    "suspensionStaticDeflection_mm_src": "推估：MA 為一體式剛性底盤（SPEC 1.9），用很硬的等效彈簧（靜態壓縮 0.3 mm）代表輪胎變形",
+    "suspensionDampingRatio": 0.7
+  }
+}

@@ -1,0 +1,363 @@
+// Rapier 物理模擬：賽道（地板＋側牆方塊）、車體剛體（車體方塊＋導輪圓柱）、
+// DynamicRayCastVehicleController 四輪，動力鏈由 powertrain.js 每步計算後以 engine force 施加
+import RAPIER from '@dimforge/rapier3d-compat';
+import { spec, deriveParams } from './spec.js';
+import { Battery, longitudinalForce } from './powertrain.js';
+import { rollerLayout, wheelLayout, bodyColliderBox } from './carLayout.js';
+
+const MM = 0.001;
+const P = deriveParams();
+
+let initPromise = null;
+
+/** 初始化 Rapier WASM（只做一次） */
+export function initRapier() {
+  if (!initPromise) {
+    initPromise = RAPIER.init();
+  }
+  return initPromise;
+}
+
+/** 由 yaw（繞 y 軸）產生四元數 */
+function yawQuat(yaw) {
+  return { x: 0, y: Math.sin(yaw / 2), z: 0, w: Math.cos(yaw / 2) };
+}
+
+/** 四元數旋轉向量 */
+function rotate(q, v) {
+  const { x, y, z, w } = q;
+  const ix = w * v.x + y * v.z - z * v.y;
+  const iy = w * v.y + z * v.x - x * v.z;
+  const iz = w * v.z + x * v.y - y * v.x;
+  const iw = -x * v.x - y * v.y - z * v.z;
+  return {
+    x: ix * w + iw * -x + iy * -z - iz * -y,
+    y: iy * w + iw * -y + iz * -x - ix * -z,
+    z: iz * w + iw * -z + ix * -y - iy * -x,
+  };
+}
+
+/**
+ * 建立世界與賽道
+ * @param {ReturnType<import('./track.js').buildCircuit>} track
+ */
+export function createWorld(track) {
+  const world = new RAPIER.World({ x: 0, y: -P.gravity, z: 0 });
+  world.timestep = spec.sim.dt_s;
+  // lengthUnit 會連帶限制最大速度（0.01 時上限 4 m/s，見 ITERATION_LOG），取 0.1
+  world.lengthUnit = 0.1;
+  world.integrationParameters.numSolverIterations = 8;
+
+  const ground = world.createRigidBody(RAPIER.RigidBodyDesc.fixed());
+  const b = track.bounds;
+  const cx = (b.minX + b.maxX) / 2;
+  const cz = (b.minZ + b.maxZ) / 2;
+  const floor = world.createCollider(
+    RAPIER.ColliderDesc.cuboid((b.maxX - b.minX) / 2 + 1, 0.01, (b.maxZ - b.minZ) / 2 + 1)
+      .setTranslation(cx, -0.01, cz)
+      .setFriction(0.3),
+    ground,
+  );
+
+  const wallHandles = new Set();
+  const flags = RAPIER.TriMeshFlags.FIX_INTERNAL_EDGES;
+  for (const m of track.wallMeshes) {
+    const col = world.createCollider(
+      RAPIER.ColliderDesc.trimesh(m.vertices, m.indices, flags).setFriction(spec.track.wallFriction),
+      ground,
+    );
+    wallHandles.add(col.handle);
+  }
+  return { world, floor, wallHandles, track };
+}
+
+/**
+ * 建立車輛
+ * @param {ReturnType<typeof createWorld>} env
+ * @param {{ s?: number, lane?: number, gearRatio?: number, bearingType?: 'bearing'|'bushing', soc?: number, drain?: boolean, powered?: boolean }} opt
+ */
+export function createCar(env, opt = {}) {
+  const { world, track } = env;
+  const s0 = opt.s ?? 0.15;
+  const lane = opt.lane ?? 0;
+  const start = track.path.point(s0, track.laneOffset(lane));
+  const massKg = P.massTotal;
+  const comY = spec.chassis.comHeight_mm * MM;
+
+  // 慣性矩以 150×30×90 mm 均質方塊估算（推估）
+  const Lx = 0.15;
+  const Ly = 0.03;
+  const Lz = 0.09;
+  const inertia = {
+    x: (massKg / 12) * (Ly * Ly + Lz * Lz),
+    y: (massKg / 12) * (Lx * Lx + Lz * Lz),
+    z: (massKg / 12) * (Lx * Lx + Ly * Ly),
+  };
+
+  const bodyDesc = RAPIER.RigidBodyDesc.dynamic()
+    .setTranslation(start.x, 0.0005, start.z)
+    .setRotation(yawQuat(-start.theta))
+    .setAdditionalMassProperties(massKg, { x: 0, y: comY, z: 0 }, inertia, { x: 0, y: 0, z: 0, w: 1 })
+    .setCcdEnabled(true)
+    .setCanSleep(false);
+  const chassis = world.createRigidBody(bodyDesc);
+
+  const box = bodyColliderBox();
+  const bodyCol = world.createCollider(
+    RAPIER.ColliderDesc.cuboid(box.hx * MM, box.hy * MM, box.hz * MM)
+      .setTranslation(0, box.cy * MM, 0)
+      .setDensity(0)
+      .setFriction(0.3),
+    chassis,
+  );
+
+  const rollers = rollerLayout().map((r) => {
+    const col = world.createCollider(
+      // 導輪碰撞體用球：圓柱對 trimesh 的接觸在 Rapier 中會卡住（見 ITERATION_LOG iter-00）
+      RAPIER.ColliderDesc.ball(r.r * MM)
+        .setTranslation(r.x * MM, r.y * MM, r.z * MM)
+        .setDensity(0)
+        .setFriction(spec.track.rollerFriction)
+        .setFrictionCombineRule(RAPIER.CoefficientCombineRule.Min)
+        .setRestitution(spec.track.rollerRestitution),
+      chassis,
+    );
+    return { ...r, collider: col };
+  });
+
+  // 自寫射線輪（raycast wheel）：Rapier 內建 DynamicRayCastVehicleController 的側向摩擦在
+  // 小慣性矩（~1e-4 kg·m²）下幾乎失效（見 ITERATION_LOG iter-00），因此改為每步自行射線偵測地面，
+  // 以彈簧-阻尼求法向力，並以滑移角 tanh 模型＋摩擦圓求輪胎力，用 addForceAtPoint 交給 Rapier 積分
+  const wheelR = P.wheelRadius;
+  const restLen = 0.003;
+  const staticDefl = spec.sim.suspensionStaticDeflection_mm * MM;
+  const wheelLoad = (massKg * P.gravity) / 4;
+  const springK = wheelLoad / staticDefl;
+  const damperC = 2 * spec.sim.suspensionDampingRatio * Math.sqrt(springK * (massKg / 4));
+  const wheels = wheelLayout().map((w) => ({
+    ...w,
+    hardpoint: { x: w.x * MM, y: wheelR + restLen - staticDefl, z: w.z * MM },
+    contact: false,
+    normalForce: 0,
+    spin: 0,
+  }));
+
+  return {
+    chassis,
+    bodyCol,
+    rollers,
+    wheels,
+    wheelParams: { wheelR, restLen, springK, damperC },
+    massKg,
+    battery: new Battery(opt.soc ?? 1),
+    drain: opt.drain ?? true,
+    powered: opt.powered ?? true,
+    gearRatio: opt.gearRatio ?? spec.drivetrain.standardGearRatio,
+    bearingType: opt.bearingType ?? 'bearing',
+    last: { current: 0, terminalVoltage: 0, speed: 0 },
+  };
+}
+
+/** 車體前進方向（世界座標） */
+export function forwardAxis(car) {
+  return rotate(car.chassis.rotation(), { x: 1, y: 0, z: 0 });
+}
+
+/** 車體上方向 */
+export function upAxis(car) {
+  return rotate(car.chassis.rotation(), { x: 0, y: 1, z: 0 });
+}
+
+/** 前進速度 m/s */
+export function forwardSpeed(car) {
+  const v = car.chassis.linvel();
+  const f = forwardAxis(car);
+  return v.x * f.x + v.y * f.y + v.z * f.z;
+}
+
+/** 車體局部點轉世界座標 */
+export function localToWorld(car, p) {
+  const r = rotate(car.chassis.rotation(), p);
+  const t = car.chassis.translation();
+  return { x: t.x + r.x, y: t.y + r.y, z: t.z + r.z };
+}
+
+/**
+ * 推進一步：動力鏈 → 引擎力、空氣阻力 → 車輛控制器 → 物理引擎
+ * @param {ReturnType<typeof createWorld>} env
+ * @param {ReturnType<typeof createCar>} car
+ */
+export function stepCar(env, car) {
+  const dt = spec.sim.dt_s;
+  const v = forwardSpeed(car);
+  const lf = longitudinalForce({
+    speed: v,
+    gearRatio: car.gearRatio,
+    powered: car.powered,
+    battery: car.battery,
+    bearingType: car.bearingType,
+    massKg: car.massKg,
+  });
+
+  let net;
+  if (car.powered) {
+    net = lf.drive - Math.sign(v) * lf.resist;
+  } else if (Math.abs(v) < 0.002) {
+    // 滑行停止：不施加阻力，避免數值上反向加速
+    net = 0;
+  } else {
+    net = -Math.sign(v) * lf.resist;
+  }
+
+  const body = car.chassis;
+  body.resetForces(true);
+  body.resetTorques(true);
+
+  // 空氣阻力施加在車體重心
+  const vel = body.linvel();
+  const speed = Math.hypot(vel.x, vel.y, vel.z);
+  if (speed > 1e-6) {
+    const k = P.airDragK * speed;
+    body.addForce({ x: -k * vel.x, y: -k * vel.y, z: -k * vel.z }, true);
+  }
+
+  const q = body.rotation();
+  const fwd = rotate(q, { x: 1, y: 0, z: 0 });
+  const up = rotate(q, { x: 0, y: 1, z: 0 });
+  const side = rotate(q, { x: 0, y: 0, z: 1 });
+  const { wheelR, restLen, springK, damperC } = car.wheelParams;
+  const maxLen = restLen + wheelR;
+  const mu = spec.tire.frictionCoeff;
+  const alphaSat = spec.tire.slipAngleSaturation_rad;
+
+  // 先求各輪法向力，縱向力依法向力比例分配（4WD 前後軸機械連結）
+  let normalSum = 0;
+  for (const w of car.wheels) {
+    const hp = localToWorld(car, w.hardpoint);
+    const ray = new RAPIER.Ray(hp, { x: -up.x, y: -up.y, z: -up.z });
+    const hit = env.world.castRay(ray, maxLen, true, undefined, undefined, undefined, body);
+    w.contact = false;
+    w.normalForce = 0;
+    if (!hit) {
+      continue;
+    }
+    const dist = hit.timeOfImpact;
+    const cp = { x: hp.x - up.x * dist, y: hp.y - up.y * dist, z: hp.z - up.z * dist };
+    const vp = body.velocityAtPoint(cp);
+    const vn = vp.x * up.x + vp.y * up.y + vp.z * up.z;
+    const compression = maxLen - dist;
+    w.normalForce = Math.max(0, springK * compression - damperC * vn);
+    w.contact = true;
+    w.cp = cp;
+    w.vp = vp;
+    normalSum += w.normalForce;
+  }
+
+  for (const w of car.wheels) {
+    if (!w.contact) {
+      continue;
+    }
+    const vLong = w.vp.x * fwd.x + w.vp.y * fwd.y + w.vp.z * fwd.z;
+    const vLat = w.vp.x * side.x + w.vp.y * side.y + w.vp.z * side.z;
+    const share = normalSum > 0 ? w.normalForce / normalSum : 0;
+    let fx = net * share;
+    // 側向力：滑移角 tanh 飽和模型（低速以 0.5 m/s 為下限避免數值僵硬）
+    const alpha = Math.atan2(vLat, Math.max(Math.abs(vLong), 0.5));
+    let fy = -mu * w.normalForce * Math.tanh(alpha / alphaSat);
+    // 摩擦圓限制
+    const limit = mu * w.normalForce;
+    const total = Math.hypot(fx, fy);
+    if (total > limit && total > 0) {
+      fx *= limit / total;
+      fy *= limit / total;
+    }
+    const fn = w.normalForce;
+    body.addForceAtPoint(
+      {
+        x: up.x * fn + fwd.x * fx + side.x * fy,
+        y: up.y * fn + fwd.y * fx + side.y * fy,
+        z: up.z * fn + fwd.z * fx + side.z * fy,
+      },
+      w.cp,
+      true,
+    );
+    w.spin += (vLong / wheelR) * dt;
+  }
+
+  env.world.step();
+
+  if (car.powered && car.drain) {
+    car.battery.drain(lf.current, dt);
+  }
+  car.last = { current: lf.current, terminalVoltage: lf.terminalVoltage, speed: v };
+}
+
+/**
+ * 導輪與側牆的最小接觸距離（負值為穿透）；沒有接觸對時回傳 Infinity
+ * @param {ReturnType<typeof createWorld>} env
+ * @param {import('@dimforge/rapier3d-compat').Collider} collider
+ */
+export function minWallContactDist(env, collider) {
+  let minDist = Infinity;
+  env.world.contactPairsWith(collider, (other) => {
+    if (!env.wallHandles.has(other.handle)) {
+      return;
+    }
+    env.world.contactPair(collider, other, (manifold) => {
+      for (let i = 0; i < manifold.numContacts(); i++) {
+        minDist = Math.min(minDist, manifold.contactDist(i));
+      }
+    });
+  });
+  return minDist;
+}
+
+/**
+ * 車體所有外緣點（車體方塊 8 角＋導輪最外緣）的世界座標
+ * @param {ReturnType<typeof createCar>} car
+ */
+export function carExtremePoints(car) {
+  const box = bodyColliderBox();
+  const pts = [];
+  for (const sx of [-1, 1]) {
+    for (const sy of [-1, 1]) {
+      for (const sz of [-1, 1]) {
+        pts.push(localToWorld(car, { x: sx * box.hx * MM, y: (box.cy + sy * box.hy) * MM, z: sz * box.hz * MM }));
+      }
+    }
+  }
+  for (const r of car.rollers) {
+    for (let k = 0; k < 8; k++) {
+      const a = (k / 8) * Math.PI * 2;
+      pts.push(localToWorld(car, { x: (r.x + Math.cos(a) * r.r) * MM, y: r.y * MM, z: (r.z + Math.sin(a) * r.r) * MM }));
+    }
+  }
+  return pts;
+}
+
+/**
+ * 車體相對所在車道通道的最大穿牆深度（m，正值為超出牆面）
+ * 對每個外緣點：在該點的 s 處取牆線，以車體中心的 d 找出所在通道（上下相鄰兩條牆線），牆面 = 牆線 ∓ 牆厚/2
+ */
+export function wallPenetration(env, car) {
+  const { track } = env;
+  const t = car.chassis.translation();
+  const c = track.path.project(t.x, t.z);
+  const half = track.dims.wallT / 2;
+  let pen = -Infinity;
+  for (const p of carExtremePoints(car)) {
+    const pp = track.path.project(p.x, p.z);
+    const lines = track.lineOffsetsAt(pp.s);
+    let upper = Infinity;
+    let lower = -Infinity;
+    for (const d of lines) {
+      if (d >= c.d) {
+        upper = Math.min(upper, d);
+      } else {
+        lower = Math.max(lower, d);
+      }
+    }
+    pen = Math.max(pen, pp.d - (upper - half), lower + half - pp.d);
+  }
+  return pen;
+}
