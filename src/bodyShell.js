@@ -1071,13 +1071,14 @@ function buildWheelWells(mat) {
  * 珠光漆視角顏色漸層（iter-06）：在法線計算後依 N·V 把底色由正視的亮寶藍漸變到掠射的深紫，
  * 只改 diffuseColor，不動法線，因此不會產生 iter-04 那種反光扭曲
  * iter-09：加入細金屬片（metallic flake）——以物件座標切成約 PAINT_FLAKE_MM 的小格，每格一個雜湊值：
- *   (1) 底漆顏色亮度 ±10% 顏色噪點；(2) 底漆層（非清漆層）法線極低強度隨機偏轉 → 高光區出現細碎閃點。
+ *   (1) 底漆顏色亮度噪點（iter-10：±3%）；(2) 底漆層（非清漆層）法線極低強度隨機偏轉 → 高光區出現細碎閃點。
  *   three.js 的清漆法線取自 nonPerturbedNormal（clearcoat_normal_fragment_begin），
  *   所以清漆層的環境反射（燈箱倒影）仍是平滑曲面、不會扭曲（iter-04 粒子法線貼圖同時擾動兩層才扭曲）
  * @type {(mat: THREE.MeshPhysicalMaterial) => void}
  */
-const PAINT_FLAKE_MM = 0.12;
-const PAINT_FLAKE_TILT = 0.08;
+// iter-10：顆粒 0.12 → 0.06 mm、偏轉 0.08 → 0.06（reviewer「顆粒略粗有雜訊感」）
+const PAINT_FLAKE_MM = 0.06;
+const PAINT_FLAKE_TILT = 0.06;
 const applyPaintFlop = (mat) => {
   mat.onBeforeCompile = (shader) => {
     shader.uniforms.flopFace = { value: new THREE.Color(0x3352f2) };
@@ -1096,7 +1097,7 @@ const applyPaintFlop = (mat) => {
           diffuseColor.rgb = mix(flopEdge, flopFace, flop);
           vec3 cell = floor(vFlakePos / ${PAINT_FLAKE_MM.toFixed(3)});
           vec3 hs = fract(sin(vec3(dot(cell, vec3(127.1, 311.7, 74.7)), dot(cell, vec3(269.5, 183.3, 246.1)), dot(cell, vec3(113.5, 271.9, 124.6)))) * 43758.5453);
-          diffuseColor.rgb *= 0.95 + 0.1 * hs.x;
+          diffuseColor.rgb *= 0.97 + 0.06 * hs.x;
           normal = normalize(normal + ${PAINT_FLAKE_TILT.toFixed(3)} * (hs - 0.5));
         }`,
       );
@@ -1113,13 +1114,15 @@ export function buildChevalierBody(mats) {
   g.name = 'body';
   // iter-06：金屬珠光漆＋清漆層。不用金屬粒子法線貼圖（iter-04 反光扭曲主因），改用：
   //   底漆層 metalness 0.62／roughness 0.3（金屬底色的柔和寬高光）＋清漆 clearcoat 1.0／clearcoatRoughness 0.12（清楚但不過銳的燈箱反射；0.04 時俯視引擎蓋高光邊緣出現波紋）
+  //   iter-10：底漆 roughness 0.3 → 0.24、清漆 clearcoatRoughness 0.12 → 0.03（reviewer「光澤降為半光澤、rear34 反光不夠銳利」；
+  //   診斷：0.07 時 PMREM 取樣的燈箱倒影仍明顯糊掉，0.02–0.03 才有清楚邊緣；俯視引擎蓋檢查無 iter-06 的波紋）
   //   ＋視角顏色漸層（applyPaintFlop：正視亮寶藍、掠射轉深紫，珠光漆的 flop 效果）＋溫和 iridescence 與紫色 sheen
   const paint = new THREE.MeshPhysicalMaterial({
     color: 0x1f30a8,
-    roughness: 0.3,
+    roughness: 0.24,
     metalness: 0.62,
     clearcoat: 1.0,
-    clearcoatRoughness: 0.12,
+    clearcoatRoughness: 0.03,
     envMapIntensity: 0.85,
     iridescence: 0.25,
     iridescenceIOR: 1.3,
@@ -1138,7 +1141,9 @@ export function buildChevalierBody(mats) {
   // iter-09：座艙玻璃由不透明褐色金屬片改為透明煙燻玻璃（reviewer：「座艙玻璃不透明褐色片」）：
   //   transmission 0.9＋灰褐色調（color 為透射染色）→ 透過玻璃看得到座艙內裝深色輪廓；
   //   metalness 0、roughness 0.03、clearcoat 1 → 表面仍有棚拍燈箱的清楚倒影
-  const glass = new THREE.MeshPhysicalMaterial({ color: 0x5e5a54, roughness: 0.03, metalness: 0.0, transmission: 0.9, thickness: 0.4, ior: 1.5, envMapIntensity: 1.0, clearcoat: 1.0, clearcoatRoughness: 0.03, side: THREE.DoubleSide });
+  //   iter-10：色調改回參考的香檳／古銅煙燻（ref_chevalier-ma_front34／side-high）：透射染色 0xc9a67e、暖色 specularColor、
+  //   transmission 0.88、metalness 0.08（試過 metalness 0.3／transmission 0.75 → 像不透明卡其色板、看不到內裝，已撤回）
+  const glass = new THREE.MeshPhysicalMaterial({ color: 0xc9a67e, specularColor: 0xffd3a0, roughness: 0.04, metalness: 0.08, transmission: 0.88, thickness: 0.4, ior: 1.5, envMapIntensity: 1.0, clearcoat: 1.0, clearcoatRoughness: 0.03, side: THREE.DoubleSide });
   const interiorTub = new THREE.MeshStandardMaterial({ color: 0x141518, roughness: 0.85, metalness: 0.0, side: THREE.DoubleSide });
   const interiorSeat = new THREE.MeshStandardMaterial({ color: 0x2c2e33, roughness: 0.6, metalness: 0.0 });
   const decal = (color, extra = {}) =>
