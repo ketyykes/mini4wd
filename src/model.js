@@ -9,19 +9,22 @@ import { buildChevalierBody } from './bodyShell.js';
 /** 建立材質集合 */
 function makeMaterials() {
   return {
-    chassis: new THREE.MeshStandardMaterial({ color: 0x2a2c30, roughness: 0.55, metalness: 0.05 }),
-    chassisDark: new THREE.MeshStandardMaterial({ color: 0x18191b, roughness: 0.6, metalness: 0.05 }),
+    chassis: new THREE.MeshStandardMaterial({ color: 0x393c42, roughness: 0.5, metalness: 0.05 }),
+    chassisDark: new THREE.MeshStandardMaterial({ color: 0x232428, roughness: 0.6, metalness: 0.05 }),
     body: new THREE.MeshPhysicalMaterial({ vertexColors: true, roughness: 0.28, metalness: 0.35, clearcoat: 1.0, clearcoatRoughness: 0.08 }),
     glass: new THREE.MeshPhysicalMaterial({ color: 0x15181d, roughness: 0.05, metalness: 0.2, clearcoat: 1.0 }),
-    tire: new THREE.MeshStandardMaterial({ color: 0x1b1b1b, roughness: 0.92, metalness: 0.0 }),
-    rim: new THREE.MeshStandardMaterial({ color: 0x70757d, roughness: 0.4, metalness: 0.6 }),
+    tire: new THREE.MeshStandardMaterial({ color: 0x202022, roughness: 0.88, metalness: 0.0 }),
+    tireTread: new THREE.MeshStandardMaterial({ color: 0x161617, roughness: 0.97, metalness: 0.0 }),
+    // 輪框：ref_chevalier-ma_wheel-detail 為淺灰緞面塑膠（帶些許金屬粉），不是鍍鉻
+    rim: new THREE.MeshPhysicalMaterial({ color: 0xa4a9b0, roughness: 0.42, metalness: 0.45, clearcoat: 0.35, clearcoatRoughness: 0.3 }),
     motorCan: new THREE.MeshStandardMaterial({ color: 0xc9ccd0, roughness: 0.25, metalness: 0.9 }),
     motorCap: new THREE.MeshStandardMaterial({ color: 0xe8e2d0, roughness: 0.6 }),
     steel: new THREE.MeshStandardMaterial({ color: 0xb8bcc2, roughness: 0.3, metalness: 0.95 }),
     pinion: new THREE.MeshStandardMaterial({ color: 0x8a4fd0, roughness: 0.5 }),
     counter: new THREE.MeshStandardMaterial({ color: 0x8be03a, roughness: 0.5 }),
     spur: new THREE.MeshStandardMaterial({ color: 0xf08aa0, roughness: 0.5 }),
-    battery: new THREE.MeshStandardMaterial({ color: 0x1e5bd8, roughness: 0.4, metalness: 0.3 }),
+    battery: new THREE.MeshStandardMaterial({ color: 0x2b2f36, roughness: 0.4, metalness: 0.3 }),
+    copper: new THREE.MeshStandardMaterial({ color: 0xc8874a, roughness: 0.3, metalness: 0.9 }),
     roller: new THREE.MeshStandardMaterial({ color: 0x222326, roughness: 0.45, metalness: 0.2 }),
     screw: new THREE.MeshStandardMaterial({ color: 0xd8d8d8, roughness: 0.25, metalness: 1.0 }),
     light: new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: 0x99aabb, emissiveIntensity: 0.3, roughness: 0.2 }),
@@ -60,26 +63,6 @@ function roundedRect(cx, cz, lx, lz, r, seg = 6) {
   return pts;
 }
 
-/** 齒輪（簡化：帶齒的擠出圓盤） */
-function gear(radius, teeth, width, material) {
-  const shape = new THREE.Shape();
-  const inner = radius * 0.86;
-  for (let i = 0; i < teeth * 2; i++) {
-    const a0 = (i / (teeth * 2)) * Math.PI * 2;
-    const a1 = ((i + 1) / (teeth * 2)) * Math.PI * 2;
-    const r = i % 2 === 0 ? radius : inner;
-    if (i === 0) {
-      shape.moveTo(Math.cos(a0) * r, Math.sin(a0) * r);
-    } else {
-      shape.lineTo(Math.cos(a0) * r, Math.sin(a0) * r);
-    }
-    shape.lineTo(Math.cos(a1) * r, Math.sin(a1) * r);
-  }
-  const geo = new THREE.ExtrudeGeometry(shape, { depth: width, bevelEnabled: false });
-  geo.translate(0, 0, -width / 2);
-  return new THREE.Mesh(geo, material);
-}
-
 /** 輪子：low profile 輪胎（Lathe）＋ Y 字幅輪框 */
 function buildWheel(mats, side) {
   const g = new THREE.Group();
@@ -88,18 +71,21 @@ function buildWheel(mats, side) {
   const rr = spec.tire.rimDiameter_mm / 2;
   // 輪胎截面（繞 y 軸旋轉後再轉到 z 軸）
   const prof = [];
-  const n = 14;
+  const n = 72;
   for (let i = 0; i <= n; i++) {
     const t = i / n;
     const y = -w / 2 + t * w;
-    // 胎面略帶圓角
+    // 胎面略帶圓角（胎肩）＋三條圓周溝槽（橡膠胎紋，深 0.3 mm）
     const edge = Math.min(t, 1 - t);
-    const r = rr + (R - rr) * Math.min(1, 0.55 + edge * 4.5);
+    let r = rr + (R - rr) * Math.min(1, 0.55 + edge * 4.5);
+    for (const tc of [0.3, 0.5, 0.7]) {
+      r -= 0.3 * Math.exp(-(((t - tc) / 0.022) ** 2));
+    }
     prof.push(new THREE.Vector2(r, y));
   }
   prof.push(new THREE.Vector2(rr, w / 2));
   prof.unshift(new THREE.Vector2(rr, -w / 2));
-  const tireGeo = new THREE.LatheGeometry(prof, 48);
+  const tireGeo = new THREE.LatheGeometry(prof, 64);
   tireGeo.rotateX(Math.PI / 2);
   g.add(new THREE.Mesh(tireGeo, mats.tire));
 
@@ -111,21 +97,31 @@ function buildWheel(mats, side) {
   const hub = new THREE.Mesh(new THREE.CylinderGeometry(2.6, 2.8, 1.6, 20), mats.rim);
   hub.rotation.x = Math.PI / 2;
   face.add(hub);
+  // 中央圓頂輪轂蓋
+  const dome = new THREE.Mesh(new THREE.SphereGeometry(2.3, 20, 10, 0, Math.PI * 2, 0, Math.PI / 2), mats.rim);
+  dome.rotation.x = side * Math.PI / 2;
+  dome.scale.set(1, 0.6, 1);
+  dome.position.z = side * 0.8;
+  face.add(dome);
   for (let k = 0; k < 5; k++) {
     const a = (k / 5) * Math.PI * 2;
     const spoke = new THREE.Group();
-    const stem = new THREE.Mesh(new THREE.BoxGeometry(rr * 0.5, 1.5, 1.0), mats.rim);
+    const stem = new THREE.Mesh(new THREE.BoxGeometry(rr * 0.5, 2.1, 1.2), mats.rim);
     stem.position.x = rr * 0.35;
     spoke.add(stem);
     for (const sgn of [-1, 1]) {
-      const fork = new THREE.Mesh(new THREE.BoxGeometry(rr * 0.42, 1.1, 1.0), mats.rim);
-      fork.position.set(rr * 0.74, sgn * 1.5, 0);
-      fork.rotation.z = sgn * 0.5;
+      const fork = new THREE.Mesh(new THREE.BoxGeometry(rr * 0.46, 1.5, 1.2), mats.rim);
+      fork.position.set(rr * 0.74, sgn * 1.55, 0);
+      fork.rotation.z = sgn * 0.55;
       spoke.add(fork);
     }
     spoke.rotation.z = a;
     face.add(spoke);
   }
+  // 輪框外緣凸緣（面向外側的金屬唇邊）
+  const flange = new THREE.Mesh(new THREE.TorusGeometry(rr - 0.35, 0.45, 8, 40), mats.rim);
+  flange.position.z = side * 0.6;
+  face.add(flange);
   face.position.z = side * (w * 0.32);
   g.add(face);
   const back = new THREE.Mesh(new THREE.CircleGeometry(rr, 32), mats.chassisDark);
@@ -135,100 +131,254 @@ function buildWheel(mats, side) {
   return g;
 }
 
-/** 導輪：鋁製外圈＋培林＋螺絲頭 */
+/** 以 x-y 平面輪廓擠出板件（沿 +z 方向厚度） */
+function extrudeXY(points, thickness, material, holes = []) {
+  const shape = new THREE.Shape(points.map(([x, y]) => new THREE.Vector2(x, y)));
+  for (const h of holes) {
+    shape.holes.push(new THREE.Path(h.map(([x, y]) => new THREE.Vector2(x, y))));
+  }
+  const geo = new THREE.ExtrudeGeometry(shape, { depth: thickness, bevelEnabled: false, curveSegments: 12 });
+  return new THREE.Mesh(geo, material);
+}
+
+/** 圓形輪廓點列（逆時針） */
+function circlePts(cx, cy, r, n = 16) {
+  return Array.from({ length: n }, (_, k) => [cx + r * Math.cos((k / n) * Math.PI * 2), cy + r * Math.sin((k / n) * Math.PI * 2)]);
+}
+
+/**
+ * 正齒輪：梯形齒＋中心軸孔＋輪轂（擠出方向沿局部 z，中心在原點）
+ * @param {number} radius 齒頂半徑
+ * @param {number} teeth 齒數
+ * @param {number} width 齒寬
+ * @param {THREE.Material} material
+ */
+function gear(radius, teeth, width, material) {
+  const g = new THREE.Group();
+  const shape = new THREE.Shape();
+  const root = radius - Math.max(0.5, radius * 0.11);
+  const n = teeth;
+  for (let i = 0; i < n; i++) {
+    const a = (i / n) * Math.PI * 2;
+    const p = Math.PI * 2 / n;
+    // 齒根 → 齒側 → 齒頂（寬約 35% 節距）→ 齒側 → 齒根
+    const pts = [
+      [root, a],
+      [radius, a + p * 0.18],
+      [radius, a + p * 0.48],
+      [root, a + p * 0.66],
+    ];
+    for (const [r, ang] of pts) {
+      const x = Math.cos(ang) * r;
+      const y = Math.sin(ang) * r;
+      if (i === 0 && r === root && ang === a) {
+        shape.moveTo(x, y);
+      } else {
+        shape.lineTo(x, y);
+      }
+    }
+  }
+  shape.closePath();
+  shape.holes.push(new THREE.Path(circlePts(0, 0, 1.0, 12).reverse().map(([x, y]) => new THREE.Vector2(x, y))));
+  const geo = new THREE.ExtrudeGeometry(shape, { depth: width, bevelEnabled: false });
+  geo.translate(0, 0, -width / 2);
+  g.add(new THREE.Mesh(geo, material));
+  // 輪轂（兩側凸出）
+  const hub = new THREE.Mesh(new THREE.CylinderGeometry(Math.min(2.2, radius * 0.45), Math.min(2.2, radius * 0.45), width + 1.0, 18, 1, true), material);
+  hub.rotation.x = Math.PI / 2;
+  g.add(hub);
+  return g;
+}
+
+/** 冠狀齒（中間齒輪大齒的端面齒，齒朝 +z），回傳一圈小齒塊 */
+function crownTeeth(radius, teeth, depth, material) {
+  const g = new THREE.Group();
+  for (let i = 0; i < teeth; i++) {
+    const a = (i / teeth) * Math.PI * 2;
+    const tooth = new THREE.Mesh(new THREE.BoxGeometry(1.1, (Math.PI * 2 * radius) / teeth * 0.5, depth), material);
+    tooth.position.set(Math.cos(a) * (radius - 0.55), Math.sin(a) * (radius - 0.55), depth / 2);
+    tooth.rotation.z = a;
+    g.add(tooth);
+  }
+  return g;
+}
+
+/**
+ * MA 齒輪列配置（依 ref_ma-chassis_tamiya.jpg：馬達軸兩端紫色小齒輪 → 綠色中間齒輪 → 粉紅輪軸齒輪）
+ * 中間齒輪軸與輪軸平行（沿 z）；中間齒輪大齒為冠狀齒，與馬達軸上的小齒輪直角嚙合；
+ * 中間齒輪小齒與輪軸齒輪嚙合，中心距 = 5.6 + 7.5 mm（config/spec.json drivetrain 節圓半徑）
+ */
+function gearTrainLayout() {
+  const d = spec.drivetrain;
+  const motorY = componentLayout().motor.y;
+  const axleY = spec.tire.diameter_mm / 2;
+  const hw = spec.chassis.wheelbase_mm / 2;
+  const centerDist = d.counterSmallPitchRadius_mm + d.spurPitchRadius_mm;
+  const counterX = hw - Math.sqrt(centerDist * centerDist - (axleY - motorY) ** 2);
+  return {
+    motorY,
+    axleY,
+    counterX,
+    counterY: motorY,
+    pinionX: counterX - d.counterLargePitchRadius_mm,
+    crownZ: -d.pinionPitchRadius_mm,
+  };
+}
+
+/** 導輪：塑膠導輪本體＋凸緣、培林內外環與密封蓋、墊片、十字頭螺絲、底部螺帽 */
 function buildRoller(mats, r) {
   const g = new THREE.Group();
-  const body = new THREE.Mesh(new THREE.CylinderGeometry(r.r, r.r, r.h, 28), mats.roller);
+  const body = new THREE.Mesh(new THREE.CylinderGeometry(r.r, r.r, r.h - 1.6, 32), mats.roller);
   g.add(body);
-  const lip = new THREE.Mesh(new THREE.CylinderGeometry(r.r + 0.6, r.r + 0.6, 0.8, 28), mats.roller);
-  lip.position.y = -r.h / 2 + 0.4;
-  g.add(lip);
-  const bearing = new THREE.Mesh(new THREE.CylinderGeometry(2.6, 2.6, r.h + 0.2, 16), mats.steel);
-  g.add(bearing);
-  const screw = new THREE.Mesh(new THREE.CylinderGeometry(1.6, 1.6, 1.2, 6), mats.screw);
-  screw.position.y = r.h / 2 + 0.6;
-  g.add(screw);
+  for (const sy of [-1, 1]) {
+    // 上下凸緣（略大，導輪邊緣的倒角）
+    const lip = new THREE.Mesh(new THREE.CylinderGeometry(r.r - 0.3 * (sy > 0 ? 1 : 0), r.r + 0.4, 0.8, 32), mats.roller);
+    lip.position.y = sy * (r.h / 2 - 0.4);
+    g.add(lip);
+    // 培林外環（鋼）＋黑色密封蓋＋內環
+    const outer = new THREE.Mesh(new THREE.RingGeometry(2.9, 3.6, 28), mats.steel);
+    outer.rotation.x = sy > 0 ? -Math.PI / 2 : Math.PI / 2;
+    outer.position.y = sy * (r.h / 2 + 0.02);
+    g.add(outer);
+    const seal = new THREE.Mesh(new THREE.RingGeometry(1.9, 2.9, 28), mats.chassisDark);
+    seal.rotation.x = outer.rotation.x;
+    seal.position.y = sy * (r.h / 2 + 0.03);
+    g.add(seal);
+    const inner = new THREE.Mesh(new THREE.RingGeometry(1.1, 1.9, 20), mats.steel);
+    inner.rotation.x = outer.rotation.x;
+    inner.position.y = sy * (r.h / 2 + 0.04);
+    g.add(inner);
+  }
+  // 頂部墊片＋十字頭螺絲
+  const washer = new THREE.Mesh(new THREE.CylinderGeometry(2.4, 2.4, 0.4, 20), mats.steel);
+  washer.position.y = r.h / 2 + 0.25;
+  g.add(washer);
+  const head = new THREE.Mesh(new THREE.SphereGeometry(2.1, 20, 8, 0, Math.PI * 2, 0, Math.PI / 2), mats.screw);
+  head.scale.y = 0.5;
+  head.position.y = r.h / 2 + 0.45;
+  g.add(head);
+  for (const rot of [0, Math.PI / 2]) {
+    const slot = new THREE.Mesh(new THREE.BoxGeometry(2.6, 0.5, 0.45), mats.chassisDark);
+    slot.position.y = r.h / 2 + 1.35;
+    slot.rotation.y = rot;
+    g.add(slot);
+  }
+  // 底部六角螺帽＋螺絲尾端
+  const nut = new THREE.Mesh(new THREE.CylinderGeometry(1.9, 1.9, 1.4, 6), mats.steel);
+  nut.position.y = -r.h / 2 - 0.75;
+  g.add(nut);
+  const tail = new THREE.Mesh(new THREE.CylinderGeometry(0.9, 0.9, 1.0, 10), mats.steel);
+  tail.position.y = -r.h / 2 - 1.8;
+  g.add(tail);
   g.position.set(r.x, r.y, r.z);
   return g;
 }
 
-/** 底盤：MA 一體式底盤、前後保桿、導輪架、馬達、齒輪、電池、輪軸 */
+/** 底盤：MA 一體式底盤、前後保桿、導輪架、雙軸馬達、齒輪列、電池、輪軸 */
 function buildChassis(mats) {
   const g = new THREE.Group();
   const c = spec.chassis;
   const comp = componentLayout();
+  const gt = gearTrainLayout();
   const y0 = c.groundClearance_mm;
   const t = c.plateThickness_mm;
+  const hw = c.wheelbase_mm / 2;
+  const axleY = gt.axleY;
 
-  // 底板（MA 一體式底盤底面）：中央馬達蓋開口、前後齒輪蓋開口、兩側電池艙通風孔
-  // 所有底面細節都內凹（不低於底板下緣 y0 = 離地 2.2 mm，SPEC 1.2）
-  const hw = spec.chassis.wheelbase_mm / 2;
+  // ---- 底板（MA 一體式底盤底面）----
+  // 中央馬達窗、前後齒輪窗（從底面看得到馬達外殼、齒輪、輪軸）、兩側電池蓋開口、保桿側小孔
+  // 所有底面細節都在底板下緣 y0（離地 2.2 mm，SPEC 1.2）之上，不影響離地高度
+  const gearWin = (sx) => roundedRect(sx * (gt.counterX + 3), -3.5, 32, 19, 3);
   const openings = [
-    roundedRect(0, 0, 32, 24, 3),
-    roundedRect(hw - 2, 0, 18, 28, 3),
-    roundedRect(-hw + 2, 0, 18, 28, 3),
+    roundedRect(0, 0, 27, 15, 3),
+    gearWin(-1),
+    gearWin(1),
+    roundedRect(0, 19, 48, 12, 2.5),
+    roundedRect(0, -19, 48, 12, 2.5),
   ];
   for (const sx of [-1, 1]) {
     for (const sz of [-1, 1]) {
-      for (const k of [0, 1, 2]) {
-        openings.push(roundedRect(sx * (20 + k * 4.2), sz * 19, 2.4, 10, 1.1));
-      }
+      openings.push(roundedRect(sx * 53, sz * 17, 5, 3, 1.2));
     }
   }
-  const plate = extrudeXZ(roundedRect(0, 0, 122, 58, 8), t, mats.chassis, openings);
+  // 外形：馬達／電池段最寬（±29），前後輪之間縮到 ±24.5（輪胎內側 25.25 mm，避免與輪胎重疊）
+  const outline = [[61, -22], [61, 22], [58, 24.5], [26, 24.5], [24, 29], [-24, 29], [-26, 24.5], [-58, 24.5], [-61, 22], [-61, -22], [-58, -24.5], [-26, -24.5], [-24, -29], [24, -29], [26, -24.5], [58, -24.5]];
+  const plate = extrudeXZ(outline, t, mats.chassis, openings);
   plate.position.y = y0;
-  plate.castShadow = true;
   g.add(plate);
-  // 馬達蓋（內凹 0.4 mm）＋肋條＋卡榫
-  const motorCover = extrudeXZ(roundedRect(0, 0, 31.6, 23.6, 3), 0.8, mats.chassisDark);
-  motorCover.position.y = y0 + 0.4;
-  g.add(motorCover);
-  for (const dz of [-6, 0, 6]) {
-    const rib = new THREE.Mesh(new THREE.BoxGeometry(24, 0.35, 1.0), mats.chassis);
-    rib.position.set(0, y0 + 0.24, dz);
-    g.add(rib);
-  }
+  // 底板上方的補強肋（窗與窗之間的橫向肋、兩側縱向側框），從開口與側面都看得到
   for (const sx of [-1, 1]) {
-    const tab = new THREE.Mesh(new THREE.BoxGeometry(2.2, 0.4, 8), mats.chassis);
-    tab.position.set(sx * 14.5, y0 + 0.22, 0);
-    g.add(tab);
-  }
-  // 前後齒輪蓋（內凹）＋固定螺絲
-  for (const sx of [-1, 1]) {
-    const gc = extrudeXZ(roundedRect(sx * (hw - 2), 0, 17.6, 27.6, 3), 0.8, mats.chassisDark);
-    gc.position.y = y0 + 0.4;
-    g.add(gc);
-    for (const dz of [-9, 9]) {
-      const screw = new THREE.Mesh(new THREE.CylinderGeometry(1.5, 1.5, 0.5, 14), mats.screw);
-      screw.position.set(sx * (hw - 2), y0 + 0.2, dz);
-      g.add(screw);
-    }
-    const ridge = new THREE.Mesh(new THREE.BoxGeometry(1.0, 0.35, 20), mats.chassis);
-    ridge.position.set(sx * (hw - 2), y0 + 0.24, 0);
-    g.add(ridge);
-  }
-  // 輪軸支座（底盤側壁上的軸承座塊）
-  for (const sx of [-1, 1]) {
-    for (const sz of [-1, 1]) {
-      const h = spec.tire.diameter_mm / 2 + 3 - (y0 + t);
-      const boss = new THREE.Mesh(new THREE.BoxGeometry(8, h, 4.5), mats.chassis);
-      boss.position.set(sx * hw, y0 + t + h / 2, sz * 23.5);
-      g.add(boss);
+    for (const dx of [15.5, 49]) {
+      const rib = new THREE.Mesh(new THREE.BoxGeometry(1.4, 2.6, dx > 30 ? 46 : 50), mats.chassis);
+      rib.position.set(sx * dx, y0 + t + 1.3, 0);
+      g.add(rib);
     }
   }
-  // 側壁（電池艙／馬達艙外殼）
+  // 側框：底板外緣的立壁＋外側三角補強肋
   for (const sz of [-1, 1]) {
-    const wall = new THREE.Mesh(new THREE.BoxGeometry(96, 13, 2.2), mats.chassis);
-    wall.position.set(2, y0 + t + 6.5, sz * 27);
-    g.add(wall);
+    // 側框頂到 y = 19.5 mm，從側面輪拱縫隙看不到中間齒輪頂部
+    const railH = 19.5 - (y0 + t);
+    const rail = new THREE.Mesh(new THREE.BoxGeometry(100, railH, 1.8), mats.chassis);
+    rail.position.set(0, y0 + t + railH / 2, sz * 23.6);
+    g.add(rail);
+    const lip = new THREE.Mesh(new THREE.BoxGeometry(100, 1.2, 3.2), mats.chassis);
+    lip.position.set(0, 19.0, sz * 23.0);
+    g.add(lip);
+    for (let k = -2; k <= 2; k++) {
+      const gus = extrudeXY([[0, 0], [2.6, 0], [0, 8]], 1.0, mats.chassis);
+      gus.rotation.y = sz > 0 ? -Math.PI / 2 : Math.PI / 2;
+      gus.position.set(k * 11 + (sz > 0 ? 0.5 : -0.5), y0 + t, sz * 24.5);
+      g.add(gus);
+    }
   }
-  // 馬達艙罩與齒輪箱
+  // 電池蓋（內凹 0.5 mm）＋縱向防滑肋＋卡榫
+  for (const sz of [-1, 1]) {
+    const cover = extrudeXZ(roundedRect(0, sz * 19, 47.4, 11.4, 2.3), 0.9, mats.chassisDark);
+    cover.position.y = y0 + 0.5;
+    g.add(cover);
+    for (let k = -4; k <= 3; k++) {
+      const rib = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.3, 8.5), mats.chassis);
+      rib.position.set(k * 4.6 + 2, y0 + 0.36, sz * 19);
+      g.add(rib);
+    }
+    const latch = new THREE.Mesh(new THREE.BoxGeometry(3.2, 0.35, 5), mats.chassis);
+    latch.position.set(-20.5, y0 + 0.36, sz * 19);
+    g.add(latch);
+  }
+  // 內層上蓋（馬達、電池上方的底盤頂板，深色），擋住從開口往上看到的車殼內面
+  const deck = extrudeXZ(roundedRect(0, 0, 52, 48, 4), 1.2, mats.chassisDark);
+  deck.position.y = 20.4;
+  g.add(deck);
+  // 齒輪箱：外側壁（x-y 平面板，支撐中間齒輪軸與輪軸）＋頂蓋，底面保持開口
   for (const sx of [-1, 1]) {
-    const box = new THREE.Mesh(new THREE.BoxGeometry(22, 13, 30), mats.chassis);
-    box.position.set(sx * (c.wheelbase_mm / 2 - 2), y0 + t + 6.5, -6);
-    g.add(box);
+    const x0 = sx * 15;
+    const x1 = sx * (hw + 6);
+    const wallPts = [[x0, y0 + t], [x0, 17], [sx * 22, 20], [sx * (hw - 2), 20], [x1, 17], [x1, y0 + t]];
+    const ordered = sx > 0 ? wallPts : wallPts.slice().reverse();
+    const holes = [circlePts(sx * gt.counterX, gt.counterY, 1.3, 12), circlePts(sx * hw, axleY, 1.3, 12)];
+    // 只留遠側（+z）壁當背景；近側（−z，齒輪所在側）不封，讓底面開口看得到齒輪
+    for (const wz of [5.2]) {
+      const wall = extrudeXY(ordered, 1.4, mats.chassis, holes.map((h) => (sx > 0 ? h : h.slice().reverse())));
+      wall.position.z = wz;
+      g.add(wall);
+    }
+    // 輪軸支座（側框上的軸承座）
+    for (const sz of [-1, 1]) {
+      const boss = new THREE.Mesh(new THREE.CylinderGeometry(3.6, 3.6, 3.0, 20), mats.chassis);
+      boss.rotation.x = Math.PI / 2;
+      boss.position.set(sx * hw, axleY, sz * 23.4);
+      g.add(boss);
+      const brg = new THREE.Mesh(new THREE.CylinderGeometry(2.9, 2.9, 3.2, 20), mats.steel);
+      brg.rotation.x = Math.PI / 2;
+      brg.position.set(sx * hw, axleY, sz * 23.4);
+      g.add(brg);
+      const below = new THREE.Mesh(new THREE.BoxGeometry(7.2, axleY - (y0 + t), 3.0), mats.chassis);
+      below.position.set(sx * hw, (axleY + y0 + t) / 2, sz * 23.4);
+      g.add(below);
+    }
   }
-  // 前後保桿（俯視梯形，延伸到導輪架）
+
+  // ---- 前後保桿（俯視梯形，延伸到導輪架）＋減重孔 ----
   const rx = comp.rollerX;
   const rz = c.overallWidth_mm / 2 - c.rollerDiameter_mm / 2;
   for (const sx of [-1, 1]) {
@@ -243,12 +393,24 @@ function buildChassis(mats) {
       [sx * 50, 24],
     ];
     const ordered = sx > 0 ? pts : pts.slice().reverse();
-    const circle = (cx, cz, r) => Array.from({ length: 12 }, (_, k) => [cx + r * Math.cos((k / 12) * Math.PI * 2), cz + r * Math.sin((k / 12) * Math.PI * 2)]);
-    const bumperHoles = [roundedRect(sx * (rx - 12), 0, 12, 22, 3), circle(sx * (rx - 6), -rz + 11, 1.6), circle(sx * (rx - 6), rz - 11, 1.6), circle(sx * (rx - 1), -16, 1.3), circle(sx * (rx - 1), 16, 1.3)];
+    const bumperHoles = [
+      roundedRect(sx * (rx - 12), 0, 12, 22, 3),
+      circlePts(sx * (rx - 6), -rz + 11, 1.6, 12),
+      circlePts(sx * (rx - 6), rz - 11, 1.6, 12),
+      circlePts(sx * (rx - 1), -16, 1.3, 12),
+      circlePts(sx * (rx - 1), 16, 1.3, 12),
+    ];
     const bumper = extrudeXZ(ordered, 2.4, mats.chassis, bumperHoles);
     bumper.position.y = c.rollerCenterHeight_mm - 4.6;
-    bumper.castShadow = true;
     g.add(bumper);
+    // 保桿上的補強稜線（沿導輪臂）
+    for (const sz of [-1, 1]) {
+      const len = Math.hypot(rx - 50, rz - 22);
+      const arm = new THREE.Mesh(new THREE.BoxGeometry(len, 1.4, 1.4), mats.chassis);
+      arm.position.set(sx * (50 + rx) / 2, c.rollerCenterHeight_mm - 4.6 + 3.1, sz * (rz + 22) / 2);
+      arm.rotation.y = -Math.atan2(sz * (rz - 22), sx * (rx - 50));
+      g.add(arm);
+    }
   }
   // 後方上層導輪架（上下疊放）
   const upperStay = extrudeXZ(roundedRect(-rx + 4, 0, 14, 2 * rz + 6, 3), 2, mats.chassisDark);
@@ -263,64 +425,82 @@ function buildChassis(mats) {
     g.add(buildRoller(mats, r));
   }
 
-  // 雙軸馬達（置中、軸向沿 x）
+  // ---- 雙軸馬達（置中、軸向沿 x，130 型外殼平面朝上下）----
   const m = comp.motor;
-  const can = new THREE.Mesh(new THREE.CylinderGeometry(m.dia / 2, m.dia / 2, m.length - 6, 32), mats.motorCan);
-  // 130 馬達外殼的平面在上下（MA 平放），所以壓扁的是世界 y 方向（旋轉前的局部 x）
+  const can = new THREE.Mesh(new THREE.CylinderGeometry(m.dia / 2, m.dia / 2, m.length - 6, 40), mats.motorCan);
   can.scale.set(m.flat / m.dia, 1, 1);
   can.rotation.z = Math.PI / 2;
   can.position.set(m.x + 3, m.y, m.z);
   g.add(can);
-  const cap = new THREE.Mesh(new THREE.CylinderGeometry(m.dia / 2 - 0.3, m.dia / 2 - 0.3, 6, 32), mats.motorCap);
-  cap.scale.set(m.flat / m.dia, 1, 1);
-  cap.rotation.z = Math.PI / 2;
-  cap.position.set(m.x - m.length / 2 + 3, m.y, m.z);
-  g.add(cap);
-  const shaft = new THREE.Mesh(new THREE.CylinderGeometry(1, 1, c.wheelbase_mm - 14, 10), mats.steel);
+  // 外殼上的散熱開孔與壓痕（底面開口看得到）
+  for (const dz of [-4.5, 4.5]) {
+    const slot = new THREE.Mesh(new THREE.BoxGeometry(5, 0.3, 2.2), mats.chassisDark);
+    slot.position.set(m.x + 7, m.y - m.flat / 2 - 0.05, dz);
+    g.add(slot);
+  }
+  const capMesh = new THREE.Mesh(new THREE.CylinderGeometry(m.dia / 2 - 0.3, m.dia / 2 - 0.3, 6, 40), mats.motorCap);
+  capMesh.scale.set(m.flat / m.dia, 1, 1);
+  capMesh.rotation.z = Math.PI / 2;
+  capMesh.position.set(m.x - m.length / 2 + 3, m.y, m.z);
+  g.add(capMesh);
+  // 馬達端子（銅片）
+  for (const dz of [-5, 5]) {
+    const term = new THREE.Mesh(new THREE.BoxGeometry(1.2, 4, 2), mats.copper);
+    term.position.set(m.x - m.length / 2 + 0.2, m.y + 4, dz);
+    g.add(term);
+  }
+  const shaftLen = 2 * (gt.pinionX + 3);
+  const shaft = new THREE.Mesh(new THREE.CylinderGeometry(1, 1, shaftLen, 12), mats.steel);
   shaft.rotation.z = Math.PI / 2;
   shaft.position.set(0, m.y, m.z);
   g.add(shaft);
 
-  // 齒輪組：小齒輪（紫）→ 中間齒輪（綠）→ 冠狀齒輪（粉紅）在輪軸上
+  // ---- 齒輪列（顏色依 ref_ma-chassis_tamiya.jpg：小齒輪紫、中間齒輪綠、輪軸齒輪粉紅）----
+  const d = spec.drivetrain;
   for (const sx of [-1, 1]) {
-    const pin = gear(2.6, 8, 4, mats.pinion);
+    // 小齒輪（壓在馬達軸兩端，軸向沿 x）
+    const pin = gear(d.pinionPitchRadius_mm + 0.35, 8, 4, mats.pinion);
     pin.rotation.y = Math.PI / 2;
-    pin.position.set(sx * (m.length / 2 + 5), m.y, m.z);
+    pin.position.set(sx * gt.pinionX, m.y, m.z);
     g.add(pin);
-    const cnt = gear(6.8, 20, 3.5, mats.counter);
-    cnt.rotation.y = Math.PI / 2;
-    cnt.position.set(sx * (m.length / 2 + 10), m.y + 1, m.z - 8);
-    g.add(cnt);
-    const spur = gear(7.5, 22, 3, mats.spur);
-    spur.position.set(sx * (c.wheelbase_mm / 2), spec.tire.diameter_mm / 2, -10);
+    // 中間齒輪：大齒（冠狀齒面朝 +z，與小齒輪直角嚙合）＋小齒（與輪軸齒輪嚙合），軸沿 z
+    const counter = new THREE.Group();
+    const big = gear(d.counterLargePitchRadius_mm + 0.4, 20, 1.4, mats.counter);
+    big.position.z = gt.crownZ - 0.7 - 1.0;
+    counter.add(big);
+    const crown = crownTeeth(d.counterLargePitchRadius_mm + 0.4, 20, 1.0, mats.counter);
+    crown.position.z = gt.crownZ - 1.0;
+    counter.add(crown);
+    const small = gear(d.counterSmallPitchRadius_mm + 0.35, 15, 3.0, mats.counter);
+    small.position.z = gt.crownZ - 2.4 - 1.5;
+    counter.add(small);
+    const cshaft = new THREE.Mesh(new THREE.CylinderGeometry(0.9, 0.9, 19, 10), mats.steel);
+    cshaft.rotation.x = Math.PI / 2;
+    cshaft.position.z = -3.6;
+    counter.add(cshaft);
+    counter.position.set(sx * gt.counterX, gt.counterY, 0);
+    g.add(counter);
+    // 輪軸齒輪（粉紅，固定在輪軸上，與中間齒輪小齒同一平面）
+    const spur = gear(d.spurPitchRadius_mm + 0.4, 22, 3.0, mats.spur);
+    spur.position.set(sx * hw, axleY, gt.crownZ - 2.4 - 1.5);
     g.add(spur);
   }
 
-  // 電池（兩顆 AA，置於馬達兩側）
+  // ---- 電池（兩顆 AA，置於馬達兩側；藏在電池蓋內）----
   const b = comp.battery;
   for (const z of b.zs) {
     const cell = new THREE.Mesh(new THREE.CylinderGeometry(b.dia / 2, b.dia / 2, b.length, 28), mats.battery);
     cell.rotation.z = Math.PI / 2;
     cell.position.set(b.x, b.y, z);
     g.add(cell);
-    const tip = new THREE.Mesh(new THREE.CylinderGeometry(2.6, 2.6, 1.2, 12), mats.steel);
-    tip.rotation.z = Math.PI / 2;
-    tip.position.set(b.x + b.length / 2 + 0.6, b.y, z);
-    g.add(tip);
   }
 
-  // 輪軸（2 mm 鋼軸）與 620 軸承座
+  // ---- 輪軸（2 mm 鋼軸，貫穿左右輪）----
   for (const w of wheelLayout().filter((q) => q.z > 0)) {
-    const axle = new THREE.Mesh(new THREE.CylinderGeometry(1, 1, c.trackWidth_mm + 4, 10), mats.steel);
+    const axle = new THREE.Mesh(new THREE.CylinderGeometry(1, 1, c.trackWidth_mm + 4, 12), mats.steel);
     axle.rotation.x = Math.PI / 2;
     axle.position.set(w.x, w.y, 0);
     g.add(axle);
-    for (const sz of [-1, 1]) {
-      const brg = new THREE.Mesh(new THREE.CylinderGeometry(3, 3, 2.5, 18), mats.steel);
-      brg.rotation.x = Math.PI / 2;
-      brg.position.set(w.x, w.y, sz * 22);
-      g.add(brg);
-    }
   }
   g.traverse((o) => {
     if (o.isMesh) {

@@ -1,8 +1,54 @@
 // 截圖頁：依 ?view= 參數擺放相機（side / top / front34 / bottom / track）
 import * as THREE from 'three';
-import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
 import { buildCarModel, buildTrackModel } from '../src/model.js';
 import { buildCircuit } from '../src/track.js';
+
+/**
+ * 棚拍環境（取代 RoomEnvironment：它的多個小燈箱在車漆上反射成斑駁亮點）
+ * 上亮下暗的漸層球＋頂部與側面兩塊大柔光箱，反射成平順的長條高光
+ */
+function buildStudioEnvironment() {
+  const env = new THREE.Scene();
+  const sky = new THREE.SphereGeometry(100, 48, 24);
+  const col = [];
+  const p = sky.attributes.position;
+  for (let i = 0; i < p.count; i++) {
+    const h = p.getY(i) / 100;
+    const v = h > 0 ? 0.22 + 0.25 * h : 0.22 + 0.16 * h;
+    col.push(v * 0.95, v * 0.97, v);
+  }
+  sky.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
+  env.add(new THREE.Mesh(sky, new THREE.MeshBasicMaterial({ vertexColors: true, side: THREE.BackSide })));
+  const box = (w, h, pos, look, k) => {
+    const m = new THREE.Mesh(new THREE.PlaneGeometry(w, h), new THREE.MeshBasicMaterial({ color: new THREE.Color(k, k, k), side: THREE.DoubleSide }));
+    m.position.set(...pos);
+    m.lookAt(...look);
+    env.add(m);
+  };
+  box(120, 50, [0, 80, 0], [0, 0, 0], 3.0);
+  box(80, 30, [70, 30, -60], [0, 0, 0], 2.0);
+  box(60, 30, [-80, 20, 40], [0, 0, 0], 0.8);
+  return env;
+}
+
+/** 車底接觸陰影（徑向漸層貼圖的平面，模擬 AO） */
+function buildContactShadow() {
+  const cv = document.createElement('canvas');
+  cv.width = 256;
+  cv.height = 256;
+  const ctx = cv.getContext('2d');
+  const grd = ctx.createRadialGradient(128, 128, 10, 128, 128, 128);
+  grd.addColorStop(0, 'rgba(0,0,0,0.55)');
+  grd.addColorStop(0.55, 'rgba(0,0,0,0.3)');
+  grd.addColorStop(1, 'rgba(0,0,0,0)');
+  ctx.fillStyle = grd;
+  ctx.fillRect(0, 0, 256, 256);
+  const tex = new THREE.CanvasTexture(cv);
+  const m = new THREE.Mesh(new THREE.PlaneGeometry(165, 95), new THREE.MeshBasicMaterial({ map: tex, transparent: true, depthWrite: false }));
+  m.rotation.x = -Math.PI / 2;
+  m.position.y = 0.05;
+  return m;
+}
 
 const params = new URLSearchParams(location.search);
 const view = params.get('view') ?? 'front34';
@@ -22,7 +68,7 @@ document.body.appendChild(renderer.domElement);
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0xe9ebee);
 const pmrem = new THREE.PMREMGenerator(renderer);
-scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+scene.environment = pmrem.fromScene(buildStudioEnvironment(), 0.03).texture;
 
 scene.add(new THREE.HemisphereLight(0xffffff, 0x8a8f99, 0.6));
 const sun = new THREE.DirectionalLight(0xffffff, 2.2);
@@ -79,6 +125,7 @@ if (view === 'track') {
   ground.receiveShadow = true;
   if (view !== 'bottom') {
     scene.add(ground);
+    scene.add(buildContactShadow());
   }
   const center = new THREE.Vector3(0, view === 'side' ? 18 : 12, 0);
   if (view === 'side') {
@@ -97,7 +144,7 @@ if (view === 'track') {
   sun.target.position.set(0, 0, 0);
   setShadowBox(220);
   if (view === 'bottom') {
-    const fill = new THREE.DirectionalLight(0xffffff, 1.6);
+    const fill = new THREE.DirectionalLight(0xffffff, 2.6);
     fill.position.set(-100, -500, -300);
     scene.add(fill);
   }
