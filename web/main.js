@@ -32,6 +32,9 @@ function buildStudioEnvironment() {
   box(120, 50, [0, 80, 0], [0, 0, 0], 3.0);
   box(80, 30, [70, 30, -60], [0, 0, 0], 2.0);
   box(60, 30, [-80, 20, 40], [0, 0, 0], 0.8);
+  // iter-10：後側柔光箱（rear34 相機的鏡射方向，仰角約 24°，距離 90 須在半徑 100 的天空球內）——原本 rear34 的後甲板只反射到暗的天空漸層，
+  // 只剩底漆層的寬高光，讀起來像半光澤；加這片讓清漆層在後甲板／後葉子板出現邊緣清楚的燈箱倒影
+  box(45, 16, [65, 36, 51], [0, 0, 0], 2.2);
   return env;
 }
 
@@ -190,6 +193,9 @@ if (view === 'track') {
   } else if (view === 'bottom') {
     camera.position.set(-60, -330, -210);
     camera.up.set(0, 1, 0);
+  } else if (view === 'sidehigh') {
+    // iter-11：比對用，仰角約 23°（推估：由 ref side-high 的前導輪左右高低差與前葉子板遠近稜線高低差反推）
+    camera.position.set(0, 12 + 410 * Math.sin((23 * Math.PI) / 180), -410 * Math.cos((23 * Math.PI) / 180));
   } else if (view === 'rear') {
     // 正後方（檢查用）
     camera.position.set(-420, 60, 0.01);
