@@ -152,6 +152,27 @@ if (view === 'track') {
   sun.position.set(target.x + 600, 1500, target.z + 400);
   sun.target.position.copy(target);
   setShadowBox(900);
+  // iter-09：塑膠光澤補光（0.3，弱）：放在相機對面、相對垂直軸鏡射的方向，
+  // 讓路面在車子附近出現一片柔和的鏡面反光（半光澤 ABS 的特徵），主光與投影方向不變
+  const glint = new THREE.DirectionalLight(0xffffff, 0.3);
+  const camOff = camera.position.clone().sub(target);
+  glint.position.set(target.x - camOff.x, target.y + camOff.y, target.z - camOff.z);
+  glint.target.position.copy(target);
+  // 補光也投影：否則車底下的路面仍有鏡面反光，車子看起來浮在路面上
+  glint.castShadow = true;
+  glint.shadow.mapSize.set(4096, 4096);
+  glint.shadow.bias = -0.0005;
+  glint.shadow.radius = 3;
+  for (const k of ['left', 'bottom']) {
+    glint.shadow.camera[k] = -400;
+  }
+  for (const k of ['right', 'top']) {
+    glint.shadow.camera[k] = 400;
+  }
+  glint.shadow.camera.near = 1;
+  glint.shadow.camera.far = 6000;
+  scene.add(glint);
+  scene.add(glint.target);
 } else {
   // 單車棚拍：淺色地面接收陰影
   const ground = buildTabletop(8000);

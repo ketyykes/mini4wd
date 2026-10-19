@@ -766,6 +766,8 @@ function buildCabin(bodyMat, glassMat, trimMat) {
   // 4) 車頂塊後端立面（落到後甲板）
   const paintTwo = bodyMat.clone();
   paintTwo.side = THREE.DoubleSide;
+  // iter-09：clone() 不會複製 onBeforeCompile → 車頂板原本少了珠光視角漸層，與車身色不一致；補上（含金屬片）
+  applyPaintFlop(paintTwo);
   const cab = { surf: CABIN_SURF };
   for (const side of [1, -1]) {
     g.add(ribbon(ROOF_X0, CABIN_X1, () => [0, ROOF_U], paintTwo, side, ROOF_LIFT, { ...cab, nu: 12 }));
@@ -848,6 +850,86 @@ function buildCabin(bodyMat, glassMat, trimMat) {
   const vent = new THREE.Mesh(cg, carbon);
   g.add(vent);
   return g;
+}
+
+/**
+ * iter-09：座艙內裝（透過煙燻玻璃看得到的深色內部）
+ * 內裝底殼：座艙截面高度壓到 CABIN_TUB_K、寬度縮 8%（必在玻璃面之下、蓋住下方車殼頂面），
+ * 再放儀表板、方向盤、兩張座椅（椅背＋頭枕）。尺寸為推估：依座艙內高約 9–10 mm 等比例配置（1/32 比例跑車座艙）
+ * @param {THREE.Material} tubMat 內裝底殼（深灰）
+ * @param {THREE.Material} seatMat 座椅（略亮的深灰，讓輪廓透過玻璃可辨識）
+ */
+const CABIN_TUB_K = 0.42;
+function buildCabinInterior(tubMat, seatMat) {
+  const g = new THREE.Group();
+  const x0 = CABIN_X0 - 0.6;
+  const x1 = CABIN_X1 + 0.6;
+  /** @type {(x: number, u: number, side: number) => THREE.Vector3} 內裝底殼上的點 */
+  const tubPoint = (x, u, side) => {
+    const p = cabinPoint(x, u, side);
+    const base = smoothTable(CENTER_Y, x) - 0.6;
+    p.y = base + CABIN_TUB_K * (p.y - base);
+    p.z *= 0.92;
+    return p;
+  };
+  for (const side of [1, -1]) {
+    g.add(gridGeometryMesh(60, 14, (i, j) => tubPoint(x0 + ((x1 - x0) * i) / 60, j / 14, side), tubMat));
+  }
+  /** @type {(x: number) => number} 中線處底殼高度 */
+  const floorY = (x) => tubPoint(x, 0, 1).y;
+  // 儀表板：擋風玻璃下緣的橫向圓角塊
+  const dash = new THREE.Mesh(new THREE.BoxGeometry(3.2, 2.2, 2 * smoothTable(CABIN_TOP_W, 9) * 0.95), seatMat);
+  dash.position.set(9.5, floorY(9.5) + 1.0, 0);
+  dash.rotation.z = -0.35;
+  g.add(dash);
+  for (const sz of [-1, 1]) {
+    // 方向盤（右駕，z > 0）只做一個；座椅左右各一
+    if (sz > 0) {
+      const wheel = new THREE.Mesh(new THREE.TorusGeometry(1.9, 0.35, 8, 24), seatMat);
+      wheel.position.set(6.2, floorY(6.2) + 2.6, 5.6);
+      // 圓環軸（z）先轉到 x（朝駕駛），再繞 z 往上仰 0.5 rad
+      wheel.rotation.set(0, Math.PI / 2, 0.5, 'ZYX');
+      g.add(wheel);
+    }
+    const seatX = -13.5;
+    const fy = floorY(seatX);
+    const cushion = new THREE.Mesh(new THREE.BoxGeometry(6.5, 1.2, 6.2), seatMat);
+    cushion.position.set(seatX + 3.6, fy + 0.4, sz * 5.6);
+    g.add(cushion);
+    const back = new THREE.Mesh(new THREE.BoxGeometry(1.6, 5.2, 6.2), seatMat);
+    back.position.set(seatX, fy + 2.4, sz * 5.6);
+    back.rotation.z = 0.28;
+    g.add(back);
+    const head = new THREE.Mesh(new THREE.BoxGeometry(1.4, 1.8, 3.6), seatMat);
+    head.position.set(seatX - 1.3, fy + 5.6, sz * 5.6);
+    head.rotation.z = 0.28;
+    g.add(head);
+  }
+  return g;
+}
+
+/** 由 (i, j) → 點 的函式建立 rows × cols 格網（雙面材質，不在意繞序） */
+function gridGeometryMesh(rows, cols, at, mat) {
+  const pos = [];
+  for (let i = 0; i <= rows; i++) {
+    for (let j = 0; j <= cols; j++) {
+      const p = at(i, j);
+      pos.push(p.x, p.y, p.z);
+    }
+  }
+  const idx = [];
+  for (let i = 0; i < rows; i++) {
+    for (let j = 0; j < cols; j++) {
+      const a = i * (cols + 1) + j;
+      const b = a + cols + 1;
+      idx.push(a, b, a + 1, b, b + 1, a + 1);
+    }
+  }
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  geo.setIndex(idx);
+  geo.computeVertexNormals();
+  return new THREE.Mesh(geo, mat);
 }
 
 /**
@@ -988,14 +1070,23 @@ function buildWheelWells(mat) {
 /**
  * 珠光漆視角顏色漸層（iter-06）：在法線計算後依 N·V 把底色由正視的亮寶藍漸變到掠射的深紫，
  * 只改 diffuseColor，不動法線，因此不會產生 iter-04 那種反光扭曲
+ * iter-09：加入細金屬片（metallic flake）——以物件座標切成約 PAINT_FLAKE_MM 的小格，每格一個雜湊值：
+ *   (1) 底漆顏色亮度 ±10% 顏色噪點；(2) 底漆層（非清漆層）法線極低強度隨機偏轉 → 高光區出現細碎閃點。
+ *   three.js 的清漆法線取自 nonPerturbedNormal（clearcoat_normal_fragment_begin），
+ *   所以清漆層的環境反射（燈箱倒影）仍是平滑曲面、不會扭曲（iter-04 粒子法線貼圖同時擾動兩層才扭曲）
  * @type {(mat: THREE.MeshPhysicalMaterial) => void}
  */
+const PAINT_FLAKE_MM = 0.12;
+const PAINT_FLAKE_TILT = 0.08;
 const applyPaintFlop = (mat) => {
   mat.onBeforeCompile = (shader) => {
     shader.uniforms.flopFace = { value: new THREE.Color(0x3352f2) };
     shader.uniforms.flopEdge = { value: new THREE.Color(0x2a1084) };
+    shader.vertexShader = shader.vertexShader
+      .replace('#include <common>', '#include <common>\nvarying vec3 vFlakePos;')
+      .replace('#include <begin_vertex>', '#include <begin_vertex>\nvFlakePos = position;');
     shader.fragmentShader = shader.fragmentShader
-      .replace('#include <common>', '#include <common>\nuniform vec3 flopFace;\nuniform vec3 flopEdge;')
+      .replace('#include <common>', '#include <common>\nuniform vec3 flopFace;\nuniform vec3 flopEdge;\nvarying vec3 vFlakePos;')
       .replace(
         '#include <normal_fragment_maps>',
         `#include <normal_fragment_maps>
@@ -1003,6 +1094,10 @@ const applyPaintFlop = (mat) => {
           float ndv = clamp(abs(dot(normal, normalize(vViewPosition))), 0.0, 1.0);
           float flop = smoothstep(0.1, 0.9, ndv);
           diffuseColor.rgb = mix(flopEdge, flopFace, flop);
+          vec3 cell = floor(vFlakePos / ${PAINT_FLAKE_MM.toFixed(3)});
+          vec3 hs = fract(sin(vec3(dot(cell, vec3(127.1, 311.7, 74.7)), dot(cell, vec3(269.5, 183.3, 246.1)), dot(cell, vec3(113.5, 271.9, 124.6)))) * 43758.5453);
+          diffuseColor.rgb *= 0.95 + 0.1 * hs.x;
+          normal = normalize(normal + ${PAINT_FLAKE_TILT.toFixed(3)} * (hs - 0.5));
         }`,
       );
   };
@@ -1040,7 +1135,12 @@ export function buildChevalierBody(mats) {
   inner.userData.flange = paint.clone();
   inner.userData.flange.side = THREE.DoubleSide;
   applyPaintFlop(inner.userData.flange);
-  const glass = new THREE.MeshPhysicalMaterial({ color: 0x7d6650, roughness: 0.12, metalness: 0.75, envMapIntensity: 0.8, clearcoat: 1.0, clearcoatRoughness: 0.05, side: THREE.DoubleSide });
+  // iter-09：座艙玻璃由不透明褐色金屬片改為透明煙燻玻璃（reviewer：「座艙玻璃不透明褐色片」）：
+  //   transmission 0.9＋灰褐色調（color 為透射染色）→ 透過玻璃看得到座艙內裝深色輪廓；
+  //   metalness 0、roughness 0.03、clearcoat 1 → 表面仍有棚拍燈箱的清楚倒影
+  const glass = new THREE.MeshPhysicalMaterial({ color: 0x5e5a54, roughness: 0.03, metalness: 0.0, transmission: 0.9, thickness: 0.4, ior: 1.5, envMapIntensity: 1.0, clearcoat: 1.0, clearcoatRoughness: 0.03, side: THREE.DoubleSide });
+  const interiorTub = new THREE.MeshStandardMaterial({ color: 0x141518, roughness: 0.85, metalness: 0.0, side: THREE.DoubleSide });
+  const interiorSeat = new THREE.MeshStandardMaterial({ color: 0x2c2e33, roughness: 0.6, metalness: 0.0 });
   const decal = (color, extra = {}) =>
     new THREE.MeshPhysicalMaterial({ color, roughness: 0.3, metalness: 0.1, clearcoat: 1.0, clearcoatRoughness: 0.1, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2, side: THREE.DoubleSide, ...extra });
   const orange = decal(0xff6a12);
@@ -1072,6 +1172,7 @@ export function buildChevalierBody(mats) {
 
   g.add(buildHull(paint, inner));
   g.add(buildCabin(paint, glass, black));
+  g.add(buildCabinInterior(interiorTub, interiorSeat));
   const midTex = canvasTexture(512, 64, drawMidship);
   if (midTex) {
     const midMat = decal(0xffffff, { map: midTex, alphaTest: 0.35, polygonOffsetFactor: -4, polygonOffsetUnits: -4 });
