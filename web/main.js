@@ -4,7 +4,6 @@ import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer
 import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
 import { GTAOPass } from 'three/examples/jsm/postprocessing/GTAOPass.js';
 import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
-import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js';
 import { buildCarModel, buildTrackModel } from '../src/model.js';
 import { buildCircuit } from '../src/track.js';
 
@@ -36,12 +35,6 @@ function buildStudioEnvironment() {
   // iter-10：後側柔光箱（rear34 相機的鏡射方向，仰角約 24°，距離 90 須在半徑 100 的天空球內）——原本 rear34 的後甲板只反射到暗的天空漸層，
   // 只剩底漆層的寬高光，讀起來像半光澤；加這片讓清漆層在後甲板／後葉子板出現邊緣清楚的燈箱倒影
   box(45, 16, [65, 36, 51], [0, 0, 0], 2.2);
-  // iter-26：盲評 #2「高光平均、環境反射少」→ 加兩條細長條燈（strip box）在車側斜上方，並在頂燈箱兩側加黑旗（負補光），
-  //   清漆反射因此出現「亮帶—暗縫—亮帶」的明暗層次；條燈都是大面積單片（不用多個小燈箱，避免 iter-15 後甲板斑駁）
-  box(110, 7, [0, 55, -75], [0, 0, 0], 2.6);
-  box(110, 7, [0, 55, 75], [0, 0, 0], 2.6);
-  box(130, 14, [0, 78, -34], [0, 0, 0], 0.0);
-  box(130, 14, [0, 78, 34], [0, 0, 0], 0.0);
   return env;
 }
 
@@ -254,23 +247,6 @@ if (params.get('ao') === '1') {
   gtao.output = GTAOPass.OUTPUT.Denoise;
 }
 composer.addPass(gtao);
-// iter-26：盲評 #2「背景單色平面」→ 棚拍無縫背景的中央亮、四周暗（對照 ref side-high / rear34 的背景落差）；
-//   橢圓距離 r（畫面中心 0、角落約 1.2），r < 0.35 提亮 6%，往外平滑壓到 0.55；只做亮度，不改色相
-const vignettePass = new ShaderPass({
-  uniforms: { tDiffuse: { value: null }, aspect: { value: width / height } },
-  vertexShader: 'varying vec2 vUv; void main() { vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
-  fragmentShader: `uniform sampler2D tDiffuse; uniform float aspect; varying vec2 vUv;
-    void main() {
-      vec4 c = texture2D(tDiffuse, vUv);
-      vec2 d = (vUv - 0.5) * vec2(1.0, 1.0 / aspect) * 2.0;
-      float r = length(d * vec2(0.85, 1.6));
-      float k = mix(1.06, 0.55, smoothstep(0.35, 1.25, r));
-      gl_FragColor = vec4(c.rgb * k, c.a);
-    }`,
-});
-if (view !== 'bottom') {
-  composer.addPass(vignettePass);
-}
 composer.addPass(new OutputPass());
 composer.render();
 window.__ready = true;
