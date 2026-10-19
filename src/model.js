@@ -495,6 +495,9 @@ function gearTrainLayout() {
   };
 }
 
+/** 前導輪外觀厚度（mm，推估：參考照前導輪為單顆扁平導輪，目視厚度約直徑 1/3；僅外觀，不影響碰撞體） */
+const FRONT_ROLLER_VISUAL_H_MM = 4.2;
+
 /**
  * 導輪（iter-06 重做；ref_ma-chassis：槍灰色導輪，上下輪緣凸出、中段內縮，頂面內凹看得到培林）：
  * Lathe 截面＝上下輪緣（含倒角）＋中段腰身＋頂底面內凹環；培林分外環（鋼，凸起）／黑色密封蓋（內凹）／內環（鋼）三層；
@@ -502,9 +505,17 @@ function gearTrainLayout() {
  * @type {(mats: ReturnType<typeof makeMaterials>, r: { x: number, y: number, z: number, r: number, h: number }) => THREE.Group}
  */
 const buildRoller = (mats, r) => {
+  const outerGroup = new THREE.Group();
   const g = new THREE.Group();
+  outerGroup.add(g);
   const R = r.r;
-  const H = r.h / 2;
+  // iter-28：前導輪外觀改為單顆扁平導輪（ref_chevalier-ma_front34：前方是一顆低矮平直的黑色導輪）。
+  //   只改外觀：直徑與安裝位置不變；外觀厚度 6.5 → 4.2 mm，底面維持原位（墊片／螺帽位置不變），頂面下移。
+  //   物理碰撞體由 sim.js 依 rollerLayout() 另建，不受影響
+  const isFront = r.id === 'FL' || r.id === 'FR';
+  const visualH = isFront ? FRONT_ROLLER_VISUAL_H_MM : r.h;
+  const H = visualH / 2;
+  g.position.y = -(r.h - visualH) / 2;
   const recessR = R - 1.1;
   const brgR = 3.7;
   const recessDepth = 0.7;
@@ -516,10 +527,14 @@ const buildRoller = (mats, r) => {
     [recessR, H],
     [R - 0.35, H],
     [R, H - 0.35],
-    [R, H - 1.05],
-    [R - 0.55, H - 1.45],
-    [R - 0.55, -H + 1.45],
-    [R, -H + 1.05],
+    ...(isFront
+      ? []
+      : [
+          [R, H - 1.05],
+          [R - 0.55, H - 1.45],
+          [R - 0.55, -H + 1.45],
+          [R, -H + 1.05],
+        ]),
     [R, -H + 0.35],
     [R - 0.35, -H],
     [recessR, -H],
@@ -581,8 +596,8 @@ const buildRoller = (mats, r) => {
   const tail = new THREE.Mesh(new THREE.CylinderGeometry(0.9, 0.9, 1.0, 10), mats.steel);
   tail.position.y = -H - 1.8;
   g.add(tail);
-  g.position.set(r.x, r.y, r.z);
-  return g;
+  outerGroup.position.set(r.x, r.y, r.z);
+  return outerGroup;
 };
 
 /** 底盤：MA 一體式底盤、前後保桿、導輪架、雙軸馬達、齒輪列、電池、輪軸 */

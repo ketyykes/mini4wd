@@ -867,6 +867,26 @@ const CABIN_SIDE_K = 0.18;
 const ROOF_X0 = -6;
 const ROOF_U = 0.46;
 const ROOF_LIFT = 0.7;
+/** iter-27：車頂板邊緣最小抬高（避免與座艙面 z-fighting） */
+const ROOF_EDGE_EPS = 0.04;
+
+/** @type {(a: number, b: number, t: number) => number} 0→1 平滑過渡（a → b，a > b 時反向） */
+function smoothStep01(a, b, t) {
+  const k = Math.min(1, Math.max(0, (t - a) / (b - a)));
+  return k * k * (3 - 2 * k);
+}
+
+/**
+ * @type {(x: number, u: number) => number}
+ * iter-27（盲評 #3：車頂板像另外貼上去的平方板）：車頂板抬高量改為隨位置變化，
+ * 兩側（u 0.38 → 0.46）、前緣（x −9.5 → −6）、後緣（x −41 → −48）以平滑曲線降回座艙面，
+ * 邊緣斜率為 0 → 與座艙面相切、曲面連續，不再有黑色立面
+ */
+function roofLift(x, u) {
+  const fu = smoothStep01(ROOF_U, ROOF_U - 0.08, u);
+  const fx = smoothStep01(ROOF_X0, ROOF_X0 - 3.5, x) * smoothStep01(CABIN_X1, CABIN_X1 + 7, x);
+  return ROOF_EDGE_EPS + (ROOF_LIFT - ROOF_EDGE_EPS) * fu * fx;
+}
 
 /** 座艙截面上的點；u：0 中線 → 1 與車殼交接處 */
 export function cabinPoint(x, u, side = 1) {
@@ -903,32 +923,41 @@ export function cabinNormal(x, u, side = 1) {
 const HULL_SURF = { point: bodyPoint, normal: bodyNormal };
 const CABIN_SURF = { point: cabinPoint, normal: cabinNormal };
 
-/**
- * 沿座艙曲面上一條路徑立起的薄牆（車頂板的側面／前緣立面）
- * @param {(t: number) => [number, number]} path t ∈ [0,1] → [x, u]
- * @param {number} n 分段數
- * @param {number} h 沿法向高度（mm）
- */
-function liftWall(path, n, h, mat, side) {
-  const pos = [];
-  for (let k = 0; k <= n; k++) {
-    const [x, u] = path(k / n);
-    const p = cabinPoint(x, u, side);
-    const q = p.clone().addScaledVector(cabinNormal(x, u, side), h);
-    pos.push(p.x, p.y, p.z, q.x, q.y, q.z);
-  }
-  const idx = [];
-  for (let k = 0; k < n; k++) {
-    const a = k * 2;
-    idx.push(a, a + 2, a + 1, a + 2, a + 3, a + 1);
-  }
-  const geo = new THREE.BufferGeometry();
-  geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
-  geo.setIndex(idx);
-  geo.computeVertexNormals();
-  const matTwo = mat.side === THREE.DoubleSide ? mat : Object.assign(mat.clone(), { side: THREE.DoubleSide });
-  return new THREE.Mesh(geo, matTwo);
+/** @type {(x: number, u: number, side?: number) => THREE.Vector3} iter-27：車頂板曲面上的點（座艙面沿法向抬高 roofLift） */
+function roofPoint(x, u, side = 1) {
+  return cabinPoint(x, u, side).addScaledVector(cabinNormal(x, u, side), roofLift(x, u));
 }
+
+/** @type {(x: number, u: number, side?: number) => THREE.Vector3} iter-27：車頂板曲面法向（解析曲面的差分，非粒子法線；邊緣與座艙面相切） */
+function roofNormal(x, u, side = 1) {
+  const ex = 0.15;
+  const eu = 0.006;
+  const du = roofPoint(x, Math.min(1, u + eu), side).sub(roofPoint(x, Math.max(0, u - eu), side));
+  const dx = roofPoint(x + ex, u, side).sub(roofPoint(x - ex, u, side));
+  const n = side > 0 ? new THREE.Vector3().crossVectors(du, dx) : new THREE.Vector3().crossVectors(dx, du);
+  if (n.lengthSq() < 1e-12) {
+    return cabinNormal(x, u, side);
+  }
+  return n.normalize();
+}
+
+/** @type {(x: number, z: number) => number} iter-27：座艙截面上半寬 z 對應的 u（二分法） */
+function cabinUAtZ(x, z) {
+  let lo = 0;
+  let hi = 0.5;
+  for (let k = 0; k < 24; k++) {
+    const mid = (lo + hi) * 0.5;
+    if (cabinPoint(x, mid, 1).z < z) {
+      lo = mid;
+    } else {
+      hi = mid;
+    }
+  }
+  return (lo + hi) * 0.5;
+}
+
+/** @type {{ point: typeof roofPoint, normal: typeof roofNormal }} */
+const ROOF_SURF = { point: roofPoint, normal: roofNormal };
 
 /** 座艙：玻璃（擋風＋側窗）與車身色的車頂／C 柱，依三角形位置分成兩個材質群組 */
 function buildCabin(bodyMat, glassMat, trimMat) {
@@ -983,10 +1012,8 @@ function buildCabin(bodyMat, glassMat, trimMat) {
   applyPaintFlop(paintTwo);
   const cab = { surf: CABIN_SURF };
   for (const side of [1, -1]) {
-    g.add(ribbon(ROOF_X0, CABIN_X1, () => [0, ROOF_U], paintTwo, side, ROOF_LIFT, { ...cab, nu: 12 }));
-    // 車頂板側面立面（u = ROOF_U）與前緣立面（x = ROOF_X0）
-    g.add(liftWall((t) => [ROOF_X0 + (CABIN_X1 - ROOF_X0) * t, ROOF_U], 60, ROOF_LIFT, trimMat, side));
-    g.add(liftWall((t) => [ROOF_X0, ROOF_U * t], 16, ROOF_LIFT, trimMat, side));
+    // iter-27：車頂板改沿 ROOF_SURF（邊緣倒圓、與座艙面相切），拿掉 iter-03 的黑色側面／前緣立面
+    g.add(ribbon(ROOF_X0, CABIN_X1, () => [0, ROOF_U], paintTwo, side, 0, { surf: ROOF_SURF, nu: 24 }));
     // 車頂板前緣下方的擋風玻璃上框
     g.add(ribbon(ROOF_X0 + 1.4, ROOF_X0, () => [0, ROOF_U + 0.02], trimMat, side, 0.15, { ...cab, nu: 12 }));
     // A 柱（車身色）＋兩側黑色細框
@@ -1011,7 +1038,7 @@ function buildCabin(bodyMat, glassMat, trimMat) {
       const u = j / n;
       const p = cabinPoint(CABIN_X1, u, 1);
       if (u <= ROOF_U) {
-        p.addScaledVector(cabinNormal(CABIN_X1, u, 1), ROOF_LIFT);
+        p.addScaledVector(cabinNormal(CABIN_X1, u, 1), roofLift(CABIN_X1, u));
       }
       pts.push(p);
     }
@@ -1032,36 +1059,12 @@ function buildCabin(bodyMat, glassMat, trimMat) {
   }
   // 車頂後段碳纖網格散熱口（MIDSHIP AERO 位置）
   const carbon = new THREE.MeshStandardMaterial({ map: carbonTexture(), roughness: 0.55, metalness: 0.35, side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 });
-  const pos = [];
-  const uvs = [];
-  const idx = [];
-  const nx = 24;
-  const nz = 8;
-  for (let i = 0; i <= nx; i++) {
-    const x = -12 + (-32 + 12) * (i / nx);
-    for (let k = 0; k <= nz; k++) {
-      const zz = -10 + 20 * (k / nz);
-      const tw = smoothTable(CABIN_TOP_W, x);
-      const r = zz / (tw * 0.5);
-      // 車頂中段近似拋物面：中線最高，往兩側下降約 0.15 mm（與 cabinPoint 的控制點一致）
-      pos.push(x, smoothTable(CABIN_TOP, x) - 0.1 * r * r + ROOF_LIFT + 0.15, zz);
-      uvs.push(i / nx, k / nz);
-    }
+  // iter-27：碳纖網格改沿車頂板曲面（ROOF_SURF）貼合，左右各一半、半寬 10 mm；貼圖 V 以中線 0.5 接續
+  for (const side of [1, -1]) {
+    /** @type {(s: number, v: number) => [number, number]} */
+    const ventUv = (s, v) => [s, 0.5 + 0.5 * side * v];
+    g.add(ribbon(-12, -32, (x) => [0, cabinUAtZ(x, 10)], carbon, side, 0.15, { surf: ROOF_SURF, nu: 8, uv: ventUv }));
   }
-  for (let i = 0; i < nx; i++) {
-    for (let k = 0; k < nz; k++) {
-      const a = i * (nz + 1) + k;
-      const b = (i + 1) * (nz + 1) + k;
-      idx.push(a, b, a + 1, b, b + 1, a + 1);
-    }
-  }
-  const cg = new THREE.BufferGeometry();
-  cg.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
-  cg.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
-  cg.setIndex(idx);
-  cg.computeVertexNormals();
-  const vent = new THREE.Mesh(cg, carbon);
-  g.add(vent);
   return g;
 }
 
@@ -1160,7 +1163,7 @@ function gridGeometryMesh(rows, cols, at, mat) {
 }
 
 /**
- * 座艙車頂上的貼紙薄片（MIDSHIP AERO 字樣）；車頂近乎水平，沿 +y 抬高
+ * 座艙車頂上的貼紙薄片（MIDSHIP AERO 字樣）；iter-27 起沿車頂板曲面法向抬高 0.12 mm
  * @param {number} xa 起點 x（貼圖 U = 0）
  * @param {number} xb 終點 x（貼圖 U = 1）
  * @param {number} ua 內側 u（貼圖 V = 0，字的上方）
@@ -1174,8 +1177,10 @@ function roofDecal(xa, xb, ua, ub, mat, side) {
   for (let i = 0; i <= nx; i++) {
     const x = xa + ((xb - xa) * i) / nx;
     for (let j = 0; j <= nv; j++) {
-      const p = cabinPoint(x, ua + ((ub - ua) * j) / nv, side);
-      pos.push(p.x, p.y + ROOF_LIFT + 0.12, p.z);
+      // iter-27：字樣沿車頂板曲面（含倒圓段）貼合
+      const u = ua + ((ub - ua) * j) / nv;
+      const p = roofPoint(x, u, side).addScaledVector(roofNormal(x, u, side), 0.12);
+      pos.push(p.x, p.y, p.z);
       uvs.push(i / nx, j / nv);
     }
   }
@@ -1451,8 +1456,9 @@ export function buildChevalierBody(mats) {
   const finMat = new THREE.MeshPhysicalMaterial({ color: 0x5b6070, roughness: 0.45, metalness: 0.3, clearcoat: 0.5, side: THREE.DoubleSide });
   const lamp = decal(0xf4f7ff, { emissive: 0xc8d8ff, emissiveIntensity: 0.55, metalness: 0.2, roughness: 0.08 });
   // iter-05：燈罩（半透明灰白、低自發光）與 LED 燈條（高亮）分開，燈具才有層次
+  // iter-26：尾燈燈殼內底（深煙燻黑，讓細 LED 線對比清楚，不再整塊發白）
+  const tailBaseMat = decal(0x15171c, { roughness: 0.2, metalness: 0.4, clearcoat: 0.6 });
   const seam = decal(0x05060a, { roughness: 0.7, clearcoat: 0.0 });
-  const lens = decal(0x9aa3b0, { emissive: 0x3a4250, emissiveIntensity: 0.3, metalness: 0.6, roughness: 0.12 });
   const led = decal(0xffffff, { emissive: 0xeaf2ff, emissiveIntensity: 1.0, metalness: 0.0, roughness: 0.2, polygonOffsetFactor: -4, polygonOffsetUnits: -4 });
   // iter-14：頭燈鍍鉻反射底與透明燈罩
   const reflectorMat = decal(0xdfe4ec, { metalness: 1.0, roughness: 0.14, clearcoat: 0.0 });
@@ -1475,8 +1481,8 @@ export function buildChevalierBody(mats) {
     const midMat = decal(0xffffff, { map: midTex, alphaTest: 0.35, polygonOffsetFactor: -4, polygonOffsetUnits: -4 });
     // 字頭（貼圖 V = 0）都朝車頂中線、從車外側看是正字：
     // 右側（+z）由後往前排字；左側（−z）由前往後排字（iter-02 左側也由後往前 → 俯視呈上下顛倒的鏡像字，reviewer 指出的 bug）
-    g.add(roofDecal(-33, -13, 0.33, 0.43, midMat, 1));
-    g.add(roofDecal(-13, -33, 0.33, 0.43, midMat, -1));
+    g.add(roofDecal(-33, -13, 0.32, 0.41, midMat, 1));
+    g.add(roofDecal(-13, -33, 0.32, 0.41, midMat, -1));
   }
   g.add(buildWheelWells(new THREE.MeshStandardMaterial({ color: 0x101114, roughness: 0.9, side: THREE.DoubleSide })));
   g.add(buildArchLips(lipMat));
@@ -1542,10 +1548,17 @@ export function buildChevalierBody(mats) {
     }, lampCoverMat, side, (s, v) => 0.07 + 0.73 * Math.sqrt(Math.sin(Math.PI * v)) * Math.min(1, s / 0.08, (1 - s) / 0.12), { nu: 14, ownNormals: true }));
     // 尾燈（ref_chevalier-ma_rear34：透明白色細長 LED 燈，外圍黑色燈殼）
     // iter-05：尾燈改「黑色燈殼＋燈罩＋2 條縱向 LED」（ref rear34：車尾上緣兩角的細長 LED 尾燈）
-    g.add(ribbon(-54.8, BODY_REAR_X, (x, s) => [0.37 + 0.02 * s, 0.62], black, side, 0.06, { nu: 8 }));
-    g.add(ribbon(-56.2, BODY_REAR_X, (x, s) => [0.41 + 0.03 * (1 - s), 0.585], lens, side, 0.14, { nu: 8 }));
-    g.add(ribbon(-57, BODY_REAR_X - 0.01, (x, s) => [0.455, 0.475], led, side, 0.24, { nu: 2 }));
-    g.add(ribbon(-58.5, BODY_REAR_X - 0.01, (x, s) => [0.53, 0.545], led, side, 0.24, { nu: 2 }));
+    // iter-26：盲評 #2「尾燈白色方框粗糙、參考是細長 LED 尾燈」→ 改為貼著車尾後緣、沿橫向（u）拉長的細楔形燈
+    //   （ref rear34：外側較高、往車中線收尖；燈罩內 3 條沿燈長方向的細 LED 線）。燈長 u 0.42→0.605、x 方向外側 2.6 mm、內側約 1 mm（推估：依 ref rear34 目視比例）
+    /** @type {(x: number) => number} 尾燈前緣（朝車頭那側）在 x 處的內端 u：越靠車尾越往中線延伸，形成楔形 */
+    const tailInnerU = (x) => 0.585 - 0.165 * Math.min(1, Math.max(0, (-60.3 - x) / 1.6));
+    const tailOuterU = 0.605;
+    g.add(ribbon(-60.0, BODY_REAR_X + 0.05, (x) => [tailInnerU(x) - 0.016, tailOuterU + 0.014], black, side, 0.06, { nu: 12 }));
+    g.add(ribbon(-60.3, BODY_REAR_X + 0.3, (x) => [tailInnerU(x), tailOuterU], tailBaseMat, side, 0.1, { nu: 12 }));
+    for (const xl of [-60.9, -61.6, -62.3]) {
+      g.add(ribbon(xl + 0.09, xl - 0.09, (x) => [tailInnerU(x) + 0.01, tailOuterU - 0.006], led, side, 0.22, { nu: 12 }));
+    }
+    g.add(ribbon(-60.2, BODY_REAR_X + 0.2, (x) => [tailInnerU(x) - 0.006, tailOuterU + 0.006], lampCoverMat, side, (s, v) => 0.12 + 0.3 * Math.sqrt(Math.sin(Math.PI * v)) * Math.min(1, s / 0.15, (1 - s) / 0.15), { nu: 14, ownNormals: true }));
     // 車尾鴨尾擾流：沿車尾上緣立起 1.3 mm、往後傾 1 mm 的唇邊（車身色）
     g.add(edgeWall(BODY_REAR_X + 0.35, 0, 0.36, 1.3, 1.0, lipMat, side));
     // 後甲板散熱口（ref rear34：座艙後方兩側的深色斜鰭片）：深色底板＋3 片鰭片
