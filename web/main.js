@@ -25,12 +25,9 @@ function buildStudioEnvironment() {
     m.lookAt(...look);
     env.add(m);
   };
-  box(120, 50, [0, 80, 0], [0, 0, 0], 2.0);
+  box(120, 50, [0, 80, 0], [0, 0, 0], 3.0);
   box(80, 30, [70, 30, -60], [0, 0, 0], 2.0);
   box(60, 30, [-80, 20, 40], [0, 0, 0], 0.8);
-  // iter-04：細長條燈（車漆 clearcoat 上的長條高光，強化金屬漆曲面的明暗漸層）
-  box(160, 8, [20, 60, -60], [0, 0, 0], 6.0);
-  box(160, 6, [-30, 55, 70], [0, 0, 0], 4.0);
   return env;
 }
 
@@ -139,9 +136,6 @@ if (view === 'track') {
   } else if (view === 'bottom') {
     camera.position.set(-60, -330, -210);
     camera.up.set(0, 1, 0);
-  } else if (view === 'rear34') {
-    // iter-04：後 3/4 視角（對照 ref_chevalier-ma_rear34：後葉子板肩線、尾燈）
-    camera.position.set(-270, 150, -215);
   } else {
     camera.position.set(250, 135, -235);
   }
