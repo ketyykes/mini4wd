@@ -59,11 +59,9 @@ function tireSidewallMaterial() {
   ctx.strokeStyle = '#2f2f33';
   ctx.lineWidth = 3;
   const ribs = 180;
-  // iter-08：輪框加大後胎壁帶變窄（約 65 px），肋紋、環線、字樣改依帶寬 bw 等比例配置（原為固定像素）
-  const bw = c - rIn;
   for (let i = 0; i < ribs; i++) {
     const a = (i / ribs) * Math.PI * 2;
-    for (const [r0, r1] of [[rIn + 0.05 * bw, rIn + 0.24 * bw], [c - 0.24 * bw, c - 0.05 * bw]]) {
+    for (const [r0, r1] of [[rIn + 4, rIn + 22], [c - 26, c - 6]]) {
       ctx.beginPath();
       ctx.moveTo(c + Math.cos(a) * r0, c + Math.sin(a) * r0);
       ctx.lineTo(c + Math.cos(a) * r1, c + Math.sin(a) * r1);
@@ -72,20 +70,20 @@ function tireSidewallMaterial() {
   }
   // 兩條細環線分隔肋紋與字樣帶
   ctx.lineWidth = 2;
-  for (const r of [rIn + 0.28 * bw, c - 0.28 * bw]) {
+  for (const r of [rIn + 26, c - 30]) {
     ctx.beginPath();
     ctx.arc(c, c, r, 0, Math.PI * 2);
     ctx.stroke();
   }
   // 沿圓周字樣（兩組對稱）：字底朝內、由外側看為正向
-  const rText = (rIn + c) / 2;
+  const rText = (rIn + 26 + c - 30) / 2;
   ctx.fillStyle = '#46464c';
-  ctx.font = `bold ${Math.round(0.36 * bw)}px Arial, Helvetica, sans-serif`;
+  ctx.font = 'bold 34px Arial, Helvetica, sans-serif';
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
   const label = 'TAMIYA  LOW FRICTION  26mm';
   for (const start of [-Math.PI / 2, Math.PI / 2]) {
-    const step = 0.052 * (0.36 * bw / 34);
+    const step = 0.052;
     const a0 = start - ((label.length - 1) * step) / 2;
     for (let i = 0; i < label.length; i++) {
       const a = a0 + i * step;
@@ -248,12 +246,11 @@ function buildWheel(mats, side) {
     const a = (k / 5) * Math.PI * 2;
     const spoke = new THREE.Group();
     // 主幹（輪轂 → 分岔點）
-    // iter-08：輪框加大（18 → 20.6 mm）後輻條相對變細，幅寬依參考（wheel-detail：Y 字臂寬約為輪框直徑的 7–8%）加粗
-    spoke.add(curvedArm([2.2, 0], [3.6, 0.15 * side], [4.9, 0.35 * side], 2.7, 2.2));
+    spoke.add(curvedArm([2.2, 0], [3.6, 0.15 * side], [4.9, 0.35 * side], 2.3, 1.9));
     // 兩支分岔臂：同向彎曲（twist），外端在輪框內緣
     for (const sgn of [-1, 1]) {
       const ang = sgn * 0.36 + 0.16 * side;
-      spoke.add(curvedArm([4.7, 0.35 * side], [6.9, sgn * 1.0 + 0.9 * side], [Math.cos(ang) * rimIn, Math.sin(ang) * rimIn], 1.6, 1.35));
+      spoke.add(curvedArm([4.7, 0.35 * side], [6.9, sgn * 1.0 + 0.9 * side], [Math.cos(ang) * rimIn, Math.sin(ang) * rimIn], 1.25, 1.0));
     }
     spoke.rotation.z = a;
     face.add(spoke);
