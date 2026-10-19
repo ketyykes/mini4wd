@@ -46,7 +46,9 @@ export function createWorld(track) {
   world.timestep = spec.sim.dt_s;
   // lengthUnit 會連帶限制最大速度（0.01 時上限 4 m/s，見 ITERATION_LOG），取 0.1
   world.lengthUnit = 0.1;
-  world.integrationParameters.numSolverIterations = 8;
+  world.integrationParameters.numSolverIterations = spec.sim.numSolverIterations;
+  // 允許穿透預設 0.5 mm（0.005 × lengthUnit），會吃掉 P06 一半的容許量，改小（見 config sim 說明）
+  world.integrationParameters.normalizedAllowedLinearError = spec.sim.normalizedAllowedLinearError;
 
   const ground = world.createRigidBody(RAPIER.RigidBodyDesc.fixed());
   const b = track.bounds;

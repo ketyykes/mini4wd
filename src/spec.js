@@ -22,12 +22,14 @@ export function deriveParams() {
   const massNoBattery_g = massChassisMisc + massMotor + massWheels;
   const massTotal_g = massNoBattery_g + massBattery;
 
-  // 馬達線性模型常數（SPEC 1.12）：Ke = V / ω0、Rm = V / I_stall、Kt = τ_stall / I_stall
-  // 如此 τ = Kt·(V − Ke·ω)/Rm = τ_stall(V)·(1 − ω/ω0(V))，與 SPEC 的電壓縮放式一致
+  // 馬達模型常數（SPEC 1.4 推估式，iter-01 起納入無載電流 I0）：
+  // R_m = V / I_stall、k_t = τ_stall / (I_stall − I0)、k_e = (V − I0·R_m) / ω0
+  // 輸出扭力 τ = k_t·I − τ_f(ω)，τ_f 在 3 V 無載轉速時 = k_t·I0（主 agent 決策 D1）
   const omega0Rated = (s.motor.noLoadRpm_atRated * 2 * Math.PI) / 60;
-  const ke = s.motor.ratedVoltage_V / omega0Rated;
-  const kt = s.motor.stallTorque_atRated_Nm / s.motor.stallCurrent_atRated_A;
+  const i0 = s.motor.noLoadCurrent_A;
   const motorResistance = s.motor.ratedVoltage_V / s.motor.stallCurrent_atRated_A;
+  const kt = s.motor.stallTorque_atRated_Nm / (s.motor.stallCurrent_atRated_A - i0);
+  const ke = (s.motor.ratedVoltage_V - i0 * motorResistance) / omega0Rated;
 
   return {
     wheelRadius,
@@ -38,7 +40,9 @@ export function deriveParams() {
     ke,
     kt,
     motorResistance,
-    motorFrictionTorque: kt * s.motor.noLoadCurrent_A,
+    omega0Rated,
+    motorFrictionTorque: kt * i0,
+    motorFrictionCoulombFraction: s.motor.frictionCoulombFraction,
     batteryResistance: s.battery.cells * s.battery.cellInternalResistance_ohm,
     capacity_C: s.battery.capacity_mAh * 3.6,
     gearEfficiency: s.drivetrain.gearEfficiency,

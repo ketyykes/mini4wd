@@ -4,24 +4,7 @@
 import * as THREE from 'three';
 import { spec } from './spec.js';
 import { rollerLayout, wheelLayout, componentLayout } from './carLayout.js';
-
-/** @type {(t: number, pts: number[][]) => number} 分段線性內插（pts 依 x 遞增） */
-const lerpTable = (t, pts) => {
-  if (t <= pts[0][0]) {
-    return pts[0][1];
-  }
-  for (let i = 1; i < pts.length; i++) {
-    if (t <= pts[i][0]) {
-      const [x0, y0] = pts[i - 1];
-      const [x1, y1] = pts[i];
-      const u = (t - x0) / (x1 - x0);
-      // 平滑插值（smoothstep）讓車殼曲面更順
-      const s = u * u * (3 - 2 * u);
-      return y0 + (y1 - y0) * s;
-    }
-  }
-  return pts[pts.length - 1][1];
-};
+import { buildChevalierBody } from './bodyShell.js';
 
 /** 建立材質集合 */
 function makeMaterials() {
@@ -31,7 +14,7 @@ function makeMaterials() {
     body: new THREE.MeshPhysicalMaterial({ vertexColors: true, roughness: 0.28, metalness: 0.35, clearcoat: 1.0, clearcoatRoughness: 0.08 }),
     glass: new THREE.MeshPhysicalMaterial({ color: 0x15181d, roughness: 0.05, metalness: 0.2, clearcoat: 1.0 }),
     tire: new THREE.MeshStandardMaterial({ color: 0x1b1b1b, roughness: 0.92, metalness: 0.0 }),
-    rim: new THREE.MeshStandardMaterial({ color: 0x8e9399, roughness: 0.35, metalness: 0.7 }),
+    rim: new THREE.MeshStandardMaterial({ color: 0x70757d, roughness: 0.4, metalness: 0.6 }),
     motorCan: new THREE.MeshStandardMaterial({ color: 0xc9ccd0, roughness: 0.25, metalness: 0.9 }),
     motorCap: new THREE.MeshStandardMaterial({ color: 0xe8e2d0, roughness: 0.6 }),
     steel: new THREE.MeshStandardMaterial({ color: 0xb8bcc2, roughness: 0.3, metalness: 0.95 }),
@@ -169,118 +152,6 @@ function buildRoller(mats, r) {
   return g;
 }
 
-/** 車殼：沿 x 放樣的超橢圓截面，含輪拱開口、座艙、條紋（頂點色） */
-function buildBodyShell(mats) {
-  const L0 = -68;
-  const L1 = 70;
-  const H = spec.body.height_mm;
-  const topPts = [[L0, 25], [-58, 28.5], [-40, 29.5], [-25, 33], [-10, H - 2.5], [5, H - 4.5], [16, 28], [30, 22.5], [50, 19], [64, 15.5], [L1, 12]];
-  const widthPts = [[L0, 34], [-60, 39], [-30, 40], [20, 40], [48, 38.5], [62, 33], [L1, 26]];
-  const archX = spec.chassis.wheelbase_mm / 2;
-  const archR = spec.tire.diameter_mm / 2 + 3.5;
-  const baseBottom = 6.5;
-  const bottomAt = (x) => {
-    let y = baseBottom;
-    for (const ax of [-archX, archX]) {
-      const dx = x - ax;
-      if (Math.abs(dx) < archR) {
-        y = Math.max(y, spec.tire.diameter_mm / 2 + Math.sqrt(archR * archR - dx * dx) - 1.5);
-      }
-    }
-    return y;
-  };
-  const nx = 90;
-  const nu = 40;
-  const pExp = 3.2;
-  const positions = [];
-  const colors = [];
-  const base = new THREE.Color(0x1f3fb8);
-  const orange = new THREE.Color(0xff7a1a);
-  const dark = new THREE.Color(0x0d0f14);
-  const white = new THREE.Color(0xf2f2f2);
-  for (let i = 0; i <= nx; i++) {
-    const x = L0 + ((L1 - L0) * i) / nx;
-    const top = lerpTable(x, topPts);
-    const w = lerpTable(x, widthPts);
-    const yb = bottomAt(x);
-    for (let j = 0; j <= nu; j++) {
-      const phi = (j / nu) * Math.PI;
-      const c = Math.cos(phi);
-      const s = Math.sin(phi);
-      const z = Math.sign(c) * Math.pow(Math.abs(c), 2 / pExp) * w;
-      const y = yb + (top - yb) * Math.pow(s, 2 / pExp);
-      positions.push(x, y, z);
-      // 頂點色：座艙玻璃、側面條紋、頭燈
-      let col = base;
-      const cockpit = x > -30 && x < 17 && y > top - 9 && Math.abs(z) < w * 0.8;
-      const stripe = Math.abs(y - (17 + x * 0.06)) < 1.6 && Math.abs(z) > w * 0.85 && x > -55 && x < 45;
-      const hoodStripe = Math.abs(Math.abs(z) - 17) < 1.4 && x > 20 && x < 66 && y > top - 3;
-      const headlight = x > 60 && Math.abs(z) > w * 0.55 && Math.abs(z) < w * 0.95 && y < top - 1 && y > 8;
-      if (cockpit) {
-        col = dark;
-      } else if (headlight) {
-        col = white;
-      } else if (stripe || hoodStripe) {
-        col = orange;
-      }
-      colors.push(col.r, col.g, col.b);
-    }
-  }
-  const idx = [];
-  const row = nu + 1;
-  for (let i = 0; i < nx; i++) {
-    for (let j = 0; j < nu; j++) {
-      const a = i * row + j;
-      const b = (i + 1) * row + j;
-      idx.push(a, b, a + 1, b, b + 1, a + 1);
-    }
-  }
-  // 前後端封口
-  for (const [ii, flip] of [[0, true], [nx, false]]) {
-    const cIdx = positions.length / 3;
-    const x = positions[ii * row * 3];
-    positions.push(x, (lerpTable(x, topPts) + bottomAt(x)) / 2, 0);
-    colors.push(base.r, base.g, base.b);
-    for (let j = 0; j < nu; j++) {
-      const a = ii * row + j;
-      if (flip) {
-        idx.push(cIdx, a + 1, a);
-      } else {
-        idx.push(cIdx, a, a + 1);
-      }
-    }
-  }
-  const geo = new THREE.BufferGeometry();
-  geo.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
-  geo.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
-  geo.setIndex(idx);
-  geo.computeVertexNormals();
-  const mat = mats.body.clone();
-  mat.side = THREE.DoubleSide;
-  const mesh = new THREE.Mesh(geo, mat);
-  mesh.castShadow = true;
-
-  const g = new THREE.Group();
-  g.add(mesh);
-  // 尾翼
-  const wing = new THREE.Mesh(new THREE.BoxGeometry(10, 1.6, 74), mats.body.clone());
-  wing.material.vertexColors = false;
-  wing.material.color = new THREE.Color(0x1f3fb8);
-  wing.position.set(-63, H - 3, 0);
-  wing.rotation.z = 0.12;
-  g.add(wing);
-  for (const sz of [-30, 30]) {
-    const stay = new THREE.Mesh(new THREE.BoxGeometry(6, 9, 2), mats.chassisDark);
-    stay.position.set(-61, H - 8, sz);
-    g.add(stay);
-  }
-  // 引擎蓋進氣口（碳纖紋理感的深色塊）
-  const scoop = new THREE.Mesh(new THREE.BoxGeometry(14, 1.2, 12), mats.chassisDark);
-  scoop.position.set(-15, H - 1.8, 0);
-  g.add(scoop);
-  return g;
-}
-
 /** 底盤：MA 一體式底盤、前後保桿、導輪架、馬達、齒輪、電池、輪軸 */
 function buildChassis(mats) {
   const g = new THREE.Group();
@@ -289,19 +160,61 @@ function buildChassis(mats) {
   const y0 = c.groundClearance_mm;
   const t = c.plateThickness_mm;
 
-  // 底板（含電池蓋開孔與肋條）
-  const plate = extrudeXZ(roundedRect(0, 0, 122, 58, 8), t, mats.chassis, [roundedRect(4, 0, 56, 40, 3)]);
+  // 底板（MA 一體式底盤底面）：中央馬達蓋開口、前後齒輪蓋開口、兩側電池艙通風孔
+  // 所有底面細節都內凹（不低於底板下緣 y0 = 離地 2.2 mm，SPEC 1.2）
+  const hw = spec.chassis.wheelbase_mm / 2;
+  const openings = [
+    roundedRect(0, 0, 32, 24, 3),
+    roundedRect(hw - 2, 0, 18, 28, 3),
+    roundedRect(-hw + 2, 0, 18, 28, 3),
+  ];
+  for (const sx of [-1, 1]) {
+    for (const sz of [-1, 1]) {
+      for (const k of [0, 1, 2]) {
+        openings.push(roundedRect(sx * (20 + k * 4.2), sz * 19, 2.4, 10, 1.1));
+      }
+    }
+  }
+  const plate = extrudeXZ(roundedRect(0, 0, 122, 58, 8), t, mats.chassis, openings);
   plate.position.y = y0;
   plate.castShadow = true;
   g.add(plate);
-  // 電池蓋（略凹、深色）
-  const cover = extrudeXZ(roundedRect(4, 0, 55, 39, 3), t * 0.8, mats.chassisDark);
-  cover.position.y = y0 + 0.15;
-  g.add(cover);
-  for (const dz of [-12, -6, 0, 6, 12]) {
-    const rib = new THREE.Mesh(new THREE.BoxGeometry(40, 0.6, 1.2), mats.chassis);
-    rib.position.set(4, y0 - 0.3, dz);
+  // 馬達蓋（內凹 0.4 mm）＋肋條＋卡榫
+  const motorCover = extrudeXZ(roundedRect(0, 0, 31.6, 23.6, 3), 0.8, mats.chassisDark);
+  motorCover.position.y = y0 + 0.4;
+  g.add(motorCover);
+  for (const dz of [-6, 0, 6]) {
+    const rib = new THREE.Mesh(new THREE.BoxGeometry(24, 0.35, 1.0), mats.chassis);
+    rib.position.set(0, y0 + 0.24, dz);
     g.add(rib);
+  }
+  for (const sx of [-1, 1]) {
+    const tab = new THREE.Mesh(new THREE.BoxGeometry(2.2, 0.4, 8), mats.chassis);
+    tab.position.set(sx * 14.5, y0 + 0.22, 0);
+    g.add(tab);
+  }
+  // 前後齒輪蓋（內凹）＋固定螺絲
+  for (const sx of [-1, 1]) {
+    const gc = extrudeXZ(roundedRect(sx * (hw - 2), 0, 17.6, 27.6, 3), 0.8, mats.chassisDark);
+    gc.position.y = y0 + 0.4;
+    g.add(gc);
+    for (const dz of [-9, 9]) {
+      const screw = new THREE.Mesh(new THREE.CylinderGeometry(1.5, 1.5, 0.5, 14), mats.screw);
+      screw.position.set(sx * (hw - 2), y0 + 0.2, dz);
+      g.add(screw);
+    }
+    const ridge = new THREE.Mesh(new THREE.BoxGeometry(1.0, 0.35, 20), mats.chassis);
+    ridge.position.set(sx * (hw - 2), y0 + 0.24, 0);
+    g.add(ridge);
+  }
+  // 輪軸支座（底盤側壁上的軸承座塊）
+  for (const sx of [-1, 1]) {
+    for (const sz of [-1, 1]) {
+      const h = spec.tire.diameter_mm / 2 + 3 - (y0 + t);
+      const boss = new THREE.Mesh(new THREE.BoxGeometry(8, h, 4.5), mats.chassis);
+      boss.position.set(sx * hw, y0 + t + h / 2, sz * 23.5);
+      g.add(boss);
+    }
   }
   // 側壁（電池艙／馬達艙外殼）
   for (const sz of [-1, 1]) {
@@ -311,8 +224,8 @@ function buildChassis(mats) {
   }
   // 馬達艙罩與齒輪箱
   for (const sx of [-1, 1]) {
-    const box = new THREE.Mesh(new THREE.BoxGeometry(22, 16, 30), mats.chassis);
-    box.position.set(sx * (c.wheelbase_mm / 2 - 2), y0 + t + 8, -6);
+    const box = new THREE.Mesh(new THREE.BoxGeometry(22, 13, 30), mats.chassis);
+    box.position.set(sx * (c.wheelbase_mm / 2 - 2), y0 + t + 6.5, -6);
     g.add(box);
   }
   // 前後保桿（俯視梯形，延伸到導輪架）
@@ -330,7 +243,9 @@ function buildChassis(mats) {
       [sx * 50, 24],
     ];
     const ordered = sx > 0 ? pts : pts.slice().reverse();
-    const bumper = extrudeXZ(ordered, 2.4, mats.chassis, [roundedRect(sx * (rx - 12), 0, 12, 22, 3)]);
+    const circle = (cx, cz, r) => Array.from({ length: 12 }, (_, k) => [cx + r * Math.cos((k / 12) * Math.PI * 2), cz + r * Math.sin((k / 12) * Math.PI * 2)]);
+    const bumperHoles = [roundedRect(sx * (rx - 12), 0, 12, 22, 3), circle(sx * (rx - 6), -rz + 11, 1.6), circle(sx * (rx - 6), rz - 11, 1.6), circle(sx * (rx - 1), -16, 1.3), circle(sx * (rx - 1), 16, 1.3)];
+    const bumper = extrudeXZ(ordered, 2.4, mats.chassis, bumperHoles);
     bumper.position.y = c.rollerCenterHeight_mm - 4.6;
     bumper.castShadow = true;
     g.add(bumper);
@@ -351,12 +266,13 @@ function buildChassis(mats) {
   // 雙軸馬達（置中、軸向沿 x）
   const m = comp.motor;
   const can = new THREE.Mesh(new THREE.CylinderGeometry(m.dia / 2, m.dia / 2, m.length - 6, 32), mats.motorCan);
-  can.scale.set(1, 1, m.flat / m.dia);
+  // 130 馬達外殼的平面在上下（MA 平放），所以壓扁的是世界 y 方向（旋轉前的局部 x）
+  can.scale.set(m.flat / m.dia, 1, 1);
   can.rotation.z = Math.PI / 2;
   can.position.set(m.x + 3, m.y, m.z);
   g.add(can);
   const cap = new THREE.Mesh(new THREE.CylinderGeometry(m.dia / 2 - 0.3, m.dia / 2 - 0.3, 6, 32), mats.motorCap);
-  cap.scale.set(1, 1, m.flat / m.dia);
+  cap.scale.set(m.flat / m.dia, 1, 1);
   cap.rotation.z = Math.PI / 2;
   cap.position.set(m.x - m.length / 2 + 3, m.y, m.z);
   g.add(cap);
@@ -435,7 +351,7 @@ export function buildCarModel() {
     });
     car.add(wheel);
   }
-  car.add(buildBodyShell(mats));
+  car.add(buildChevalierBody(mats));
   return car;
 }
 
@@ -446,18 +362,42 @@ export function buildCarModel() {
  */
 export function buildTrackModel(track) {
   const g = new THREE.Group();
-  const wallMat = new THREE.MeshStandardMaterial({ color: 0xf4f4f2, roughness: 0.5, side: THREE.DoubleSide });
-  const outerMat = new THREE.MeshStandardMaterial({ color: 0x2f6fd6, roughness: 0.45, side: THREE.DoubleSide });
+  // 配色依 JCJC 實品（ref_jcjc-track_curve-set_tamiya.jpg）：彎道每 45° 一片，紅／藍交錯；直線段為灰色；全部為霧面塑膠
+  const red = new THREE.Color(0xa01510);
+  const blue = new THREE.Color(0x15288a);
+  const gray = new THREE.Color(0x8f9399);
+  const arcStarts = track.path.segments.filter((sg) => sg.type === 'arc').map((sg) => sg.s0);
+  /** @type {(x: number, z: number) => THREE.Color} 依賽道位置取塑膠件顏色（輸入單位 m） */
+  const colorAt = (x, z) => {
+    const pr = track.path.project(x, z);
+    if (pr.seg.type !== 'arc') {
+      return gray;
+    }
+    const arcIdx = Math.max(0, arcStarts.indexOf(pr.seg.s0));
+    const piece = Math.min(3, Math.floor(((pr.s - pr.seg.s0) / pr.seg.len) * 4));
+    return (arcIdx * 4 + piece) % 2 === 0 ? red : blue;
+  };
+  const plasticMat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.62, metalness: 0.0, side: THREE.DoubleSide });
   for (const m of track.wallMeshes) {
     const geo = new THREE.BufferGeometry();
     const v = new Float32Array(m.vertices.length);
-    for (let i = 0; i < v.length; i++) {
+    const col = new Float32Array(m.vertices.length);
+    for (let i = 0; i < v.length; i += 3) {
       v[i] = m.vertices[i] * 1000;
+      v[i + 1] = m.vertices[i + 1] * 1000;
+      v[i + 2] = m.vertices[i + 2] * 1000;
+      const c = colorAt(m.vertices[i], m.vertices[i + 2]);
+      col[i] = c.r;
+      col[i + 1] = c.g;
+      col[i + 2] = c.b;
     }
     geo.setAttribute('position', new THREE.BufferAttribute(v, 3));
+    geo.setAttribute('color', new THREE.BufferAttribute(col, 3));
     geo.setIndex(new THREE.BufferAttribute(m.indices, 1));
-    geo.computeVertexNormals();
-    const mesh = new THREE.Mesh(geo, m.kind === 'outer' ? outerMat : wallMat);
+    // 拆成不共用頂點，牆面／頂面各自用面法向，避免平滑法向讓牆看起來像圓管
+    const flat = geo.toNonIndexed();
+    flat.computeVertexNormals();
+    const mesh = new THREE.Mesh(flat, plasticMat);
     mesh.castShadow = true;
     mesh.receiveShadow = true;
     g.add(mesh);
@@ -468,11 +408,14 @@ export function buildTrackModel(track) {
   const n = Math.ceil(track.path.length / 0.02);
   const pos = [];
   const idx = [];
+  const floorCol = [];
   for (let i = 0; i <= n; i++) {
     const s = (track.path.length * i) / n;
     const a = track.path.point(s, halfW);
     const b = track.path.point(s, -halfW);
     pos.push(a.x * 1000, 0, a.z * 1000, b.x * 1000, 0, b.z * 1000);
+    const fc = colorAt(track.path.point(s, 0).x, track.path.point(s, 0).z);
+    floorCol.push(fc.r, fc.g, fc.b, fc.r, fc.g, fc.b);
     if (i < n) {
       const k = i * 2;
       idx.push(k, k + 2, k + 1, k + 1, k + 2, k + 3);
@@ -480,9 +423,10 @@ export function buildTrackModel(track) {
   }
   const floorGeo = new THREE.BufferGeometry();
   floorGeo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  floorGeo.setAttribute('color', new THREE.Float32BufferAttribute(floorCol, 3));
   floorGeo.setIndex(idx);
   floorGeo.computeVertexNormals();
-  const floor = new THREE.Mesh(floorGeo, new THREE.MeshStandardMaterial({ color: 0x7c8088, roughness: 0.8, side: THREE.DoubleSide }));
+  const floor = new THREE.Mesh(floorGeo, plasticMat);
   floor.receiveShadow = true;
   floor.position.y = 0.2;
   g.add(floor);

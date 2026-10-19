@@ -2,7 +2,7 @@
 import { describe, test, expect, beforeAll } from 'vitest';
 import * as THREE from 'three';
 import { spec, deriveParams } from '../src/spec.js';
-import { Battery, theoreticalTopSpeed, longitudinalForce } from '../src/powertrain.js';
+import { Battery, theoreticalTopSpeed, longitudinalForce, axleFrictionForce, motorCoastDragForce, counterGearLossFraction } from '../src/powertrain.js';
 import { buildCircuit, buildStraight } from '../src/track.js';
 import { initRapier, createWorld, createCar, stepCar, forwardSpeed, upAxis, wallPenetration, minWallContactDist, localToWorld } from '../src/sim.js';
 import { buildCarModel } from '../src/model.js';
@@ -204,6 +204,9 @@ describe('Track A 物理驗證 P01–P10', () => {
     const dBearing = coastDistance('bearing', v0);
     const dBushing = coastDistance('bushing', v0);
     const ratio = dBearing / dBushing;
+    for (const bt of ['bearing', 'bushing']) {
+      console.log(`[P04] ${bt}：輪軸 4 處 ${(axleFrictionForce(bt, P.massTotal) * 1000).toFixed(2)} mN、中間齒輪（前後各 1，各自傳一半扭力）損失比 k_c=${counterGearLossFraction(bt).toFixed(4)}、馬達反拖（含中間齒輪）@3 m/s ${(motorCoastDragForce(G_STD, 3, bt) * 1000).toFixed(2)} mN、滾阻 ${(P.crr * P.massTotal * P.gravity * 1000).toFixed(2)} mN`);
+    }
     console.log(`[P04] 初速 ${v0} m/s：培林 ${f3(dBearing)} m, 塑膠軸承 ${f3(dBushing)} m, 比值 ${ratio.toFixed(3)}（coastMotorDrag=${spec.motor.coastMotorDrag}）`);
     expect(ratio).toBeGreaterThanOrEqual(1.2);
   }, 120000);
