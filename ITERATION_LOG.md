@@ -1976,3 +1976,13 @@
 - reviewer 評分 7.50（6/7/8.5/8.5），與 iter-19 持平 → 依 GOAL 規則 **revert**（程式碼回 iter-19；log 保留；iter-28 實作在 commit 10e60ec）。
 - reviewer：前導輪變薄變低、細長尾燈＋分件線、車頂板後緣收邊，三項皆局部進步未達半級；細尾燈在 side/sidehigh 幾乎看不到，車尾側面變空。
 - **Track A 最終版本維持 iter-19（87.50）**。
+
+---
+
+## 最終狀態摘要（主 agent，06:56）
+- **最終版本：iter-19**（程式碼 = commit 8c5f370；HEAD 為之後 iter-20～28 的 revert 鏈）。
+- 逐輪評分：外觀 6 / 7 / 8.5 / 8.5 = 7.50，物理 10/10，總分 **87.50**。
+- 無錨定盲評：#1 6.75（第一）、#2 7.25（第一）、#3 7.13（第二）、#4 7.38（第一，最終版本）。
+- 最終驗證：程式碼與 iter-19 完全一致，`npx vitest run` 10/10，工作區乾淨。
+- 最佳截圖：`renders/iter-19_{side,sidehigh,front34,rear34,top,bottom,track}.png`。
+- 未解決：P06 導輪 chatter（餘裕 0.32 mm）、P01 與理論值同公式、車重為設定值、比例項 reviewer 意見反覆（iter-20～28 連續 9 輪持平）。
