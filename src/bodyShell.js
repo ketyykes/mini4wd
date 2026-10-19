@@ -772,30 +772,31 @@ function drawHoodEmblem(ctx) {
 
 /** TAMIYA 標誌（白底黑框、雙星、TAMIYA 字） */
 function drawTamiya(ctx) {
-  // iter-17：改成參考的單色版（ref side-high 放大：透明底、兩個白色方塊內鏤空深藍星、下方白字 TAMIYA，
-  // 原本是白底紅藍彩色星）；材質加 alphaTest，透明處露出車身色
-  ctx.clearRect(0, 0, 256, 256);
-  const star = (cx, cy, r) => {
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(0, 0, 256, 256);
+  ctx.strokeStyle = '#111';
+  ctx.lineWidth = 14;
+  ctx.strokeRect(7, 7, 242, 242);
+  const star = (cx, cy, r, fill) => {
     ctx.beginPath();
     for (let k = 0; k < 10; k++) {
       const a = -Math.PI / 2 + (k * Math.PI) / 5;
-      const rr = k % 2 === 0 ? r : r * 0.42;
+      const rr = k % 2 === 0 ? r : r * 0.45;
       ctx.lineTo(cx + Math.cos(a) * rr, cy + Math.sin(a) * rr);
     }
     ctx.closePath();
+    ctx.fillStyle = fill;
     ctx.fill();
+    ctx.lineWidth = 6;
+    ctx.stroke();
   };
-  for (const cx of [72, 184]) {
-    ctx.fillStyle = '#ffffff';
-    ctx.fillRect(cx - 54, 22, 108, 112);
-    ctx.fillStyle = '#161c4e';
-    star(cx, 82, 50);
-  }
-  ctx.fillStyle = '#ffffff';
-  ctx.font = 'bold 60px Arial, sans-serif';
+  star(100, 100, 62, '#d71920');
+  star(156, 100, 62, '#1f3a93');
+  ctx.fillStyle = '#111';
+  ctx.font = 'bold 56px Arial, sans-serif';
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
-  ctx.fillText('TAMIYA', 128, 190);
+  ctx.fillText('TAMIYA', 128, 205);
 }
 
 /** 兩端漸尖的寬度包絡 */
@@ -841,9 +842,7 @@ const CABIN_X1 = -48;
 // iter-16（reviewer iter-15：座艙頂明顯拱起、擋風玻璃大而立、同相機下模型露出的車頂平面面積遠多於參考）：
 //   擋風玻璃 x 15→3 升 8.1 mm（原 15→0 升 7.8 mm，更立）；車頂最高點 37.1 不變，車頂後段 x −30 以後往車尾下降（−48：35.4 → 33.8），
 //   讓車頂讀成拱起的泡而不是平台；車頂半寬 19–19.5 → 15–16、座艙底半寬 30–31.5 → 25.5–27.5（推估：ref front34／rear34 車頂寬約為車身寬的 0.38–0.4）
-// iter-17（reviewer iter-16：擋風玻璃太斜、車頂缺左右兩道隆起脊）：擋風玻璃下段更立（x 15→12 升 3.8 mm，原 15→9 升 4.9 mm），
-//   車頂 x ≤ −6 整體降 0.25–0.3 mm，把高度讓給車頂兩道脊（ROOF_RIDGE_*），含脊的最高點仍 ≤ 38 mm（SPEC 1.12 外框高）
-const CABIN_TOP = [[15, 27.2], [12, 31.0], [9, 33.4], [5, 35.0], [0, 35.95], [-6, 36.45], [-16, 36.72], [-26, 36.77], [-34, 36.35], [-42, 35.0], [-48, 33.6]];
+const CABIN_TOP = [[15, 27.2], [9, 32.1], [3, 35.3], [-6, 36.7], [-16, 37.0], [-26, 37.05], [-34, 36.6], [-42, 35.2], [-48, 33.8]];
 const CABIN_TOP_W = [[15, 14], [0, 15.5], [-16, 16], [-36, 15.8], [-44, 14.8], [-48, 14.2]];
 const CABIN_BASE_W = [[15, 23.5], [0, 25.5], [-16, 26.5], [-36, 27.5], [-44, 27], [-48, 26.5]];
 /** iter-16：側窗中段控制點的橫向位置（0 = 車頂邊正下方、1 = 座艙底緣）；0.35 → 0.18 讓側窗更直立 */
@@ -852,20 +851,6 @@ const CABIN_SIDE_K = 0.18;
 const ROOF_X0 = -6;
 const ROOF_U = 0.46;
 const ROOF_LIFT = 0.7;
-/** iter-17：車頂兩道隆起脊（ref side-high／rear34：碳纖散熱口左右各一道縱向脊），u 範圍與高度（推估：脊寬約 3.5 mm、高約 0.6 mm） */
-const ROOF_RIDGE_U0 = 0.27;
-const ROOF_RIDGE_U1 = 0.37;
-const ROOF_RIDGE_H = 0.6;
-/** iter-17：側窗下緣（u），沿車殼與座艙交線之上 0.3–0.5 mm（tmp/diag17/cabin_vis.mjs 量測：x 10…−10 可見到 u 0.9、−16…−28 到 0.85、−32 到 0.8） */
-const WIN_LOW_U = [[14.5, 0.9], [4, 0.9], [-10, 0.9], [-18, 0.86], [-26, 0.84], [-31.5, 0.81]];
-/** iter-17：A 柱（細黑線）由擋風玻璃下緣外角斜上到車頂板前角；回傳此 x 處 A 柱中心的 u（ref side-high：擋風玻璃與側窗之間只有一條細黑柱） */
-const A_PILLAR = [[14.2, 0.89], [ROOF_X0, 0.48]];
-/** @type {(x: number) => number} */
-const aPillarU = (x) => {
-  const [[xa, ua], [xb, ub]] = A_PILLAR;
-  const t = Math.min(1, Math.max(0, (x - xa) / (xb - xa)));
-  return ua + (ub - ua) * t;
-};
 
 /** 座艙截面上的點；u：0 中線 → 1 與車殼交接處 */
 export function cabinPoint(x, u, side = 1) {
@@ -953,11 +938,9 @@ function buildCabin(bodyMat, glassMat, trimMat) {
         const a = i * row + j;
         const b = (i + 1) * row + j;
         const tri = side > 0 ? [a, b, a + 1, b, b + 1, a + 1] : [a, a + 1, b, b, a + 1, b + 1];
-        // iter-17：擋風玻璃與側窗合成一大片玻璃（中間只有細黑 A 柱），側窗下緣降到 WIN_LOW_U
-        // 擋風玻璃：x > ROOF_X0、u 到側窗下緣；側窗：x ∈ (−31.5, ROOF_X0]、u 在車頂邊與下緣之間
-        const lowU = smoothTable(WIN_LOW_U, x);
-        const windshield = x > ROOF_X0 && u < lowU;
-        const sideWindow = x > -31.5 && x <= ROOF_X0 && u >= 0.5 && u < lowU;
+        // 擋風玻璃：x > −7；側窗：x ∈ (−31, 13)、u 在車頂邊與腰線之間
+        const windshield = x > -7 && u < 0.5;
+        const sideWindow = x > -31.5 && x < 12.5 && u >= 0.5 && u < 0.86;
         if (windshield || sideWindow) {
           glassIdx.push(...tri);
         } else {
@@ -990,19 +973,14 @@ function buildCabin(bodyMat, glassMat, trimMat) {
     g.add(liftWall((t) => [ROOF_X0, ROOF_U * t], 16, ROOF_LIFT, trimMat, side));
     // 車頂板前緣下方的擋風玻璃上框
     g.add(ribbon(ROOF_X0 + 1.4, ROOF_X0, () => [0, ROOF_U + 0.02], trimMat, side, 0.15, { ...cab, nu: 12 }));
-    // iter-17：A 柱改成斜向細黑柱（原本是 u 0.47–0.57 的車身色寬帶，把玻璃切成兩小塊）
-    g.add(ribbon(A_PILLAR[0][0], ROOF_X0, (x) => [aPillarU(x) - 0.025, aPillarU(x) + 0.025], trimMat, side, 0.2, cab));
-    // 側窗上緣（車頂板下方）、下緣（沿 WIN_LOW_U）、後緣（C 柱前緣，略斜）
+    // A 柱（車身色）＋兩側黑色細框
+    g.add(ribbon(CABIN_X0 + 0.3, ROOF_X0, () => [0.47, 0.57], paintTwo, side, 0.3, cab));
+    g.add(ribbon(CABIN_X0 + 0.3, ROOF_X0, () => [0.445, 0.47], trimMat, side, 0.2, cab));
+    g.add(ribbon(12.5, ROOF_X0, () => [0.57, 0.6], trimMat, side, 0.2, cab));
+    // 側窗上緣（車頂板下方）、下緣（腰線）、後緣（C 柱前緣，略斜）
     g.add(ribbon(ROOF_X0, -31.5, () => [ROOF_U, 0.5], trimMat, side, 0.2, cab));
-    g.add(ribbon(14.5, -31.5, (x) => [smoothTable(WIN_LOW_U, x) - 0.01, smoothTable(WIN_LOW_U, x) + 0.03], trimMat, side, 0.2, cab));
-    g.add(ribbon(-30, -32.5, (x, s) => [ROOF_U, smoothTable(WIN_LOW_U, x) + 0.03], trimMat, side, 0.2, cab));
-    // iter-17：車頂兩道隆起脊（散熱口兩側，前後端 4 mm 內漸收到 0），截面為圓拱
-    const ridgeLift = (s, v) => {
-      const taper = Math.min(1, s / 0.1, (1 - s) / 0.1);
-      const ease = taper * taper * (3 - 2 * taper);
-      return ROOF_LIFT + 0.02 + ROOF_RIDGE_H * ease * Math.pow(Math.sin(Math.PI * v), 0.7);
-    };
-    g.add(ribbon(ROOF_X0 + 0.5, CABIN_X1 + 0.3, () => [ROOF_RIDGE_U0, ROOF_RIDGE_U1], paintTwo, side, ridgeLift, { ...cab, nu: 12, ownNormals: true }));
+    g.add(ribbon(12.5, -31.5, (x, s) => [0.84 - 0.03 * s, 0.88 - 0.02 * s], trimMat, side, 0.2, cab));
+    g.add(ribbon(-30, -32.5, (x, s) => [ROOF_U, 0.88], trimMat, side, 0.2, cab));
     // iter-05：分件線（座艙件與車殼之間的細縫，沿座艙底緣）
     g.add(ribbon(CABIN_X0 - 1.2, CABIN_X1, () => [0.975, 1.0], trimMat, side, 0.08, cab));
     // 前緣窗框：擋風玻璃下緣（與引擎蓋交界）
@@ -1046,14 +1024,12 @@ function buildCabin(bodyMat, glassMat, trimMat) {
   for (let i = 0; i <= nx; i++) {
     const x = -12 + (-32 + 12) * (i / nx);
     for (let k = 0; k <= nz; k++) {
-      // iter-17：散熱口半寬 10 → 8.5 mm，讓出兩側隆起脊的位置
-      const zz = -8.5 + 17 * (k / nz);
+      const zz = -10 + 20 * (k / nz);
       const tw = smoothTable(CABIN_TOP_W, x);
       const r = zz / (tw * 0.5);
       // 車頂中段近似拋物面：中線最高，往兩側下降約 0.15 mm（與 cabinPoint 的控制點一致）
       pos.push(x, smoothTable(CABIN_TOP, x) - 0.1 * r * r + ROOF_LIFT + 0.15, zz);
-      // iter-17：寬度縮成 17/20，貼圖 V 跟著縮，保持網格密度不變（避免 sidehigh 出現同心圓疊紋）
-      uvs.push(i / nx, (k / nz) * (17 / 20));
+      uvs.push(i / nx, k / nz);
     }
   }
   for (let i = 0; i < nx; i++) {
@@ -1101,13 +1077,11 @@ function buildCabinInterior(tubMat, seatMat) {
   // 在玻璃內側 0.25 mm 加一片與側窗平行的內飾板蓋住車殼，透過玻璃看成均勻的深色車門內側（ref side-high 側窗內為均勻深色）
   const doorMat = Object.assign(seatMat.clone(), { side: THREE.DoubleSide });
   for (const side of [1, -1]) {
-    // iter-17：側窗擴大（往前到 A 柱腳、往上到車頂邊），內飾板跟著擴大
     const dx0 = -31.2;
-    const dx1 = 14.0;
+    const dx1 = 12.2;
     const doorPoint = (i, j) => {
       const x = dx0 + ((dx1 - dx0) * i) / 40;
-      const uTop = x > ROOF_X0 ? Math.max(0.5, aPillarU(x)) : 0.5;
-      const u = uTop + 0.02 + ((0.98 - uTop) * j) / 10;
+      const u = 0.52 + (0.48 * j) / 10;
       return cabinPoint(x, u, side).addScaledVector(cabinNormal(x, u, side), -0.25);
     };
     g.add(gridGeometryMesh(40, 10, doorPoint, doorMat));
@@ -1410,7 +1384,7 @@ export function buildChevalierBody(mats) {
   const tamiyaTex = canvasTexture(256, 256, drawTamiya);
   // iter-14：側進氣口槽內腔體（頂點色含 alpha，淡出到後葉子板前緣）
   const cavityMat = new THREE.MeshStandardMaterial({ vertexColors: true, transparent: true, depthWrite: false, roughness: 0.85, metalness: 0.0, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2, side: THREE.DoubleSide });
-  const tamiyaMat = tamiyaTex ? decal(0xffffff, { map: tamiyaTex, alphaTest: 0.4, polygonOffsetFactor: -4, polygonOffsetUnits: -4 }) : null;
+  const tamiyaMat = tamiyaTex ? decal(0xffffff, { map: tamiyaTex, polygonOffsetFactor: -4, polygonOffsetUnits: -4 }) : null;
 
   g.add(buildHull(paint, inner));
   g.add(buildCabin(paint, glass, black));
@@ -1420,9 +1394,8 @@ export function buildChevalierBody(mats) {
     const midMat = decal(0xffffff, { map: midTex, alphaTest: 0.35, polygonOffsetFactor: -4, polygonOffsetUnits: -4 });
     // 字頭（貼圖 V = 0）都朝車頂中線、從車外側看是正字：
     // 右側（+z）由後往前排字；左側（−z）由前往後排字（iter-02 左側也由後往前 → 俯視呈上下顛倒的鏡像字，reviewer 指出的 bug）
-    // iter-17：字樣移到車頂脊外側（u 0.375–0.455），讓出脊的位置
-    g.add(roofDecal(-33, -13, 0.375, 0.455, midMat, 1));
-    g.add(roofDecal(-13, -33, 0.375, 0.455, midMat, -1));
+    g.add(roofDecal(-33, -13, 0.33, 0.43, midMat, 1));
+    g.add(roofDecal(-13, -33, 0.33, 0.43, midMat, -1));
   }
   g.add(buildWheelWells(new THREE.MeshStandardMaterial({ color: 0x101114, roughness: 0.9, side: THREE.DoubleSide })));
 

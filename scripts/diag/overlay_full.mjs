@@ -39,9 +39,7 @@ const center = xs.map((x) => body.bodyPoint(x, 0, 1));
 const ridgeNear = xs.map((x) => body.bodyPoint(x, 0.4, -1));
 const cabXs = xs.filter((x) => x <= 15 && x >= -48);
 const cabFar = cabXs.map((x) => body.cabinPoint(x, 0.3, 1));
-const cabNear = cabXs.map((x) => body.cabinPoint(x, x > -16 ? 0.9 : 0.85, -1));
-// iter-17：近側側窗上緣（u = 0.5，車頂邊）
-const cabNearTop = cabXs.map((x) => body.cabinPoint(x, 0.5, -1));
+const cabNear = cabXs.map((x) => body.cabinPoint(x, 0.86, -1));
 const ridgeFar = xs.map((x) => body.bodyPoint(x, 0.4, 1));
 // 遠側輪廓：每個 x 截面在畫面上最高（v 最小）的點，對應參考照遠側葉子板與背景的交界
 const farSil = xs.map((x) => {
@@ -57,7 +55,7 @@ const farSil = xs.map((x) => {
 const ref = path.join(root, '../shared/reference/ref_chevalier-ma_side-high_tamiya.jpg');
 const out = process.argv[2] ?? path.join(root, 'tmp/overlay_profile.png');
 const args = [ref, '-strokewidth', '2'];
-for (const [pts, color] of [[center, 'yellow'], [ridgeNear, 'red'], [farSil, 'cyan'], [cabFar, 'lime'], [cabNear, 'magenta'], [cabNearTop, 'white']]) {
+for (const [pts, color] of [[center, 'yellow'], [ridgeNear, 'red'], [farSil, 'cyan'], [cabFar, 'lime'], [cabNear, 'magenta']]) {
   args.push('-stroke', color, '-fill', 'none', '-draw', `polyline ${pts.map((q) => project(q).map((n) => n.toFixed(1)).join(',')).join(' ')}`);
 }
 args.push(out);

@@ -838,35 +838,6 @@ function buildChassis(mats) {
       rib.position.set(rx, (topY + y0) / 2 - 0.3, sz * 36.35);
       g.add(rib);
     }
-    // iter-17（reviewer iter-16：底盤側面偏方塊、缺肋條孔位）：
-    // (1) 窗列兩端各一個圓孔（深色底）＋外圈凸環；(2) 窗列兩端外側立肋；(3) 底緣往外凸 0.7 mm 的踏階條（高低落差），
-    //     踏階條上 5 個小孔（推估：MA 側面下緣有一排定位孔）
-    for (const hx of [-21.0, 21.0]) {
-      const ring = new THREE.Mesh(new THREE.TorusGeometry(1.25, 0.28, 8, 20), mats.chassis);
-      ring.position.set(hx, winY, sz * 36.3);
-      g.add(ring);
-      const holeBack = new THREE.Mesh(new THREE.CircleGeometry(1.1, 20), mats.chassisDark);
-      holeBack.rotation.y = sz > 0 ? 0 : Math.PI;
-      holeBack.position.set(hx, winY, sz * 36.22);
-      g.add(holeBack);
-    }
-    for (const rx of [-18.6, 18.6]) {
-      const rib = new THREE.Mesh(new THREE.BoxGeometry(0.8, topY - y0 - 0.6, 0.3), mats.chassis);
-      rib.position.set(rx, (topY + y0) / 2 - 0.3, sz * 36.35);
-      g.add(rib);
-    }
-    {
-      const stepLen = 2 * (hw - Math.sqrt(arcR * arcR - (y0 + 0.9 - wheelY) ** 2)) - 1.0;
-      const step = new THREE.Mesh(new THREE.BoxGeometry(stepLen, 1.3, 0.8), mats.chassis);
-      step.position.set(0, y0 + 0.65, sz * 36.6);
-      g.add(step);
-      for (let k = -2; k <= 2; k++) {
-        const dot = new THREE.Mesh(new THREE.CircleGeometry(0.42, 14), mats.chassisDark);
-        dot.rotation.y = sz > 0 ? 0 : Math.PI;
-        dot.position.set(k * 8.5, y0 + 0.65, sz * 37.02);
-        g.add(dot);
-      }
-    }
     // 上緣倒角條（略亮，接受頂光形成細高光線）
     const chamferY = 7.4;
     const chamfer = new THREE.Mesh(new THREE.BoxGeometry(2 * (hw - Math.sqrt(arcR * arcR - (chamferY - wheelY) ** 2)), 0.6, 0.5), mats.roller);
@@ -879,14 +850,6 @@ function buildChassis(mats) {
     const block = new THREE.Mesh(new THREE.BoxGeometry(10, blockTop - y0, 5.8), mats.chassis);
     block.position.set(-15, (blockTop + y0) / 2, sz * 35.9);
     g.add(block);
-    // iter-17：支撐塊外側面加一道橫槽（深色）＋上緣倒角條，不再是平的方塊
-    const blockSlot = new THREE.Mesh(new THREE.BoxGeometry(7.0, 1.0, 0.2), mats.chassisDark);
-    blockSlot.position.set(-15, y0 + 2.0, sz * 38.82);
-    g.add(blockSlot);
-    const blockChamfer = new THREE.Mesh(new THREE.BoxGeometry(10, 0.7, 0.9), mats.chassis);
-    blockChamfer.rotation.x = sz * 0.75;
-    blockChamfer.position.set(-15, blockTop - 0.25, sz * 38.65);
-    g.add(blockChamfer);
     for (const hx of [-12.4, -17.6]) {
       const hole = new THREE.Mesh(new THREE.CylinderGeometry(1.15, 1.15, 0.12, 20), mats.chassisDark);
       hole.position.set(hx, blockTop + 0.02, sz * 36.4);
@@ -946,10 +909,7 @@ function buildChassis(mats) {
     return m;
   };
   for (const sx of [-1, 1]) {
-    // iter-17（reviewer iter-16：前保桿是厚平方板，參考 ref_ma-chassis 是鏤空 Y 字保桿）：
-    // 橋接板改成單層 2.4 mm 骨架板，開穿透窗：中央 Y 字（縱向主肋 x 50→63 分岔到前緣兩角）把板分成
-    // 左右兩個大側窗＋前緣三角窗；拿掉 iter-06 的深色整片上蓋與 X 形補強。
-    // 主肋、外框、前緣上方再立一圈 1.0–1.3 mm 的凸肋（高低落差），導輪座凸台更高一階。尺寸為推估（依 ref_ma-chassis 目測比例）
+    // 中央橋接板（底盤前端 → 導輪臂根部）
     const bridge = [
       [sx * 50, -22],
       [sx * 62, -20],
@@ -958,63 +918,54 @@ function buildChassis(mats) {
       [sx * 62, 20],
       [sx * 50, 22],
     ];
+    // iter-06：橋接板改成「上蓋＋下方鏤空肋層」（MA 保桿底面是三角形肋格，頂面為平整上蓋）：
+    // 下層 1.4 mm 開三角形／長圓口袋，上層 1.0 mm 上蓋封住 → 底面看是鏤空骨架、不會透出背景；
+    // 上蓋外緣加立起的邊框樑、中央 2 顆十字螺絲（與後方上層導輪架同等的細節）
     /** @type {number[][][]} */
-    const windows = [[[sx * 65.2, 0], [sx * 72.6, -5.6], [sx * 72.6, 5.6]]];
+    const pockets = [
+      roundedRect(sx * 57.5, 0, 8, 9, 1.5),
+      roundedRect(sx * 68.5, 0, 6, 8, 1.5),
+    ];
     for (const sz of [-1, 1]) {
-      windows.push([[sx * 52.2, sz * 1.7], [sx * 60.2, sz * 1.7], [sx * 68.8, sz * 7.6], [sx * 63.2, sz * 15.6], [sx * 58.4, sz * 12.4], [sx * 52.2, sz * 10.0]]);
+      pockets.push([[sx * 52.5, sz * 19.2], [sx * 60.5, sz * 17.2], [sx * 52.5, sz * 6.5]]);
+      pockets.push([[sx * 63.5, sz * 15.8], [sx * 71.5, sz * 8.6], [sx * 63.5, sz * 6.2]]);
+      pockets.push([[sx * 54.5, sz * 5.2], [sx * 61.8, sz * 5.2], [sx * 61.8, sz * 15.5]]);
     }
-    // ExtrudeGeometry 會自動校正外框與洞的繞序，鏡像側不需另外處理
-    const plate = extrudeXZ(bridge, bt, mats.chassis, windows);
-    plate.position.y = bumperY;
-    g.add(plate);
-    // Y 字主肋（凸肋）：縱向主幹＋分岔到前緣兩角
-    const ribH = 1.3;
-    g.add(beam(sx * 50.5, 0, sx * 63.2, 0, 2.2, ribH, bumperY + bt));
+    const ribLayer = extrudeXZ(bridge, 1.4, mats.chassis, pockets);
+    ribLayer.position.y = bumperY;
+    g.add(ribLayer);
+    const skin = extrudeXZ(bridge, bt - 1.4, mats.chassisDark);
+    skin.position.y = bumperY + 1.4;
+    g.add(skin);
+    // 上蓋外緣邊框樑（沿橋接板斜邊）
     for (const sz of [-1, 1]) {
-      g.add(beam(sx * 62.6, 0, sx * (rx + 2.2), sz * 8.2, 1.6, ribH, bumperY + bt));
-      // 外框凸肋：斜邊、後緣
-      g.add(beam(sx * 62, sz * 19.4, sx * (rx + 2.4), sz * 8.6, 1.1, 1.0, bumperY + bt));
-      // 側窗與 Y 肋之間的細橫肋（把大側窗分成前後兩格）
-      g.add(beam(sx * 59.2, sz * 1.5, sx * 61.0, sz * 13.6, 0.9, 0.8, bumperY + bt - 0.4));
+      g.add(beam(sx * 62, sz * 19.6, sx * (rx + 2.6), sz * 8.8, 1.1, 1.1, bumperY + bt));
     }
-    // 前緣：比板高一階的立壁，正面兩個方形凹槽（深色底）
-    g.add(beam(sx * (rx + 2.4), -9, sx * (rx + 2.4), 9, 1.4, bt + 1.3, bumperY));
     for (const sz of [-1, 1]) {
-      const recess = new THREE.Mesh(new THREE.BoxGeometry(0.3, 1.6, 4.2), mats.chassisDark);
-      recess.position.set(sx * (rx + 3.15), bumperY + 1.6, sz * 4.4);
-      g.add(recess);
+      g.add(screwHead(mats, sx * 58, bumperY + bt, sz * 6, 1.5));
     }
-    // 主幹根部的兩顆螺絲（保桿固定在底盤）
-    g.add(screwHead(mats, sx * 54.5, bumperY + bt + ribH, 0, 1.4));
-    g.add(screwHead(mats, sx * 59.5, bumperY + bt + ribH, 0, 1.2));
+    // 橋接板前緣立起的厚邊（保桿正面）
+    g.add(beam(sx * (rx + 2.4), -9, sx * (rx + 2.4), 9, 1.4, 4.2, bumperY));
     for (const sz of [-1, 1]) {
-      // 導輪臂：底板（3 個減重孔）＋兩側立起的邊框（I 字斷面）
+      // 導輪臂：底板＋兩側立起的邊框（I 字斷面，臂厚約 5 mm）
       const ax0 = sx * 54;
       const az0 = sz * 16;
       const ax1 = sx * rx;
       const az1 = sz * rz;
-      g.add(armPlate(ax0, az0, ax1, az1, 6.5, bt, bumperY, 3, mats.chassis));
+      // iter-05：導輪臂底板改為擠出板件並開 2 個減重孔（reviewer「保桿缺螺絲孔」；ref ma-chassis：臂上一排圓孔）
+      g.add(armPlate(ax0, az0, ax1, az1, 6.5, bt, bumperY, 2, mats.chassis));
       const dirX = ax1 - ax0;
       const dirZ = az1 - az0;
       const L = Math.hypot(dirX, dirZ);
       const nx = -dirZ / L;
       const nz = dirX / L;
-      for (const off of [-2.7, 2.7]) {
-        g.add(beam(ax0 + nx * off, az0 + nz * off, ax1 + nx * off, az1 + nz * off, 1.1, 1.3, bumperY + bt));
+      for (const off of [-2.6, 2.6]) {
+        g.add(beam(ax0 + nx * off, az0 + nz * off, ax1 + nx * off, az1 + nz * off, 1.2, 2.2, bumperY + bt));
       }
-      // 臂上兩道橫肋（在孔與孔之間，跨在兩側邊框之間）
-      for (const f of [0.5, 0.72]) {
-        const cx = ax0 + dirX * f;
-        const cz = az0 + dirZ * f;
-        g.add(beam(cx - nx * 2.2, cz - nz * 2.2, cx + nx * 2.2, cz + nz * 2.2, 0.8, 0.9, bumperY + bt));
-      }
-      // 導輪座：兩階凸台（下大上小）
+      // 導輪座（圓柱凸台，導輪下方）
       const boss = new THREE.Mesh(new THREE.CylinderGeometry(4.6, 4.6, bt + 1.0, 24), mats.chassis);
       boss.position.set(ax1, bumperY + (bt + 1.0) / 2 - 0.5, az1);
       g.add(boss);
-      const boss2 = new THREE.Mesh(new THREE.CylinderGeometry(3.4, 3.8, 1.0, 24), mats.chassis);
-      boss2.position.set(ax1, bumperY + bt + 1.0, az1);
-      g.add(boss2);
       // 三角斜撐：臂中段下方往後下方連回底盤側框（從側面與前 3/4 視角看得到）
       const mx = ax0 + dirX * 0.45;
       const mz = az0 + dirZ * 0.45;
@@ -1022,10 +973,13 @@ function buildChassis(mats) {
       strut.position.y = (y0 + t + bumperY) / 2 + 0.4;
       strut.rotation.z = sx * Math.atan2(bumperY - (y0 + t), Math.hypot(mx - sx * 44, mz - sz * 22.5)) * 0.9;
       g.add(strut);
-      // 斜撐板（開一個減重孔）
-      const web = extrudeXY([[0, 0], [10, 0], [10, 3.2], [0, 1]], 1.2, mats.chassis, [circlePts(6.5, 1.3, 0.7, 10)]);
+      const web = extrudeXY([[0, 0], [10, 0], [10, 3.2], [0, 1]], 1.2, mats.chassis);
       web.position.set(sx > 0 ? 50 : -60, bumperY - 2.2, sz * 21.5 - 0.6);
       g.add(web);
+    }
+    // 兩臂之間的 X 形補強（俯視可見）
+    for (const sz of [-1, 1]) {
+      g.add(beam(sx * 56, sz * 14, sx * (rx - 4), -sz * 8, 1.4, 1.6, bumperY + bt));
     }
   }
   g.add(buildRearStay(mats, rx, rz, bumperY + bt, c.rearUpperRollerHeight_mm - 4.4));
