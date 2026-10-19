@@ -53,7 +53,7 @@ function tireSidewallMaterial() {
   const rr = spec.tire.rimDiameter_mm / 2;
   const wallOuter = rr + 0.55 * (R - rr);
   const rIn = (rr / wallOuter) * c;
-  ctx.fillStyle = '#252528';
+  ctx.fillStyle = '#1e1e20';
   ctx.fillRect(0, 0, size, size);
   // 內圈與外圈細肋紋（放射短線）
   ctx.strokeStyle = '#2f2f33';
@@ -99,8 +99,7 @@ function tireSidewallMaterial() {
   tex.anisotropy = 8;
   const bump = new THREE.CanvasTexture(cv);
   bump.anisotropy = 8;
-  // iter-20：側壁同胎面霧面橡膠（roughness 0.9 → 0.95、灰色 sheen），與亮面黑底盤拉開
-  return new THREE.MeshPhysicalMaterial({ map: tex, bumpMap: bump, bumpScale: 1.2, roughness: 0.95, metalness: 0.0, envMapIntensity: 1.0, sheen: 0.5, sheenRoughness: 0.85, sheenColor: 0x56565c, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -1 });
+  return new THREE.MeshStandardMaterial({ map: tex, bumpMap: bump, bumpScale: 1.2, roughness: 0.9, metalness: 0.0, envMapIntensity: 0.6, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -1 });
 }
 
 /** 建立材質集合 */
@@ -108,15 +107,12 @@ function makeMaterials() {
   return {
     // iter-06：黑塑膠與橡膠胎粗糙度區分——底盤 ABS 半光（roughness 0.4＋薄清漆，邊緣有亮線），
     // 深色內層件平光（0.75），輪胎橡膠全霧（0.96，見 tire）
-    // iter-20（reviewer iter-19「橡膠與黑塑膠差異不明顯」）：底盤改更黑（0x34373d → 0x202126）、半光（roughness 0.4 → 0.3、
-    //   清漆 0.3 → 0.6／0.35 → 0.12），邊緣與平面出現較清楚的燈箱反光（ref_ma-chassis：MA 底盤為亮面黑 ABS）
-    chassis: new THREE.MeshPhysicalMaterial({ color: 0x202126, roughness: 0.3, metalness: 0.05, clearcoat: 0.6, clearcoatRoughness: 0.12 }),
+    chassis: new THREE.MeshPhysicalMaterial({ color: 0x34373d, roughness: 0.4, metalness: 0.05, clearcoat: 0.3, clearcoatRoughness: 0.35 }),
     chassisDark: new THREE.MeshStandardMaterial({ color: 0x212226, roughness: 0.75, metalness: 0.0 }),
     body: new THREE.MeshPhysicalMaterial({ vertexColors: true, roughness: 0.28, metalness: 0.35, clearcoat: 1.0, clearcoatRoughness: 0.08 }),
     glass: new THREE.MeshPhysicalMaterial({ color: 0x15181d, roughness: 0.05, metalness: 0.2, clearcoat: 1.0 }),
     // iter-03：輪胎橡膠粗糙感（程序化雜訊 bump＋roughness 貼圖），顏色由死黑提亮到深炭灰
-    // iter-20：橡膠與黑塑膠拉開——胎面改 MeshPhysical 加灰色 sheen（霧面橡膠掠射處的粉霧感、無清楚反光），底色略提亮成炭灰 0x303032（sheen 0.5、envMapIntensity 0.6 → 1.0，背光面仍讀得出霧面炭灰）
-    tire: new THREE.MeshPhysicalMaterial({ color: 0x303032, roughness: 0.96, metalness: 0.0, bumpMap: rubberNoiseTexture(), bumpScale: 0.6, roughnessMap: rubberNoiseTexture(), envMapIntensity: 1.0, sheen: 0.5, sheenRoughness: 0.85, sheenColor: 0x56565c }),
+    tire: new THREE.MeshStandardMaterial({ color: 0x232325, roughness: 0.96, metalness: 0.0, bumpMap: rubberNoiseTexture(), bumpScale: 0.6, roughnessMap: rubberNoiseTexture(), envMapIntensity: 0.6 }),
     tireTread: new THREE.MeshStandardMaterial({ color: 0x161617, roughness: 0.97, metalness: 0.0 }),
     // 輪框：ref_chevalier-ma_wheel-detail 為淺灰緞面塑膠（帶些許金屬粉），不是鍍鉻
     rim: new THREE.MeshPhysicalMaterial({ color: 0xa4a9b0, roughness: 0.42, metalness: 0.45, clearcoat: 0.35, clearcoatRoughness: 0.3 }),

@@ -236,8 +236,8 @@ const INTAKE_U0 = 0.69;
 const INTAKE_U1 = 0.94;
 /** 淺盤最深處（唇邊前）往內 mm */
 const INTAKE_DISH = 1.8;
-/** 槽底往內 mm（iter-20：3.8 → 4.8，reviewer iter-19「側面大進氣凹槽偏淺」） */
-const INTAKE_SLOT = 4.8;
+/** 槽底往內 mm */
+const INTAKE_SLOT = 3.8;
 /** 唇邊長度（a 0.35…1.0）與唇邊隆起 mm */
 const INTAKE_LIP = 0.5;
 /** 淺盤前端距唇邊 mm */
@@ -252,8 +252,8 @@ const smooth01 = (t) => {
 const intakeV = (u) => (u - INTAKE_U0) / (INTAKE_U1 - INTAKE_U0);
 /** @type {(v: number) => number} 唇邊（槽口前緣）所在 x：上下兩端靠前、中段往後凸，成「)」形 */
 const intakeEdgeX = (v) => -14.4 - 3.0 * Math.sin(Math.PI * Math.min(1, Math.max(0, v)));
-/** @type {(v: number) => number} 上下兩端的深度包絡（iter-20：各 18% → 12% 平滑淡出，深槽段更長） */
-const intakeEnv = (v) => smooth01(v / 0.12) * smooth01((1 - v) / 0.12);
+/** @type {(v: number) => number} 上下兩端的深度包絡（各 18% 平滑淡出） */
+const intakeEnv = (v) => smooth01(v / 0.18) * smooth01((1 - v) / 0.18);
 /**
  * 側進氣口往內（−|z|）的位移量
  * @type {(x: number, u: number) => number}
@@ -555,47 +555,6 @@ function ribbon(x0, x1, band, mat, side, lift = 0.06, opts = {}) {
 }
 
 /**
- * iter-20：沿車殼曲面上任意斜線的細分件線（ribbon 以 x 掃掠，畫陡斜線會成階梯 → 改沿折線取樣，兩側各偏移半寬）
- * @type {(path: [number, number][], halfW: number, mat: THREE.Material, side: number, lift?: number, n?: number) => THREE.Mesh}
- */
-const seamLine = (path, halfW, mat, side, lift = 0.12, n = 40) => {
-  /** @type {(t: number) => [number, number]} 折線上 t ∈ [0,1] 的 (x, u) */
-  const at = (t) => {
-    const f = t * (path.length - 1);
-    const k = Math.min(path.length - 2, Math.floor(f));
-    const r = f - k;
-    return [path[k][0] + (path[k + 1][0] - path[k][0]) * r, path[k][1] + (path[k + 1][1] - path[k][1]) * r];
-  };
-  const pos = [];
-  const nrm = [];
-  const idx = [];
-  for (let i = 0; i <= n; i++) {
-    const [x, u] = at(i / n);
-    const [xa, ua] = at(Math.max(0, i / n - 0.01));
-    const [xb, ub] = at(Math.min(1, i / n + 0.01));
-    const nn = bodyNormal(x, u, side);
-    const p = bodyPoint(x, u, side).addScaledVector(nn, lift);
-    const tan = bodyPoint(xb, ub, side).sub(bodyPoint(xa, ua, side)).normalize();
-    const off = new THREE.Vector3().crossVectors(nn, tan).normalize().multiplyScalar(halfW);
-    for (const q of [p.clone().add(off), p.clone().sub(off)]) {
-      pos.push(q.x, q.y, q.z);
-      nrm.push(nn.x, nn.y, nn.z);
-    }
-    if (i < n) {
-      const a = i * 2;
-      idx.push(a, a + 2, a + 1, a + 1, a + 2, a + 3);
-    }
-  }
-  const geo = new THREE.BufferGeometry();
-  geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
-  geo.setAttribute('normal', new THREE.Float32BufferAttribute(nrm, 3));
-  geo.setIndex(idx);
-  const m = new THREE.Mesh(geo, mat);
-  m.renderOrder = 2;
-  return m;
-};
-
-/**
  * 沿車殼曲面上一條邊立起的薄牆（側進氣口前緣的唇邊，做出凹陷深度）
  * @param {number} x 邊所在 x
  * @param {number} u0 起點 u
@@ -701,8 +660,7 @@ const buildIntakeCavity = (mat, side) => {
       const p = bodyPoint(x, u, side).addScaledVector(bodyNormal(x, u, side), 0.03);
       pos.push(p.x, p.y, p.z);
       const fade = a > -2.2 ? 1 : 1 - smooth01((-2.2 - a) / 0.8);
-      // iter-20：腔體提早變黑（env 0.15–0.65 → 0.08–0.38 淡入），槽口上下段也讀得出深色
-      col.push(0.012, 0.013, 0.018, fade * smooth01((env - 0.08) / 0.3));
+      col.push(0.02, 0.022, 0.03, fade * smooth01((env - 0.15) / 0.5));
     }
   }
   const row = na + 1;
@@ -829,46 +787,32 @@ function drawHoodEmblem(ctx) {
   }
 }
 
-/** TAMIYA 標誌（白底、深藍外框、兩個白方塊內的深藍大星、下方深藍 TAMIYA 字） */
+/** TAMIYA 標誌（白底黑框、雙星、TAMIYA 字） */
 function drawTamiya(ctx) {
-  // iter-17：改成單色版（透明底、白方塊內鏤空深藍星、白字），材質加 alphaTest，透明處露出車身色
-  // iter-20（reviewer iter-19「深底白線，參考為白底方塊深色星，顏色反了」）：ref side-high／front34 放大重看——
-  //   整塊貼紙是白底、外圍一圈深色細框；上半兩個白方塊各一顆幾乎頂到方塊邊的深藍星，方塊之間與上下半之間有深色分隔線；
-  //   下半是白底深色 TAMIYA 字。整塊外形近正方（ref side-high 約 45 × 40 px），貼片改為 5.6 × 5.1 mm（原 7 × 4.4 mm）
-  const navy = '#151b5c';
+  // iter-17：改成參考的單色版（ref side-high 放大：透明底、兩個白色方塊內鏤空深藍星、下方白字 TAMIYA，
+  // 原本是白底紅藍彩色星）；材質加 alphaTest，透明處露出車身色
   ctx.clearRect(0, 0, 256, 256);
   const star = (cx, cy, r) => {
     ctx.beginPath();
     for (let k = 0; k < 10; k++) {
       const a = -Math.PI / 2 + (k * Math.PI) / 5;
-      const rr = k % 2 === 0 ? r : r * 0.4;
+      const rr = k % 2 === 0 ? r : r * 0.42;
       ctx.lineTo(cx + Math.cos(a) * rr, cy + Math.sin(a) * rr);
     }
     ctx.closePath();
     ctx.fill();
   };
-  // 白底＋深色外框
-  ctx.fillStyle = '#ffffff';
-  ctx.fillRect(4, 4, 248, 248);
-  ctx.strokeStyle = navy;
-  ctx.lineWidth = 8;
-  ctx.strokeRect(14, 14, 228, 228);
-  // 上半兩個方塊：中間直線與上下半分隔線
-  ctx.lineWidth = 6;
-  ctx.beginPath();
-  ctx.moveTo(128, 14);
-  ctx.lineTo(128, 150);
-  ctx.moveTo(14, 150);
-  ctx.lineTo(242, 150);
-  ctx.stroke();
-  ctx.fillStyle = navy;
-  for (const cx of [71, 185]) {
-    star(cx, 86, 60);
+  for (const cx of [72, 184]) {
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(cx - 54, 22, 108, 112);
+    ctx.fillStyle = '#161c4e';
+    star(cx, 82, 50);
   }
-  ctx.font = 'bold 62px Arial, sans-serif';
+  ctx.fillStyle = '#ffffff';
+  ctx.font = 'bold 60px Arial, sans-serif';
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
-  ctx.fillText('TAMIYA', 128, 200, 214);
+  ctx.fillText('TAMIYA', 128, 190);
 }
 
 /** 兩端漸尖的寬度包絡 */
@@ -1427,31 +1371,22 @@ const PAINT_FLAKE_TILT = 0.06;
 //   iter-18 同位置 #4647BA／#544FB0（亮約 2 倍、R ≈ G 偏紫）→ 正視色 #3352f2 → PAINT_FACE、掠射色 #2a1084（紫）→ PAINT_EDGE（深海軍藍）
 const PAINT_FACE = 0x1232bc;
 const PAINT_EDGE = 0x060a34;
-// iter-20（reviewer iter-19「後段頂板偏淡薰衣草色、引擎蓋稜線偏灰」）：朝上的面（車頂板、引擎蓋、後甲板）在 sidehigh／front34 是
-//   斜看（N·V ≈ 0.4），原本 flop 把底色混向深色 PAINT_EDGE，再疊上清漆反射的灰色天空 → 去飽和成灰紫。
-//   改為依世界法向 y 另外補正視色（朝上面 = 頂光照到的金屬片正面，ref side-high 車頂／後甲板是亮而飽和的藍 #6274BC／#8DA2E5），
-//   並用略偏綠的 PAINT_TOP（ACES 對高亮飽和藍會偏紫，ref 的受光面 G 明顯大於 R）
-const PAINT_TOP = 0x1446c8;
 const applyPaintFlop = (mat) => {
   mat.onBeforeCompile = (shader) => {
     shader.uniforms.flopFace = { value: new THREE.Color(PAINT_FACE) };
     shader.uniforms.flopEdge = { value: new THREE.Color(PAINT_EDGE) };
-    shader.uniforms.flopTop = { value: new THREE.Color(PAINT_TOP) };
     shader.vertexShader = shader.vertexShader
       .replace('#include <common>', '#include <common>\nvarying vec3 vFlakePos;')
       .replace('#include <begin_vertex>', '#include <begin_vertex>\nvFlakePos = position;');
     shader.fragmentShader = shader.fragmentShader
-      .replace('#include <common>', '#include <common>\nuniform vec3 flopFace;\nuniform vec3 flopEdge;\nuniform vec3 flopTop;\nvarying vec3 vFlakePos;')
+      .replace('#include <common>', '#include <common>\nuniform vec3 flopFace;\nuniform vec3 flopEdge;\nvarying vec3 vFlakePos;')
       .replace(
         '#include <normal_fragment_maps>',
         `#include <normal_fragment_maps>
         {
           float ndv = clamp(abs(dot(normal, normalize(vViewPosition))), 0.0, 1.0);
           float flop = smoothstep(0.1, 0.9, ndv);
-          vec3 worldUpN = inverseTransformDirection(normal, viewMatrix);
-          float topK = smoothstep(0.35, 0.95, worldUpN.y);
-          flop = max(flop, topK);
-          diffuseColor.rgb = mix(flopEdge, mix(flopFace, flopTop, topK), flop);
+          diffuseColor.rgb = mix(flopEdge, flopFace, flop);
           vec3 cell = floor(vFlakePos / ${PAINT_FLAKE_MM.toFixed(3)});
           vec3 hs = fract(sin(vec3(dot(cell, vec3(127.1, 311.7, 74.7)), dot(cell, vec3(269.5, 183.3, 246.1)), dot(cell, vec3(113.5, 271.9, 124.6)))) * 43758.5453);
           diffuseColor.rgb *= 0.97 + 0.06 * hs.x;
@@ -1638,19 +1573,15 @@ export function buildChevalierBody(mats) {
     // iter-14：改為車殼曲面本身往內凹（sideIntakeDepth：車門淺盤 → 「)」形唇邊 → 3.4 mm 深槽 → 後葉子板前緣升出），
     //   槽內貼深色腔體（buildIntakeCavity）；舊的平貼內面、唇邊牆、鰭片移除
     g.add(buildIntakeCavity(cavityMat, side));
-    // iter-20：前輪拱後方的斜向分件線（reviewer iter-19「輪拱後緣分件線偏淺」；ref side-high：TAMIYA 貼紙後方
-    //   一道由上前往下後的深色細縫，上端約在貼紙上方 3 mm、下端落到側裙；位置依 ref 量測換算，推估）。畫在條紋上方（條紋在分件處斷開）
-    g.add(seamLine([[17.2, 0.7], [15.6, 0.84], [13.8, 0.995]], 0.19, seam, side));
     // 引擎蓋騎士徽章＋CHEVALIER 字樣（Canvas 貼圖；左右兩半各取貼圖一半）
     if (emblemMat) {
       g.add(ribbon(71, 41, () => [0, 0.21], emblemMat, side, 0.1, { nu: 16, uv: (s, v) => [0.5 + side * 0.5 * v, s] }));
     }
     // TAMIYA 標誌（前輪後方下側；右側由後往前、左側由前往後，字才不會反）
     if (tamiyaMat) {
-      // iter-20：5.6 × 5.1 mm 近正方（原 x 16.6–23.6、u 0.82–0.97）；上緣 u 0.80 仍在側面橘條紋下緣（x 17 處 u ≈ 0.787）之下
-      const xa = side > 0 ? 17.0 : 22.6;
-      const xb = side > 0 ? 22.6 : 17.0;
-      g.add(ribbon(xa, xb, () => [0.8, 0.97], tamiyaMat, side, 0.1, { nu: 10, uv: (s, v) => [s, v] }));
+      const xa = side > 0 ? 16.6 : 23.6;
+      const xb = side > 0 ? 23.6 : 16.6;
+      g.add(ribbon(xa, xb, () => [0.82, 0.97], tamiyaMat, side, 0.1, { nu: 8, uv: (s, v) => [s, v] }));
     }
     // 引擎蓋前方 NACA 進氣口（深色）
     // iter-05：深色底面貼在下凹曲面上（寬度與 nacaHalfU 一致）
