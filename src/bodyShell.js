@@ -66,21 +66,36 @@ export const BODY_REAR_X = -63;
 const HALF_WIDTH = [[73, 30], [66, 35], [56, 37.5], [46, 39.5], [36, 40], [24, 39.3], [12, 38.2], [0, 38], [-12, 39.4], [-24, 41.8], [-34, 43], [-44, 43], [-52, 41.8], [-58, 39.2], [-63, 34.5]];
 /** 中線高度：鼻端（厚）→ 引擎蓋 → 座艙下緣 → 後甲板往車尾下降 */
 // iter-07：後甲板加高、車尾不再往下收（ref side-high：座艙後方到車尾近乎水平，尾端厚實）→ −34…−63 中線 +1…+3.5 mm
-const CENTER_Y = [[73, 14], [66, 16.5], [56, 18.5], [46, 20.5], [36, 21.8], [24, 23], [12, 24.6], [0, 25.6], [-12, 26.6], [-24, 28.2], [-34, 29.8], [-44, 30.8], [-52, 30.2], [-58, 28.4], [-63, 25.0]];
+// iter-11：擋風玻璃下緣（中線）24.6 → 27.2 mm（推估：ref side-high 像素量測反推 x ≈ 18 mm 處約 27.4 mm，見 ITERATION_LOG iter-11），
+//   引擎蓋後段（x 36…12）跟著墊高 1.2–2.6 mm，減少前葉子板到座艙的凹腰；座艙下方（x ≤ 0）不動
+// iter-13：引擎蓋中央大幅墊高（推估：擬合相機量 ref side-high 中線，徽章騎士頭 x ≈ 49.5 / y ≈ 27.2、進氣罩前端頂 x ≈ 31.7 / y ≈ 30.4，
+//   見 ITERATION_LOG iter-13）：x 66…24 由 16.5/18.5/20.8/23.0/25.4 → 17.5/24.0/27.4/28.8/28.2（含隆起後 x 40 約 29.7），
+//   消除前葉子板與引擎蓋之間 6–7 mm 的深谷，形成往擋風玻璃上揚的楔形
+// iter-14：取 iter-12（深谷 6–7 mm）與 iter-13（幾乎填平）的中間值：中線 x 56…24 略降 0.4–0.5 mm（24.0/27.4/28.8/28.2 → 23.5/26.9/28.3/27.9），
+//   搭配下方前葉子板稜線升高約 1.5 mm，讓葉子板稜線比引擎蓋中線（含隆起）高約 1.5–2 mm，保留輕微 S 形起伏（主 agent iter-13 決策）
+const CENTER_Y = [[73, 14], [66, 17.3], [56, 23.5], [46, 26.9], [36, 28.3], [24, 27.9], [12, 27.2], [0, 25.6], [-12, 26.6], [-24, 28.2], [-34, 29.8], [-44, 30.8], [-52, 30.2], [-58, 28.4], [-63, 25.0]];
 /** 葉子板稜線高度：前輪上方隆起高於引擎蓋（鼻端仍高），後輪上方再隆起後往車尾下降 */
 // iter-07：後葉子板稜線加高（ref side-high：後輪上方隆起約為車頂高的 85–90%）
-const FENDER_Y = [[73, 18.5], [66, 24], [56, 28.5], [46, 30.5], [36, 30.5], [24, 28.5], [12, 27.0], [0, 26.8], [-12, 28.4], [-24, 31.2], [-34, 33.4], [-44, 34.0], [-52, 33.0], [-58, 30.6], [-63, 27.0]];
+// iter-11：前葉子板稜線 30.5 → 31.5 mm（ref 量測約 30.6–31.0，取略高補償俯拍誤差）、座艙前方腰線 x 24…−12 墊高 0.8–1.8 mm（減少凹腰）；後段不變
+// iter-13：前葉子板稜線 x 66…24 由 24.4/29.3/31.5/31.5/30.0 → 23.8/27.6/29.0/29.2/29.0（推估：擬合相機疊圖上，近側稜線與遠側輪廓
+//   都比參考照高約 15–20 px ≈ 3 mm；只降 2.3 mm，保守取值），不再像浮筒高出引擎蓋
+// iter-14：前葉子板稜線 x 66…24 升高約 1.5 mm（23.8/27.6/29.0/29.2/29.0 → 24.3/28.9/30.5/30.7/30.0；介於 iter-12 31.5 與 iter-13 29.2 之間），
+//   reviewer iter-13「前葉子板峰值變低、S 形起伏比基準弱」
+const FENDER_Y = [[73, 18.5], [66, 24.3], [56, 28.9], [46, 30.5], [36, 30.7], [24, 30.0], [12, 28.8], [0, 28.2], [-12, 29.2], [-24, 31.2], [-34, 33.4], [-44, 34.0], [-52, 33.0], [-58, 30.6], [-63, 27.0]];
 /** 稜線位置（佔半寬的比例） */
-const FENDER_Z = [[73, 0.8], [56, 0.76], [36, 0.77], [12, 0.86], [-12, 0.86], [-34, 0.79], [-63, 0.76]];
+// iter-13：前段稜線略往內收（56／36：0.76／0.77 → 0.74／0.75），配合疊圖上遠側輪廓偏高
+const FENDER_Z = [[73, 0.8], [56, 0.74], [36, 0.75], [12, 0.86], [-12, 0.86], [-34, 0.79], [-63, 0.76]];
 /** 側面最寬處的高度 */
 const SIDE_Y = [[73, 12.5], [66, 13], [56, 13], [46, 14], [-50, 14], [-58, 13.5], [-63, 13]];
 /** 車殼底緣：iter-02 為 5.6 mm，與底盤側框之間縫隙偏大 → 4.4 mm（底板上緣 3.7 mm） */
 // iter-05：reviewer「車殼底緣離底盤太近像一整塊」（ref side-high：車殼下方露出一層黑色底盤側框）→ 4.4 → 6.4 mm
-const BOTTOM_Y = 6.4;
+// iter-12：ref side-high 擬合相機量測（推估 ±0.5 mm）：車門下緣（x ≈ 3、近側）y ≈ 8.8 mm，下方露出黑色底盤側裙 → 6.4 → 8.6 mm
+const BOTTOM_Y = 8.6;
 /** 輪拱半徑：iter-02 輪胎外 2.5 mm 間隙偏大 → 1.8 mm */
 // iter-05：reviewer「輪胎露出比例小、輪拱開口大」（ref side-high：輪拱開口明顯大於輪胎）→ 1.8 → 2.8 mm
 // iter-07：reviewer「輪拱上緣空隙偏大」→ 2.8 → 1.8 mm
-const ARCH_R = spec.tire.diameter_mm / 2 + 1.8;
+// iter-13：reviewer「輪拱上方黑色內襯空隙明顯（參考輪胎填滿輪拱）」→ 1.8 → 1.0 mm（輪胎外徑 26 mm 不變；輪拱頂離胎面 0.5 mm）
+const ARCH_R = spec.tire.diameter_mm / 2 + 1.0;
 
 /** 車殼底緣（含前後輪拱開口） */
 function bottomAt(x) {
@@ -106,21 +121,36 @@ function bottomAt(x) {
   return y;
 }
 
+/** 引擎蓋中央隆起高度（mm） */
+const BULGE_H = 1.2;
+/** 平滑 max：|a − b| ≫ k 時等於 max，兩者相等時多 k / 2，以雙曲線過渡（C∞，不會有折角） */
+const softMax = (a, b, k) => 0.5 * (a + b + Math.sqrt((a - b) * (a - b) + k * k));
+
 /** 某 x 截面的半邊控制點（中線 → 底緣） */
 function sectionPoints(x) {
   const w = smoothTable(HALF_WIDTH, x);
   const yc = smoothTable(CENTER_Y, x);
   const yb = bottomAt(x);
-  const ys = Math.max(smoothTable(SIDE_Y, x), yb + 1.2);
-  const shoulder = Math.max(smoothTable(FENDER_Y, x) - 3.2, ys + 1.0);
-  const yf = Math.max(smoothTable(FENDER_Y, x), shoulder + 0.8);
+  // iter-13：輪拱把側面往上推的三個 max 改成平滑 max（softMax），避免輪拱上方的肩線出現折角（rear34 引擎蓋反光成塊狀）
+  const ys = softMax(smoothTable(SIDE_Y, x), yb + 0.9, 1.0);
+  const shoulder = softMax(smoothTable(FENDER_Y, x) - 3.2, ys + 0.8, 1.0);
+  const yf = softMax(smoothTable(FENDER_Y, x), shoulder + 0.6, 1.0);
   const zf = w * smoothTable(FENDER_Z, x);
   // 引擎蓋中央隆起（power bulge，ref_chevalier-ma_hood-detail：中央高、兩側凹槽、再到葉子板稜線）
+  // iter-13：中線整體墊高後，隆起 1.8 → BULGE_H，兩側凹槽改用平滑後的 bulgeS（原本 bulgeT 在 x = 40 有折角）
   const bulgeT = Math.max(0, 1 - Math.abs(x - 40) / 24);
-  const bulge = 1.8 * bulgeT * bulgeT * (3 - 2 * bulgeT);
+  const bulgeS = bulgeT * bulgeT * (3 - 2 * bulgeT);
+  const bulge = BULGE_H * bulgeS;
+  // iter-13：引擎蓋中央墊高到接近葉子板後，原本「中線＋12% 高差」的中段控制點會在中線與稜線之間挖出 1–2 mm 的 W 形凹槽，
+  //   rear34／front34 的燈箱倒影因此變成塊狀；改為中線與稜線的平均（中央隆起處只留 0.3 mm 的淺槽），截面成為平順的弧
+  //   遠離引擎蓋（座艙下方、後甲板）時中線仍明顯低於稜線，保留原本 12% 的權重
+  // iter-14：crown 原為線性 clamp（x = 8、20 兩處斜率不連續 → 中段控制點有折線，rear34 引擎蓋／葉子板反光出現不連續亮塊），改 smoothstep
+  const crownT = Math.min(1, Math.max(0, (x - 8) / 12));
+  const crown = crownT * crownT * (3 - 2 * crownT);
+  const midY = (1 - crown) * (yc + 0.12 * (yf - yc)) + crown * (0.5 * (yc + bulge + yf)) - 0.3 * bulgeS;
   return [
     { z: 0, y: yc + bulge },
-    { z: zf * 0.5, y: yc + 0.12 * (yf - yc) - 0.4 * bulgeT },
+    { z: zf * 0.5, y: midY },
     { z: zf, y: yf },
     { z: w - 0.7, y: shoulder },
     { z: w, y: ys },
@@ -141,15 +171,94 @@ export function bodyPoint(x, u, side = 1) {
   const segs = pts.length - 1;
   const f = u * segs;
   const q = catmull(ext, (f + 1) / (segs + 1));
-  return new THREE.Vector3(noseMap(x), q.y - nacaDepth(x, u), side * q.z);
+  // iter-14：中線 → 葉子板稜線（u 0…0.4）改用單一多項式 y(z)，取代兩段 Catmull-Rom：
+  //   控制點橫向間距不均（中線→中段 15 mm、稜線→肩線 9 mm、肩線→最寬處 0.7 mm），曲率集中在 u = 0.2 的節點，
+  //   rear34／front34 引擎蓋與葉子板反光成不連續的斑駁亮塊（reviewer iter-13）。z(u) 不變（貼紙、百葉的 u 位置不動），
+  //   y 改為三次 Hermite（中線斜率 0；稜線處斜率取 Catmull 在該節點的幾何斜率，維持 C1）＋ t²(1−t)² 修正項過中段控制點
+  if (u < 0.4) {
+    const zf = pts[2].z;
+    const t = Math.min(1, Math.max(0, q.z / zf));
+    const y0 = pts[0].y;
+    const yf = pts[2].y;
+    const mf = ((pts[3].y - pts[1].y) / (pts[3].z - pts[1].z)) * zf;
+    const t2 = t * t;
+    const t3 = t2 * t;
+    const herm = (tt) => {
+      const a2 = tt * tt;
+      const a3 = a2 * tt;
+      return (2 * a3 - 3 * a2 + 1) * y0 + (-2 * a3 + 3 * a2) * yf + (a3 - a2) * mf;
+    };
+    const cMid = 16 * (pts[1].y - herm(0.5));
+    q.y = (2 * t3 - 3 * t2 + 1) * y0 + (-2 * t3 + 3 * t2) * yf + (t3 - t2) * mf + cMid * t2 * (1 - t) * (1 - t);
+  }
+  return new THREE.Vector3(noseMap(x), q.y - nacaDepth(x, u), side * (q.z - sideIntakeDepth(x, u)));
 }
+
+// ---- iter-14：車門後方深凹立體側進氣口（ref_chevalier-ma_side-high／front34：車門面往後漸凹成淺盤，
+//      後緣是一道「)」形唇邊，唇邊後方落入深色槽口，後葉子板前緣再從槽底往外升出）----
+// 尺寸為推估（依 ref side-high 目視：槽口位於車門後、後輪拱前約 8–11 mm，高度約由側裙上緣到腰線下方 14 mm）
+const INTAKE_U0 = 0.69;
+const INTAKE_U1 = 0.94;
+/** 淺盤最深處（唇邊前）往內 mm */
+const INTAKE_DISH = 1.8;
+/** 槽底往內 mm */
+const INTAKE_SLOT = 3.8;
+/** 唇邊長度（a 0.35…1.0）與唇邊隆起 mm */
+const INTAKE_LIP = 0.5;
+/** 淺盤前端距唇邊 mm */
+const INTAKE_DISH_LEN = 11;
+/** 槽底往後升回車身面的長度 mm */
+const INTAKE_RISE = 3.0;
+const smooth01 = (t) => {
+  const c = Math.min(1, Math.max(0, t));
+  return c * c * (3 - 2 * c);
+};
+/** @type {(u: number) => number} u → 進氣口截面參數 v（0 上緣、1 下緣） */
+const intakeV = (u) => (u - INTAKE_U0) / (INTAKE_U1 - INTAKE_U0);
+/** @type {(v: number) => number} 唇邊（槽口前緣）所在 x：上下兩端靠前、中段往後凸，成「)」形 */
+const intakeEdgeX = (v) => -14.4 - 3.0 * Math.sin(Math.PI * Math.min(1, Math.max(0, v)));
+/** @type {(v: number) => number} 上下兩端的深度包絡（各 18% 平滑淡出） */
+const intakeEnv = (v) => smooth01(v / 0.18) * smooth01((1 - v) / 0.18);
+/**
+ * 側進氣口往內（−|z|）的位移量
+ * @type {(x: number, u: number) => number}
+ */
+const sideIntakeDepth = (x, u) => {
+  if (x > 0 || x < -24 || u < INTAKE_U0 || u > INTAKE_U1) {
+    return 0;
+  }
+  const v = intakeV(u);
+  const env = intakeEnv(v);
+  if (env <= 0) {
+    return 0;
+  }
+  const a = x - intakeEdgeX(v);
+  let d = 0;
+  if (a >= 1.0) {
+    // 淺盤：前端 0 → 唇邊前 INTAKE_DISH
+    d = INTAKE_DISH * smooth01((INTAKE_DISH_LEN - a) / (INTAKE_DISH_LEN - 1.0));
+  } else if (a >= 0.35) {
+    // 唇邊：略往外隆起，形成反光的邊
+    d = INTAKE_DISH - INTAKE_LIP * smooth01((1.0 - a) / 0.65);
+  } else if (a >= 0) {
+    // 唇邊後側陡落入槽底
+    d = INTAKE_DISH - INTAKE_LIP + (INTAKE_SLOT - INTAKE_DISH + INTAKE_LIP) * smooth01((0.35 - a) / 0.35);
+  } else {
+    // 槽底 → 後葉子板前緣升回車身面
+    d = INTAKE_SLOT * (1 - smooth01(-a / INTAKE_RISE));
+  }
+  return d * env;
+};
 
 // ---- iter-05：縮短車頭（reviewer「車頭比參考更長更扁」；ref side-high 目視：前懸約 29–30 mm，原模型 33 mm，推估）----
 // 輪廓表與所有貼片仍用「設計座標」x，輸出時把 x > 50 的區段漸進壓縮（斜率 1 → 0.82，在 50–62 mm 間 C1 連續過渡，
 // 避免反光出現折線）；鼻端 73 → 約 69.9 mm
 const NOSE_START = 50;
 const NOSE_RAMP = 12;
-const NOSE_SHRINK = 0.18;
+// iter-12：以擬合相機量 ref side-high（scripts/diag/measure_ref.mjs，推估 ±1 mm）：近側車鼻（大燈前端、下緣角）x ≈ 67.5–68.5 mm，
+//   前導輪 x ≈ 70.6–72.0（與本模型 71.5 一致）→ 參考車鼻到前導輪中心約 3–4 mm；本模型車鼻 69.9 → 只剩 1.6 mm。
+//   壓縮斜率 0.18 → 0.30：車鼻 69.9 → 67.9 mm（導輪位置是物理規格，不動）
+const NOSE_SHRINK = 0.30;
 /** @type {(x: number) => number} 設計座標 x → 實際 x（只影響車頭） */
 const noseMap = (x) => {
   const d = x - NOSE_START;
@@ -253,6 +362,10 @@ function hullXs() {
       xs.add(Number((e + 0.01).toFixed(3)));
     }
   }
+  // iter-14：側進氣口唇邊與槽口（x −13.8…−21）陡峭，縱向加密到 0.07 mm
+  for (let x = -13.8; x >= -21.5; x -= 0.07) {
+    xs.add(Number(x.toFixed(3)));
+  }
   return [...xs].filter((x) => x <= BODY_FRONT_X && x >= BODY_REAR_X).sort((p, q) => q - p);
 }
 
@@ -334,8 +447,8 @@ function buildHull(mat, innerMat) {
  * @param {(x: number, s: number) => [number, number]} band 回傳 [uLo, uHi]，s ∈ [0,1] 為 x0→x1 的進度
  * @param {THREE.Material} mat
  * @param {number} side
- * @param {number} lift 沿法向抬高（mm）
- * @param {{ nu?: number, uv?: (s: number, v: number) => [number, number], surf?: { point: Function, normal: Function } }} [opts] nu：截面方向細分；uv：貼圖座標（預設 (s, v)）；surf：貼附曲面（預設車殼，iter-03 加座艙）
+ * @param {number | ((s: number, v: number) => number)} lift 沿法向抬高（mm）；iter-14 起可傳函式（s：x0→x1 進度、v：截面 0→1），做出隆起的燈罩
+ * @param {{ nu?: number, uv?: (s: number, v: number) => [number, number], surf?: { point: Function, normal: Function }, ownNormals?: boolean }} [opts] nu：截面方向細分；uv：貼圖座標（預設 (s, v)）；surf：貼附曲面（預設車殼，iter-03 加座艙）；ownNormals：以自身網格重算法向（隆起曲面用）
  */
 function ribbon(x0, x1, band, mat, side, lift = 0.06, opts = {}) {
   const nx = Math.max(4, Math.ceil(Math.abs(x1 - x0) / 0.8));
@@ -353,7 +466,8 @@ function ribbon(x0, x1, band, mat, side, lift = 0.06, opts = {}) {
     for (let j = 0; j <= nu; j++) {
       const u = ua + ((ub - ua) * j) / nu;
       const n = surfNormal(x, u, side);
-      const p = surfPoint(x, u, side).addScaledVector(n, lift);
+      const h = typeof lift === 'function' ? lift(s, j / nu) : lift;
+      const p = surfPoint(x, u, side).addScaledVector(n, h);
       pos.push(p.x, p.y, p.z);
       nrm.push(n.x, n.y, n.z);
       const [U, V] = uvFn(s, j / nu);
@@ -388,6 +502,9 @@ function ribbon(x0, x1, band, mat, side, lift = 0.06, opts = {}) {
   geo.setAttribute('normal', new THREE.Float32BufferAttribute(nrm, 3));
   geo.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
   geo.setIndex(idx);
+  if (opts.ownNormals) {
+    geo.computeVertexNormals();
+  }
   const m = new THREE.Mesh(geo, mat);
   m.renderOrder = 1;
   return m;
@@ -472,6 +589,53 @@ const raisedPad = (x0, x1, u0, u1, h, lean, mat, side) => {
   const flat = geo.toNonIndexed();
   flat.computeVertexNormals();
   const m = new THREE.Mesh(flat, mat);
+  m.renderOrder = 2;
+  return m;
+};
+
+/**
+ * iter-14：側進氣口槽內的深色腔體：貼在（已凹陷的）車殼曲面上、沿唇邊曲線排列的薄片，
+ * 唇邊後側、槽底與後葉子板前緣深處全黑（a 0.3 … −2.2；從前方斜看時看到的是這段），往外升起處以頂點 alpha 淡出（a −2.2 … −3.0），上下兩端隨深度包絡淡出
+ * @type {(mat: THREE.Material, side: number) => THREE.Mesh}
+ */
+const buildIntakeCavity = (mat, side) => {
+  const na = 28;
+  const nv = 40;
+  const aHi = 0.3;
+  const aLo = -3.0;
+  const pos = [];
+  const col = [];
+  const idx = [];
+  for (let i = 0; i <= nv; i++) {
+    const v = 0.04 + (0.92 * i) / nv;
+    const u = INTAKE_U0 + v * (INTAKE_U1 - INTAKE_U0);
+    const env = intakeEnv(v);
+    for (let j = 0; j <= na; j++) {
+      const a = aHi + ((aLo - aHi) * j) / na;
+      const x = intakeEdgeX(v) + a;
+      const p = bodyPoint(x, u, side).addScaledVector(bodyNormal(x, u, side), 0.03);
+      pos.push(p.x, p.y, p.z);
+      const fade = a > -2.2 ? 1 : 1 - smooth01((-2.2 - a) / 0.8);
+      col.push(0.02, 0.022, 0.03, fade * smooth01((env - 0.15) / 0.5));
+    }
+  }
+  const row = na + 1;
+  for (let i = 0; i < nv; i++) {
+    for (let j = 0; j < na; j++) {
+      const k = i * row + j;
+      if (side > 0) {
+        idx.push(k, k + row, k + 1, k + row, k + row + 1, k + 1);
+      } else {
+        idx.push(k, k + 1, k + row, k + row, k + 1, k + row + 1);
+      }
+    }
+  }
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  geo.setAttribute('color', new THREE.Float32BufferAttribute(col, 4));
+  geo.setIndex(idx);
+  geo.computeVertexNormals();
+  const m = new THREE.Mesh(geo, mat);
   m.renderOrder = 2;
   return m;
 };
@@ -647,7 +811,8 @@ const CABIN_X0 = 15;
 const CABIN_X1 = -48;
 // 車頂板多一層 ROOF_LIFT，座艙面整體降 0.6 mm，使含車頂板與貼紙的最高點維持 SPEC 1.12 外框高 38 mm
 // iter-07：座艙後段加高（車頂往後延伸到尾端前才下降，ref side-high），最高點 37.1 mm 不變（全高 38 mm，SPEC 1.2）
-const CABIN_TOP = [[15, 24.6], [8, 29.8], [0, 34.0], [-8, 36.2], [-16, 37.0], [-26, 37.1], [-36, 36.9], [-44, 36.2], [-48, 35.4]];
+// iter-11：擋風玻璃下緣 24.6 → 27.2、x = 0 處 34.0 → 35.0（ref 量測：車頂前緣 x ≈ 0、中線約 34.8），座艙泡往前飽滿；最高點 37.1 不變
+const CABIN_TOP = [[15, 27.2], [8, 31.6], [0, 35.0], [-8, 36.6], [-16, 37.0], [-26, 37.1], [-36, 36.9], [-44, 36.2], [-48, 35.4]];
 const CABIN_TOP_W = [[15, 17], [0, 19], [-16, 19.5], [-36, 19.2], [-44, 17.8], [-48, 17.0]];
 const CABIN_BASE_W = [[15, 27], [0, 30], [-16, 31], [-36, 31.5], [-44, 30], [-48, 29.5]];
 /** 車頂板（車身色、比座艙玻璃面高 0.7 mm 的獨立一層）的 x 範圍與 u 範圍 */
@@ -875,6 +1040,20 @@ function buildCabinInterior(tubMat, seatMat) {
   for (const side of [1, -1]) {
     g.add(gridGeometryMesh(60, 14, (i, j) => tubPoint(x0 + ((x1 - x0) * i) / 60, j / 14, side), tubMat));
   }
+  // iter-12：車門內飾板（深灰）——玻璃改 alpha 半透明後，透過側窗看到的是車殼頂面（藍漆反光），
+  // 實車側窗內是深色車門內側。
+  // 在玻璃內側 0.25 mm 加一片與側窗平行的內飾板蓋住車殼，透過玻璃看成均勻的深色車門內側（ref side-high 側窗內為均勻深色）
+  const doorMat = Object.assign(seatMat.clone(), { side: THREE.DoubleSide });
+  for (const side of [1, -1]) {
+    const dx0 = -31.2;
+    const dx1 = 12.2;
+    const doorPoint = (i, j) => {
+      const x = dx0 + ((dx1 - dx0) * i) / 40;
+      const u = 0.52 + (0.48 * j) / 10;
+      return cabinPoint(x, u, side).addScaledVector(cabinNormal(x, u, side), -0.25);
+    };
+    g.add(gridGeometryMesh(40, 10, doorPoint, doorMat));
+  }
   /** @type {(x: number) => number} 中線處底殼高度 */
   const floorY = (x) => tubPoint(x, 0, 1).y;
   // 儀表板：擋風玻璃下緣的橫向圓角塊
@@ -1071,13 +1250,14 @@ function buildWheelWells(mat) {
  * 珠光漆視角顏色漸層（iter-06）：在法線計算後依 N·V 把底色由正視的亮寶藍漸變到掠射的深紫，
  * 只改 diffuseColor，不動法線，因此不會產生 iter-04 那種反光扭曲
  * iter-09：加入細金屬片（metallic flake）——以物件座標切成約 PAINT_FLAKE_MM 的小格，每格一個雜湊值：
- *   (1) 底漆顏色亮度 ±10% 顏色噪點；(2) 底漆層（非清漆層）法線極低強度隨機偏轉 → 高光區出現細碎閃點。
+ *   (1) 底漆顏色亮度噪點（iter-10：±3%）；(2) 底漆層（非清漆層）法線極低強度隨機偏轉 → 高光區出現細碎閃點。
  *   three.js 的清漆法線取自 nonPerturbedNormal（clearcoat_normal_fragment_begin），
  *   所以清漆層的環境反射（燈箱倒影）仍是平滑曲面、不會扭曲（iter-04 粒子法線貼圖同時擾動兩層才扭曲）
  * @type {(mat: THREE.MeshPhysicalMaterial) => void}
  */
-const PAINT_FLAKE_MM = 0.12;
-const PAINT_FLAKE_TILT = 0.08;
+// iter-10：顆粒 0.12 → 0.06 mm、偏轉 0.08 → 0.06（reviewer「顆粒略粗有雜訊感」）
+const PAINT_FLAKE_MM = 0.06;
+const PAINT_FLAKE_TILT = 0.06;
 const applyPaintFlop = (mat) => {
   mat.onBeforeCompile = (shader) => {
     shader.uniforms.flopFace = { value: new THREE.Color(0x3352f2) };
@@ -1096,7 +1276,7 @@ const applyPaintFlop = (mat) => {
           diffuseColor.rgb = mix(flopEdge, flopFace, flop);
           vec3 cell = floor(vFlakePos / ${PAINT_FLAKE_MM.toFixed(3)});
           vec3 hs = fract(sin(vec3(dot(cell, vec3(127.1, 311.7, 74.7)), dot(cell, vec3(269.5, 183.3, 246.1)), dot(cell, vec3(113.5, 271.9, 124.6)))) * 43758.5453);
-          diffuseColor.rgb *= 0.95 + 0.1 * hs.x;
+          diffuseColor.rgb *= 0.97 + 0.06 * hs.x;
           normal = normalize(normal + ${PAINT_FLAKE_TILT.toFixed(3)} * (hs - 0.5));
         }`,
       );
@@ -1113,13 +1293,15 @@ export function buildChevalierBody(mats) {
   g.name = 'body';
   // iter-06：金屬珠光漆＋清漆層。不用金屬粒子法線貼圖（iter-04 反光扭曲主因），改用：
   //   底漆層 metalness 0.62／roughness 0.3（金屬底色的柔和寬高光）＋清漆 clearcoat 1.0／clearcoatRoughness 0.12（清楚但不過銳的燈箱反射；0.04 時俯視引擎蓋高光邊緣出現波紋）
+  //   iter-10：底漆 roughness 0.3 → 0.24、清漆 clearcoatRoughness 0.12 → 0.03（reviewer「光澤降為半光澤、rear34 反光不夠銳利」；
+  //   診斷：0.07 時 PMREM 取樣的燈箱倒影仍明顯糊掉，0.02–0.03 才有清楚邊緣；俯視引擎蓋檢查無 iter-06 的波紋）
   //   ＋視角顏色漸層（applyPaintFlop：正視亮寶藍、掠射轉深紫，珠光漆的 flop 效果）＋溫和 iridescence 與紫色 sheen
   const paint = new THREE.MeshPhysicalMaterial({
     color: 0x1f30a8,
-    roughness: 0.3,
+    roughness: 0.24,
     metalness: 0.62,
     clearcoat: 1.0,
-    clearcoatRoughness: 0.12,
+    clearcoatRoughness: 0.03,
     envMapIntensity: 0.85,
     iridescence: 0.25,
     iridescenceIOR: 1.3,
@@ -1138,7 +1320,13 @@ export function buildChevalierBody(mats) {
   // iter-09：座艙玻璃由不透明褐色金屬片改為透明煙燻玻璃（reviewer：「座艙玻璃不透明褐色片」）：
   //   transmission 0.9＋灰褐色調（color 為透射染色）→ 透過玻璃看得到座艙內裝深色輪廓；
   //   metalness 0、roughness 0.03、clearcoat 1 → 表面仍有棚拍燈箱的清楚倒影
-  const glass = new THREE.MeshPhysicalMaterial({ color: 0x5e5a54, roughness: 0.03, metalness: 0.0, transmission: 0.9, thickness: 0.4, ior: 1.5, envMapIntensity: 1.0, clearcoat: 1.0, clearcoatRoughness: 0.03, side: THREE.DoubleSide });
+  //   iter-10：色調改回參考的香檳／古銅煙燻（ref_chevalier-ma_front34／side-high）：透射染色 0xc9a67e、暖色 specularColor、
+  //   transmission 0.88、metalness 0.08（試過 metalness 0.3／transmission 0.75 → 像不透明卡其色板、看不到內裝，已撤回）
+  //   iter-12：reviewer「sidehigh 玻璃內有不明深色斑」。逐項排除（拿掉內裝、玻璃不收／不投陰影、envMapIntensity 0、清漆 0、
+  //   厚度 0、紅色測試片放在玻璃內 0.25 mm）後確認：深色橢圓斑出在 transmission 取樣（測試片被斑蓋住，玻璃隱藏時則完整可見）。
+  //   改用一般 alpha 半透明（transmission 0、opacity 0.72、深茶色 0x4a3d2e）：斑淡成柔和的倒影漸層，
+  //   側窗讀成 ref side-high 那種「深色煙燻＋燈箱倒影」，內側另加深灰車門內飾板（buildCabinInterior）
+  const glass = new THREE.MeshPhysicalMaterial({ color: 0x4a3d2e, specularColor: 0xffd3a0, roughness: 0.04, metalness: 0.08, transmission: 0.0, transparent: true, opacity: 0.72, depthWrite: false, ior: 1.5, envMapIntensity: 1.0, clearcoat: 1.0, clearcoatRoughness: 0.03, side: THREE.DoubleSide });
   const interiorTub = new THREE.MeshStandardMaterial({ color: 0x141518, roughness: 0.85, metalness: 0.0, side: THREE.DoubleSide });
   const interiorSeat = new THREE.MeshStandardMaterial({ color: 0x2c2e33, roughness: 0.6, metalness: 0.0 });
   const decal = (color, extra = {}) =>
@@ -1153,21 +1341,17 @@ export function buildChevalierBody(mats) {
   const seam = decal(0x05060a, { roughness: 0.7, clearcoat: 0.0 });
   const lens = decal(0x9aa3b0, { emissive: 0x3a4250, emissiveIntensity: 0.3, metalness: 0.6, roughness: 0.12 });
   const led = decal(0xffffff, { emissive: 0xeaf2ff, emissiveIntensity: 1.0, metalness: 0.0, roughness: 0.2, polygonOffsetFactor: -4, polygonOffsetUnits: -4 });
+  // iter-14：頭燈鍍鉻反射底與透明燈罩
+  const reflectorMat = decal(0xdfe4ec, { metalness: 1.0, roughness: 0.14, clearcoat: 0.0 });
+  const lampCoverMat = new THREE.MeshPhysicalMaterial({ color: 0xeef3ff, transparent: true, opacity: 0.32, depthWrite: false, roughness: 0.03, metalness: 0.0, clearcoat: 1.0, clearcoatRoughness: 0.02, envMapIntensity: 1.6, side: THREE.FrontSide });
   const lipMat = paint.clone();
   lipMat.side = THREE.DoubleSide;
   applyPaintFlop(lipMat);
   const emblemTex = canvasTexture(512, 512, drawHoodEmblem);
   const emblemMat = emblemTex ? decal(0xffffff, { map: emblemTex, alphaTest: 0.3, polygonOffsetFactor: -4, polygonOffsetUnits: -4 }) : null;
   const tamiyaTex = canvasTexture(256, 256, drawTamiya);
-  const intakeTex = canvasTexture(128, 16, (ctx) => {
-    const grd = ctx.createLinearGradient(0, 0, 128, 0);
-    grd.addColorStop(0, '#000000');
-    grd.addColorStop(0.35, '#05060a');
-    grd.addColorStop(1, '#3a4152');
-    ctx.fillStyle = grd;
-    ctx.fillRect(0, 0, 128, 16);
-  });
-  const intakeMat = intakeTex ? decal(0xffffff, { map: intakeTex, roughness: 0.7, clearcoat: 0.1 }) : null;
+  // iter-14：側進氣口槽內腔體（頂點色含 alpha，淡出到後葉子板前緣）
+  const cavityMat = new THREE.MeshStandardMaterial({ vertexColors: true, transparent: true, depthWrite: false, roughness: 0.85, metalness: 0.0, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2, side: THREE.DoubleSide });
   const tamiyaMat = tamiyaTex ? decal(0xffffff, { map: tamiyaTex, polygonOffsetFactor: -4, polygonOffsetUnits: -4 }) : null;
 
   g.add(buildHull(paint, inner));
@@ -1195,9 +1379,10 @@ export function buildChevalierBody(mats) {
       return [c - w, c + w];
     }, orange, side));
     // 側面第二道細條紋（銀）
-    g.add(ribbon(16, -22, (x, s) => {
-      const c = 0.88 - 0.2 * s;
-      const w = 0.025 * taper(s, 0.3, 0.2);
+    // iter-14：原本 16 → −22 會穿過新的深凹側進氣口（唇邊 x ≈ −14.4…−17.4）→ 路徑不變，終點縮到 x −5（在淺盤前端之前收尖）
+    g.add(ribbon(16, -5, (x, s) => {
+      const c = 0.88 - 0.2 * ((16 - x) / 38);
+      const w = 0.025 * taper(s, 0.3, 0.35);
       return [c - w, c + w];
     }, silver, side));
     // 後葉子板橘色斜線
@@ -1217,14 +1402,18 @@ export function buildChevalierBody(mats) {
       const [lo, hi] = lampBand(lampS(x));
       return [lo - 0.022, hi + 0.022];
     }, black, side, 0.05, { nu: 8 }));
-    g.add(ribbon(72, 56, (x, s) => lampBand(s), lens, side, 0.14, { nu: 8 }));
-    // 主 LED 燈條：燈帶下緣算起 25%–42%，兩端漸尖
-    g.add(ribbon(71.2, 57.2, (x, s) => {
-      const [lo, hi] = lampBand(lampS(x));
-      const w = 0.085 * taper(s, 0.06, 0.12);
-      const c = lo + (hi - lo) * 0.34;
-      return [c - w * (hi - lo), c + w * (hi - lo)];
-    }, led, side, 0.24, { nu: 2 }));
+    // iter-14：立體頭燈（reviewer 各輪「頭燈平貼、缺立體燈罩與導光」；ref hood-detail／front34：透明燈罩下是銀色反射底＋一排分格 LED）
+    //   1) 銀色鍍鉻反射底（取代 iter-05 的灰色金屬燈罩貼片）
+    g.add(ribbon(72, 56, (x, s) => lampBand(s), reflectorMat, side, 0.1, { nu: 8 }));
+    //   2) 下排分格 LED：6 顆凸起 0.35 mm 的發光小塊（每格之間露出鍍鉻反射底，形成反射杯分格），取代原本的連續主 LED 燈條
+    for (let k = 0; k < 6; k++) {
+      const xa = 70.8 - k * 2.3;
+      const xb = xa - 1.6;
+      const [lo, hi] = lampBand(lampS(0.5 * (xa + xb)));
+      const c = lo + (hi - lo) * 0.32;
+      const hw = 0.13 * (hi - lo);
+      g.add(raisedPad(xa, xb, c - hw, c + hw, 0.35, 0, led, side));
+    }
     // 上方短 LED 燈條（前段）
     g.add(ribbon(70.4, 63.5, (x, s) => {
       const [lo, hi] = lampBand(lampS(x));
@@ -1232,6 +1421,11 @@ export function buildChevalierBody(mats) {
       const c = lo + (hi - lo) * 0.7;
       return [c - w * (hi - lo), c + w * (hi - lo)];
     }, led, side, 0.24, { nu: 2 }));
+    //   3) 透明燈罩：沿法向隆起（中央 0.8 mm、四周 0.07 mm 貼回車殼），以自身網格法向呈現圓弧反光
+    g.add(ribbon(72.4, 55.4, (x) => {
+      const [lo, hi] = lampBand(lampS(x));
+      return [lo - 0.012, hi + 0.012];
+    }, lampCoverMat, side, (s, v) => 0.07 + 0.73 * Math.sqrt(Math.sin(Math.PI * v)) * Math.min(1, s / 0.08, (1 - s) / 0.12), { nu: 14, ownNormals: true }));
     // 尾燈（ref_chevalier-ma_rear34：透明白色細長 LED 燈，外圍黑色燈殼）
     // iter-05：尾燈改「黑色燈殼＋燈罩＋2 條縱向 LED」（ref rear34：車尾上緣兩角的細長 LED 尾燈）
     g.add(ribbon(-54.8, BODY_REAR_X, (x, s) => [0.37 + 0.02 * s, 0.62], black, side, 0.06, { nu: 8 }));
@@ -1261,16 +1455,10 @@ export function buildChevalierBody(mats) {
       const xc = 25 - k * 2.4;
       g.add(raisedPad(xc + 0.5, xc - 0.5, 0.555, 0.635, 0.7, 0.3, finMat, side));
     }
-    // 後輪前方的直立側進氣口：黑色內面＋前緣凸出 1.4 mm 的唇邊（前後立牆＋頂面），做出凹陷深度
-    // 內面用由前（唇邊陰影，全黑）往後漸亮的漸層貼圖，表現往內凹的曲面
-    // iter-06：reviewer「車門後方突兀的黑色垂直板」→ 唇邊由 1.0 mm 降到 0.45 mm、去掉唇邊頂面板；
-    // 內面縮小並加 4 片橫向灰色鰭片（與前輪後方百葉同一語彙），讀起來是進氣格柵而不是黑色立板
-    g.add(ribbon(-19.4, -24.2, (x, s) => [0.62 + 0.04 * s, 0.84 - 0.03 * s], intakeMat ?? black, side, 0.06, { uv: (s2, v) => [s2, v] }));
-    g.add(edgeWall(-19.3, 0.6, 0.86, 0.45, 0.3, lipMat, side));
-    for (let k = 0; k < 4; k++) {
-      const uc = 0.655 + k * 0.05;
-      g.add(raisedPad(-19.9, -23.4, uc, uc + 0.014, 0.45, 0, finMat, side));
-    }
+    // 後輪前方的直立側進氣口（iter-01～13：平貼的黑色漸層內面＋0.45 mm 唇邊＋4 片鰭片，reviewer 一再指出「缺深凹立體側進氣口」）
+    // iter-14：改為車殼曲面本身往內凹（sideIntakeDepth：車門淺盤 → 「)」形唇邊 → 3.4 mm 深槽 → 後葉子板前緣升出），
+    //   槽內貼深色腔體（buildIntakeCavity）；舊的平貼內面、唇邊牆、鰭片移除
+    g.add(buildIntakeCavity(cavityMat, side));
     // 引擎蓋騎士徽章＋CHEVALIER 字樣（Canvas 貼圖；左右兩半各取貼圖一半）
     if (emblemMat) {
       g.add(ribbon(71, 41, () => [0, 0.21], emblemMat, side, 0.1, { nu: 16, uv: (s, v) => [0.5 + side * 0.5 * v, s] }));
