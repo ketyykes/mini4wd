@@ -980,32 +980,60 @@ function buildWheelWells(mat) {
 }
 
 /**
+ * 珠光漆視角顏色漸層（iter-06）：在法線計算後依 N·V 把底色由正視的亮寶藍漸變到掠射的深紫，
+ * 只改 diffuseColor，不動法線，因此不會產生 iter-04 那種反光扭曲
+ * @type {(mat: THREE.MeshPhysicalMaterial) => void}
+ */
+const applyPaintFlop = (mat) => {
+  mat.onBeforeCompile = (shader) => {
+    shader.uniforms.flopFace = { value: new THREE.Color(0x3352f2) };
+    shader.uniforms.flopEdge = { value: new THREE.Color(0x2a1084) };
+    shader.fragmentShader = shader.fragmentShader
+      .replace('#include <common>', '#include <common>\nuniform vec3 flopFace;\nuniform vec3 flopEdge;')
+      .replace(
+        '#include <normal_fragment_maps>',
+        `#include <normal_fragment_maps>
+        {
+          float ndv = clamp(abs(dot(normal, normalize(vViewPosition))), 0.0, 1.0);
+          float flop = smoothstep(0.1, 0.9, ndv);
+          diffuseColor.rgb = mix(flopEdge, flopFace, flop);
+        }`,
+      );
+  };
+  mat.customProgramCacheKey = () => 'paintFlop';
+};
+
+/**
  * 建立 Chevalier 車殼（含座艙、條紋、燈組、散熱口）
  * @param {object} mats 由 model.js 傳入的共用材質
  */
 export function buildChevalierBody(mats) {
   const g = new THREE.Group();
   g.name = 'body';
+  // iter-06：金屬珠光漆＋清漆層。不用金屬粒子法線貼圖（iter-04 反光扭曲主因），改用：
+  //   底漆層 metalness 0.62／roughness 0.3（金屬底色的柔和寬高光）＋清漆 clearcoat 1.0／clearcoatRoughness 0.12（清楚但不過銳的燈箱反射；0.04 時俯視引擎蓋高光邊緣出現波紋）
+  //   ＋視角顏色漸層（applyPaintFlop：正視亮寶藍、掠射轉深紫，珠光漆的 flop 效果）＋溫和 iridescence 與紫色 sheen
   const paint = new THREE.MeshPhysicalMaterial({
-    color: 0x1d2c9e,
-    roughness: 0.38,
-    metalness: 0.35,
-    clearcoat: 0.7,
-    clearcoatRoughness: 0.22,
-    envMapIntensity: 0.7,
-    // iter-03：珍珠金屬漆（ref front34 / rear34：藍紫色金屬漆，掠射角偏紫）→ 薄膜干涉（iridescence）＋紫色 sheen
-    iridescence: 0.45,
-    iridescenceIOR: 1.35,
+    color: 0x1f30a8,
+    roughness: 0.3,
+    metalness: 0.62,
+    clearcoat: 1.0,
+    clearcoatRoughness: 0.12,
+    envMapIntensity: 0.85,
+    iridescence: 0.25,
+    iridescenceIOR: 1.3,
     iridescenceThicknessRange: [260, 420],
-    sheen: 0.3,
+    sheen: 0.25,
     sheenColor: new THREE.Color(0x7a5cff),
-    sheenRoughness: 0.45,
+    sheenRoughness: 0.5,
     side: THREE.FrontSide,
   });
+  applyPaintFlop(paint);
   // 車殼內面（深色）與邊緣翻邊／封口（車漆雙面）
   const inner = new THREE.MeshStandardMaterial({ color: 0x15161a, roughness: 0.9, side: THREE.BackSide });
   inner.userData.flange = paint.clone();
   inner.userData.flange.side = THREE.DoubleSide;
+  applyPaintFlop(inner.userData.flange);
   const glass = new THREE.MeshPhysicalMaterial({ color: 0x7d6650, roughness: 0.12, metalness: 0.75, envMapIntensity: 0.8, clearcoat: 1.0, clearcoatRoughness: 0.05, side: THREE.DoubleSide });
   const decal = (color, extra = {}) =>
     new THREE.MeshPhysicalMaterial({ color, roughness: 0.3, metalness: 0.1, clearcoat: 1.0, clearcoatRoughness: 0.1, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2, side: THREE.DoubleSide, ...extra });
@@ -1021,6 +1049,7 @@ export function buildChevalierBody(mats) {
   const led = decal(0xffffff, { emissive: 0xeaf2ff, emissiveIntensity: 1.0, metalness: 0.0, roughness: 0.2, polygonOffsetFactor: -4, polygonOffsetUnits: -4 });
   const lipMat = paint.clone();
   lipMat.side = THREE.DoubleSide;
+  applyPaintFlop(lipMat);
   const emblemTex = canvasTexture(512, 512, drawHoodEmblem);
   const emblemMat = emblemTex ? decal(0xffffff, { map: emblemTex, alphaTest: 0.3, polygonOffsetFactor: -4, polygonOffsetUnits: -4 }) : null;
   const tamiyaTex = canvasTexture(256, 256, drawTamiya);
@@ -1127,10 +1156,14 @@ export function buildChevalierBody(mats) {
     }
     // 後輪前方的直立側進氣口：黑色內面＋前緣凸出 1.4 mm 的唇邊（前後立牆＋頂面），做出凹陷深度
     // 內面用由前（唇邊陰影，全黑）往後漸亮的漸層貼圖，表現往內凹的曲面
-    g.add(ribbon(-19, -25, (x, s) => [0.6 + 0.05 * s, 0.86 - 0.04 * s], intakeMat ?? black, side, 0.06, { uv: (s2, v) => [s2, v] }));
-    g.add(edgeWall(-19.2, 0.57, 0.89, 1.0, 0.6, lipMat, side));
-    g.add(edgeWall(-17.4, 0.57, 0.89, 1.0, 0, lipMat, side));
-    g.add(ribbon(-17.4, -19.8, () => [0.57, 0.89], lipMat, side, 1.0));
+    // iter-06：reviewer「車門後方突兀的黑色垂直板」→ 唇邊由 1.0 mm 降到 0.45 mm、去掉唇邊頂面板；
+    // 內面縮小並加 4 片橫向灰色鰭片（與前輪後方百葉同一語彙），讀起來是進氣格柵而不是黑色立板
+    g.add(ribbon(-19.4, -24.2, (x, s) => [0.62 + 0.04 * s, 0.84 - 0.03 * s], intakeMat ?? black, side, 0.06, { uv: (s2, v) => [s2, v] }));
+    g.add(edgeWall(-19.3, 0.6, 0.86, 0.45, 0.3, lipMat, side));
+    for (let k = 0; k < 4; k++) {
+      const uc = 0.655 + k * 0.05;
+      g.add(raisedPad(-19.9, -23.4, uc, uc + 0.014, 0.45, 0, finMat, side));
+    }
     // 引擎蓋騎士徽章＋CHEVALIER 字樣（Canvas 貼圖；左右兩半各取貼圖一半）
     if (emblemMat) {
       g.add(ribbon(71, 41, () => [0, 0.21], emblemMat, side, 0.1, { nu: 16, uv: (s, v) => [0.5 + side * 0.5 * v, s] }));
