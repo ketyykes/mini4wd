@@ -104,22 +104,11 @@ const BOTTOM_Y = 8.6;
 // iter-05：reviewer「輪胎露出比例小、輪拱開口大」（ref side-high：輪拱開口明顯大於輪胎）→ 1.8 → 2.8 mm
 // iter-07：reviewer「輪拱上緣空隙偏大」→ 2.8 → 1.8 mm
 // iter-13：reviewer「輪拱上方黑色內襯空隙明顯（參考輪胎填滿輪拱）」→ 1.8 → 1.0 mm（輪胎外徑 26 mm 不變；輪拱頂離胎面 0.5 mm）
-// （iter-13～17：ARCH_R = 輪胎半徑 + 1.0，圓心 = 輪心 − 0.5）
-// iter-18：五位 reviewer（iter-12、13、15、16、17）一致指出「輪拱上緣把輪胎蓋掉太多、輪子埋太深」。
-//   原因（scripts/diag/overlay_wheel.mjs 擬合相機量測）：輪胎外側面在 z = 輪距/2 + 胎寬/2 = 34.25 mm，車殼側面在前 40／後 43 mm，
-//   24° 俯拍時輪拱唇邊（z = 半寬 − 1.8）擋住輪胎上緣：前輪被遮 8 px、後輪 16 px（輪胎直徑 133 px）。
-//   輪胎外徑 26 mm、輪距不可改 → 輪拱開口改為「圓心上移＋半徑加大」，讓唇邊高過「輪胎頂外緣往相機的視線」：
-//   視線斜率 tan 25.75° ≈ 0.48，前唇邊需 ≥ 26 + (38.2 − 34.25)·0.48 ≈ 27.9、後唇邊 ≥ 26 + (41.2 − 34.25)·0.48 ≈ 29.3；
-//   再加唇邊圓珠（ARCH_LIP_R）下緣約 0.2 mm → 開口頂取前 28.2、後 29.1 mm（後輪保留約 0.4 mm 遮擋，避免側視黑縫過大）。
-//   側邊間隙前 1.5／後 1.8 mm（ref side-high 輪拱與輪胎約等距同心、間隙約 1.5 mm，推估）
-/** 每個輪拱的開口圓：圓心高 = 輪心 + lift，半徑 r（mm） */
-const ARCHES = [
-  { x: spec.chassis.wheelbase_mm / 2, lift: 0.7, r: spec.tire.diameter_mm / 2 + 1.5 },
-  { x: -spec.chassis.wheelbase_mm / 2, lift: 1.3, r: spec.tire.diameter_mm / 2 + 1.8 },
-];
+const ARCH_R = spec.tire.diameter_mm / 2 + 1.0;
 
 /** 車殼底緣（含前後輪拱開口） */
 function bottomAt(x) {
+  const archX = spec.chassis.wheelbase_mm / 2;
   const wheelY = spec.tire.diameter_mm / 2;
   let y = BOTTOM_Y;
   // 車尾下緣往上收（尾燈下方的擴散器開口，看得到底盤；ref rear34）
@@ -132,10 +121,10 @@ function bottomAt(x) {
     const t = Math.min(1, (x - 55) / 10);
     y = BOTTOM_Y + (10.4 - BOTTOM_Y) * t * t * (3 - 2 * t);
   }
-  for (const a of ARCHES) {
-    const dx = x - a.x;
-    if (Math.abs(dx) < a.r) {
-      y = Math.max(y, wheelY + a.lift + Math.sqrt(a.r * a.r - dx * dx));
+  for (const ax of [-archX, archX]) {
+    const dx = x - ax;
+    if (Math.abs(dx) < ARCH_R) {
+      y = Math.max(y, wheelY + Math.sqrt(ARCH_R * ARCH_R - dx * dx) - 0.5);
     }
   }
   return y;
@@ -385,9 +374,10 @@ function hullXs() {
     xs.add(Number(x.toFixed(3)));
   }
   xs.add(BODY_REAR_X);
-  for (const a of ARCHES) {
+  const archX = spec.chassis.wheelbase_mm / 2;
+  for (const ax of [-archX, archX]) {
     for (const sgn of [-1, 1]) {
-      const e = a.x + sgn * a.r;
+      const e = ax + sgn * ARCH_R;
       for (let d = -1.5; d <= 1.5 + 1e-9; d += 0.08) {
         xs.add(Number((e + d).toFixed(3)));
       }
@@ -782,30 +772,31 @@ function drawHoodEmblem(ctx) {
 
 /** TAMIYA 標誌（白底黑框、雙星、TAMIYA 字） */
 function drawTamiya(ctx) {
-  // iter-17：改成參考的單色版（ref side-high 放大：透明底、兩個白色方塊內鏤空深藍星、下方白字 TAMIYA，
-  // 原本是白底紅藍彩色星）；材質加 alphaTest，透明處露出車身色
-  ctx.clearRect(0, 0, 256, 256);
-  const star = (cx, cy, r) => {
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(0, 0, 256, 256);
+  ctx.strokeStyle = '#111';
+  ctx.lineWidth = 14;
+  ctx.strokeRect(7, 7, 242, 242);
+  const star = (cx, cy, r, fill) => {
     ctx.beginPath();
     for (let k = 0; k < 10; k++) {
       const a = -Math.PI / 2 + (k * Math.PI) / 5;
-      const rr = k % 2 === 0 ? r : r * 0.42;
+      const rr = k % 2 === 0 ? r : r * 0.45;
       ctx.lineTo(cx + Math.cos(a) * rr, cy + Math.sin(a) * rr);
     }
     ctx.closePath();
+    ctx.fillStyle = fill;
     ctx.fill();
+    ctx.lineWidth = 6;
+    ctx.stroke();
   };
-  for (const cx of [72, 184]) {
-    ctx.fillStyle = '#ffffff';
-    ctx.fillRect(cx - 54, 22, 108, 112);
-    ctx.fillStyle = '#161c4e';
-    star(cx, 82, 50);
-  }
-  ctx.fillStyle = '#ffffff';
-  ctx.font = 'bold 60px Arial, sans-serif';
+  star(100, 100, 62, '#d71920');
+  star(156, 100, 62, '#1f3a93');
+  ctx.fillStyle = '#111';
+  ctx.font = 'bold 56px Arial, sans-serif';
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
-  ctx.fillText('TAMIYA', 128, 190);
+  ctx.fillText('TAMIYA', 128, 205);
 }
 
 /** 兩端漸尖的寬度包絡 */
@@ -1268,79 +1259,19 @@ const buildRearFascia = (paintTwo, wallMat, darkMat) => {
   return g;
 };
 
-/** 輪拱唇邊圓珠半徑（mm，推估：ref side-high／front34 輪拱邊緣有一圈約 1 mm 寬的捲邊高光） */
-export const ARCH_LIP_R = 0.45;
-/** 圓珠中心相對開口邊緣往上、往內的偏移（mm）：只露出下半圈當作捲邊，避免往下凸出擋住輪胎上緣 */
-export const ARCH_LIP_IN = 0.25;
-
-/**
- * 輪拱唇邊（iter-18）：沿車殼輪拱開口邊緣（u = 1）放一條車身色圓管，讓開口邊有捲邊厚度與高光，
- * 路徑 = 前端垂直段（底緣 → 圓心高）＋ 開口圓弧 ＋ 後端垂直段，圓弧在圓心高處切線垂直，與垂直段平順銜接
- * @param {THREE.Material} mat
- */
-function buildArchLips(mat) {
-  const g = new THREE.Group();
-  const wheelY = spec.tire.diameter_mm / 2;
-  for (const a of ARCHES) {
-    const cy = wheelY + a.lift;
-    for (const side of [1, -1]) {
-      const pts = [];
-      const edgeZ = (x) => bodyPoint(x, 1, side).z - side * ARCH_LIP_IN;
-      const xF = a.x + a.r - 0.02;
-      const xR = a.x - a.r + 0.02;
-      // 底端抬高一個圓珠半徑，封口球不會凸出車殼底緣
-      const yLow = BOTTOM_Y + ARCH_LIP_R;
-      for (let y = yLow; y < cy; y += 0.6) {
-        pts.push(new THREE.Vector3(xF, y, edgeZ(xF)));
-      }
-      for (let k = 0; k <= 64; k++) {
-        const ang = (k / 64) * Math.PI;
-        const x = a.x + a.r * Math.cos(ang) * 0.9985;
-        const p = bodyPoint(x, 1, side);
-        pts.push(new THREE.Vector3(x, cy + (a.r * 0.9985 + ARCH_LIP_IN) * Math.sin(ang), p.z - side * ARCH_LIP_IN));
-      }
-      for (let y = cy - 0.6; y >= yLow - 1e-6; y -= 0.6) {
-        pts.push(new THREE.Vector3(xR, y, edgeZ(xR)));
-      }
-      const curve = new THREE.CatmullRomCurve3(pts, false, 'centripetal');
-      const segs = 160;
-      const radial = 10;
-      const geo = new THREE.TubeGeometry(curve, segs, ARCH_LIP_R, radial, false);
-      // 兩端（底緣附近 12% 長度）圓珠漸細到 0，收進車殼邊緣，避免端點像水滴凸出
-      const pos = geo.attributes.position;
-      const c = new THREE.Vector3();
-      const v = new THREE.Vector3();
-      for (let i = 0; i <= segs; i++) {
-        const t = i / segs;
-        const e = Math.min(1, Math.min(t, 1 - t) / 0.12);
-        const f = e * e * (3 - 2 * e);
-        curve.getPointAt(t, c);
-        for (let j = 0; j <= radial; j++) {
-          const k = i * (radial + 1) + j;
-          v.fromBufferAttribute(pos, k).sub(c).multiplyScalar(f).add(c);
-          pos.setXYZ(k, v.x, v.y, v.z);
-        }
-      }
-      // 等比例縮半徑不改法向方向，保留 TubeGeometry 原本的放射狀法向
-      g.add(new THREE.Mesh(geo, mat));
-    }
-  }
-  return g;
-}
-
 /** 輪拱內側（深色內襯，遮住車殼內面） */
 function buildWheelWells(mat) {
   const g = new THREE.Group();
+  const archX = spec.chassis.wheelbase_mm / 2;
   const wy = spec.tire.diameter_mm / 2;
-  for (const a of ARCHES) {
-    const ax = a.x;
+  for (const ax of [-archX, archX]) {
     for (const side of [1, -1]) {
       const w = smoothTable(HALF_WIDTH, ax);
-      const geo = new THREE.CylinderGeometry(a.r - 0.3, a.r - 0.3, 16, 32, 1, true, -Math.PI / 2, Math.PI);
+      const geo = new THREE.CylinderGeometry(ARCH_R - 0.3, ARCH_R - 0.3, 16, 32, 1, true, -Math.PI / 2, Math.PI);
       const m = new THREE.Mesh(geo, mat);
       // 圓柱軸沿 z、開口朝下
       m.rotation.x = -Math.PI / 2;
-      m.position.set(ax, wy + a.lift, side * (w - 10));
+      m.position.set(ax, wy - 0.5, side * (w - 10));
       g.add(m);
     }
   }
@@ -1453,7 +1384,7 @@ export function buildChevalierBody(mats) {
   const tamiyaTex = canvasTexture(256, 256, drawTamiya);
   // iter-14：側進氣口槽內腔體（頂點色含 alpha，淡出到後葉子板前緣）
   const cavityMat = new THREE.MeshStandardMaterial({ vertexColors: true, transparent: true, depthWrite: false, roughness: 0.85, metalness: 0.0, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2, side: THREE.DoubleSide });
-  const tamiyaMat = tamiyaTex ? decal(0xffffff, { map: tamiyaTex, alphaTest: 0.4, polygonOffsetFactor: -4, polygonOffsetUnits: -4 }) : null;
+  const tamiyaMat = tamiyaTex ? decal(0xffffff, { map: tamiyaTex, polygonOffsetFactor: -4, polygonOffsetUnits: -4 }) : null;
 
   g.add(buildHull(paint, inner));
   g.add(buildCabin(paint, glass, black));
@@ -1467,7 +1398,6 @@ export function buildChevalierBody(mats) {
     g.add(roofDecal(-13, -33, 0.33, 0.43, midMat, -1));
   }
   g.add(buildWheelWells(new THREE.MeshStandardMaterial({ color: 0x101114, roughness: 0.9, side: THREE.DoubleSide })));
-  g.add(buildArchLips(lipMat));
 
   for (const side of [1, -1]) {
     // 前葉子板稜線外側的橘色條紋：從頭燈往後延伸到擋風玻璃旁

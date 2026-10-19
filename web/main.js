@@ -211,15 +211,6 @@ if (view === 'track') {
   } else {
     camera.position.set(250, 135, -235);
   }
-  // iter-17：檢查用特寫相機（?cam=x,y,z&look=x,y,z），不影響正式視角
-  if (params.get('cam')) {
-    const [px, py, pz] = params.get('cam').split(',').map(Number);
-    camera.position.set(px, py, pz);
-    if (params.get('look')) {
-      const [lx, ly, lz] = params.get('look').split(',').map(Number);
-      center.set(lx, ly, lz);
-    }
-  }
   camera.lookAt(center);
   sun.position.set(-180, 520, 260);
   sun.target.position.set(0, 0, 0);
