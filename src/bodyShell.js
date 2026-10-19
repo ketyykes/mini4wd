@@ -589,17 +589,6 @@ function edgeWall(x, u0, u1, h, lean, mat, side) {
  * 貼在車殼曲面上、沿法向凸起的小方塊（立體鰭片）：頂面＋四周側牆，頂面往後（−x）傾斜 lean mm（iter-04 實作，iter-05 重新套用）
  * @type {(x0: number, x1: number, u0: number, u1: number, h: number, lean: number, mat: THREE.Material, side: number) => THREE.Mesh}
  */
-/**
- * iter-24：斜向長條鰭片（格柵用）：沿 x0 → x1 前進時 u 中心由 uA 線性移到 uB，截面半寬 hw（u）；
- * 沿法向隆起（截面中央 0.4 mm、四周 0.07 mm 貼回車殼，兩端收回），不懸空、不穿出曲面
- */
-function slantSlat(x0, x1, uA, uB, hw, mat, side) {
-  return ribbon(x0, x1, (x, s) => {
-    const c = uA + (uB - uA) * s;
-    return [c - hw, c + hw];
-  }, mat, side, (s, v) => 0.07 + 0.33 * Math.sqrt(Math.sin(Math.PI * v)) * Math.min(1, s / 0.12, (1 - s) / 0.12), { nu: 6, ownNormals: true });
-}
-
 const raisedPad = (x0, x1, u0, u1, h, lean, mat, side) => {
   const nu = 6;
   // 周邊路徑：x0 邊（u0→u1）→ x1 邊（u1→u0）→ 回到起點
@@ -798,80 +787,35 @@ function drawHoodEmblem(ctx) {
   }
 }
 
-/** TAMIYA 標誌（白底、深藍外框、兩個白方塊內的深藍大星、下方深藍 TAMIYA 字） */
+/** TAMIYA 標誌（白底黑框、雙星、TAMIYA 字） */
 function drawTamiya(ctx) {
-  // iter-17：改成單色版（透明底、白方塊內鏤空深藍星、白字），材質加 alphaTest，透明處露出車身色
-  // iter-20（reviewer iter-19「深底白線，參考為白底方塊深色星，顏色反了」）：ref side-high／front34 放大重看——
-  //   整塊貼紙是白底、外圍一圈深色細框；上半兩個白方塊各一顆幾乎頂到方塊邊的深藍星，方塊之間與上下半之間有深色分隔線；
-  //   下半是白底深色 TAMIYA 字。整塊外形近正方（ref side-high 約 45 × 40 px），貼片改為 5.6 × 5.1 mm（原 7 × 4.4 mm）
-  const navy = '#151b5c';
+  // iter-17：改成參考的單色版（ref side-high 放大：透明底、兩個白色方塊內鏤空深藍星、下方白字 TAMIYA，
+  // 原本是白底紅藍彩色星）；材質加 alphaTest，透明處露出車身色
   ctx.clearRect(0, 0, 256, 256);
   const star = (cx, cy, r) => {
     ctx.beginPath();
     for (let k = 0; k < 10; k++) {
       const a = -Math.PI / 2 + (k * Math.PI) / 5;
-      const rr = k % 2 === 0 ? r : r * 0.4;
+      const rr = k % 2 === 0 ? r : r * 0.42;
       ctx.lineTo(cx + Math.cos(a) * rr, cy + Math.sin(a) * rr);
     }
     ctx.closePath();
     ctx.fill();
   };
-  // 白底＋深色外框
-  ctx.fillStyle = '#ffffff';
-  ctx.fillRect(4, 4, 248, 248);
-  ctx.strokeStyle = navy;
-  ctx.lineWidth = 8;
-  ctx.strokeRect(14, 14, 228, 228);
-  // 上半兩個方塊：中間直線與上下半分隔線
-  ctx.lineWidth = 6;
-  ctx.beginPath();
-  ctx.moveTo(128, 14);
-  ctx.lineTo(128, 150);
-  ctx.moveTo(14, 150);
-  ctx.lineTo(242, 150);
-  ctx.stroke();
-  ctx.fillStyle = navy;
-  for (const cx of [71, 185]) {
-    star(cx, 86, 60);
+  for (const cx of [72, 184]) {
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(cx - 54, 22, 108, 112);
+    ctx.fillStyle = '#161c4e';
+    star(cx, 82, 50);
   }
-  ctx.font = 'bold 62px Arial, sans-serif';
+  ctx.fillStyle = '#ffffff';
+  ctx.font = 'bold 60px Arial, sans-serif';
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
-  ctx.fillText('TAMIYA', 128, 200, 214);
+  ctx.fillText('TAMIYA', 128, 190);
 }
 
 /** 兩端漸尖的寬度包絡 */
-/**
- * iter-24：側條漸層貼圖（ref side-high／front34 放大：條紋上緣橘、往下漸層成黃橘，尖頭前端淡成白藍，下緣另有一道細白線）
- * 畫布 U（左→右）= 條紋 s（x0→x1）；V（上→下）= 截面 v（uLo 上緣 → uHi 下緣；flipY = false）
- * @param {boolean} paleTip 前端（s 小）是否淡成白藍
- */
-function drawStripeGradient(ctx, paleTip) {
-  const w = 256;
-  const h = 64;
-  ctx.clearRect(0, 0, w, h);
-  // 主色帶：v 0 → 0.74 橘 → 黃橘
-  const bandH = Math.round(h * 0.74);
-  const g = ctx.createLinearGradient(0, 0, 0, bandH);
-  // iter-25：reviewer 指出黃色尾端過飽和、實車以亮橘為主 → 主體全亮橘，只在下緣 15% 極窄過渡到偏暖橘（不出現黃）
-  g.addColorStop(0, '#ff5a08');
-  g.addColorStop(0.85, '#ff640a');
-  g.addColorStop(1, '#ff7c12');
-  ctx.fillStyle = g;
-  ctx.fillRect(0, 0, w, bandH);
-  if (paleTip) {
-    // iter-25：白藍尖頭縮短（0.24 → 0.12）、降低不透明度，讓箭形尖頭仍以橘色輪廓為主
-    const t = ctx.createLinearGradient(0, 0, w * 0.12, 0);
-    t.addColorStop(0, 'rgba(236,242,255,0.75)');
-    t.addColorStop(1, 'rgba(236,242,255,0)');
-    ctx.fillStyle = t;
-    ctx.fillRect(0, 0, w * 0.12, bandH);
-  }
-  // v 0.74–0.82 透明間隙（alphaTest 透出車身色），v 0.82–0.92 細白線
-  ctx.fillStyle = '#f4f6fb';
-  ctx.fillRect(0, Math.round(h * 0.82), w, Math.round(h * 0.1));
-}
-
 const taper = (s, a = 0.15, b = 0.25) => Math.min(1, s / a, (1 - s) / b);
 
 /** 碳纖網格貼圖（DataTexture，Node 測試環境也能建立） */
@@ -1501,11 +1445,6 @@ export function buildChevalierBody(mats) {
   const decal = (color, extra = {}) =>
     new THREE.MeshPhysicalMaterial({ color, roughness: 0.3, metalness: 0.1, clearcoat: 1.0, clearcoatRoughness: 0.1, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2, side: THREE.DoubleSide, ...extra });
   const orange = decal(0xff6a12);
-  // iter-24：側條改橘黃漸層＋細白線（Node 測試環境無 canvas → 退回單色橘）
-  const stripeTex = canvasTexture(256, 64, (ctx) => drawStripeGradient(ctx, false));
-  const stripeTipTex = canvasTexture(256, 64, (ctx) => drawStripeGradient(ctx, true));
-  const stripeMat = stripeTex ? decal(0xffffff, { map: stripeTex, alphaTest: 0.4 }) : orange;
-  const stripeTipMat = stripeTipTex ? decal(0xffffff, { map: stripeTipTex, alphaTest: 0.4 }) : orange;
   const silver = decal(0xc9ced6, { metalness: 0.7, roughness: 0.25 });
   const darkGray = decal(0x1a1e28, { roughness: 0.5, clearcoat: 0.3 });
   const black = decal(0x0b0c10, { roughness: 0.6, clearcoat: 0.2 });
@@ -1544,37 +1483,28 @@ export function buildChevalierBody(mats) {
 
   for (const side of [1, -1]) {
     // 前葉子板稜線外側的橘色條紋：從頭燈往後延伸到擋風玻璃旁
-    // iter-24：改橘黃漸層＋細白線（截面 nu 12 讓漸層與白線平順）
-    // iter-25：前端斜切由 12% 縮短為 6%，尖頭更銳利的折角箭形
-    g.add(ribbon(70, 20, (x, s) => [0.41, 0.41 + 0.075 * taper(s, 0.06, 0.4)], stripeMat, side, 0.06, { nu: 12 }));
+    g.add(ribbon(70, 20, (x, s) => [0.41, 0.41 + 0.075 * taper(s, 0.12, 0.4)], orange, side));
     // 橘色條紋內側的銀色細線
     g.add(ribbon(66, 34, (x, s) => [0.37, 0.37 + 0.03 * taper(s, 0.2, 0.3)], silver, side));
     // 側面橘色掃掠條紋：前輪後方低處 → 往後上揚到後葉子板
-    // iter-25：前端改尖銳折角箭形（ref side-high／front34）：上緣直線延伸到尖端、下緣在前 10% 斜切收成一點
-    //   （原本前 35% 上下對稱漸細，尖頭圓鈍）；後端維持對稱收尖
     g.add(ribbon(22, -36, (x, s) => {
       const c = 0.8 - 0.3 * s;
-      const wFull = 0.06 * Math.min(1, (1 - s) / 0.12);
-      const front = Math.min(1, s / 0.1);
-      const lo = c - wFull;
-      return [lo, lo + 2 * wFull * front];
-    }, stripeTipMat, side, 0.09, { nu: 12 }));
-    // 側面第二道細條紋
-    // iter-14：原本 16 → −22 會穿過新的深凹側進氣口（唇邊 x ≈ −14.4…−17.4）→ 路徑不變，終點縮到 x −5（在淺盤前端之前收尖）
-    // iter-24：ref side-high 的第二道是主條紋「上方」的細橘尖條（車門前段 → 座艙下方、略上揚），原本主條紋下方的銀線移除
-    //   （主條紋下緣已有細白線）；路徑 x 14 → −8、u 中心 0.64 → 0.53，與主條紋上緣保持 ≥ 0.01 間隙，終點在側進氣口唇邊之前
-    g.add(ribbon(14, -8, (x, s) => {
-      const c = 0.64 - 0.11 * s;
-      const w = 0.016 * taper(s, 0.3, 0.45);
+      const w = 0.06 * taper(s, 0.35, 0.12);
       return [c - w, c + w];
     }, orange, side));
+    // 側面第二道細條紋（銀）
+    // iter-14：原本 16 → −22 會穿過新的深凹側進氣口（唇邊 x ≈ −14.4…−17.4）→ 路徑不變，終點縮到 x −5（在淺盤前端之前收尖）
+    g.add(ribbon(16, -5, (x, s) => {
+      const c = 0.88 - 0.2 * ((16 - x) / 38);
+      const w = 0.025 * taper(s, 0.3, 0.35);
+      return [c - w, c + w];
+    }, silver, side));
     // 後葉子板橘色斜線
     g.add(ribbon(-24, -58, (x, s) => {
       const c = 0.5 - 0.12 * s;
       const w = 0.05 * taper(s, 0.2, 0.3);
       return [c - w, c + w];
-      // iter-24：前段與側面主條紋（x −24…−36）重疊合流 → 用無白尖頭版本、抬高 0.05（主條紋 0.09 在上），避免重疊處 z-fighting 碎片
-    }, stripeMat, side, 0.05, { nu: 12 }));
+    }, orange, side));
     // 頭燈：前葉子板前下緣的細長燈條
     // iter-05：頭燈改「黑色燈殼＋透明燈罩＋縱向 LED 燈條」（ref hood-detail：細長燈罩內沿長邊走的 LED 線）
     //   iter-04 用 3 條橫向分段線，線條歪斜像牙齒（reviewer）→ 改沿燈長方向的連續細線，不再有橫切線
@@ -1629,17 +1559,15 @@ export function buildChevalierBody(mats) {
     // iter-05（重新套用 iter-04）：百葉改立體鰭片（ref hood-detail：深色凹槽內一排灰色斜鰭片）
     // 前葉子板內側百葉：深色底板＋5 片凸起 0.8 mm 的灰色鰭片
     g.add(ribbon(62, 49.5, () => [0.25, 0.35], black, side, 0.06));
-    // iter-24：短方塊鰭片 → 斜向長條（ref front34／side-high：一排「/」形斜長條，內側端往車尾偏）
-    for (let k = 0; k < 6; k++) {
-      const xa = 61.4 - k * 1.9;
-      g.add(slantSlat(xa, xa - 1.8, 0.338, 0.262, 0.013, finMat, side));
+    for (let k = 0; k < 5; k++) {
+      const xc = 60.6 - k * 2.4;
+      g.add(raisedPad(xc + 0.45, xc - 0.45, 0.26, 0.34, 0.8, 0.35, finMat, side));
     }
     // 前輪後方側面百葉：深色底板＋4 片鰭片
     g.add(ribbon(26.6, 15.8, () => [0.54, 0.65], black, side, 0.06));
-    // iter-24：同上改斜向長條（下端在前、上端往車尾偏）
-    for (let k = 0; k < 5; k++) {
-      const xa = 25.9 - k * 1.95;
-      g.add(slantSlat(xa, xa - 1.8, 0.636, 0.554, 0.012, finMat, side));
+    for (let k = 0; k < 4; k++) {
+      const xc = 25 - k * 2.4;
+      g.add(raisedPad(xc + 0.5, xc - 0.5, 0.555, 0.635, 0.7, 0.3, finMat, side));
     }
     // 後輪前方的直立側進氣口（iter-01～13：平貼的黑色漸層內面＋0.45 mm 唇邊＋4 片鰭片，reviewer 一再指出「缺深凹立體側進氣口」）
     // iter-14：改為車殼曲面本身往內凹（sideIntakeDepth：車門淺盤 → 「)」形唇邊 → 3.4 mm 深槽 → 後葉子板前緣升出），
@@ -1651,10 +1579,9 @@ export function buildChevalierBody(mats) {
     }
     // TAMIYA 標誌（前輪後方下側；右側由後往前、左側由前往後，字才不會反）
     if (tamiyaMat) {
-      // iter-20：5.6 × 5.1 mm 近正方（原 x 16.6–23.6、u 0.82–0.97）；上緣 u 0.80 仍在側面橘條紋下緣（x 17 處 u ≈ 0.787）之下
-      const xa = side > 0 ? 17.0 : 22.6;
-      const xb = side > 0 ? 22.6 : 17.0;
-      g.add(ribbon(xa, xb, () => [0.8, 0.97], tamiyaMat, side, 0.1, { nu: 10, uv: (s, v) => [s, v] }));
+      const xa = side > 0 ? 16.6 : 23.6;
+      const xb = side > 0 ? 23.6 : 16.6;
+      g.add(ribbon(xa, xb, () => [0.82, 0.97], tamiyaMat, side, 0.1, { nu: 8, uv: (s, v) => [s, v] }));
     }
     // 引擎蓋前方 NACA 進氣口（深色）
     // iter-05：深色底面貼在下凹曲面上（寬度與 nacaHalfU 一致）
