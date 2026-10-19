@@ -32,6 +32,76 @@ function rubberNoiseTexture() {
   return tex;
 }
 
+/**
+ * 輪胎側壁材質（iter-07）：1024² canvas，以 RingGeometry 的平面 UV 對應（中心 = 貼圖中心，貼圖半邊 = 外半徑）。
+ * 內容：放射狀細肋紋（內外兩圈）＋沿圓周的凸起字樣；同一張灰階圖當 bumpMap
+ * 字樣內容為示意（推估：參考照片看不清側壁字，實車低摩擦胎側壁有 TAMIYA 字樣）
+ */
+function tireSidewallMaterial() {
+  // Node（vitest）沒有 DOM：只回傳素色材質，P09 外框量測用的幾何不變
+  if (typeof document === 'undefined') {
+    return new THREE.MeshStandardMaterial({ color: 0x1e1e20, roughness: 0.9 });
+  }
+  const size = 1024;
+  const cv = document.createElement('canvas');
+  cv.width = size;
+  cv.height = size;
+  const ctx = cv.getContext('2d');
+  const c = size / 2;
+  // 外半徑對應 c；內半徑比例 = rr / wallOuter
+  const R = spec.tire.diameter_mm / 2;
+  const rr = spec.tire.rimDiameter_mm / 2;
+  const wallOuter = rr + 0.55 * (R - rr);
+  const rIn = (rr / wallOuter) * c;
+  ctx.fillStyle = '#1e1e20';
+  ctx.fillRect(0, 0, size, size);
+  // 內圈與外圈細肋紋（放射短線）
+  ctx.strokeStyle = '#2f2f33';
+  ctx.lineWidth = 3;
+  const ribs = 180;
+  for (let i = 0; i < ribs; i++) {
+    const a = (i / ribs) * Math.PI * 2;
+    for (const [r0, r1] of [[rIn + 4, rIn + 22], [c - 26, c - 6]]) {
+      ctx.beginPath();
+      ctx.moveTo(c + Math.cos(a) * r0, c + Math.sin(a) * r0);
+      ctx.lineTo(c + Math.cos(a) * r1, c + Math.sin(a) * r1);
+      ctx.stroke();
+    }
+  }
+  // 兩條細環線分隔肋紋與字樣帶
+  ctx.lineWidth = 2;
+  for (const r of [rIn + 26, c - 30]) {
+    ctx.beginPath();
+    ctx.arc(c, c, r, 0, Math.PI * 2);
+    ctx.stroke();
+  }
+  // 沿圓周字樣（兩組對稱）：字底朝內、由外側看為正向
+  const rText = (rIn + 26 + c - 30) / 2;
+  ctx.fillStyle = '#46464c';
+  ctx.font = 'bold 34px Arial, Helvetica, sans-serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  const label = 'TAMIYA  LOW FRICTION  26mm';
+  for (const start of [-Math.PI / 2, Math.PI / 2]) {
+    const step = 0.052;
+    const a0 = start - ((label.length - 1) * step) / 2;
+    for (let i = 0; i < label.length; i++) {
+      const a = a0 + i * step;
+      ctx.save();
+      ctx.translate(c + Math.cos(a) * rText, c + Math.sin(a) * rText);
+      ctx.rotate(a + Math.PI / 2);
+      ctx.fillText(label[i], 0, 0);
+      ctx.restore();
+    }
+  }
+  const tex = new THREE.CanvasTexture(cv);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  tex.anisotropy = 8;
+  const bump = new THREE.CanvasTexture(cv);
+  bump.anisotropy = 8;
+  return new THREE.MeshStandardMaterial({ map: tex, bumpMap: bump, bumpScale: 1.2, roughness: 0.9, metalness: 0.0, envMapIntensity: 0.6, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -1 });
+}
+
 /** 建立材質集合 */
 function makeMaterials() {
   return {
@@ -46,6 +116,12 @@ function makeMaterials() {
     tireTread: new THREE.MeshStandardMaterial({ color: 0x161617, roughness: 0.97, metalness: 0.0 }),
     // 輪框：ref_chevalier-ma_wheel-detail 為淺灰緞面塑膠（帶些許金屬粉），不是鍍鉻
     rim: new THREE.MeshPhysicalMaterial({ color: 0xa4a9b0, roughness: 0.42, metalness: 0.45, clearcoat: 0.35, clearcoatRoughness: 0.3 }),
+    // iter-07：輪輻金屬灰漸層——頂點色依半徑由輪轂（深槍灰）→ 輪框（亮銀灰），金屬度提高（ref_chevalier-ma_wheel-detail 輪輻內側較暗）
+    rimSpoke: new THREE.MeshPhysicalMaterial({ color: 0xb4b9c0, vertexColors: true, roughness: 0.34, metalness: 0.7, clearcoat: 0.35, clearcoatRoughness: 0.3 }),
+    // iter-07：輪框內筒（輪輻後方）深灰，增加輪框層次
+    rimBarrel: new THREE.MeshStandardMaterial({ color: 0x4a4e55, roughness: 0.5, metalness: 0.6 }),
+    // iter-07：輪胎外側壁（程序化貼圖：細肋紋＋凸起字樣，同一張圖兼作 bump）
+    tireWall: tireSidewallMaterial(),
     motorCan: new THREE.MeshStandardMaterial({ color: 0xc9ccd0, roughness: 0.25, metalness: 0.9 }),
     motorCap: new THREE.MeshStandardMaterial({ color: 0xe8e2d0, roughness: 0.6 }),
     steel: new THREE.MeshStandardMaterial({ color: 0xb8bcc2, roughness: 0.3, metalness: 0.95 }),
@@ -120,7 +196,7 @@ function buildWheel(mats, side) {
   g.add(new THREE.Mesh(tireGeo, mats.tire));
 
   // 輪框：外圈＋5 組 Y 字幅條
-  const rimRing = new THREE.Mesh(new THREE.CylinderGeometry(rr, rr, w * 0.9, 40, 1, true), mats.rim);
+  const rimRing = new THREE.Mesh(new THREE.CylinderGeometry(rr, rr, w * 0.9, 40, 1, true), mats.rimBarrel);
   rimRing.rotation.x = Math.PI / 2;
   g.add(rimRing);
   const face = new THREE.Group();
@@ -154,7 +230,16 @@ function buildWheel(mats, side) {
     const shape = new THREE.Shape([...left, ...right.reverse()]);
     const geo = new THREE.ExtrudeGeometry(shape, { depth: 1.2, bevelEnabled: false, curveSegments: 4 });
     geo.translate(0, 0, -0.6);
-    return new THREE.Mesh(geo, mats.rim);
+    // 頂點色：半徑 2 mm（輪轂）0.55 → 輪框內緣 1.0
+    const pos = geo.attributes.position;
+    const col = [];
+    for (let i = 0; i < pos.count; i++) {
+      const k = Math.min(1, Math.max(0, (Math.hypot(pos.getX(i), pos.getY(i)) - 2) / (rr - 2.5)));
+      const v = 0.55 + 0.45 * k;
+      col.push(v, v, v);
+    }
+    geo.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
+    return new THREE.Mesh(geo, mats.rimSpoke);
   };
   const rimIn = rr - 0.5;
   for (let k = 0; k < 5; k++) {
@@ -176,6 +261,13 @@ function buildWheel(mats, side) {
   face.add(flange);
   face.position.z = side * (w * 0.32);
   g.add(face);
+  // iter-07：外側壁貼片（胎壁平面 r = rr … rr + 0.55 (R − rr)，略浮 0.06 mm）
+  const wallOuter = rr + 0.55 * (R - rr);
+  const wall = new THREE.Mesh(new THREE.RingGeometry(rr + 0.05, wallOuter - 0.05, 96, 1), mats.tireWall);
+  wall.position.z = side * (w / 2 + 0.06);
+  wall.rotation.y = side > 0 ? 0 : Math.PI;
+  wall.userData.wallOuter = wallOuter;
+  g.add(wall);
   const back = new THREE.Mesh(new THREE.CircleGeometry(rr, 32), mats.chassisDark);
   back.position.z = -side * (w * 0.2);
   back.rotation.y = side > 0 ? 0 : Math.PI;

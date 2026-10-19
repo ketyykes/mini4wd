@@ -1,5 +1,9 @@
 // 截圖頁：依 ?view= 參數擺放相機（side / top / front34 / bottom / track）
 import * as THREE from 'three';
+import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js';
+import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
+import { GTAOPass } from 'three/examples/jsm/postprocessing/GTAOPass.js';
+import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
 import { buildCarModel, buildTrackModel } from '../src/model.js';
 import { buildCircuit } from '../src/track.js';
 
@@ -38,8 +42,8 @@ function buildContactShadow() {
   cv.height = 256;
   const ctx = cv.getContext('2d');
   const grd = ctx.createRadialGradient(128, 128, 10, 128, 128, 128);
-  grd.addColorStop(0, 'rgba(0,0,0,0.55)');
-  grd.addColorStop(0.55, 'rgba(0,0,0,0.3)');
+  grd.addColorStop(0, 'rgba(0,0,0,0.8)');
+  grd.addColorStop(0.55, 'rgba(0,0,0,0.45)');
   grd.addColorStop(1, 'rgba(0,0,0,0)');
   ctx.fillStyle = grd;
   ctx.fillRect(0, 0, 256, 256);
@@ -50,31 +54,62 @@ function buildContactShadow() {
   return m;
 }
 
+/**
+ * 深灰檯面（iter-07）：中央略亮、往外變暗的徑向漸層（模擬參考照的頂光落差），
+ * 半霧面（roughness 0.5）讓棚拍柔光箱在檯面上反射成柔和光暈
+ * @param {number} size 檯面邊長（mm）
+ */
+function buildTabletop(size) {
+  const cv = document.createElement('canvas');
+  cv.width = 512;
+  cv.height = 512;
+  const ctx = cv.getContext('2d');
+  const grd = ctx.createRadialGradient(256, 256, 0, 256, 256, 256);
+  grd.addColorStop(0, '#2a2b2e');
+  grd.addColorStop(0.35, '#222326');
+  grd.addColorStop(1, '#18191b');
+  ctx.fillStyle = grd;
+  ctx.fillRect(0, 0, 512, 512);
+  const tex = new THREE.CanvasTexture(cv);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  const mat = new THREE.MeshPhysicalMaterial({ map: tex, roughness: 0.5, metalness: 0.0, clearcoat: 0.3, clearcoatRoughness: 0.4, envMapIntensity: 0.35 });
+  const m = new THREE.Mesh(new THREE.PlaneGeometry(size, size), mat);
+  m.rotation.x = -Math.PI / 2;
+  m.receiveShadow = true;
+  return m;
+}
+
 const params = new URLSearchParams(location.search);
 const view = params.get('view') ?? 'front34';
 const width = 1600;
 const height = 900;
 
 const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
-renderer.setPixelRatio(1);
+// iter-07：2× 超取樣（內部 3200×1800 算圖，畫布以 CSS 1600×900 顯示，截圖時由瀏覽器縮小 → 降低鋸齒與 AO/陰影雜訊）
+const SUPERSAMPLE = 2;
+renderer.setPixelRatio(SUPERSAMPLE);
 renderer.setSize(width, height);
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFShadowMap;
+// iter-07：深灰檯面（ref_chevalier-ma_side-high / rear34 / wheel-detail 都是深灰檯面、上方柔光）
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
 renderer.toneMappingExposure = 1.0;
 renderer.outputColorSpace = THREE.SRGBColorSpace;
 document.body.appendChild(renderer.domElement);
 
 const scene = new THREE.Scene();
-scene.background = new THREE.Color(0xe9ebee);
+const BG_COLOR = 0x4a4c50;
+scene.background = new THREE.Color(BG_COLOR);
 const pmrem = new THREE.PMREMGenerator(renderer);
 scene.environment = pmrem.fromScene(buildStudioEnvironment(), 0.03).texture;
 
-scene.add(new THREE.HemisphereLight(0xffffff, 0x8a8f99, 0.6));
-const sun = new THREE.DirectionalLight(0xffffff, 2.2);
+scene.add(new THREE.HemisphereLight(0xffffff, 0x8a8f99, 0.35));
+const sun = new THREE.DirectionalLight(0xffffff, 2.6);
 sun.castShadow = true;
 sun.shadow.mapSize.set(4096, 4096);
 sun.shadow.bias = -0.0005;
+// iter-07：陰影邊緣柔化（PCF 取樣半徑，2× 超取樣後雜訊被平均）
+sun.shadow.radius = 3;
 scene.add(sun);
 scene.add(sun.target);
 
@@ -103,11 +138,10 @@ if (view === 'track') {
   const p = track.path.point(s, 0);
   car.position.set(p.x * 1000, 0.2, p.z * 1000);
   car.rotation.y = -p.theta;
-  const ground = new THREE.Mesh(new THREE.PlaneGeometry(20000, 20000), new THREE.MeshStandardMaterial({ color: 0xd9dbe0, roughness: 1 }));
-  ground.rotation.x = -Math.PI / 2;
-  ground.position.y = -0.5;
-  ground.receiveShadow = true;
+  const ground = buildTabletop(8000);
+  ground.position.set(car.position.x, -0.5, car.position.z);
   scene.add(ground);
+  scene.fog = new THREE.Fog(BG_COLOR, 3000, 4500);
   const target = new THREE.Vector3(car.position.x, 20, car.position.z);
   const pose = track.path.pose(s);
   const back = new THREE.Vector3(-Math.cos(pose.theta), 0, -Math.sin(pose.theta));
@@ -120,10 +154,9 @@ if (view === 'track') {
   setShadowBox(900);
 } else {
   // 單車棚拍：淺色地面接收陰影
-  const ground = new THREE.Mesh(new THREE.PlaneGeometry(4000, 4000), new THREE.ShadowMaterial({ opacity: 0.22 }));
-  ground.rotation.x = -Math.PI / 2;
-  ground.receiveShadow = true;
+  const ground = buildTabletop(8000);
   if (view !== 'bottom') {
+    scene.fog = new THREE.Fog(BG_COLOR, 480, 1900);
     scene.add(ground);
     scene.add(buildContactShadow());
   }
@@ -146,7 +179,7 @@ if (view === 'track') {
     camera.position.set(250, 135, -235);
   }
   camera.lookAt(center);
-  sun.position.set(220, 600, -320);
+  sun.position.set(-180, 520, 260);
   sun.target.position.set(0, 0, 0);
   setShadowBox(220);
   if (view === 'bottom') {
@@ -156,5 +189,22 @@ if (view === 'track') {
   }
 }
 
-renderer.render(scene, camera);
+// iter-07：後處理——GTAO 環境光遮蔽（車底、輪拱內、零件交界變暗）→ OutputPass（色調映射＋sRGB）
+const composer = new EffectComposer(renderer, new THREE.WebGLRenderTarget(width * SUPERSAMPLE, height * SUPERSAMPLE, { type: THREE.HalfFloatType, samples: 4 }));
+composer.setPixelRatio(SUPERSAMPLE);
+composer.setSize(width, height);
+composer.addPass(new RenderPass(scene, camera));
+const gtao = new GTAOPass(scene, camera, width * SUPERSAMPLE, height * SUPERSAMPLE);
+// 單位 mm：遮蔽半徑 7 mm（約輪胎半徑的一半），厚度 3 mm
+gtao.updateGtaoMaterial({ radius: view === 'track' ? 20 : 10, distanceExponent: 1, thickness: 12, scale: 3, samples: 64, distanceFallOff: 0.5 });
+gtao.updatePdMaterial({ lumaPhi: 10, depthPhi: 2, normalPhi: 3, radius: 10, rings: 3, samples: 24 });
+// 底面視角：齒輪窗內若完全遮蔽會看不清齒輪 → 降低 AO 強度
+gtao.blendIntensity = view === 'bottom' ? 0.55 : 1.0;
+if (params.get('ao') === '1') {
+  // 除錯用：只輸出 AO
+  gtao.output = GTAOPass.OUTPUT.Denoise;
+}
+composer.addPass(gtao);
+composer.addPass(new OutputPass());
+composer.render();
 window.__ready = true;
