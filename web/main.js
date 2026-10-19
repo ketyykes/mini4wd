@@ -136,6 +136,12 @@ if (view === 'track') {
   } else if (view === 'bottom') {
     camera.position.set(-60, -330, -210);
     camera.up.set(0, 1, 0);
+  } else if (view === 'rear') {
+    // 正後方（檢查用）
+    camera.position.set(-420, 60, 0.01);
+  } else if (view === 'rear34') {
+    // 後 3/4 視角（對照 ref_chevalier-ma_rear34：尾燈、車尾、後保桿與上層導輪架）
+    camera.position.set(-270, 150, -215);
   } else {
     camera.position.set(250, 135, -235);
   }

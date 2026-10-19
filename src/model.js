@@ -180,6 +180,128 @@ function buildWheel(mats, side) {
   return g;
 }
 
+/**
+ * 俯視為長條的臂板（兩點之間、寬 w、厚 th），沿中心線開 nHoles 個圓孔（iter-05）
+ * @type {(x0: number, z0: number, x1: number, z1: number, w: number, th: number, y: number, nHoles: number, mat: THREE.Material) => THREE.Mesh}
+ */
+const armPlate = (x0, z0, x1, z1, w, th, y, nHoles, mat) => {
+  const L = Math.hypot(x1 - x0, z1 - z0);
+  const nx = (-(z1 - z0) / L) * (w / 2);
+  const nz = ((x1 - x0) / L) * (w / 2);
+  const outline = [
+    [x0 + nx, z0 + nz],
+    [x1 + nx, z1 + nz],
+    [x1 - nx, z1 - nz],
+    [x0 - nx, z0 - nz],
+  ];
+  const holes = [];
+  for (let k = 0; k < nHoles; k++) {
+    const f = 0.28 + (0.44 * k) / Math.max(1, nHoles - 1);
+    holes.push(circlePts(x0 + (x1 - x0) * f, z0 + (z1 - z0) * f, Math.min(1.25, w * 0.2), 14));
+  }
+  const m = extrudeXZ(outline, th, mat, holes);
+  m.position.y = y;
+  return m;
+};
+
+/**
+ * 兩個 3D 點之間的方樑（斜臂用）
+ * @type {(a: THREE.Vector3, b: THREE.Vector3, w: number, h: number, mat: THREE.Material) => THREE.Mesh}
+ */
+const beam3d = (a, b, w, h, mat) => {
+  const dir = new THREE.Vector3().subVectors(b, a);
+  const m = new THREE.Mesh(new THREE.BoxGeometry(dir.length(), h, w), mat);
+  m.position.copy(a).add(b).multiplyScalar(0.5);
+  m.quaternion.setFromUnitVectors(new THREE.Vector3(1, 0, 0), dir.normalize());
+  return m;
+};
+
+/**
+ * 十字頭螺絲頭（半球扁頭＋十字槽），頭頂朝 +y
+ * @type {(mats: ReturnType<typeof makeMaterials>, x: number, y: number, z: number, r: number) => THREE.Group}
+ */
+const screwHead = (mats, x, y, z, r) => {
+  const s = new THREE.Group();
+  const head = new THREE.Mesh(new THREE.SphereGeometry(r, 16, 6, 0, Math.PI * 2, 0, Math.PI / 2), mats.screw);
+  head.scale.y = 0.45;
+  s.add(head);
+  for (const rot of [0, Math.PI / 2]) {
+    const slot = new THREE.Mesh(new THREE.BoxGeometry(r * 1.3, 0.3, r * 0.22), mats.chassisDark);
+    slot.position.y = r * 0.42;
+    slot.rotation.y = rot;
+    s.add(slot);
+  }
+  s.position.set(x, y, z);
+  return s;
+};
+
+/**
+ * 後方上層導輪架（iter-05 重做；ref rear34 / ma-chassis）：
+ * 中央板（長圓孔＋2 顆螺絲）＋兩支斜伸到上層導輪的臂（減重孔、兩側立起邊框）＋導輪座凸台，
+ * 中央以開孔立板連到下層保桿，兩側各 2 支斜臂（I 字斷面）由下層導輪臂斜上撐到上層臂
+ * @type {(mats: ReturnType<typeof makeMaterials>, rx: number, rz: number, yLow: number, yUp: number) => THREE.Group}
+ */
+const buildRearStay = (mats, rx, rz, yLow, yUp) => {
+  const g = new THREE.Group();
+  const th = 2.0;
+  const mat = mats.chassis;
+  // 中央板
+  const center = extrudeXZ(roundedRect(-66.5, 0, 13, 26, 3), th, mat, [
+    roundedRect(-66.5, 0, 4.5, 10, 2),
+    circlePts(-66.5, -9, 1.0, 12),
+    circlePts(-66.5, 9, 1.0, 12),
+  ]);
+  center.position.y = yUp;
+  g.add(center);
+  for (const sz of [-1, 1]) {
+    g.add(screwHead(mats, -66.5, yUp + th, sz * 9, 1.7));
+    // 斜伸臂（中央板 → 上層導輪）
+    const x0 = -63;
+    const z0 = sz * 10;
+    const x1 = -rx;
+    const z1 = sz * rz;
+    g.add(armPlate(x0, z0, x1, z1, 6, th, yUp, 2, mat));
+    const L = Math.hypot(x1 - x0, z1 - z0);
+    const nx = -(z1 - z0) / L;
+    const nz = (x1 - x0) / L;
+    for (const off of [-2.5, 2.5]) {
+      const a = new THREE.Vector3(x0 + nx * off, yUp + th + 0.6, z0 + nz * off);
+      const b = new THREE.Vector3(x1 + nx * off, yUp + th + 0.6, z1 + nz * off);
+      g.add(beam3d(a, b, 1.0, 1.2, mat));
+    }
+    // 上層導輪座凸台
+    const boss = new THREE.Mesh(new THREE.CylinderGeometry(4.3, 4.3, th + 0.8, 24), mat);
+    boss.position.set(x1, yUp + (th + 0.8) / 2 - 0.4, z1);
+    g.add(boss);
+    // 斜臂：下層導輪臂（靠導輪處與中段）斜上撐到上層臂
+    for (const f of [0.45, 0.8]) {
+      const lx = -54 + (-rx + 54) * f;
+      const lz = sz * (16 + (rz - 16) * f);
+      const ux = x0 + (x1 - x0) * (f + 0.08);
+      const uz = z0 + (z1 - z0) * (f + 0.08);
+      g.add(beam3d(new THREE.Vector3(lx, yLow, lz), new THREE.Vector3(ux, yUp + 0.2, uz), 1.4, 1.8, mat));
+    }
+  }
+  // 中央開孔立板（下層保桿橋接板 → 上層中央板）
+  const wallShape = new THREE.Shape([
+    new THREE.Vector2(-12, yLow - 0.2),
+    new THREE.Vector2(12, yLow - 0.2),
+    new THREE.Vector2(10, yUp + 0.2),
+    new THREE.Vector2(-10, yUp + 0.2),
+  ]);
+  const mid = (yLow + yUp) / 2;
+  for (const hz of [-6, 6]) {
+    wallShape.holes.push(new THREE.Path(circlePts(hz, mid, 1.3, 14).map(([a, b]) => new THREE.Vector2(a, b))));
+  }
+  const wallGeo = new THREE.ExtrudeGeometry(wallShape, { depth: 1.8, bevelEnabled: false, curveSegments: 12 });
+  // 形狀在 (z, y) 平面：擠出方向（局部 z）轉到 x
+  wallGeo.rotateY(Math.PI / 2);
+  const wall = new THREE.Mesh(wallGeo, mat);
+  wall.position.x = -rx + 1;
+  g.add(wall);
+  return g;
+};
+
 /** 以 x-y 平面輪廓擠出板件（沿 +z 方向厚度） */
 function extrudeXY(points, thickness, material, holes = []) {
   const shape = new THREE.Shape(points.map(([x, y]) => new THREE.Vector2(x, y)));
@@ -519,7 +641,8 @@ function buildChassis(mats) {
       const az0 = sz * 16;
       const ax1 = sx * rx;
       const az1 = sz * rz;
-      g.add(beam(ax0, az0, ax1, az1, 6.5, bt, bumperY));
+      // iter-05：導輪臂底板改為擠出板件並開 2 個減重孔（reviewer「保桿缺螺絲孔」；ref ma-chassis：臂上一排圓孔）
+      g.add(armPlate(ax0, az0, ax1, az1, 6.5, bt, bumperY, 2, mats.chassis));
       const dirX = ax1 - ax0;
       const dirZ = az1 - az0;
       const L = Math.hypot(dirX, dirZ);
@@ -548,15 +671,7 @@ function buildChassis(mats) {
       g.add(beam(sx * 56, sz * 14, sx * (rx - 4), -sz * 8, 1.4, 1.6, bumperY + bt));
     }
   }
-  // 後方上層導輪架（上下疊放）
-  const upperStay = extrudeXZ(roundedRect(-rx + 4, 0, 14, 2 * rz + 6, 3), 2, mats.chassisDark);
-  upperStay.position.y = c.rearUpperRollerHeight_mm - 4.4;
-  g.add(upperStay);
-  for (const sz of [-1, 1]) {
-    const post = new THREE.Mesh(new THREE.BoxGeometry(5, c.rearUpperRollerHeight_mm - c.rollerCenterHeight_mm, 4), mats.chassisDark);
-    post.position.set(-rx + 6, (c.rearUpperRollerHeight_mm + c.rollerCenterHeight_mm) / 2 - 2, sz * (rz - 6));
-    g.add(post);
-  }
+  g.add(buildRearStay(mats, rx, rz, bumperY + bt, c.rearUpperRollerHeight_mm - 4.4));
   for (const r of rollerLayout()) {
     g.add(buildRoller(mats, r));
   }
