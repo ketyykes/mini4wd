@@ -135,10 +135,7 @@ function makeMaterials() {
     roller: new THREE.MeshPhysicalMaterial({ color: 0x4a4e55, roughness: 0.34, metalness: 0.25, clearcoat: 0.4, clearcoatRoughness: 0.25, side: THREE.DoubleSide }),
     // iter-14：導輪本體改黑色塑膠（ref side-high／front34／ma-chassis 素組為黑色塑膠導輪；reviewer「導輪雙層灰色視覺份量重」）；
     //   尺寸 13 mm 為 SPEC 不改。只換導輪本體，電池艙倒角條等沿用 roller 的部件不動
-    // iter-22：0x0e0f12 → 0x3a3e46 槍灰（ref_ma-chassis 導輪為深槍灰半光，純黑會吃掉輪緣/腰身/墊片層次；iter-20 教訓）
-    rollerBody: new THREE.MeshPhysicalMaterial({ color: 0x3a3e46, roughness: 0.34, metalness: 0.3, clearcoat: 0.45, clearcoatRoughness: 0.25, side: THREE.DoubleSide }),
-    // iter-22：底面分件第二色（齒輪箱殼內壁、底面肋格分件），比 chassis 略淺略霧，讓底面讀出分件高低差
-    chassisMid: new THREE.MeshStandardMaterial({ color: 0x45484f, roughness: 0.55, metalness: 0.05 }),
+    rollerBody: new THREE.MeshPhysicalMaterial({ color: 0x0e0f12, roughness: 0.38, metalness: 0.0, clearcoat: 0.35, clearcoatRoughness: 0.3, side: THREE.DoubleSide }),
     screw: new THREE.MeshStandardMaterial({ color: 0xd8d8d8, roughness: 0.25, metalness: 1.0 }),
     light: new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: 0x99aabb, emissiveIntensity: 0.3, roughness: 0.2 }),
   };
@@ -561,13 +558,9 @@ const buildRoller = (mats, r) => {
     g.add(inner);
   }
   // 頂部墊片（離開導輪頂面 0.2 mm）＋十字頭螺絲
-  // iter-22：頂部墊片 r 2.3 → 3.3（蓋到培林外環外緣，ref_ma-chassis 每顆導輪頂上都有一片大銀墊片），上方再疊一片 r 2.6 小墊片
-  const washer = new THREE.Mesh(new THREE.CylinderGeometry(3.3, 3.3, 0.35, 32), mats.steel);
-  washer.position.y = H - recessDepth + 0.88;
+  const washer = new THREE.Mesh(new THREE.CylinderGeometry(2.3, 2.3, 0.4, 24), mats.steel);
+  washer.position.y = H - recessDepth + 0.9;
   g.add(washer);
-  const washer2 = new THREE.Mesh(new THREE.CylinderGeometry(2.6, 2.6, 0.3, 28), mats.screw);
-  washer2.position.y = H - recessDepth + 1.2;
-  g.add(washer2);
   const head = new THREE.Mesh(new THREE.SphereGeometry(2.0, 20, 8, 0, Math.PI * 2, 0, Math.PI / 2), mats.screw);
   head.scale.y = 0.5;
   head.position.y = H - recessDepth + 1.1;
@@ -582,14 +575,6 @@ const buildRoller = (mats, r) => {
   const spacer = new THREE.Mesh(new THREE.CylinderGeometry(2.0, 2.0, 0.9, 20), mats.steel);
   spacer.position.y = -H + recessDepth - 0.75;
   g.add(spacer);
-  // iter-22：導輪底面與臂之間的金屬墊片（r 3.4，側面看得到一圈銀線，導輪不再像單一黑圓柱）
-  // （r 5.0 大於臂端凸台 4.6，才不會被凸台吃掉）
-  const spacerWasher = new THREE.Mesh(new THREE.CylinderGeometry(5.0, 5.0, 0.35, 40), mats.steel);
-  spacerWasher.position.y = -H - 0.18;
-  g.add(spacerWasher);
-  // iter-22：輪緣中段一圈細溝槽（培林外環座位置，側面讀出上下兩層輪緣）
-  const groove = new THREE.Mesh(new THREE.CylinderGeometry(R - 0.5, R - 0.5, 0.35, 48, 1, true), mats.chassisDark);
-  g.add(groove);
   const nut = new THREE.Mesh(new THREE.CylinderGeometry(1.9, 1.9, 1.4, 6), mats.steel);
   nut.position.y = -H - 0.75;
   g.add(nut);
@@ -632,13 +617,6 @@ function buildChassis(mats) {
     openings.push(roundedRect(sx * 33, 15.5, 15, 5.5, 1.8));
     openings.push(roundedRect(sx * 34, -19.5, 13, 4.5, 1.5));
   }
-  // iter-22：前後段再開三角減重孔與圓孔（ref_ma-chassis：前後段是肋格＋三角鏤空的桁架，不是平板）
-  for (const sx of [-1, 1]) {
-    openings.push([[sx * 42.5, 8.5], [sx * 48.5, 8.5], [sx * 48.5, 20.5]]);
-    openings.push([[sx * 42.5, -15], [sx * 48.5, -15], [sx * 48.5, -21.5]]);
-    openings.push(circlePts(sx * 48.4, -9.5, 1.1, 14));
-    openings.push(circlePts(sx * 48.4, 4.5, 1.1, 14));
-  }
   // 外形：馬達／電池段最寬（±29），前後輪之間縮到 ±24.5（輪胎內側 25.25 mm，避免與輪胎重疊）
   const outline = [[61, -22], [61, 22], [58, 24.5], [26, 24.5], [24, 29], [-24, 29], [-26, 24.5], [-58, 24.5], [-61, 22], [-61, -22], [-58, -24.5], [-26, -24.5], [-24, -29], [24, -29], [26, -24.5], [58, -24.5]];
   // iter-09：電池端子窗（電池蓋兩端，看得到銅片端子）
@@ -649,8 +627,7 @@ function buildChassis(mats) {
   }
   // iter-09：底板底面抬高 BOTTOM_RIB_H，底面改由「外緣框＋弧形肋條」構成最低面（仍在 y0 = 離地 2.2 mm，SPEC 1.2），
   // 肋條之間的板面內凹 → 底面讀起來是射出成型的肋格，而不是平板切方孔（reviewer iter-07/08 底盤項）
-  // iter-22：0.6 → 1.0 mm，肋格內凹更深、底面明暗層次更明顯（仍不低於 y0）
-  const BOTTOM_RIB_H = 1.0;
+  const BOTTOM_RIB_H = 0.6;
   const plate = extrudeXZ(outline, t - BOTTOM_RIB_H, mats.chassis, openings);
   plate.position.y = y0 + BOTTOM_RIB_H;
   g.add(plate);
@@ -681,24 +658,6 @@ function buildChassis(mats) {
         g.add(arcRib(sx * 24, r, 1.1, base - span, base + span));
       }
     }
-    // iter-22：前後段桁架肋（底面最低層，跨過減重孔成為橋接肋）：兩道斜肋（電池段角落 → 保桿根部）＋一道橫向齒輪箱箍帶
-    /** @type {(ax: number, az: number, bx: number, bz: number, w: number) => THREE.Mesh} 俯視直線帶狀肋條 */
-    const lineRib = (ax, az, bx, bz, w) => {
-      const L = Math.hypot(bx - ax, bz - az);
-      const nx = (-(bz - az) / L) * (w / 2);
-      const nz = ((bx - ax) / L) * (w / 2);
-      const m = extrudeXZ([[ax + nx, az + nz], [bx + nx, bz + nz], [bx - nx, bz - nz], [ax - nx, az - nz]], BOTTOM_RIB_H, mats.chassis);
-      m.position.y = y0;
-      return m;
-    };
-    for (const sx of [-1, 1]) {
-      for (const sz of [-1, 1]) {
-        g.add(lineRib(sx * 26.5, sz * 23.5, sx * 49.5, sz * 7, 1.2));
-      }
-      // 橫向箍帶：跨過齒輪箱窗外端（部分遮住輪軸齒輪，齒輪箱不再整片裸露）
-      g.add(lineRib(sx * 42, -23.5, sx * 42, 23.5, 2.2));
-      g.add(screwHead(mats, sx * 42, y0, -4.5, 0.85).rotateX(Math.PI));
-    }
     // 中央縱向肋（前後段之間，避開開孔，只在保桿根部）
     for (const sx of [-1, 1]) {
       const spine = new THREE.Mesh(new THREE.BoxGeometry(10, BOTTOM_RIB_H, 1.1), mats.chassis);
@@ -715,14 +674,6 @@ function buildChassis(mats) {
       const innerSide = extrudeXZ(roundedRect(sx * cx, cz, lx, lz, 2), 0.8, mats.chassisDark);
       innerSide.position.y = y0 + t + 0.3;
       g.add(innerSide);
-    }
-  }
-  // iter-22：三角減重孔上方的內層深色板（不然會從孔看到輪軸齒輪的殘片）
-  for (const sx of [-1, 1]) {
-    for (const [cx, cz, lx, lz] of [[45.5, 14.5, 7.6, 13.4], [45.5, -18.2, 7.6, 8]]) {
-      const innerTri = extrudeXZ(roundedRect(sx * cx, cz, lx, lz, 1), 0.8, mats.chassisDark);
-      innerTri.position.y = y0 + t + 0.3;
-      g.add(innerTri);
     }
   }
   // 底板上方的補強肋（窗與窗之間的橫向肋、兩側縱向側框），從開口與側面都看得到
@@ -824,14 +775,6 @@ function buildChassis(mats) {
     const frame = extrudeXZ(roundedRect(winCx, winCz, 29.5, 16, 3), 0.9, mats.chassis, [winHole]);
     frame.position.y = y0 + 1.25;
     g.add(frame);
-    // iter-22：齒輪箱殼內壁（窗框上方再一圈 2.2 mm 高的淺色殼壁，從底面看窗內有箱殼深度，不再像示意圖裸露齒輪）
-    const caseWall = extrudeXZ(roundedRect(winCx, winCz, 28.3, 14.8, 2.8), 2.2, mats.chassisMid, [roundedRect(winCx, winCz, 26.3, 12.8, 2.2)]);
-    caseWall.position.y = y0 + 2.15;
-    g.add(caseWall);
-    // 窗內端（馬達側）殼壁擋板：遮住小齒輪後方約 1/3 的空間（MA 齒輪箱小齒輪由殼包住只露齒）
-    const pinionHood = extrudeXZ(roundedRect(sx * 19.2, winCz - 3.6, 5.2, 5.6, 1.2), 1.2, mats.chassisDark);
-    pinionHood.position.y = y0 + 0.05;
-    g.add(pinionHood);
     // 固定螺絲（四角）
     for (const [dx, dz] of [[-15, -8.6], [15, -8.6], [-15, 8.6], [15, 8.6]]) {
       const sc = new THREE.Mesh(new THREE.CylinderGeometry(1.0, 1.0, 0.5, 14), mats.screw);

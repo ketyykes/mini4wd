@@ -787,46 +787,32 @@ function drawHoodEmblem(ctx) {
   }
 }
 
-/** TAMIYA 標誌（白底、深藍外框、兩個白方塊內的深藍大星、下方深藍 TAMIYA 字） */
+/** TAMIYA 標誌（白底黑框、雙星、TAMIYA 字） */
 function drawTamiya(ctx) {
-  // iter-17：改成單色版（透明底、白方塊內鏤空深藍星、白字），材質加 alphaTest，透明處露出車身色
-  // iter-20（reviewer iter-19「深底白線，參考為白底方塊深色星，顏色反了」）：ref side-high／front34 放大重看——
-  //   整塊貼紙是白底、外圍一圈深色細框；上半兩個白方塊各一顆幾乎頂到方塊邊的深藍星，方塊之間與上下半之間有深色分隔線；
-  //   下半是白底深色 TAMIYA 字。整塊外形近正方（ref side-high 約 45 × 40 px），貼片改為 5.6 × 5.1 mm（原 7 × 4.4 mm）
-  const navy = '#151b5c';
+  // iter-17：改成參考的單色版（ref side-high 放大：透明底、兩個白色方塊內鏤空深藍星、下方白字 TAMIYA，
+  // 原本是白底紅藍彩色星）；材質加 alphaTest，透明處露出車身色
   ctx.clearRect(0, 0, 256, 256);
   const star = (cx, cy, r) => {
     ctx.beginPath();
     for (let k = 0; k < 10; k++) {
       const a = -Math.PI / 2 + (k * Math.PI) / 5;
-      const rr = k % 2 === 0 ? r : r * 0.4;
+      const rr = k % 2 === 0 ? r : r * 0.42;
       ctx.lineTo(cx + Math.cos(a) * rr, cy + Math.sin(a) * rr);
     }
     ctx.closePath();
     ctx.fill();
   };
-  // 白底＋深色外框
-  ctx.fillStyle = '#ffffff';
-  ctx.fillRect(4, 4, 248, 248);
-  ctx.strokeStyle = navy;
-  ctx.lineWidth = 8;
-  ctx.strokeRect(14, 14, 228, 228);
-  // 上半兩個方塊：中間直線與上下半分隔線
-  ctx.lineWidth = 6;
-  ctx.beginPath();
-  ctx.moveTo(128, 14);
-  ctx.lineTo(128, 150);
-  ctx.moveTo(14, 150);
-  ctx.lineTo(242, 150);
-  ctx.stroke();
-  ctx.fillStyle = navy;
-  for (const cx of [71, 185]) {
-    star(cx, 86, 60);
+  for (const cx of [72, 184]) {
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(cx - 54, 22, 108, 112);
+    ctx.fillStyle = '#161c4e';
+    star(cx, 82, 50);
   }
-  ctx.font = 'bold 62px Arial, sans-serif';
+  ctx.fillStyle = '#ffffff';
+  ctx.font = 'bold 60px Arial, sans-serif';
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
-  ctx.fillText('TAMIYA', 128, 200, 214);
+  ctx.fillText('TAMIYA', 128, 190);
 }
 
 /** 兩端漸尖的寬度包絡 */
@@ -1593,10 +1579,9 @@ export function buildChevalierBody(mats) {
     }
     // TAMIYA 標誌（前輪後方下側；右側由後往前、左側由前往後，字才不會反）
     if (tamiyaMat) {
-      // iter-20：5.6 × 5.1 mm 近正方（原 x 16.6–23.6、u 0.82–0.97）；上緣 u 0.80 仍在側面橘條紋下緣（x 17 處 u ≈ 0.787）之下
-      const xa = side > 0 ? 17.0 : 22.6;
-      const xb = side > 0 ? 22.6 : 17.0;
-      g.add(ribbon(xa, xb, () => [0.8, 0.97], tamiyaMat, side, 0.1, { nu: 10, uv: (s, v) => [s, v] }));
+      const xa = side > 0 ? 16.6 : 23.6;
+      const xb = side > 0 ? 23.6 : 16.6;
+      g.add(ribbon(xa, xb, () => [0.82, 0.97], tamiyaMat, side, 0.1, { nu: 8, uv: (s, v) => [s, v] }));
     }
     // 引擎蓋前方 NACA 進氣口（深色）
     // iter-05：深色底面貼在下凹曲面上（寬度與 nacaHalfU 一致）
