@@ -1880,3 +1880,47 @@
 - reviewer 評分 7.50（6/7/8.5/8.5），與 iter-19 持平 → 依 GOAL 規則 **revert**（程式碼回 iter-19；log 保留；iter-26 實作在 commit d8ede9f）。
 - reviewer：細長弧形尾燈是實質改善（未達半級）；背景暗角更接近參考，但 sidehigh 引擎蓋出現波浪狀高光——一正一負。
 - **Track A 最終版本維持 iter-19（87.50）**。
+
+## iter-27（開始 06:19 / 結束 06:24，TZ=Asia/Taipei）
+### 探索
+- 程式碼等於 iter-19（7.50，總分 87.50）。最終盲評 #3（shared/reviews/blind-3.md，A 段）：屋頂 MIDSHIP AERO 板是一塊平的方板，像另外貼上去的，沒有和車身相連的曲面；尾燈粗大方塊。
+- 原因：iter-03 的車頂板是座艙面整片抬高 0.7 mm（ROOF_LIFT），側面與前緣用黑色 liftWall 立面收邊 → 四周是直角台階加黑線；碳纖網格是獨立的近似拋物面平片、字樣沿 +y 平移，都沒有跟著曲面。
+
+### 規劃（2 項）
+1. 車頂板與座艙曲面連續：抬高量改為 `roofLift(x, u)`，兩側 u 0.38→0.46、前緣 x −9.5→−6、後緣 x −41→−48 以 smoothstep 降到 0.04 mm（邊緣斜率 0 → 與座艙面相切）；拿掉黑色側面／前緣立面。法向用解析曲面 `roofPoint` 的差分（`ROOF_SURF`），不用粒子法線（iter-04 教訓）、不加燈箱（iter-15 教訓）。碳纖網格改為沿 ROOF_SURF 的 ribbon（左右各半寬 10 mm，V 以中線 0.5 接續），MIDSHIP AERO 字樣沿 roofPoint＋法向 0.12 mm 貼合。預期：屋頂讀成車身一體的隆起，而不是貼上去的平方板。
+2. 帶回 iter-26 細楔形 LED 尾燈（`git show d8ede9f -- src/bodyShell.js`，只取 bodyShell 尾燈段；不帶 web/main.js 的條燈／黑旗／暗角）。預期：消除「尾燈粗大方塊」扣分。
+
+### 執行
+- `src/bodyShell.js`：套用 d8ede9f 尾燈段（tailBaseMat、tailInnerU 楔形帶、3 條細 LED、燈罩；移除 lens）。
+- `src/bodyShell.js`：新增 `ROOF_EDGE_EPS`、`smoothStep01`、`roofLift`、`roofPoint`、`roofNormal`、`ROOF_SURF`、`cabinUAtZ`；車頂板 ribbon 改用 ROOF_SURF（nu 24）；刪除 liftWall 與兩處呼叫；車頂塊後端封口改用 roofLift；碳纖網格改 ribbon＋ROOF_SURF；roofDecal 改沿 roofPoint／roofNormal。
+- 第一版倒圓從 u 0.36 開始，字樣（u 0.33–0.43）大半落在下降段，side 視角在車頂稜線露出白色字樣殘片 → 倒圓改 u 0.38→0.46、字樣帶改 u 0.32–0.41 後殘片消失。
+
+### 驗證（P01–P10；`npx vitest run`，10/10 通過）
+| ID | 結果 | 關鍵數值 |
+| --- | --- | --- |
+| P01 | pass | 理論極速 4.180 m/s、模擬 4.174 m/s，誤差 0.14% |
+| P02 | pass | 896.9 mAh，端電壓 2.781 → 2.100 V（−24.5%），單調不增 |
+| P03 | pass | 滿電 4.174 m/s > SOC 20% 3.483 m/s |
+| P04 | pass | 培林 5.815 m／塑膠 4.696 m，比值 1.238 |
+| P05 | pass | 彎道外側導輪接觸 100% |
+| P06 | pass | 幾何最大超出 0.598 mm、接觸最大穿透 0.676 mm |
+| P07 | pass | 單圈 2.505 s，最高 3.584 m/s，最小 up.y 1.000 |
+| P08 | pass | 118.00 g，誤差 0% |
+| P09 | pass | 156.00 × 97.00 × 37.94 mm（iter-19 為 37.93；碳纖片改沿曲面法向 +0.15 mm），最低點 y = 0.00 mm |
+| P10 | pass | 車道 0 → 1，未卡住、未飛出 |
+
+截圖：`renders/iter-27_side.png`、`_top`、`_front34`、`_bottom`、`_track`、`_rear34`、`_sidehigh`（1600×900）。
+
+**截圖自檢（與 iter-19 同視角對比）**
+- rear34（放大比對 tmp/c19_rear.png vs tmp/c27_rear.png）：車頂板四周黑色立面消失，側緣是平順的圓肩、高光連續滑到座艙側面；碳纖網格與字樣都貼在曲面上、無浮起或穿插。後甲板反光與 iter-19 相同、無斑駁。尾燈變成車尾兩角的細楔形 LED，左右都在。
+- sidehigh：車頂側緣黑線消失；MIDSHIP AERO 兩行字方向與 iter-19 相同、不鏡像；尾燈由白方框改為細燈。
+- side：車頂稜線的黑色平板線消失，改為連續曲線；第二版後無字樣殘片。
+- top：字樣方向、碳纖位置與 iter-19 相同；車頂板邊緣多一圈明暗過渡（倒圓）。
+- front34／bottom／track：無破面、穿模、半透明錯誤；頭燈、TAMIYA、條紋、鰭片、齒輪都在。
+- 未處理：座艙塊在 x = −48 落到後甲板的封口立面（iter-03 依 ref rear34 刻意分層）保留，車頂板在後緣 7 mm 內已平滑降回座艙面，不再有板邊台階。
+
+### 迭代決策
+- 物理 10/10 不變；兩項皆無新瑕疵 → 保留，commit。外觀待主 agent 評分（若持平依規則 revert 回 iter-19）。
+
+### 生圖紀錄
+無，使用程序化材質。
