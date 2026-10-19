@@ -32,9 +32,6 @@ function buildStudioEnvironment() {
   box(120, 50, [0, 80, 0], [0, 0, 0], 3.0);
   box(80, 30, [70, 30, -60], [0, 0, 0], 2.0);
   box(60, 30, [-80, 20, 40], [0, 0, 0], 0.8);
-  // iter-10：後側柔光箱（rear34 相機的鏡射方向，仰角約 24°，距離 90 須在半徑 100 的天空球內）——原本 rear34 的後甲板只反射到暗的天空漸層，
-  // 只剩底漆層的寬高光，讀起來像半光澤；加這片讓清漆層在後甲板／後葉子板出現邊緣清楚的燈箱倒影
-  box(45, 16, [65, 36, 51], [0, 0, 0], 2.2);
   return env;
 }
 
@@ -193,15 +190,6 @@ if (view === 'track') {
   } else if (view === 'bottom') {
     camera.position.set(-60, -330, -210);
     camera.up.set(0, 1, 0);
-  } else if (view === 'sidehigh') {
-    // iter-12：比對用相機改由 scripts/diag/fit_ref_camera.mjs 擬合 ref side-high（導輪螺絲頂 4 點＋輪蓋 2 點，rms 4.3 px）
-    // 仰角 25.75°、方位 1°（略偏車頭）、距離 700 mm（推估：參考照為較長焦距，透視比 iter-11 的 410 mm 弱）
-    // fov 11.2° 讓車身在 1600×900 中的大小與參考照相近
-    const shTheta = (25.75 * Math.PI) / 180;
-    const shPhi = (1 * Math.PI) / 180;
-    camera.position.set(700 * Math.cos(shTheta) * Math.sin(shPhi), 12 + 700 * Math.sin(shTheta), -700 * Math.cos(shTheta) * Math.cos(shPhi));
-    camera.fov = 11.2;
-    camera.updateProjectionMatrix();
   } else if (view === 'rear') {
     // 正後方（檢查用）
     camera.position.set(-420, 60, 0.01);
