@@ -58,23 +58,38 @@ function catmull(pts, u) {
 export const BODY_FRONT_X = 73;
 export const BODY_REAR_X = -63;
 /** 半寬：前葉子板寬、座艙兩側內收、後輪拱外擴 */
-const HALF_WIDTH = [[73, 25], [66, 33], [56, 37], [46, 39.5], [36, 40], [24, 39.3], [12, 38.2], [0, 38], [-12, 39.2], [-24, 41], [-34, 42], [-44, 42], [-52, 41], [-58, 38.5], [-63, 35]];
-/** 中線高度：楔形車頭（鼻尖低）→ 引擎蓋 → 座艙下緣 → 車尾鴨尾 */
-const CENTER_Y = [[73, 8], [66, 12], [56, 17], [46, 20.3], [36, 21.8], [24, 23], [12, 24.6], [0, 25.6], [-12, 26.6], [-24, 27.8], [-34, 29.4], [-44, 31.0], [-52, 31.8], [-58, 31.0], [-63, 28.0]];
-/** 葉子板稜線高度：前輪上方隆起高於引擎蓋，後輪上方再隆起 */
-const FENDER_Y = [[73, 11.5], [66, 18], [56, 24], [46, 29], [36, 30], [24, 28.5], [12, 27.0], [0, 26.8], [-12, 28.2], [-24, 31], [-34, 33.2], [-44, 34.0], [-52, 33.4], [-58, 31.4], [-63, 28.4]];
+// iter-03：依 reviewer「車鼻前緣太薄太低、車尾太厚太方」重量比例（ref side-high / front34 / rear34）：
+//   車鼻：前葉子板在鼻端仍高（頭燈位於前臉中段），前臉厚約 10 mm → 鼻端中線 8 → 12.5、稜線 11.5 → 18.5、鼻端半寬 25 → 30
+//   車尾：後甲板往車尾下降、平面收窄（尾燈面低而圓）→ 車尾中線 28 → 21.5、稜線 28.4 → 23.5、尾端半寬 35 → 31.5
+const HALF_WIDTH = [[73, 30], [66, 35], [56, 37.5], [46, 39.5], [36, 40], [24, 39.3], [12, 38.2], [0, 38], [-12, 39.2], [-24, 41], [-34, 42], [-44, 41.6], [-52, 39.8], [-58, 36.5], [-63, 31.5]];
+/** 中線高度：鼻端（厚）→ 引擎蓋 → 座艙下緣 → 後甲板往車尾下降 */
+const CENTER_Y = [[73, 14], [66, 16.5], [56, 18.5], [46, 20.5], [36, 21.8], [24, 23], [12, 24.6], [0, 25.6], [-12, 26.6], [-24, 27.8], [-34, 28.8], [-44, 28.8], [-52, 27.4], [-58, 25.0], [-63, 21.5]];
+/** 葉子板稜線高度：前輪上方隆起高於引擎蓋（鼻端仍高），後輪上方再隆起後往車尾下降 */
+const FENDER_Y = [[73, 18.5], [66, 24], [56, 28.5], [46, 30.5], [36, 30.5], [24, 28.5], [12, 27.0], [0, 26.8], [-12, 28.2], [-24, 30.6], [-34, 32.2], [-44, 32.2], [-52, 30.2], [-58, 27.0], [-63, 23.5]];
 /** 稜線位置（佔半寬的比例） */
-const FENDER_Z = [[73, 0.8], [56, 0.76], [36, 0.77], [12, 0.86], [-12, 0.86], [-34, 0.79], [-63, 0.78]];
+const FENDER_Z = [[73, 0.8], [56, 0.76], [36, 0.77], [12, 0.86], [-12, 0.86], [-34, 0.79], [-63, 0.76]];
 /** 側面最寬處的高度 */
-const SIDE_Y = [[73, 7.5], [66, 10], [56, 12.5], [46, 14], [-58, 14], [-63, 14]];
-const BOTTOM_Y = 5.6;
-const ARCH_R = spec.tire.diameter_mm / 2 + 2.5;
+const SIDE_Y = [[73, 12.5], [66, 13], [56, 13], [46, 14], [-50, 14], [-58, 13.5], [-63, 13]];
+/** 車殼底緣：iter-02 為 5.6 mm，與底盤側框之間縫隙偏大 → 4.4 mm（底板上緣 3.7 mm） */
+const BOTTOM_Y = 4.4;
+/** 輪拱半徑：iter-02 輪胎外 2.5 mm 間隙偏大 → 1.8 mm */
+const ARCH_R = spec.tire.diameter_mm / 2 + 1.8;
 
 /** 車殼底緣（含前後輪拱開口） */
 function bottomAt(x) {
   const archX = spec.chassis.wheelbase_mm / 2;
   const wheelY = spec.tire.diameter_mm / 2;
   let y = BOTTOM_Y;
+  // 車尾下緣往上收（尾燈下方的擴散器開口，看得到底盤；ref rear34）
+  if (x < -54) {
+    const t = (-54 - x) / 9;
+    y = BOTTOM_Y + 5.5 * t * t;
+  }
+  // 車鼻下緣往上收到 10 mm（ref front34：鼻端下方露出黑色保桿與導輪臂，車殼不罩住保桿；導輪臂頂 ≈ 10 mm）
+  if (x > 55) {
+    const t = Math.min(1, (x - 55) / 10);
+    y = BOTTOM_Y + 5.6 * t * t * (3 - 2 * t);
+  }
   for (const ax of [-archX, archX]) {
     const dx = x - ax;
     if (Math.abs(dx) < ARCH_R) {
@@ -261,12 +276,14 @@ function buildHull(mat, innerMat) {
  * @param {THREE.Material} mat
  * @param {number} side
  * @param {number} lift 沿法向抬高（mm）
- * @param {{ nu?: number, uv?: (s: number, v: number) => [number, number] }} [opts] nu：截面方向細分；uv：貼圖座標（預設 (s, v)）
+ * @param {{ nu?: number, uv?: (s: number, v: number) => [number, number], surf?: { point: Function, normal: Function } }} [opts] nu：截面方向細分；uv：貼圖座標（預設 (s, v)）；surf：貼附曲面（預設車殼，iter-03 加座艙）
  */
 function ribbon(x0, x1, band, mat, side, lift = 0.06, opts = {}) {
   const nx = Math.max(4, Math.ceil(Math.abs(x1 - x0) / 0.8));
   const nu = opts.nu ?? 6;
   const uvFn = opts.uv ?? ((s, v) => [s, v]);
+  const surfPoint = opts.surf ? opts.surf.point : bodyPoint;
+  const surfNormal = opts.surf ? opts.surf.normal : bodyNormal;
   const pos = [];
   const nrm = [];
   const uvs = [];
@@ -276,8 +293,8 @@ function ribbon(x0, x1, band, mat, side, lift = 0.06, opts = {}) {
     const [ua, ub] = band(x, s);
     for (let j = 0; j <= nu; j++) {
       const u = ua + ((ub - ua) * j) / nu;
-      const n = bodyNormal(x, u, side);
-      const p = bodyPoint(x, u, side).addScaledVector(n, lift);
+      const n = surfNormal(x, u, side);
+      const p = surfPoint(x, u, side).addScaledVector(n, lift);
       pos.push(p.x, p.y, p.z);
       nrm.push(n.x, n.y, n.z);
       const [U, V] = uvFn(s, j / nu);
@@ -514,11 +531,17 @@ function carbonTexture() {
 
 // ---- 座艙（獨立玻璃件）：擋風玻璃前緣 x = 15，車頂 x ≈ −8 ~ −28，往後延伸成引擎蓋 ----
 const CABIN_X0 = 15;
-const CABIN_X1 = -53;
-// iter-02：座艙與後段車頂墊高（ref_chevalier-ma_side-high：車頂延伸成 MIDSHIP AERO 後甲板，到後輪上方才下降），最高點維持 ≤ 38 mm（SPEC 1.12 外框高）
-const CABIN_TOP = [[15, 24.6], [8, 30.6], [0, 34.9], [-8, 37.0], [-16, 37.7], [-26, 37.7], [-36, 36.9], [-44, 35.2], [-50, 33.4], [-53, 32.3]];
-const CABIN_TOP_W = [[15, 17], [0, 19], [-16, 19.5], [-36, 18.5], [-50, 15], [-53, 14]];
-const CABIN_BASE_W = [[15, 27], [0, 30], [-16, 31], [-36, 30.5], [-50, 27], [-53, 26]];
+// iter-03：座艙（車頂塊）在 x = −48 結束並以立面落到後甲板（ref rear34：車頂塊與後甲板分層），
+// 後甲板（車殼中線）由 28.8 往車尾降到 21.5，不再是 iter-02 的厚方塊車尾
+const CABIN_X1 = -48;
+// 車頂板多一層 ROOF_LIFT，座艙面整體降 0.6 mm，使含車頂板與貼紙的最高點維持 SPEC 1.12 外框高 38 mm
+const CABIN_TOP = [[15, 24.6], [8, 29.8], [0, 34.0], [-8, 36.2], [-16, 37.0], [-26, 37.1], [-36, 36.4], [-44, 35.0], [-48, 34.0]];
+const CABIN_TOP_W = [[15, 17], [0, 19], [-16, 19.5], [-36, 18.5], [-44, 16.5], [-48, 15.5]];
+const CABIN_BASE_W = [[15, 27], [0, 30], [-16, 31], [-36, 30.5], [-44, 28.5], [-48, 27.5]];
+/** 車頂板（車身色、比座艙玻璃面高 0.7 mm 的獨立一層）的 x 範圍與 u 範圍 */
+const ROOF_X0 = -6;
+const ROOF_U = 0.46;
+const ROOF_LIFT = 0.7;
 
 /** 座艙截面上的點；u：0 中線 → 1 與車殼交接處 */
 export function cabinPoint(x, u, side = 1) {
@@ -537,6 +560,49 @@ export function cabinPoint(x, u, side = 1) {
   ];
   const q = catmull(pts, (u * 4 + 1) / 5);
   return new THREE.Vector3(x, q.y, side * q.z);
+}
+
+/** 座艙曲面法向（數值微分，朝外；參數方向與車殼相同） */
+export function cabinNormal(x, u, side = 1) {
+  const e = 0.05;
+  const du = cabinPoint(x, Math.min(1, u + 0.004), side).sub(cabinPoint(x, Math.max(0, u - 0.004), side));
+  const dx = cabinPoint(x + e, u, side).sub(cabinPoint(x - e, u, side));
+  const n = side > 0 ? new THREE.Vector3().crossVectors(du, dx) : new THREE.Vector3().crossVectors(dx, du);
+  if (n.lengthSq() < 1e-12) {
+    return new THREE.Vector3(0, 1, 0);
+  }
+  return n.normalize();
+}
+
+/** 曲面描述：車殼與座艙兩種，供 ribbon 共用 */
+const HULL_SURF = { point: bodyPoint, normal: bodyNormal };
+const CABIN_SURF = { point: cabinPoint, normal: cabinNormal };
+
+/**
+ * 沿座艙曲面上一條路徑立起的薄牆（車頂板的側面／前緣立面）
+ * @param {(t: number) => [number, number]} path t ∈ [0,1] → [x, u]
+ * @param {number} n 分段數
+ * @param {number} h 沿法向高度（mm）
+ */
+function liftWall(path, n, h, mat, side) {
+  const pos = [];
+  for (let k = 0; k <= n; k++) {
+    const [x, u] = path(k / n);
+    const p = cabinPoint(x, u, side);
+    const q = p.clone().addScaledVector(cabinNormal(x, u, side), h);
+    pos.push(p.x, p.y, p.z, q.x, q.y, q.z);
+  }
+  const idx = [];
+  for (let k = 0; k < n; k++) {
+    const a = k * 2;
+    idx.push(a, a + 2, a + 1, a + 2, a + 3, a + 1);
+  }
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  geo.setIndex(idx);
+  geo.computeVertexNormals();
+  const matTwo = mat.side === THREE.DoubleSide ? mat : Object.assign(mat.clone(), { side: THREE.DoubleSide });
+  return new THREE.Mesh(geo, matTwo);
 }
 
 /** 座艙：玻璃（擋風＋側窗）與車身色的車頂／C 柱，依三角形位置分成兩個材質群組 */
@@ -565,7 +631,7 @@ function buildCabin(bodyMat, glassMat, trimMat) {
         const tri = side > 0 ? [a, b, a + 1, b, b + 1, a + 1] : [a, a + 1, b, b, a + 1, b + 1];
         // 擋風玻璃：x > −7；側窗：x ∈ (−31, 13)、u 在車頂邊與腰線之間
         const windshield = x > -7 && u < 0.5;
-        const sideWindow = x > -31 && x < 12 && u >= 0.5 && u < 0.86;
+        const sideWindow = x > -31.5 && x < 12.5 && u >= 0.5 && u < 0.86;
         if (windshield || sideWindow) {
           glassIdx.push(...tri);
         } else {
@@ -581,24 +647,59 @@ function buildCabin(bodyMat, glassMat, trimMat) {
     geo.computeVertexNormals();
     g.add(new THREE.Mesh(geo, [glassMat, bodyMat]));
   }
-  // 擋風玻璃黑色窗框（沿 x = −7 的上緣與兩側 A 柱）
-  const frame = [];
+  // ---- iter-03：座艙分層（ref front34 / rear34 / side-high）----
+  // 1) 車頂板：車身色獨立一層，比座艙面高 ROOF_LIFT，四周有立面 → 座艙玻璃與車頂之間出現分層折線
+  // 2) A 柱：擋風玻璃與側窗之間的車身色柱＋黑色窗框細線
+  // 3) 側窗黑色窗框（上緣、下緣、後緣）
+  // 4) 車頂塊後端立面（落到後甲板）
+  const paintTwo = bodyMat.clone();
+  paintTwo.side = THREE.DoubleSide;
+  const cab = { surf: CABIN_SURF };
   for (const side of [1, -1]) {
-    for (let i = 0; i < 26; i++) {
-      const u0 = i / 26 * 0.5;
-      const u1 = (i + 1) / 26 * 0.5;
-      const pA = cabinPoint(-7, u0, side);
-      const pB = cabinPoint(-7, u1, side);
-      frame.push([pA, pB]);
-    }
+    g.add(ribbon(ROOF_X0, CABIN_X1, () => [0, ROOF_U], paintTwo, side, ROOF_LIFT, { ...cab, nu: 12 }));
+    // 車頂板側面立面（u = ROOF_U）與前緣立面（x = ROOF_X0）
+    g.add(liftWall((t) => [ROOF_X0 + (CABIN_X1 - ROOF_X0) * t, ROOF_U], 60, ROOF_LIFT, trimMat, side));
+    g.add(liftWall((t) => [ROOF_X0, ROOF_U * t], 16, ROOF_LIFT, trimMat, side));
+    // 車頂板前緣下方的擋風玻璃上框
+    g.add(ribbon(ROOF_X0 + 1.4, ROOF_X0, () => [0, ROOF_U + 0.02], trimMat, side, 0.15, { ...cab, nu: 12 }));
+    // A 柱（車身色）＋兩側黑色細框
+    g.add(ribbon(CABIN_X0 + 0.3, ROOF_X0, () => [0.47, 0.57], paintTwo, side, 0.3, cab));
+    g.add(ribbon(CABIN_X0 + 0.3, ROOF_X0, () => [0.445, 0.47], trimMat, side, 0.2, cab));
+    g.add(ribbon(12.5, ROOF_X0, () => [0.57, 0.6], trimMat, side, 0.2, cab));
+    // 側窗上緣（車頂板下方）、下緣（腰線）、後緣（C 柱前緣，略斜）
+    g.add(ribbon(ROOF_X0, -31.5, () => [ROOF_U, 0.5], trimMat, side, 0.2, cab));
+    g.add(ribbon(12.5, -31.5, (x, s) => [0.84 - 0.03 * s, 0.88 - 0.02 * s], trimMat, side, 0.2, cab));
+    g.add(ribbon(-30, -32.5, (x, s) => [ROOF_U, 0.88], trimMat, side, 0.2, cab));
+    // 前緣窗框：擋風玻璃下緣（與引擎蓋交界）
+    g.add(ribbon(CABIN_X0 + 0.2, CABIN_X0 - 1.4, () => [0, 0.5], trimMat, side, 0.15, cab));
   }
-  for (const [a, b] of frame) {
-    const len = a.distanceTo(b);
-    const bar = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.5, len + 0.05), trimMat);
-    bar.position.copy(a).add(b).multiplyScalar(0.5);
-    bar.position.y += 0.1;
-    bar.lookAt(b.x, b.y + 0.1, b.z);
-    g.add(bar);
+  // 車頂塊後端立面：以座艙截面（含車頂板高度）在 x = CABIN_X1 做封口
+  {
+    const shape = new THREE.Shape();
+    const n = 30;
+    const pts = [];
+    for (let j = 0; j <= n; j++) {
+      const u = j / n;
+      const p = cabinPoint(CABIN_X1, u, 1);
+      if (u <= ROOF_U) {
+        p.addScaledVector(cabinNormal(CABIN_X1, u, 1), ROOF_LIFT);
+      }
+      pts.push(p);
+    }
+    for (let j = n; j >= 0; j--) {
+      const p = pts[j].clone();
+      p.z = -p.z;
+      pts.push(p);
+    }
+    shape.moveTo(pts[0].z, pts[0].y);
+    for (const p of pts.slice(1)) {
+      shape.lineTo(p.z, p.y);
+    }
+    const geo = new THREE.ShapeGeometry(shape);
+    geo.rotateY(-Math.PI / 2);
+    const cap = new THREE.Mesh(geo, paintTwo);
+    cap.position.x = CABIN_X1;
+    g.add(cap);
   }
   // 車頂後段碳纖網格散熱口（MIDSHIP AERO 位置）
   const carbon = new THREE.MeshStandardMaterial({ map: carbonTexture(), roughness: 0.55, metalness: 0.35, side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 });
@@ -614,7 +715,7 @@ function buildCabin(bodyMat, glassMat, trimMat) {
       const tw = smoothTable(CABIN_TOP_W, x);
       const r = zz / (tw * 0.5);
       // 車頂中段近似拋物面：中線最高，往兩側下降約 0.15 mm（與 cabinPoint 的控制點一致）
-      pos.push(x, smoothTable(CABIN_TOP, x) - 0.1 * r * r + 0.2, zz);
+      pos.push(x, smoothTable(CABIN_TOP, x) - 0.1 * r * r + ROOF_LIFT + 0.15, zz);
       uvs.push(i / nx, k / nz);
     }
   }
@@ -651,7 +752,7 @@ function roofDecal(xa, xb, ua, ub, mat, side) {
     const x = xa + ((xb - xa) * i) / nx;
     for (let j = 0; j <= nv; j++) {
       const p = cabinPoint(x, ua + ((ub - ua) * j) / nv, side);
-      pos.push(p.x, p.y + 0.12, p.z);
+      pos.push(p.x, p.y + ROOF_LIFT + 0.12, p.z);
       uvs.push(i / nx, j / nv);
     }
   }
@@ -716,6 +817,13 @@ export function buildChevalierBody(mats) {
     clearcoat: 0.7,
     clearcoatRoughness: 0.22,
     envMapIntensity: 0.7,
+    // iter-03：珍珠金屬漆（ref front34 / rear34：藍紫色金屬漆，掠射角偏紫）→ 薄膜干涉（iridescence）＋紫色 sheen
+    iridescence: 0.45,
+    iridescenceIOR: 1.35,
+    iridescenceThicknessRange: [260, 420],
+    sheen: 0.3,
+    sheenColor: new THREE.Color(0x7a5cff),
+    sheenRoughness: 0.45,
     side: THREE.FrontSide,
   });
   // 車殼內面（深色）與邊緣翻邊／封口（車漆雙面）
@@ -751,9 +859,10 @@ export function buildChevalierBody(mats) {
   const midTex = canvasTexture(512, 64, drawMidship);
   if (midTex) {
     const midMat = decal(0xffffff, { map: midTex, alphaTest: 0.35, polygonOffsetFactor: -4, polygonOffsetUnits: -4 });
-    // 兩側都由後往前排字（左側若反向會呈鏡像，iter-02 截圖確認過）
+    // 字頭（貼圖 V = 0）都朝車頂中線、從車外側看是正字：
+    // 右側（+z）由後往前排字；左側（−z）由前往後排字（iter-02 左側也由後往前 → 俯視呈上下顛倒的鏡像字，reviewer 指出的 bug）
     g.add(roofDecal(-33, -13, 0.33, 0.43, midMat, 1));
-    g.add(roofDecal(-33, -13, 0.33, 0.43, midMat, -1));
+    g.add(roofDecal(-13, -33, 0.33, 0.43, midMat, -1));
   }
   g.add(buildWheelWells(new THREE.MeshStandardMaterial({ color: 0x101114, roughness: 0.9, side: THREE.DoubleSide })));
 
