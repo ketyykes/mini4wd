@@ -4,7 +4,7 @@
 import * as THREE from 'three';
 import data from './data/body-skeleton.json';
 import { getPart } from '../parts/index.js';
-import { makeLoftKit, cachedBuild, namedMaterial, decalMaterial, buildMountTabs, buildRegion, buildRim, sdNumber, sdConvexPolygon, sdRoundRect, sideDecal, topDecal, mergeGeos, smoothstep } from './loft.js';
+import { makeLoftKit, cachedBuild, namedMaterial, decalMaterial, buildMountTabs, buildRegion, buildRim, sdNumber, sdConvexPolygon, sdRoundRect, sdBar, sideDecal, topDecal, mergeGeos, smoothstep } from './loft.js';
 
 /** @typedef {import('./types').BodyDef} BodyDef */
 /** @typedef {import('./loft.js').BodyPart} BodyPart */
@@ -24,13 +24,165 @@ const bump = (x, az) =>
   // iter-36：中線拱起 1.6 mm（x −40 ~ 46），車頂不再是平板
   1.6 * (1 - smoothstep(4, 24, az)) * smoothstep(-58, -40, x) * (1 - smoothstep(46, 60, x));
 
+/** @type {number} 網格骨架寬度（mm，iter-44） */
+const STRUT = 2.0;
+
+/** @type {(i: number) => number} 確定性的 0–1 雜湊（種子抖動與開孔選擇用，每次建模結果相同） */
+const hash = (i) => {
+  const v = Math.sin(i * 127.1 + 311.7) * 43758.5453;
+  return v - Math.floor(v);
+};
+
 /**
- * iter-41：六角側窗 S1 前端從 x 20 縮到 x 8.5，空出 x 9.5–21 的平直側板放橫排號碼「24」（設計資料其餘不變）
+ * 頂部網格骨架的種子點（俯視 (x, |z|)）：間距約 10.8 × 8.6 mm 的交錯格點加抖動 → Voronoi 胞是不規則的六角 / 五角 / 三角形；
+ * 約 1/4 的胞保留成煙燻 PC 面板（closed），其餘挖空
+ * @type {{ x: number, z: number, open: boolean }[]}
+ */
+const SEEDS = (() => {
+  const out = [];
+  let n = 0;
+  for (let row = 0; row < 4; row++) {
+    const z0 = 4.5 + row * 8.6;
+    const shift = row % 2 === 0 ? 0 : 5.4;
+    for (let x = -62 + shift; x <= 66; x += 10.8) {
+      n++;
+      out.push({ x: x + (hash(n) - 0.5) * 3.2, z: z0 + (hash(n + 97) - 0.5) * 2.6, open: hash(n + 211) > 0.24 });
+    }
+  }
+  return out;
+})();
+
+/**
+ * 允許挖空的範圍（俯視凸多邊形 (x, |z|)）：引擎蓋、座艙兩側、中段＋後甲板、兩輪拱之間的肩部；
+ * 中央 2.2 mm 脊、前後卡座、座艙底、引擎蓋號碼牌、鼻尖、尾端都保留實心
+ * @type {((x: number, z: number) => number)[]}
+ */
+const LATTICE_ALLOWED = [
+  [[61, 2.2], [61, 15], [50, 22], [33, 22], [33, 2.2]],
+  [[33, 11], [33, 22], [4, 22], [4, 11]],
+  [[4, 2.2], [4, 22], [-38, 22], [-60, 17], [-60, 2.2]],
+  [[24, 22], [22, 33.5], [-22, 33.5], [-24, 22]],
+].map((pts) => sdConvexPolygon(pts));
+
+/** @type {number[][]} 保留實心的方塊 [x0, x1, zMax]：前後卡座、座艙底、引擎蓋號碼牌 */
+const LATTICE_SOLID = [
+  [46, 58, 5.5],
+  [-56, -44, 5.5],
+  [5, 33, 10.5],
+  [32, 44, 7.5],
+];
+
+/**
+ * 到最近骨架中線的距離：p 所在 Voronoi 胞 i 與其他胞 j 的平分線距離最小值（直線，邊緣乾淨）
+ * @type {(x: number, z: number) => { d: number, open: boolean }}
+ */
+const voronoiEdge = (x, z) => {
+  let i0 = 0;
+  let best = Infinity;
+  for (let i = 0; i < SEEDS.length; i++) {
+    const d2 = (SEEDS[i].x - x) ** 2 + (SEEDS[i].z - z) ** 2;
+    if (d2 < best) {
+      best = d2;
+      i0 = i;
+    }
+  }
+  const a = SEEDS[i0];
+  let d = Infinity;
+  for (let j = 0; j < SEEDS.length; j++) {
+    if (j === i0) {
+      continue;
+    }
+    const b = SEEDS[j];
+    const len = Math.hypot(b.x - a.x, b.z - a.z);
+    if (len > 2 * Math.sqrt(best) + 2 * d) {
+      continue;
+    }
+    const dj2 = (b.x - x) ** 2 + (b.z - z) ** 2;
+    d = Math.min(d, (dj2 - best) / (2 * len));
+  }
+  return { d, open: a.open };
+};
+
+/** @type {(x: number, z: number) => number} 允許挖空範圍的距離（負值 = 在範圍內） */
+const allowedSd = (x, z) => {
+  let d = Infinity;
+  for (const f of LATTICE_ALLOWED) {
+    d = Math.min(d, f(x, z));
+  }
+  for (const [x0, x1, zm] of LATTICE_SOLID) {
+    d = Math.max(d, -sdRoundRect(x, z, x0, x1, -zm, zm, 1));
+  }
+  return d;
+};
+
+/** @type {(x: number, y: number, z: number) => number} 頂部網格開口（負值 = 挖空） */
+const latticeSd = (x, y, z) => {
+  const az = Math.abs(z);
+  const e = voronoiEdge(x, az);
+  if (!e.open) {
+    return 10;
+  }
+  return Math.max(STRUT / 2 - e.d, allowedSd(x, az) + STRUT / 2);
+};
+
+/** @type {(x: number, y: number, z: number) => number} 骨架中線距離（> 0 越遠；只在允許範圍內有意義），萊姆黃沿骨架走 */
+const strutLime = (x, y, z) => {
+  const az = Math.abs(z);
+  // 只在允許範圍內縮 STRUT 處畫骨架，避免骨架伸進實心區形成懸空短枝
+  if (allowedSd(x, az) > -STRUT / 2 - 0.1) {
+    return -1;
+  }
+  return STRUT / 2 + 0.05 - voronoiEdge(x, az).d;
+};
+
+/**
+ * 側窗 S1：六角窗以三根斜撐分成三角格（側視 (x, y)），只作用在側壁
+ * @type {(x: number, y: number, z: number) => number}
+ */
+const sideWindowSd = (() => {
+  const s1 = data.openings.find((o) => o.view === 'side' && o.shape === 'hex');
+  const [x0] = s1.x;
+  const x1 = 8.5;
+  const [y0, y1] = s1.y;
+  const c = (y1 - y0) / 2;
+  const hex = sdConvexPolygon([
+    [x0, (y0 + y1) / 2],
+    [x0 + c, y1],
+    [x1 - c, y1],
+    [x1, (y0 + y1) / 2],
+    [x1 - c, y0],
+    [x0 + c, y0],
+  ]);
+  const xs = [-17.5, -10.5, -3.5, 3.5];
+  /** @type {((u: number, v: number) => number)[]} */
+  const struts = [];
+  for (let i = 0; i < xs.length - 1; i++) {
+    const ya = i % 2 === 0 ? y0 - 1 : y1 + 1;
+    const yb = i % 2 === 0 ? y1 + 1 : y0 - 1;
+    struts.push(sdBar(xs[i], ya, xs[i + 1], yb, 1.6));
+  }
+  return (x, y, z) => {
+    if (Math.abs(z) < 30) {
+      return 10;
+    }
+    let ds = Infinity;
+    for (const f of struts) {
+      ds = Math.min(ds, f(x, y));
+    }
+    return Math.max(hex(x, y), -ds);
+  };
+})();
+
+/**
+ * iter-44：頂部 / 肩部的圓角矩形開口（H1–H4）改成 Voronoi 網格骨架；側窗 S1 前端縮到 x 8.5（iter-41 號碼位置）並加三角分格
  * @type {any}
  */
 const SKELETON_DATA = {
   ...data,
-  openings: data.openings.map((o) => (o.view === 'side' && o.shape === 'hex' ? { ...o, x: [o.x[0], 8.5] } : o)),
+  openings: [
+    { id: 'L 頂部網格骨架', view: 'top', shape: 'fn', sd: latticeSd },
+    { id: 'S1 側窗（三角分格）', view: 'side', shape: 'fn', sd: sideWindowSd },
+  ],
 };
 
 /** @type {() => Record<string, THREE.Material>} */
@@ -42,7 +194,10 @@ const makeMaterials = () => ({
   limeInner: namedMaterial('paint-lime', { color: 0x9cbd16, roughness: 0.5, side: THREE.BackSide }),
   limeEdge: namedMaterial('paint-lime', { color: 0xb4dc18, roughness: 0.45, side: THREE.DoubleSide }),
   seat: namedMaterial('cockpit-dark', { color: 0x16181b, roughness: 0.6 }),
-  glass: namedMaterial('pc-clear', { color: 0xc8d4e0, roughness: 0.02, transparent: true, opacity: 0.12, envMapIntensity: 0.35, depthWrite: false }),
+  // iter-44：淺煙燻透明泡罩（降低鏡面與環境反射，不再讀成灰色實心塊）
+  glass: namedMaterial('pc-clear', { color: 0x5c6670, roughness: 0.08, specularIntensity: 0.4, transparent: true, opacity: 0.22, envMapIntensity: 0.25, depthWrite: false }),
+  driver: namedMaterial('cockpit-driver', { color: 0x3a3d44, roughness: 0.45, clearcoat: 0.4 }),
+  helmet: namedMaterial('cockpit-helmet-lime', { color: 0xc8f31d, roughness: 0.3, clearcoat: 0.8 }),
   black: decalMaterial('decal-matte-black', { color: 0x111111, roughness: 0.8 }),
   limeDecal: decalMaterial('decal-lime', { color: 0xc8f31d, roughness: 0.4, emissive: 0xc8f31d, emissiveIntensity: 0.05 }),
   mount: namedMaterial('abs-mount-black', { color: 0x222326, roughness: 0.6 }),
@@ -68,7 +223,7 @@ const compose = () => {
     const c = surf.ctrl(x);
     const az = Math.abs(z);
     const crease = Math.min(az - (c.zF - 1.9), c.zF - 0.7 - az, x + 58, 64 - x);
-    return Math.max(BAND - edgeDist(x, y, z), crease);
+    return Math.max(BAND - edgeDist(x, y, z), crease, strutLime(x, y, z));
   };
   /** @type {KeepFn} */
   const cab = (x, y, z) => kit.underCanopy(x, z);
@@ -92,19 +247,27 @@ const compose = () => {
 
   // 座艙泡（透明 PC）
   parts.push({ geometry: buildRegion(kit.canopy, []).geometry, mat: 'glass', shell: true, renderOrder: 3, name: 'canopy' });
+  // 座艙內裝（iter-44）：後傾椅背＋駕駛人剪影（萊姆黃頭盔、深色肩部與軀幹），透過泡罩看得到
+  const deck = (x) => kit.innerYAt(x) + kit.t;
+  const seatBack = new THREE.CapsuleGeometry(2.2, 2.0, 4, 12);
+  seatBack.scale(0.35, 1, 1.1);
+  seatBack.rotateZ(0.55);
+  seatBack.translate(9.6, deck(10) + 1.4, 0);
+  const shoulders = new THREE.CapsuleGeometry(0.9, 3.6, 4, 12);
+  shoulders.rotateX(Math.PI / 2);
+  shoulders.translate(12, deck(12) + 1.2, 0);
+  const torso = new THREE.CapsuleGeometry(1.2, 4.0, 4, 12);
+  torso.rotateZ(Math.PI / 2 - 0.35);
+  torso.scale(1, 0.7, 1.4);
+  torso.translate(15, deck(15) + 0.5, 0);
+  parts.push({ geometry: mergeGeos([seatBack, shoulders, torso]), mat: 'driver', name: 'cockpit-driver' });
+  const helmet = new THREE.SphereGeometry(1.55, 20, 14);
+  helmet.scale(1.12, 1, 0.95);
+  helmet.translate(13.6, deck(13.6) + 2.9, 0);
+  parts.push({ geometry: helmet, mat: 'helmet', name: 'cockpit-helmet' });
 
   // ---- 貼紙 ----
-  // 霧黑三角：前肩、後甲板兩側
-  const triFront = sdConvexPolygon([
-    [41, 18],
-    [27, 18],
-    [27, 26.5],
-  ]);
-  const triRear = sdConvexPolygon([
-    [-44, 20],
-    [-44, 27.5],
-    [-57, 20],
-  ]);
+  // iter-44：頂部霧黑三角拿掉（會被網格骨架切碎），只保留側面三角
   // 側面三角：六角側窗前端與前輪拱之間（側視 x–y）
   const triSide = sdConvexPolygon([
     [20.6, 10.9],
@@ -113,8 +276,6 @@ const compose = () => {
   ]);
   parts.push({
     geometry: mergeGeos([
-      kit.decal((x, y, z) => -triFront(x, Math.abs(z))),
-      kit.decal((x, y, z) => -triRear(x, Math.abs(z))),
       kit.decal(sideDecal((u, v) => triSide(u, v) + 0.5, { x0: 0, y0: 0, zMin: 30, side: 1 }), { offset: 0.12 }),
       kit.decal(sideDecal((u, v) => triSide(-u, v) + 0.5, { x0: 0, y0: 0, zMin: 30, side: -1 }), { offset: 0.12 }),
     ]),
