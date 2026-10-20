@@ -4,20 +4,13 @@
 import * as THREE from 'three';
 import data from './data/body-wedge.json';
 import { getPart } from '../parts/index.js';
-import { makeLoftKit, cachedBuild, namedMaterial, decalMaterial, buildMountTabs, buildRegion, buildRim, featureSd, buildSplitter, surfaceTopY, sdNumber, sdConvexPolygon, sideDecal, topDecal, mergeGeos, smoothstep } from './loft.js';
+import { makeLoftKit, cachedBuild, namedMaterial, decalMaterial, buildMountTabs, buildRegion, buildSplitter, surfaceTopY, sdNumber, sdConvexPolygon, sideDecal, topDecal, mergeGeos, smoothstep } from './loft.js';
 
 /** @typedef {import('./types').BodyDef} BodyDef */
 /** @typedef {import('./loft.js').BodyPart} BodyPart */
 
-/**
- * 石墨黑下半車身的分色線（iter-37）：從前輪拱後方 y 11 往後上方斜拉到後輪拱前 y 21，鼻部側面全黑、尾段再往上收；
- * 兩輪拱之間沿這條線做一道往內 0.8 mm 的斜向折線（sideIn）
- * @type {(x: number) => number}
- */
-const lowerLine = (x) => 11 + 10 * smoothstep(10, -36, x) + 4.5 * smoothstep(28, 60, x) + 7 * smoothstep(-42, -62, x);
-
-/** @type {(x: number, y: number) => number} 斜向折線：分色線以下的側壁往內退 0.8 mm（只在兩輪拱之間） */
-const sideIn = (x, y) => 0.8 * smoothstep(lowerLine(x) + 0.35, lowerLine(x) - 0.35, y) * smoothstep(26, 21, x) * smoothstep(-27, -22, x);
+/** @type {(x: number) => number} 石墨黑下半車身的分色線（iter-34 拉高到側面約一半；往前升、鼻部側面全黑；尾段往上收） */
+const lowerLine = (x) => 15.2 + 0.05 * x + 7 * smoothstep(-42, -62, x);
 
 /**
  * iter-35 站位表（以 DESIGN.md §3.2 為底修改；reviewer：側視要是「從鼻尖一路往後拉高」的單一斜線，不要馬鞍形）
@@ -40,27 +33,17 @@ const STATIONS = [
   [-40, 29.4, 30, 31.9, 39.5, 29.6, 10],
   [-50, 29.8, 29, 32.1, 38, 29.4, 17],
   [-58, 30.4, 27, 32.3, 35, 29.2, 18],
-  [-62, 31.4, 26, 32.6, 33.5, 29.5, 22],
-  // iter-37：尾端往後挑出成鴨尾（x −66.5），下緣往前下方斜收 → 尾板變成內傾的斜面（buildTailSlope）
-  [-66.5, 33.2, 24.5, 33.3, 31, 30.8, 28.6],
+  [-64, 32.4, 25, 32.9, 32, 29.6, 24],
 ].map(([x, yTop, zF, yF, halfW, yShoulder, yLow]) => ({ x, yTop, zF, yF, halfW, yShoulder, yLow }));
 
 /** @type {any} 本款實際放樣用的資料（站位表換成 iter-35 版本，其餘沿用設計資料） */
-const WEDGE_DATA = {
-  ...data,
-  stationParams: STATIONS,
-  // iter-37：側箱進氣口移到斜向分色線上方（x −4 ~ 17、y 14 ~ 20.5），深 2.5 mm
-  recesses: data.recesses.map((r) => (r.view === 'side' ? { ...r, x: [-4, 17], y: [14, 20.5], depth: 2.6 } : r)),
-};
+const WEDGE_DATA = { ...data, stationParams: STATIONS };
 
 /**
  * 前葉子板小隆起：只補輪拱前緣（x ≈ 45）肩部高度，避免上視缺口
  * @type {(x: number, az: number) => number}
  */
-const bump = (x, az) =>
-  smoothstep(14, 28, az) * 0.9 * Math.exp(-(((x - 45) / 8) ** 2)) +
-  // iter-37：座艙後方往尾部的兩道並行翼脊（|z| ≈ 7，cos² 斷面高 1.2 mm、半寬 3 mm；平順斷面避免網格鋸齒反光）
-  1.2 * Math.cos((Math.PI / 2) * Math.min(1, Math.abs(az - 7) / 3)) ** 2 * smoothstep(-12, -20, x);
+const bump = (x, az) => smoothstep(14, 28, az) * 0.9 * Math.exp(-(((x - 45) / 8) ** 2));
 
 /**
  * 鼻部進氣口裡的直立導流片（沿 x，貼著殼面往下到凹陷底）：做出概念圖的分層進氣口
@@ -111,31 +94,6 @@ const buildBox = (x0, x1, y0, y1, z0, z1) => {
   return g;
 };
 
-/**
- * 內傾尾板：在 x ∈ [xMin, xTo] 把左右下緣連成直紋面
- * @type {(surf: any, xTo: number) => THREE.BufferGeometry}
- */
-const buildTailSlope = (surf, xTo) => {
-  const o = [0, 0];
-  const pos = [];
-  const n = 24;
-  const ring = [];
-  for (let i = 0; i <= n; i++) {
-    const x = surf.xMin + ((xTo - surf.xMin) * i) / n;
-    surf.eval(x, 1, o);
-    ring.push([x, o[0], o[1]]);
-  }
-  for (let i = 0; i < n; i++) {
-    const [xa, ya, za] = ring[i];
-    const [xb, yb, zb] = ring[i + 1];
-    pos.push(xa, ya, -za, xb, yb, -zb, xb, yb, zb, xa, ya, -za, xb, yb, zb, xa, ya, za);
-  }
-  const g = new THREE.BufferGeometry();
-  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
-  g.computeVertexNormals();
-  return g;
-};
-
 /** @type {() => Record<string, THREE.Material>} */
 const makeMaterials = () => ({
   paint: namedMaterial('paint-signal-orange', { color: 0xff6a13, roughness: 0.25, metalness: 0.0, clearcoat: 0.8, clearcoatRoughness: 0.08 }),
@@ -156,7 +114,7 @@ const makeMaterials = () => ({
 
 /** @type {() => BodyPart[]} */
 const compose = () => {
-  const kit = makeLoftKit(WEDGE_DATA, { mode: 'linear', sideZMin: 30, bump, tuck: 2.2, xSmooth: true, sideIn });
+  const kit = makeLoftKit(WEDGE_DATA, { mode: 'linear', sideZMin: 30, bump, tuck: 2.2, xSmooth: true });
   const { surf } = kit;
   /** @type {BodyPart[]} */
   const parts = [];
@@ -183,12 +141,6 @@ const compose = () => {
   parts.push({ geometry: mergeGeos([st.capFrontIn, st.capRearIn]), mat: 'inner', name: 'cap-inner' });
   st.recessFloor.forEach((g, i) => parts.push({ geometry: g, mat: 'recess', shell: true, name: `recess-floor-${i}` }));
   st.recessWall.forEach((g, i) => parts.push({ geometry: g, mat: 'recess', shell: true, name: `recess-wall-${i}` }));
-  // 側箱進氣口唇邊（iter-37）：開口外圍 0.9 mm 寬、凸出 0.3 mm 的石墨黑唇邊
-  const intake = WEDGE_DATA.recesses.find((r) => r.view === 'side');
-  const intakeSd = featureSd(intake, 30);
-  const lip = buildRegion(surf, [...kit.holes, (x, y, z) => intakeSd(x, y, z), (x, y, z) => 0.9 - intakeSd(x, y, z)], { offset: 0.3, smoothOffset: true });
-  parts.push({ geometry: lip.geometry, mat: 'lower', name: 'intake-lip' });
-  parts.push({ geometry: buildRim(lip, 0, 0.3), mat: 'lower2', name: 'intake-lip-wall' });
 
   // 座艙罩：中間煙燻玻璃、周圍黑框
   const glass = buildRegion(kit.canopy, [(x, y, z, s) => 0.84 - Math.abs(s)]).geometry;
@@ -218,7 +170,7 @@ const compose = () => {
   const num = sdNumber('07', { h: 5.8, w: 3.5, gap: 0.9 });
   const hoodNum = sdNumber('07', { h: 6.2, w: 3.4, gap: 0.9 });
   parts.push({
-    geometry: mergeGeos([kit.decal(sideDecal(num, { x0: -13, y0: 22.2, zMin: 30 })), kit.decal(topDecal(hoodNum, { x0: 46.5, yMin: 20 }))]),
+    geometry: mergeGeos([kit.decal(sideDecal(num, { x0: -15.5, y0: 19.6, zMin: 30 })), kit.decal(topDecal(hoodNum, { x0: 46.5, yMin: 20 }))]),
     mat: 'black',
     name: 'decal-number',
   });
@@ -247,30 +199,28 @@ const compose = () => {
 
   // 尾部（iter-36）：黑色燈殼＋紅色細長燈條、中央號碼牌凹槽、尾板下方擴散器鰭片
   const xr = surf.xMin;
-  // 內傾尾板：兩側下緣之間的斜面（x −66.5 → −58），從後方看得出斜度
-  parts.push({ geometry: buildTailSlope(surf, -58), mat: 'lower2', shell: true, name: 'tail-slope' });
   const housings = [];
   const lamps = [];
   for (const sgn of [-1, 1]) {
-    housings.push(buildBox(xr - 0.6, xr + 0.2, 29.2, 32.0, sgn > 0 ? 12.5 : -27, sgn > 0 ? 27 : -12.5));
-    lamps.push(buildBox(xr - 0.75, xr - 0.5, 29.8, 31.4, sgn > 0 ? 13.3 : -26.2, sgn > 0 ? 26.2 : -13.3));
+    housings.push(buildBox(xr - 0.6, xr + 0.2, 27.0, 29.6, sgn > 0 ? 13.5 : -27.5, sgn > 0 ? 27.5 : -13.5));
+    lamps.push(buildBox(xr - 0.75, xr - 0.5, 27.6, 29.0, sgn > 0 ? 14.3 : -26.7, sgn > 0 ? 26.7 : -14.3));
   }
-  // 中央號碼牌凹槽
-  housings.push(buildBox(xr - 0.3, xr + 0.2, 29.0, 32.2, -5.5, 5.5));
+  housings.push(buildBox(xr - 0.3, xr + 0.2, 25.0, 28.6, -6.5, 6.5));
   parts.push({ geometry: mergeGeos(housings), mat: 'lower', name: 'tail-housing' });
   parts.push({ geometry: mergeGeos(lamps), mat: 'tail', name: 'lamp-tail' });
-  // 擴散器鰭片：掛在內傾尾板下方的三角立板
   const fins = [-19, -12, -5, 5, 12, 19].map((zc) =>
     buildFin(
       [
-        [-66, 28.2],
-        [-58.4, 18.2],
-        [-66, 24.6],
+        [xr - 0.4, 18.6],
+        [xr + 6.5, 18.6],
+        [xr + 6.5, 23],
+        [xr - 0.4, 24.4],
       ],
       zc,
       0.8,
     ),
   );
+  fins.push(buildBox(xr - 0.4, xr + 6.5, 18.2, 18.8, -21, 21));
   parts.push({ geometry: mergeGeos(fins), mat: 'lower2', name: 'rear-diffuser' });
 
   // 卡座吊耳
