@@ -1,0 +1,18 @@
+{
+  "_readme": "高速設定：高轉速雙軸馬達＋3.5:1，楔形車殼（單圈約 1.8 s，模擬極速約 8.9 m/s）",
+  "chassis": "chassis-midship",
+  "motor": "motor-high-rev",
+  "gear": "gear-3.5",
+  "wheels": "wheel-26-lowprofile",
+  "bearings": "bearing-620",
+  "rollers": "roller-13",
+  "frontStay": "stay-front-standard",
+  "rearStay": "stay-rear-standard",
+  "battery": "battery-aa-nimh-950",
+  "batteryCover": "battery-cover-standard",
+  "switch": "switch-standard",
+  "axles": "axle-hex-60",
+  "body": "body-wedge",
+  "gearCover": "gear-cover-standard",
+  "hardware": "hardware-standard"
+}

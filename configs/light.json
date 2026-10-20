@@ -1,0 +1,18 @@
+{
+  "_readme": "輕量設定：鏤空 PC 車殼（整車約 121 g）",
+  "chassis": "chassis-midship",
+  "motor": "motor-standard",
+  "gear": "gear-3.5",
+  "wheels": "wheel-26-lowprofile",
+  "bearings": "bearing-620",
+  "rollers": "roller-13",
+  "frontStay": "stay-front-standard",
+  "rearStay": "stay-rear-standard",
+  "battery": "battery-aa-nimh-950",
+  "batteryCover": "battery-cover-standard",
+  "switch": "switch-standard",
+  "axles": "axle-hex-60",
+  "body": "body-skeleton",
+  "gearCover": "gear-cover-standard",
+  "hardware": "hardware-standard"
+}

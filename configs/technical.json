@@ -1,0 +1,18 @@
+{
+  "_readme": "技術賽道設定：4:1 齒輪＋19 mm 鋁導輪，流線大尾翼車殼",
+  "chassis": "chassis-midship",
+  "motor": "motor-standard",
+  "gear": "gear-4.0",
+  "wheels": "wheel-26-lowprofile",
+  "bearings": "bearing-620",
+  "rollers": "roller-19",
+  "frontStay": "stay-front-standard",
+  "rearStay": "stay-rear-standard",
+  "battery": "battery-aa-nimh-950",
+  "batteryCover": "battery-cover-standard",
+  "switch": "switch-standard",
+  "axles": "axle-hex-60",
+  "body": "body-aero-wing",
+  "gearCover": "gear-cover-standard",
+  "hardware": "hardware-standard"
+}

@@ -7,8 +7,8 @@ import { spec } from './spec.js';
 const EPS = 1e-9;
 
 /**
- * 檢查整車組裝是否符合比賽規則
- * @type {(asm: any) => { ok: boolean, violations: Violation[] }}
+ * 檢查整車組裝是否符合比賽規則；另外回傳不屬於比賽規則、但零件互相干涉的相容性警告（不影響 ok）
+ * @type {(asm: any) => { ok: boolean, violations: Violation[], warnings: Violation[] }}
  */
 export function validateAssembly(asm) {
   const r = spec.rules;
@@ -58,5 +58,14 @@ export function validateAssembly(asm) {
   if (b.size !== r.batterySize || b.cells !== r.batteryCells) {
     fail('BATTERY', `電池須為 ${r.batteryCells} 顆 ${r.batterySize}；目前 ${b.cells} 顆 ${b.size}`);
   }
-  return { ok: violations.length === 0, violations };
+  /** @type {Violation[]} */
+  const warnings = [];
+  // SPEC 1.14：車殼與輪胎 / 導輪間隙 ≥ 1 mm（相容性，不是比賽規則）
+  if (asm.fit && asm.fit.tire_mm < 1) {
+    warnings.push({ code: 'BODY_TIRE_CLEARANCE', message: `車殼 ${asm.body.id} 與輪胎間隙 ${asm.fit.tire_mm.toFixed(2)} mm（< 1 mm，會干涉），這款車殼不適合 ${p.wheels.diameter_mm} mm 輪胎` });
+  }
+  if (asm.fit && asm.fit.roller_mm < 1) {
+    warnings.push({ code: 'BODY_ROLLER_CLEARANCE', message: `車殼 ${asm.body.id} 與導輪間隙 ${asm.fit.roller_mm.toFixed(2)} mm（< 1 mm）` });
+  }
+  return { ok: violations.length === 0, violations, warnings };
 }

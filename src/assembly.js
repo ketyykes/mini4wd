@@ -1,9 +1,12 @@
 // 整車組裝：由組裝設定（configs/*.json）解析零件 → 擺放位置 → 推導質量、重心、外框、物理參數
 // 整車的質量、重心、外框「只」由這裡從零件資料推導（SPEC 1.13），模型、物理、規則檢查都用同一份結果
 import defaultConfig from '../configs/default.json';
+import speedConfig from '../configs/speed.json';
+import technicalConfig from '../configs/technical.json';
+import lightConfig from '../configs/light.json';
 import { spec as globalSpec, deriveParams } from './spec.js';
 import { resolvePart } from './parts/index.js';
-import { getBody, bodyMassProps } from './bodies/index.js';
+import { getBody, bodyMassProps, bodyClearance } from './bodies/index.js';
 import { rollerLayout, wheelLayout, componentLayout } from './carLayout.js';
 
 /** @typedef {import('./parts/types').PlacedPart} PlacedPart */
@@ -28,7 +31,10 @@ export const SLOTS = {
 };
 
 /** @type {Record<string, any>} */
-const CONFIGS = { default: defaultConfig };
+const CONFIGS = { default: defaultConfig, speed: speedConfig, technical: technicalConfig, light: lightConfig };
+
+/** @type {() => string[]} 所有組裝設定名稱 */
+export const listConfigs = () => Object.keys(CONFIGS);
 
 /** @type {(name?: string) => Record<string, any>} 讀取組裝設定（回傳副本，可自由修改） */
 export function loadConfig(name = 'default') {
@@ -244,6 +250,13 @@ export function assemble(config) {
   // 離地高度：輪胎以外的最低點（底盤本體、車殼、導輪）
   const groundClearance_mm = Math.min(...boxes.filter((_, i) => i < 2).map((b) => b.min.y), ...rollers.map((r) => r.y - r.h / 2 + lift));
 
+  // 車殼與輪胎、導輪的間隙（底盤座標：輪軸相對底盤固定，換大徑輪時輪胎往外長）
+  const fit = bodyClearance(
+    body,
+    wheels.map((w) => ({ x: w.x, y: w.y, z: w.z, r: R, width: p.wheels.width_mm })),
+    rollers,
+  );
+
   return {
     config: structuredClone(config),
     partsBySlot: p,
@@ -253,6 +266,7 @@ export function assemble(config) {
     bbox_mm,
     groundClearance_mm,
     frontalArea_mm2,
+    fit,
     lift_mm: lift,
     gearRatio: p.gear.ratio,
     driveType: ch.driveType,

@@ -28,4 +28,6 @@ export interface BodyMassProps {
   mass_g: number;
   com_mm: Vec3;
   bbox_mm: { min: Vec3; max: Vec3 };
+  /** 車殼所有頂點（底盤座標，xyz 交錯） */
+  vertices: Float32Array;
 }

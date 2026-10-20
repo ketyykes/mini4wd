@@ -9,7 +9,7 @@
    - 類別特有欄位：馬達 `noLoadRpm_atRated` / `stallTorque_atRated_Nm` / `stallCurrent_atRated_A` / `noLoadCurrent_A`；齒輪 `ratio` 與節圓半徑；輪胎 `diameter_mm` / `width_mm` / `rimDiameter_mm` / 摩擦；導輪 `diameter_mm` / `height_mm`；導輪架 `rollerX_mm` / `rollerZ_mm` / 高度……
 2. 同步更新 `SPEC.md` 1.13 零件規格表。
 3. 在組裝設定（`configs/*.json`）的對應 slot 填新 id 就會生效；模型、物理、規則檢查都自動跟著換。
-4. 跑 `node scripts/score.mjs` 確認 16/16；`validateAssembly()` 會擋下不合規的組合（例如 1.5 以外的齒輪比、輪徑超出 22–35 mm、130 以外的馬達）。
+4. 跑 `node scripts/score.mjs` 確認 16/16；`validateAssembly()` 會擋下不合規的組合（`violations`，例如 1.5 以外的齒輪比、輪徑超出 22–35 mm、130 以外的馬達），另外回傳相容性警告（`warnings`，例如換 31 mm 大徑輪時現有三款車殼的輪拱會干涉：`BODY_TIRE_CLEARANCE`）。
 
 slot 與類別對照（`src/assembly.js` 的 `SLOTS`）：
 `chassis`、`motor`、`gear`、`wheels`、`bearings`、`rollers`、`frontStay`（stay-front）、`rearStay`（stay-rear）、`battery`、`batteryCover`、`switch`、`axles`、`gearCover`、`hardware`，另外 `body` 填車殼 id。
@@ -27,4 +27,5 @@ slot 也可以填 `{ "base": "<零件 id>", ...覆寫欄位 }` 做臨時變體�
 5. 驗證：`node scripts/score.mjs`（P08 質量範圍、P09 外框、P15 安裝點與間隙 ≥ 1 mm、P16 跑圈會自動涵蓋新車殼）；`node scripts/render.mjs <iter> side,front34,top,rear34 <body-id>` 看截圖；`../render/run.sh <body-id> 128` 出 Blender 展示圖。
 
 ## 新增一份組裝設定
+現有：`default`、`speed`（高轉速馬達）、`technical`（4:1＋19 mm 導輪）、`light`（鏤空車殼）。
 複製 `configs/default.json` 改 slot，並在 `src/assembly.js` 的 `CONFIGS` 註冊名稱，之後 `loadConfig('<名稱>')` 即可使用。
