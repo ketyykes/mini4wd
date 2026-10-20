@@ -111,7 +111,7 @@ const barBetween = (p, q, w, h) => {
  * @type {(surf: any) => { glass: THREE.BufferGeometry, frame: THREE.BufferGeometry, halfWAt: (x: number) => number }}
  */
 const buildGemCanopy = (surf) => {
-  /** @type {number[][][]} 每站 6 點（左 b、左 m、左 r、右 r、右 m、右 b） */
+  /** @type {number[][][]} 每站 7 點（左 b、左 m、左 r、中央稜、右 r、右 m、右 b） */
   const rings = CANOPY.map((c) => {
     const roof = surf.topY(c.x, 0) - 0.1 + c.rise;
     const yb = (z) => surf.topY(c.x, z) - 0.15;
@@ -120,6 +120,8 @@ const buildGemCanopy = (surf) => {
       [c.x, yb(c.b), -c.b],
       [c.x, ym(c.m), -c.m],
       [c.x, roof, -c.r],
+      // iter-43：平頂中央加 0.6 mm 稜線（寶石切面），平頂不再整片正對頂光反成一塊亮矩形
+      [c.x, roof + 0.6 * Math.min(1, c.rise / 3), 0],
       [c.x, roof, c.r],
       [c.x, ym(c.m), c.m],
       [c.x, yb(c.b), c.b],
@@ -152,7 +154,7 @@ const buildGemCanopy = (surf) => {
   for (let i = 0; i < rings.length - 1; i++) {
     const a = rings[i];
     const b = rings[i + 1];
-    for (let k = 0; k < 5; k++) {
+    for (let k = 0; k < 6; k++) {
       pushQuad([a[k], a[k + 1], b[k + 1], b[k]]);
     }
   }
@@ -161,7 +163,7 @@ const buildGemCanopy = (surf) => {
     [rings[0], 1],
     [rings[rings.length - 1], -1],
   ]) {
-    for (let k = 1; k < 5; k++) {
+    for (let k = 1; k < 6; k++) {
       const tri = sign > 0 ? [ring[0], ring[k + 1], ring[k]] : [ring[0], ring[k], ring[k + 1]];
       for (const q of tri) {
         pos.push(...q);
@@ -177,11 +179,11 @@ const buildGemCanopy = (surf) => {
   const last = rings.length - 1;
   for (let i = 0; i < last; i++) {
     bars.push(barBetween(rings[i][0], rings[i + 1][0], 0.3, 0.2));
-    bars.push(barBetween(rings[i][5], rings[i + 1][5], 0.3, 0.2));
+    bars.push(barBetween(rings[i][6], rings[i + 1][6], 0.3, 0.2));
   }
   // 前後端：沿罩子端緣把外圍框接起來
   for (const i of [0, last]) {
-    for (let k = 0; k < 5; k++) {
+    for (let k = 0; k < 6; k++) {
       bars.push(barBetween(rings[i][k], rings[i][k + 1], 0.28, 0.18));
     }
   }
@@ -189,7 +191,7 @@ const buildGemCanopy = (surf) => {
   for (const i of [1, 3]) {
     for (const [a, b, c] of [
       [0, 1, 2],
-      [5, 4, 3],
+      [6, 5, 4],
     ]) {
       bars.push(barBetween(rings[i][a], rings[i][b], 0.28, 0.18));
       bars.push(barBetween(rings[i][b], rings[i][c], 0.28, 0.18));
@@ -300,7 +302,8 @@ const makeMaterials = () => ({
   recess: namedMaterial('trim-intake-black', { color: 0x0b0b0c, roughness: 0.9, side: THREE.DoubleSide }),
   frame: namedMaterial('cockpit-dark', { color: 0x16181b, roughness: 0.5, side: THREE.DoubleSide }),
   // iter-40：茶色煙燻透明 PC（看得到座艙內裝），窗框條黑色
-  glass: namedMaterial('pc-smoke-tint', { color: 0x5a4230, roughness: 0.04, metalness: 0.0, clearcoat: 1.0, clearcoatRoughness: 0.02, transparent: true, opacity: 0.45, depthWrite: false, side: THREE.DoubleSide }),
+  // iter-43：加深成茶黑煙燻、透光降低；環境反射減弱，平頂折面不再反成一塊亮矩形
+  glass: namedMaterial('pc-smoke-tint', { color: 0x120c08, roughness: 0.1, metalness: 0.0, specularIntensity: 0.45, transparent: true, opacity: 0.58, envMapIntensity: 0.35, depthWrite: false }),
   canopyFrame: namedMaterial('trim-smoke-gray', { color: 0x2e3238, roughness: 0.35, clearcoat: 0.5 }),
   seat: namedMaterial('cockpit-driver', { color: 0x3a3d44, roughness: 0.45, clearcoat: 0.4 }),
   tub: namedMaterial('cockpit-tub', { color: 0x141518, roughness: 0.8 }),
@@ -373,28 +376,57 @@ const compose = () => {
   parts.push({ geometry: cockpit.tub, mat: 'tub', name: 'cockpit-tub' });
   parts.push({ geometry: cockpit.driver, mat: 'seat', name: 'cockpit-driver' });
 
-  // 鼻部進氣口內的直立導流片（分層感）
-  const noseSlats = [];
+  // 鼻部進氣口格柵（iter-43）：凹陷內 4 片往前傾的橫向百葉（每片沿 z 分段貼著殼面下方），百葉之間留陰影縫
+  const louvers = [];
   for (const sg of [-1, 1]) {
-    for (const zc of [8.8, 11.6]) {
-      const x0 = 57.8;
-      const x1 = 65.2;
-      const top = (x) => surf.topY(x, zc) - 0.2;
-      noseSlats.push(
-        buildFin(
+    for (const xl of [58.6, 60.6, 62.6, 64.6]) {
+      const t = (xl - 57) / 9;
+      const zLo = lerp(6.8, 5.2, t) + 0.35;
+      const zHi = lerp(15.2, 9.4, t) - 0.35;
+      const nSeg = Math.max(1, Math.ceil(zHi - zLo));
+      for (let k = 0; k < nSeg; k++) {
+        const za = zLo + ((zHi - zLo) * k) / nSeg;
+        const zb = zLo + ((zHi - zLo) * (k + 1)) / nSeg;
+        const yt = Math.min(surf.topY(xl, za), surf.topY(xl, zb), surf.topY(xl + 1.2, za), surf.topY(xl + 1.2, zb)) - 0.2;
+        const yb = yt - 2.1;
+        const shape = new THREE.Shape([
+          new THREE.Vector2(xl - 0.2, yb),
+          new THREE.Vector2(xl + 0.2, yb),
+          new THREE.Vector2(xl + 1.3, yt),
+          new THREE.Vector2(xl + 0.9, yt),
+        ]);
+        const g = new THREE.ExtrudeGeometry(shape, { depth: zb - za, bevelEnabled: false });
+        g.translate(0, 0, sg > 0 ? za : -zb);
+        louvers.push(g);
+      }
+    }
+  }
+  parts.push({ geometry: mergeGeos(louvers), mat: 'lower2', name: 'nose-intake-louvers' });
+
+  // 溝槽前方的三層階梯式梯形牙板（iter-43）：從翼艙前端下方往前下方一層層伸出，層間 0.5 mm 陰影縫
+  const steps = [];
+  for (const sg of [-1, 1]) {
+    const layers = [
+      { y: 15.3, x0: 61.5, x1: 68.6, back: [6.2, 15.6], front: [7.6, 12.6] },
+      { y: 14.1, x0: 63.2, x1: 70.4, back: [6.6, 16.4], front: [8.2, 13.2] },
+      { y: 12.9, x0: 65.0, x1: 71.8, back: [7.6, 15.4], front: [9.0, 12.8] },
+    ];
+    for (const L of layers) {
+      steps.push(
+        flatPlate(
           [
-            [x0, top(x0) - 2.3],
-            [x1, top(x1) - 2.3],
-            [x1, top(x1)],
-            [x0, top(x0)],
+            [L.x0, sg * L.back[0]],
+            [L.x1, sg * L.front[0]],
+            [L.x1, sg * L.front[1]],
+            [L.x0, sg * L.back[1]],
           ],
-          sg * zc,
-          0.45,
+          L.y,
+          0.7,
         ),
       );
     }
   }
-  parts.push({ geometry: mergeGeos(noseSlats), mat: 'lower2', name: 'nose-intake-slats' });
+  parts.push({ geometry: mergeGeos(steps), mat: 'lower2', name: 'nose-steps' });
 
   // ---- 貼紙（不標 shell） ----
   // 青藍細線：翼艙內稜（溝槽外緣）＋側面分色線上方
