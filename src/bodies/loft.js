@@ -480,6 +480,111 @@ export function createBodySurface(data, mode, step = 0.5, bump = null, extra = {
 }
 
 /**
+ * 多點折線剖面曲面（iter-38，body-wedge 用）：每站給同樣點數的半剖面 pts（z 不遞減，最後一段為側壁），
+ * 每段一個面板（稜線銳利），站間單調 Hermite 內插；最後一段可往內收 tuck。
+ * @type {(stations: { x: number, pts: number[][] }[], opt?: { step?: number, tuck?: number }) => LoftSurface & { ctrl: (x: number) => any, topY: (x: number, z: number) => number }}
+ */
+export function createPolySurface(stations, opt = {}) {
+  const step = opt.step ?? 0.5;
+  const tuck = opt.tuck ?? 0;
+  const st = stations.slice().sort((a, b) => a.x - b.x);
+  const sx = st.map((p) => p.x);
+  const nPt = st[0].pts.length;
+  /** @type {number[][][]} 每點每座標的 Hermite 斜率 [i][c][k] */
+  const slopes = [];
+  for (let i = 0; i < nPt; i++) {
+    slopes.push(
+      [0, 1].map((c) =>
+        limitedSlopes(
+          sx,
+          st.map((p) => p.pts[i][c]),
+        ),
+      ),
+    );
+  }
+  // 段長平均 → 面板在 s 上的比例
+  const segLen = [];
+  for (let i = 0; i < nPt - 1; i++) {
+    let l = 0;
+    for (const p of st) {
+      l += Math.hypot(p.pts[i + 1][0] - p.pts[i][0], p.pts[i + 1][1] - p.pts[i][1]);
+    }
+    segLen.push(Math.max(0.5, l / st.length));
+  }
+  const total = segLen.reduce((a, b) => a + b, 0);
+  const brk = [0];
+  for (const l of segLen) {
+    brk.push(brk[brk.length - 1] + l / total);
+  }
+  brk[brk.length - 1] = 1;
+  /** @type {Panel[]} */
+  const half = segLen.map((l, i) => ({ s0: brk[i], s1: brk[i + 1], n: Math.max(3, Math.ceil(l / step)) }));
+  const panels = [...half.map((p) => ({ s0: -p.s1, s1: -p.s0, n: p.n })).reverse(), ...half];
+  /** @type {(x: number) => number[][]} 在 x 的半剖面點 */
+  const at = (x) => {
+    const { k, t, h } = bracket(sx, x);
+    const hb = hermiteBasis(t);
+    const out = [];
+    for (let i = 0; i < nPt; i++) {
+      const a = st[k].pts[i];
+      const b = st[k + 1].pts[i];
+      out.push([0, 1].map((c) => hb[0] * a[c] + hb[1] * h * slopes[i][c][k] + hb[2] * b[c] + hb[3] * h * slopes[i][c][k + 1]));
+    }
+    return out;
+  };
+  let cacheX = NaN;
+  let cacheP = null;
+  /** @type {(x: number) => number[][]} */
+  const atCached = (x) => {
+    if (x !== cacheX) {
+      cacheX = x;
+      cacheP = at(x);
+    }
+    return cacheP;
+  };
+  return {
+    xMin: sx[0],
+    xMax: sx[sx.length - 1],
+    xs: subdivide(sx, step),
+    breaks: brk.slice(1, -1),
+    panels,
+    profileAt: at,
+    ctrl: (x) => {
+      const p = atCached(x);
+      return { yTop: p[0][1], zF: p[nPt - 3][0], yF: p[nPt - 3][1], halfW: p[nPt - 1][0], yShoulder: p[nPt - 2][1], yLow: p[nPt - 1][1] };
+    },
+    topY(x, z) {
+      const p = atCached(x);
+      const az = Math.abs(z);
+      for (let i = 0; i < nPt - 2; i++) {
+        if (az <= p[i + 1][0]) {
+          const dz = p[i + 1][0] - p[i][0];
+          return dz > 1e-9 ? lerp(p[i][1], p[i + 1][1], (az - p[i][0]) / dz) : p[i + 1][1];
+        }
+      }
+      return p[nPt - 2][1];
+    },
+    eval(x, s, out) {
+      const p = atCached(x);
+      const u = Math.abs(s);
+      let i = 0;
+      while (i < nPt - 2 && u > brk[i + 1]) {
+        i++;
+      }
+      const t = (u - brk[i]) / (brk[i + 1] - brk[i]);
+      let z = lerp(p[i][0], p[i + 1][0], t);
+      const y = lerp(p[i][1], p[i + 1][1], t);
+      if (i === nPt - 2 && tuck > 0) {
+        const kk = Math.max(0, (t - 0.35) / 0.65);
+        z -= tuck * kk * kk;
+      }
+      out[0] = y;
+      out[1] = s < 0 ? -z : z;
+    },
+  };
+}
+
+/**
  * 找車身表面在 (x, |z|) 處的高度（頂面部分；z 超過最寬處時回傳最寬處高度）
  * @type {(surf: LoftSurface, x: number, z: number) => number}
  */
@@ -992,6 +1097,14 @@ export const archKeep = (arch) => (x, y, z) => Math.max(Math.hypot(x - arch.x, y
  * @type {(o: any, sideZMin?: number) => (x: number, y: number, z: number) => number}
  */
 export function featureSd(o, sideZMin = 20) {
+  if (o.shape === 'poly') {
+    // 任意凸多邊形（iter-38）：view 'side' 為 (x, y)、'top' 為 (x, |z|)
+    const poly = sdConvexPolygon(o.pts);
+    if (o.view === 'top') {
+      return (x, y, z) => poly(x, Math.abs(z));
+    }
+    return (x, y, z) => (Math.abs(z) < sideZMin ? 10 : poly(x, y));
+  }
   const [x0, x1] = o.x;
   if (o.view === 'top') {
     const [z0, z1] = o.z;
@@ -1352,7 +1465,7 @@ const sideRailKeep = (x, y, z) => {
  * @type {(data: any, opt: { mode: 'linear' | 'smooth', step?: number, sideZMin?: number }) => any}
  */
 export function makeLoftKit(data, opt) {
-  const surf = createBodySurface(data, opt.mode, opt.step ?? 0.5, opt.bump ?? null, { tuck: opt.tuck ?? 0, xSmooth: opt.xSmooth ?? false });
+  const surf = opt.surface ?? createBodySurface(data, opt.mode, opt.step ?? 0.5, opt.bump ?? null, { tuck: opt.tuck ?? 0, xSmooth: opt.xSmooth ?? false });
   const t = data.wallThickness_mm;
   const canopy = data.canopy ? createCanopySurface(data.canopy, surf, opt.mode === 'smooth', 0.35) : null;
   const arches = (data.wheelArches ?? []).map(archKeep);
