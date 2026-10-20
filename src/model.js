@@ -41,7 +41,7 @@ function rubberNoiseTexture() {
 /**
  * 輪胎側壁材質（iter-07）：1024² canvas，以 RingGeometry 的平面 UV 對應（中心 = 貼圖中心，貼圖半邊 = 外半徑）。
  * 內容：放射狀細肋紋（內外兩圈）＋沿圓周的凸起字樣；同一張灰階圖當 bumpMap
- * 字樣內容為示意（推估：參考照片看不清側壁字，實車低摩擦胎側壁有 TAMIYA 字樣）
+ * 字樣為通用尺寸標示（iter-32 起不放廠商名稱）
  */
 function tireSidewallMaterial() {
   // Node（vitest）沒有 DOM：只回傳素色材質，P09 外框量測用的幾何不變
@@ -87,7 +87,8 @@ function tireSidewallMaterial() {
   ctx.font = 'bold 34px Arial, Helvetica, sans-serif';
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
-  const label = 'TAMIYA  LOW FRICTION  26mm';
+  // iter-32：側壁字樣改成通用尺寸標示（不放任何廠商名稱），依輪胎零件尺寸產生
+  const label = `${spec.tire.diameter_mm}mm  LOW PROFILE  ${spec.tire.width_mm}mm`;
   for (const start of [-Math.PI / 2, Math.PI / 2]) {
     const step = 0.052;
     const a0 = start - ((label.length - 1) * step) / 2;

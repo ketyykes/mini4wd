@@ -49,7 +49,8 @@ function cfgWith(over = {}) {
  */
 function runStraightTopSpeed(asm, soc = 1, seconds = 7) {
   const { sim, track } = api();
-  const env = sim.createWorld(track.buildStraight(40));
+  // 直線長度要夠跑完全程（iter-32：motor-high-rev 約 9 m/s × 7 s ≈ 62 m，原本 40 m 會衝出直線末端、量到掉落中的速度）
+  const env = sim.createWorld(track.buildStraight(100));
   const car = sim.createCar(env, { assembly: asm, s: 0.2, lane: 0, soc, drain: false });
   const dt = env.world.timestep;
   const steps = Math.round(seconds / dt);

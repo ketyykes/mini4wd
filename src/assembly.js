@@ -23,6 +23,8 @@ export const SLOTS = {
   batteryCover: 'battery-cover',
   switch: 'switch',
   axles: 'axle',
+  gearCover: 'gear-cover',
+  hardware: 'hardware',
 };
 
 /** @type {Record<string, any>} */
@@ -128,6 +130,10 @@ export function assemble(config) {
   const parts = [];
   /** @type {(slot: string, label: string, mass_g: number, pos: Vec3) => void} */
   const place = (slot, label, mass_g, pos) => {
+    // 質量 0 的零件（例如和底盤一體成型的前保桿）不列入
+    if (mass_g <= 0) {
+      return;
+    }
     parts.push({ slot, id: p[slot]?.id ?? body.id, category: p[slot]?.category ?? 'body', label, mass_g, pos: lifted(pos, lift) });
   };
 
@@ -153,7 +159,7 @@ export function assemble(config) {
     for (const sz of [1, -1]) {
       place('bearings', `輪軸軸承 ${sx > 0 ? '前' : '後'}${sz > 0 ? '右' : '左'}`, p.bearings.mass_g, { x: sx * hw, y: axleY, z: sz * 23.4 });
     }
-    place('bearings', `中間齒輪軸承 ${sx > 0 ? '前' : '後'}`, p.bearings.mass_g, { x: sx * counterX, y: comp.motor.y, z: 0 });
+    place('bearings', `中間齒輪軸承 ${sx > 0 ? '前' : '後'}`, p.bearings.counterMass_g, { x: sx * counterX, y: comp.motor.y, z: 0 });
   }
   for (const r of rollers) {
     place('rollers', `導輪 ${r.id}`, p.rollers.mass_g, { x: r.x, y: r.y, z: r.z });
@@ -167,6 +173,9 @@ export function assemble(config) {
   });
   place('batteryCover', '電池蓋', p.batteryCover.mass_g, { x: 0, y: ch.groundClearanceRef_mm + 0.5, z: 0 });
   place('switch', '開關＋端子', p.switch.mass_g, ch.switchPos_mm);
+  // 齒輪蓋蓋住馬達與前後齒輪上方（質心推估：馬達頂面上方 2 mm）；小五金分散在底盤上，質心取底盤本體質心（推估）
+  place('gearCover', '齒輪蓋', p.gearCover.mass_g, { x: 0, y: comp.motor.y + comp.motor.flat / 2 + 2, z: 0 });
+  place('hardware', '小五金', p.hardware.mass_g, ch.com_mm);
   parts.push({ slot: 'body', id: body.id, category: 'body', label: `車殼 ${body.id}`, mass_g: bodyProps.mass_g, pos: lifted(bodyProps.com_mm, lift) });
 
   // ---- 質量、重心 ----
