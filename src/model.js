@@ -951,45 +951,22 @@ function buildChassis(mats) {
   }
   // 電源開關（switch 零件）：左側電池艙後端的滑動開關座＋撥桿
   const sw = SWITCH_POS;
-  // iter-34：開關加大、撥桿改淺灰並加滑槽（reviewer：「開關看不出位置」）
-  const swBase = extrudeXZ(roundedRect(sw.x, sw.z, 9, 6, 1.2), 2.4, mats.chassisDark, [roundedRect(sw.x, sw.z, 6, 1.6, 0.7)], 0.3);
-  swBase.position.y = sw.y - 2.2;
+  // iter-35：開關再加大（reviewer iter-34：「只看到很小的白色凸塊」）：深色開關座＋滑槽＋淺灰撥桿（止滑紋）＋座上兩個三角箭頭（ON / OFF 方向，非文字）
+  const swBase = extrudeXZ(roundedRect(sw.x, sw.z, 12, 7.5, 1.4), 2.6, mats.chassisDark, [roundedRect(sw.x, sw.z, 8, 2.2, 0.9)], 0.35);
+  swBase.position.y = sw.y - 2.4;
   g.add(swBase);
-  const swKnob = new THREE.Mesh(new THREE.BoxGeometry(2.4, 2.2, 3.6), mats.motorCap);
-  swKnob.position.set(sw.x + 1.3, sw.y + 0.9, sw.z);
+  const swKnob = new THREE.Mesh(new THREE.BoxGeometry(3.2, 2.6, 4.6), mats.motorCap);
+  swKnob.position.set(sw.x + 2.0, sw.y + 1.1, sw.z);
   g.add(swKnob);
-  for (const dx of [-0.6, 0, 0.6]) {
-    const grip = new THREE.Mesh(new THREE.BoxGeometry(0.25, 0.3, 3.6), mats.chassisDark);
-    grip.position.set(sw.x + 1.3 + dx, sw.y + 2.05, sw.z);
+  for (const dx of [-0.9, 0, 0.9]) {
+    const grip = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.35, 4.6), mats.chassisDark);
+    grip.position.set(sw.x + 2.0 + dx, sw.y + 2.45, sw.z);
     g.add(grip);
   }
-  // 齒輪箱：外側壁（x-y 平面板，支撐中間齒輪軸與輪軸）＋頂蓋，底面保持開口
-  for (const sx of [-1, 1]) {
-    const x0 = sx * 15;
-    const x1 = sx * (hw + 6);
-    const wallPts = [[x0, y0 + t], [x0, 17], [sx * 22, 20], [sx * (hw - 2), 20], [x1, 17], [x1, y0 + t]];
-    const ordered = sx > 0 ? wallPts : wallPts.slice().reverse();
-    const holes = [circlePts(sx * gt.counterX, gt.counterY, 1.3, 12), circlePts(sx * hw, axleY, 1.3, 12)];
-    // 只留遠側（+z）壁當背景；近側（−z，齒輪所在側）不封，讓底面開口看得到齒輪
-    for (const wz of [5.2]) {
-      const wall = extrudeXY(ordered, 1.4, mats.chassis, holes.map((h) => (sx > 0 ? h : h.slice().reverse())));
-      wall.position.z = wz;
-      g.add(wall);
-    }
-    // 輪軸支座（側框上的軸承座）
-    for (const sz of [-1, 1]) {
-      const boss = new THREE.Mesh(new THREE.CylinderGeometry(3.6, 3.6, 3.0, 20), mats.chassis);
-      boss.rotation.x = Math.PI / 2;
-      boss.position.set(sx * hw, axleY, sz * 23.4);
-      g.add(boss);
-      const brg = new THREE.Mesh(new THREE.CylinderGeometry(2.9, 2.9, 3.2, 20), mats.steel);
-      brg.rotation.x = Math.PI / 2;
-      brg.position.set(sx * hw, axleY, sz * 23.4);
-      g.add(brg);
-      const below = new THREE.Mesh(new THREE.BoxGeometry(7.2, axleY - (y0 + t), 3.0), mats.chassis);
-      below.position.set(sx * hw, (axleY + y0 + t) / 2, sz * 23.4);
-      g.add(below);
-    }
+  for (const dir of [-1, 1]) {
+    const tri = extrudeXZ([[sw.x + dir * 5.2, sw.z + 3.0], [sw.x + dir * 3.6, sw.z + 2.2], [sw.x + dir * 3.6, sw.z + 3.8]], 0.25, mats.motorCap);
+    tri.position.y = sw.y + 0.2;
+    g.add(tri);
   }
 
   // ---- 前後保桿：MA 立體保桿（iter-03，依 ref_ma-chassis / front34 / rear34）----
