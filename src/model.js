@@ -997,7 +997,17 @@ function buildChassis(mats) {
     const ribLayer = extrudeXZ(bridge, 1.4, mats.chassis, pockets);
     ribLayer.position.y = bumperY;
     g.add(ribLayer);
-    const skin = extrudeXZ(bridge, bt - 1.4, mats.chassisDark);
+    // iter-33：上蓋開安裝孔（reviewer：「保桿是薄平板，缺真車整排的安裝孔」；ref_ma-chassis 保桿上有中央一排＋兩側成對的圓孔）
+    /** @type {number[][][]} */
+    const lidHoles = [];
+    for (const hx of [55.5, 61.5, 67.5]) {
+      lidHoles.push(circlePts(sx * hx, 0, 1.1, 14));
+    }
+    for (const sz of [-1, 1]) {
+      lidHoles.push(circlePts(sx * 54, sz * 13.5, 1.0, 14));
+      lidHoles.push(circlePts(sx * 59.5, sz * 9.5, 1.0, 14));
+    }
+    const skin = extrudeXZ(bridge, bt - 1.4, mats.chassisDark, lidHoles);
     skin.position.y = bumperY + 1.4;
     g.add(skin);
     // 上蓋外緣邊框樑（沿橋接板斜邊）
@@ -1016,7 +1026,7 @@ function buildChassis(mats) {
       const ax1 = sx * rx;
       const az1 = sz * rz;
       // iter-05：導輪臂底板改為擠出板件並開 2 個減重孔（reviewer「保桿缺螺絲孔」；ref ma-chassis：臂上一排圓孔）
-      g.add(armPlate(ax0, az0, ax1, az1, 6.5, bt, bumperY, 2, mats.chassis));
+      g.add(armPlate(ax0, az0, ax1, az1, 6.5, bt, bumperY, 3, mats.chassis));
       const dirX = ax1 - ax0;
       const dirZ = az1 - az0;
       const L = Math.hypot(dirX, dirZ);
