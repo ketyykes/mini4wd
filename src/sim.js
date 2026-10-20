@@ -1,12 +1,11 @@
 // Rapier 物理模擬：賽道（地板＋側牆方塊）、車體剛體（車體方塊＋導輪圓柱）、
 // DynamicRayCastVehicleController 四輪，動力鏈由 powertrain.js 每步計算後以 engine force 施加
 import RAPIER from '@dimforge/rapier3d-compat';
-import { spec, deriveParams } from './spec.js';
+import { spec } from './spec.js';
 import { Battery, longitudinalForce } from './powertrain.js';
-import { rollerLayout, wheelLayout, bodyColliderBox } from './carLayout.js';
+import { assemble, loadConfig } from './assembly.js';
 
 const MM = 0.001;
-const P = deriveParams();
 
 let initPromise = null;
 
@@ -42,7 +41,7 @@ function rotate(q, v) {
  * @param {ReturnType<import('./track.js').buildCircuit>} track
  */
 export function createWorld(track) {
-  const world = new RAPIER.World({ x: 0, y: -P.gravity, z: 0 });
+  const world = new RAPIER.World({ x: 0, y: -spec.sim.gravity, z: 0 });
   world.timestep = spec.sim.dt_s;
   // lengthUnit 會連帶限制最大速度（0.01 時上限 4 m/s，見 ITERATION_LOG），取 0.1
   world.lengthUnit = 0.1;
@@ -74,17 +73,42 @@ export function createWorld(track) {
 }
 
 /**
- * 建立車輛
+ * 車體碰撞方塊（mm，車體座標）：車殼外框的長寬，底面 = 底盤離地高度，頂面 = 車殼頂 − 2 mm（同第一階段）
+ * @type {(asm: any) => { hx: number, hy: number, hz: number, cx: number, cy: number }}
+ */
+export function bodyColliderBox(asm) {
+  const b = asm.body.bbox_mm;
+  const bottom = asm.groundClearance_mm;
+  const top = b.max.y - 2;
+  return {
+    hx: (b.max.x - b.min.x) / 2,
+    hy: (top - bottom) / 2,
+    hz: Math.max(Math.abs(b.min.z), Math.abs(b.max.z)),
+    cx: (b.max.x + b.min.x) / 2,
+    cy: (top + bottom) / 2,
+  };
+}
+
+/** @type {any} 預設組裝（沒有指定 assembly 時使用） */
+let defaultAssembly = null;
+
+/**
+ * 建立車輛：質量、重心、導輪、輪胎、碰撞體全部取自組裝結果（asm）
  * @param {ReturnType<typeof createWorld>} env
- * @param {{ s?: number, lane?: number, gearRatio?: number, bearingType?: 'bearing'|'bushing', soc?: number, drain?: boolean, powered?: boolean }} opt
+ * @param {{ assembly?: any, s?: number, lane?: number, soc?: number, drain?: boolean, powered?: boolean }} opt
  */
 export function createCar(env, opt = {}) {
   const { world, track } = env;
+  if (!opt.assembly && !defaultAssembly) {
+    defaultAssembly = assemble(loadConfig('default'));
+  }
+  const asm = opt.assembly ?? defaultAssembly;
+  const P = asm.P;
   const s0 = opt.s ?? 0.15;
   const lane = opt.lane ?? 0;
   const start = track.path.point(s0, track.laneOffset(lane));
-  const massKg = P.massTotal;
-  const comY = spec.chassis.comHeight_mm * MM;
+  const massKg = asm.mass_g / 1000;
+  const com = { x: asm.com_mm.x * MM, y: asm.com_mm.y * MM, z: asm.com_mm.z * MM };
 
   // 慣性矩以 150×30×90 mm 均質方塊估算（推估）
   const Lx = 0.15;
@@ -99,29 +123,30 @@ export function createCar(env, opt = {}) {
   const bodyDesc = RAPIER.RigidBodyDesc.dynamic()
     .setTranslation(start.x, 0.0005, start.z)
     .setRotation(yawQuat(-start.theta))
-    .setAdditionalMassProperties(massKg, { x: 0, y: comY, z: 0 }, inertia, { x: 0, y: 0, z: 0, w: 1 })
+    .setAdditionalMassProperties(massKg, com, inertia, { x: 0, y: 0, z: 0, w: 1 })
     .setCcdEnabled(true)
     .setCanSleep(false);
   const chassis = world.createRigidBody(bodyDesc);
 
-  const box = bodyColliderBox();
+  const box = bodyColliderBox(asm);
   const bodyCol = world.createCollider(
     RAPIER.ColliderDesc.cuboid(box.hx * MM, box.hy * MM, box.hz * MM)
-      .setTranslation(0, box.cy * MM, 0)
+      .setTranslation(box.cx * MM, box.cy * MM, 0)
       .setDensity(0)
       .setFriction(0.3),
     chassis,
   );
 
-  const rollers = rollerLayout().map((r) => {
+  const rollerPart = asm.partsBySlot.rollers;
+  const rollers = asm.layout.rollers.map((r) => {
     const col = world.createCollider(
       // 導輪碰撞體用球：圓柱對 trimesh 的接觸在 Rapier 中會卡住（見 ITERATION_LOG iter-00）
       RAPIER.ColliderDesc.ball(r.r * MM)
         .setTranslation(r.x * MM, r.y * MM, r.z * MM)
         .setDensity(0)
-        .setFriction(spec.track.rollerFriction)
+        .setFriction(rollerPart.wallFriction)
         .setFrictionCombineRule(RAPIER.CoefficientCombineRule.Min)
-        .setRestitution(spec.track.rollerRestitution),
+        .setRestitution(rollerPart.restitution),
       chassis,
     );
     return { ...r, collider: col };
@@ -136,7 +161,7 @@ export function createCar(env, opt = {}) {
   const wheelLoad = (massKg * P.gravity) / 4;
   const springK = wheelLoad / staticDefl;
   const damperC = 2 * spec.sim.suspensionDampingRatio * Math.sqrt(springK * (massKg / 4));
-  const wheels = wheelLayout().map((w) => ({
+  const wheels = asm.layout.wheels.map((w) => ({
     ...w,
     hardpoint: { x: w.x * MM, y: wheelR + restLen - staticDefl, z: w.z * MM },
     contact: false,
@@ -151,11 +176,12 @@ export function createCar(env, opt = {}) {
     wheels,
     wheelParams: { wheelR, restLen, springK, damperC },
     massKg,
-    battery: new Battery(opt.soc ?? 1),
+    asm,
+    P,
+    box,
+    battery: new Battery(P, opt.soc ?? 1),
     drain: opt.drain ?? true,
     powered: opt.powered ?? true,
-    gearRatio: opt.gearRatio ?? spec.drivetrain.standardGearRatio,
-    bearingType: opt.bearingType ?? 'bearing',
     last: { current: 0, terminalVoltage: 0, speed: 0 },
   };
 }
@@ -192,14 +218,8 @@ export function localToWorld(car, p) {
 export function stepCar(env, car) {
   const dt = spec.sim.dt_s;
   const v = forwardSpeed(car);
-  const lf = longitudinalForce({
-    speed: v,
-    gearRatio: car.gearRatio,
-    powered: car.powered,
-    battery: car.battery,
-    bearingType: car.bearingType,
-    massKg: car.massKg,
-  });
+  const P = car.P;
+  const lf = longitudinalForce(P, { speed: v, powered: car.powered, battery: car.battery });
 
   let net;
   if (car.powered) {
@@ -229,8 +249,8 @@ export function stepCar(env, car) {
   const side = rotate(q, { x: 0, y: 0, z: 1 });
   const { wheelR, restLen, springK, damperC } = car.wheelParams;
   const maxLen = restLen + wheelR;
-  const mu = spec.tire.frictionCoeff;
-  const alphaSat = spec.tire.slipAngleSaturation_rad;
+  const mu = P.tireMu;
+  const alphaSat = P.slipAngleSaturation;
 
   // 先求各輪法向力，縱向力依法向力比例分配（4WD 前後軸機械連結）
   let normalSum = 0;
@@ -319,12 +339,12 @@ export function minWallContactDist(env, collider) {
  * @param {ReturnType<typeof createCar>} car
  */
 export function carExtremePoints(car) {
-  const box = bodyColliderBox();
+  const box = car.box;
   const pts = [];
   for (const sx of [-1, 1]) {
     for (const sy of [-1, 1]) {
       for (const sz of [-1, 1]) {
-        pts.push(localToWorld(car, { x: sx * box.hx * MM, y: (box.cy + sy * box.hy) * MM, z: sz * box.hz * MM }));
+        pts.push(localToWorld(car, { x: (box.cx + sx * box.hx) * MM, y: (box.cy + sy * box.hy) * MM, z: sz * box.hz * MM }));
       }
     }
   }

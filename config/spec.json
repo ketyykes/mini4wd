@@ -1,5 +1,5 @@
 {
-  "_readme": "Track A 唯一的規格設定檔。模型（Three.js，單位 mm）與物理（Rapier，單位 SI）都從這裡讀取。*_src 註明來源：『SPEC x.y』表示 SPEC.md 第 1 部分對應小節（多為 1.12 建議預設參數）；『推估』表示 SPEC 沒有，附依據。參考車款：Tamiya Chevalier（MA 底盤）。",
+  "_readme": "全域規格（比賽規則、空氣、賽道、模擬參數）。第二階段起零件數值（馬達、電池、齒輪、輪胎、軸承、導輪、底盤、車殼）移到 src/parts/ 與 src/bodies/，整車數值由 src/assembly.js 從零件推導，這裡不再重複。*_src 註明來源：『SPEC x.y』表示 SPEC.md 第 1 部分對應小節；『推估』附依據。",
   "rules": {
     "maxLength_mm": 165,
     "maxLength_mm_src": "SPEC 1.1 [REG]：車長 < 165 mm",
@@ -9,169 +9,35 @@
     "maxHeight_mm_src": "SPEC 1.1 [REG]：車高 < 70 mm",
     "minMassWithBatteryMotor_g": 90,
     "minMassWithBatteryMotor_g_src": "SPEC 1.1 [REG]：含電池與馬達最低 90 g",
-    "referenceTotalMass_g": 118,
-    "referenceTotalMass_g_src": "SPEC 1.12：總重（含電池）118 g",
     "minGroundClearance_mm": 1,
-    "minGroundClearance_mm_src": "SPEC 1.1 [REG]：最低離地 1 mm"
-  },
-  "battery": {
-    "cells": 2,
-    "cells_src": "SPEC 1.12：2 × Tamiya Neo Champ",
-    "nominalCellVoltage_V": 1.2,
-    "nominalCellVoltage_V_src": "SPEC 1.3",
-    "capacity_mAh": 950,
-    "capacity_mAh_src": "SPEC 1.3 / 1.12：Neo Champ ≥ 950 mAh",
-    "cellInternalResistance_ohm": 0.04,
-    "cellInternalResistance_ohm_src": "SPEC 1.12：DC 內阻 40 mΩ/顆（推估）",
-    "cellOcvCurve": [
-      [
-        0.0,
-        1.0
-      ],
-      [
-        0.05,
-        1.05
-      ],
-      [
-        0.1,
-        1.12
-      ],
-      [
-        0.2,
-        1.18
-      ],
-      [
-        0.5,
-        1.23
-      ],
-      [
-        0.8,
-        1.27
-      ],
-      [
-        0.9,
-        1.3
-      ],
-      [
-        1.0,
-        1.4
-      ]
+    "minGroundClearance_mm_src": "SPEC 1.1 [REG]：最低離地 1 mm",
+    "tireDiameterRange_mm": [
+      22,
+      35
     ],
-    "cellOcvCurve_src": "SPEC 1.3：開路電壓 vs SOC 分段線性表（推估）",
-    "cutoffCellVoltage_V": 1.0,
-    "cutoffCellVoltage_V_src": "SPEC 1.3：截止 1.0 V/顆",
-    "cellMass_g": 19,
-    "cellMass_g_src": "SPEC 1.3：Neo Champ 約 19 g/顆",
-    "cellDiameter_mm": 14.35,
-    "cellLength_mm": 50.5,
-    "cellSize_src": "SPEC 1.9 引用 Eneloop 規格書直徑 14.35 mm；長度 50.5 mm 為 AA 通用尺寸（推估）"
-  },
-  "motor": {
-    "name": "套件普通馬達（以 Mabuchi FA-130RA-18100 數值建模）",
-    "name_src": "SPEC 1.4 / 1.12",
-    "ratedVoltage_V": 3.0,
-    "noLoadRpm_atRated": 12300,
-    "noLoadRpm_atRated_src": "SPEC 1.4 / 1.12：ω0 @3V = 12,300 rpm",
-    "stallTorque_atRated_Nm": 0.00353,
-    "stallTorque_atRated_Nm_src": "SPEC 1.4 / 1.12：τ_stall @3V = 3.53 mN·m",
-    "stallCurrent_atRated_A": 2.1,
-    "stallCurrent_atRated_A_src": "SPEC 1.4 / 1.12：I_stall @3V = 2.10 A；R_m = 3/2.1 ≈ 1.43 Ω（SPEC 1.4 推估）",
-    "noLoadCurrent_A": 0.15,
-    "noLoadCurrent_A_src": "SPEC 1.4：I0 = 0.15 A",
-    "coastMotorDrag": true,
-    "coastMotorDrag_src": "主 agent 決策 D1（PROGRESS.md）：馬達與輪子機械連動，斷電滑行必須計入馬達內部摩擦（反拖），此值固定為 true，不可關",
-    "frictionCoulombFraction": 0.5,
-    "frictionCoulombFraction_src": "推估：馬達內部摩擦扭力 τ_f(ω) = k_t·I0·[c + (1−c)·ω/ω0(3V)]，在 3 V 無載轉速時合計 = k_t·I0（SPEC 1.4，I0 = 0.15 A）。c = 庫侖（電刷、含油軸套）占比，1−c = 黏滯（鐵損、風損，隨轉速增加）占比。SPEC 只有 3 V 單一電壓的無載電流，無法分離兩者，取 50/50（不確定下的中間值；依 D1 不依測試結果調整）",
-    "mass_g": 18,
-    "mass_g_src": "SPEC 1.4：約 18 g（推估）",
-    "body_mm": {
-      "diameter": 20.1,
-      "flat": 15.1,
-      "length": 25.0,
-      "shaftDiameter": 2.0
-    },
-    "body_mm_src": "推估：130 型馬達外殼常見尺寸 20.1 × 15.1 × 25 mm",
-    "torqueConstant_src": "程式依 SPEC 1.4 推估式計算：k_t = τ_stall/(I_stall − I0) ≈ 1.81×10⁻³ N·m/A、k_e = (3 − I0·R_m)/ω0 ≈ 2.16×10⁻³ V·s/rad（iter-01 起馬達模型納入 I0）"
-  },
-  "drivetrain": {
-    "gearRatios": [
+    "tireDiameterRange_mm_src": "SPEC 1.1 [REG]：輪胎直徑 22–35 mm",
+    "tireWidthRange_mm": [
+      8,
+      26
+    ],
+    "tireWidthRange_mm_src": "SPEC 1.1 [REG]：輪胎寬度 8–26 mm",
+    "legalGearRatios": [
       3.5,
       3.7,
       4.0,
       4.2,
-      5.0
+      5.0,
+      6.4,
+      11.2
     ],
-    "gearRatios_src": "SPEC 1.5",
-    "standardGearRatio": 3.5,
-    "standardGearRatio_src": "SPEC 1.12：G = 3.5（Chevalier 標配）",
-    "gearEfficiency": 0.8,
-    "gearEfficiency_src": "SPEC 1.12：η = 0.80（推估）",
-    "counterGearCount": 2,
-    "counterGearCount_src": "MA 實車結構（SPEC 1.2 雙軸馬達置中；ref_ma-chassis_tamiya.jpg）：前後各一組 小齒輪→中間齒輪→輪軸齒輪，共 2 顆中間齒輪；MA 沒有傳動軸（propeller shaft）",
-    "pinionPitchRadius_mm": 2.6,
-    "counterLargePitchRadius_mm": 6.8,
-    "counterSmallPitchRadius_mm": 5.6,
-    "gearRadii_src": "推估：依 ref_ma-chassis_tamiya.jpg 目視比例（小齒輪約 5 mm 徑、中間齒輪大齒約 14 mm 徑）；中間齒輪小齒半徑取使總齒輪比 = 6.8/2.6 × 7.5/5.6 ≈ 3.5（SPEC 1.12）。只用來算中間齒輪軸的齒面負載",
-    "spurPitchRadius_mm": 7.5
-  },
-  "bearings": {
-    "shaftRadius_mm": 1.0,
-    "shaftRadius_mm_src": "SPEC 1.6：輪軸直徑 2 mm",
-    "bushingFrictionCoeff": 0.2,
-    "bushingFrictionCoeff_src": "SPEC 1.12：塑膠軸承 0.20（推估）",
-    "ballBearingFrictionCoeff": 0.003,
-    "ballBearingFrictionCoeff_src": "SPEC 1.12：培林 0.003（推估）",
-    "positions": [
-      {
-        "id": "axleFront_L",
-        "shaft": "前輪軸",
-        "load": "車重（前軸一半）"
-      },
-      {
-        "id": "axleFront_R",
-        "shaft": "前輪軸",
-        "load": "車重（前軸一半）"
-      },
-      {
-        "id": "axleRear_L",
-        "shaft": "後輪軸",
-        "load": "車重（後軸一半）"
-      },
-      {
-        "id": "axleRear_R",
-        "shaft": "後輪軸",
-        "load": "車重（後軸一半）"
-      },
-      {
-        "id": "counterFront",
-        "shaft": "前中間齒輪軸",
-        "load": "兩個嚙合點的齒面切向力"
-      },
-      {
-        "id": "counterRear",
-        "shaft": "後中間齒輪軸",
-        "load": "兩個嚙合點的齒面切向力"
-      }
-    ],
-    "positions_src": "MA 實車結構：輪軸左右各 1 個支撐點（620，SPEC 1.6）×前後 2 軸；中間齒輪各 1 組（520，SPEC 1.6「PRO 中間齒輪用」）。小齒輪壓在馬達軸上、輪軸齒輪與輪子固定在輪軸上，不另有軸承；馬達本身的含油軸套由 I0 摩擦模型涵蓋。塑膠軸承版：6 處全為塑膠軸承；培林版：6 處全換滾珠培林",
-    "counterShaftRadius_mm": 1.0,
-    "counterShaftRadius_mm_src": "SPEC 1.6：520 培林內徑 2 mm → 軸半徑 1 mm"
-  },
-  "tire": {
-    "diameter_mm": 26.0,
-    "diameter_mm_src": "SPEC 1.7 / 1.12：小徑 low profile 26 mm",
-    "width_mm": 9.0,
-    "width_mm_src": "SPEC 1.12：9 mm（推估）",
-    "rimDiameter_mm": 18.0,
-    "rimDiameter_mm_src": "推估：low profile 胎厚約 4 mm",
-    "frictionCoeff": 0.7,
-    "frictionCoeff_src": "SPEC 1.12：μ = 0.7（推估）",
-    "rollingResistanceCoeff": 0.02,
-    "rollingResistanceCoeff_src": "SPEC 1.12：C_rr = 0.02（推估）",
-    "slipAngleSaturation_rad": 0.1,
-    "slipAngleSaturation_rad_src": "推估：小型橡膠胎側向力約在 5–6° 滑移角飽和（tanh 模型的特徵角）",
-    "mass_g": 3.0,
-    "mass_g_src": "推估：輪框＋輪胎每顆約 3 g"
+    "legalGearRatios_src": "SPEC 1.1 / 1.5：只能用 1.5 列出的齒輪比",
+    "batterySize": "AA",
+    "batteryCells": 2,
+    "battery_src": "SPEC 1.1：2 顆 AA（品牌不檢查）",
+    "motorSizeClass": "130",
+    "motor_src": "SPEC 1.1：130 尺寸碳刷馬達（品牌不檢查）",
+    "driveType": "4WD",
+    "driveType_src": "SPEC 1.1 [REG] Sec.2：必須 4WD"
   },
   "aero": {
     "airDensity": 1.2,
@@ -180,38 +46,6 @@
     "dragCoeff_src": "SPEC 1.11 / 1.12",
     "frontalArea_mm2": 2600,
     "frontalArea_mm2_src": "SPEC 1.11 / 1.12：2.6×10⁻³ m²"
-  },
-  "chassis": {
-    "wheelbase_mm": 80.0,
-    "wheelbase_mm_src": "SPEC 1.2 / 1.12：MA 軸距 80 mm",
-    "trackWidth_mm": 59.5,
-    "trackWidth_mm_src": "SPEC 1.2 / 1.12：MA 輪距 59.5 mm（視為左右輪胎中心距）",
-    "overallLength_mm": 156,
-    "overallWidth_mm": 97,
-    "overallHeight_mm": 38,
-    "overall_src": "SPEC 1.12：外框 156 × 97 × 38 mm（最寬點為導輪）",
-    "groundClearance_mm": 2.2,
-    "groundClearance_mm_src": "SPEC 1.2 / 1.12：2.2 mm",
-    "plateThickness_mm": 1.5,
-    "plateThickness_mm_src": "SPEC 1.9：底板厚約 1.5 mm（推估）",
-    "rollerDiameter_mm": 13.0,
-    "rollerDiameter_mm_src": "SPEC 1.12：13 mm（推估）",
-    "rollerHeight_mm": 6.5,
-    "rollerHeight_mm_src": "推估：13 mm 導輪厚度約 6–7 mm",
-    "rollerCenterHeight_mm": 10.0,
-    "rollerCenterHeight_mm_src": "SPEC 1.8：與牆接觸高度離地約 8–15 mm（推估）",
-    "rearUpperRollerHeight_mm": 18.0,
-    "rearUpperRollerHeight_mm_src": "SPEC 1.8：後保桿上下 2 顆疊放（推估高度）",
-    "massChassisBodyMisc_g": 50,
-    "massChassisBodyMisc_g_src": "推估：SPEC 1.12 不含電池 80 g − 馬達 18 g − 輪子 12 g",
-    "comHeight_mm": 13.0,
-    "comHeight_mm_src": "SPEC 1.9 / 1.12：13 mm（推估）"
-  },
-  "body": {
-    "length_mm": 140.0,
-    "width_mm": 80.0,
-    "height_mm": 38.0,
-    "_src": "推估：依 SPEC 1.12 外框（高 38 mm）與 Chevalier 參考照片比例；長寬為車殼本體（不含保桿導輪）"
   },
   "track": {
     "laneWidth_mm": 115.0,
@@ -231,11 +65,7 @@
     "bridgeHeight_mm": 80.0,
     "bridgeHeight_mm_src": "SPEC 1.10：橋面約 80 mm（推估）",
     "wallFriction": 0.3,
-    "wallFriction_src": "SPEC 1.8：塑膠對塑膠滑動約 0.3",
-    "rollerFriction": 0.05,
-    "rollerFriction_src": "SPEC 1.8 / 1.12：導輪–牆等效摩擦 0.05（推估）",
-    "rollerRestitution": 0.1,
-    "rollerRestitution_src": "推估：塑膠導輪撞擊 ABS 牆的恢復係數偏低"
+    "wallFriction_src": "SPEC 1.8：塑膠對塑膠滑動約 0.3"
   },
   "sim": {
     "dt_s": 0.00025,
@@ -248,5 +78,10 @@
     "dt_s_src": "iter-01：由 1 ms 改 0.25 ms。P06 診斷（tmp/diag06，見 ITERATION_LOG iter-01）：彎道中導輪對牆有反覆碰撞（chatter），峰值穿透隨步長縮小而下降但有離散；1 ms 約 0.94–1.17 mm、0.5 ms 約 0.48–0.81 mm、0.25 ms 約 0.47–0.81 mm（看其他參數）；增加求解迭代（8→16）、調高 contact_natural_frequency 都沒有穩定改善",
     "normalizedAllowedLinearError": 0.0002,
     "normalizedAllowedLinearError_src": "Rapier 允許不修正的穿透（×lengthUnit 0.1 m）：預設 0.005 → 0.5 mm，等於一半的 P06 上限；iter-01 改 0.0002 → 0.02 mm"
+  },
+  "bearingsGeometry": {
+    "shaftRadius_mm": 1.0,
+    "counterShaftRadius_mm": 1.0,
+    "_src": "SPEC 1.6：輪軸直徑 2 mm；520 培林內徑 2 mm → 中間齒輪軸半徑 1 mm（底盤幾何，與軸承款式無關）"
   }
 }

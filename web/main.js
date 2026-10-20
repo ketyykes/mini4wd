@@ -6,6 +6,7 @@ import { GTAOPass } from 'three/examples/jsm/postprocessing/GTAOPass.js';
 import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
 import { buildCarModel, buildTrackModel } from '../src/model.js';
 import { buildCircuit } from '../src/track.js';
+import { assemble, loadConfig } from '../src/assembly.js';
 
 /**
  * 棚拍環境（取代 RoomEnvironment：它的多個小燈箱在車漆上反射成斑駁亮點）
@@ -116,7 +117,13 @@ sun.shadow.radius = 3;
 scene.add(sun);
 scene.add(sun.target);
 
-const car = buildCarModel();
+// ?body=<id> 換車殼（預設依 configs/default.json）；?body=none 只看底盤（chassis 視角）
+const bodyParam = params.get('body');
+const config = loadConfig('default');
+if (bodyParam && bodyParam !== 'none') {
+  config.body = bodyParam;
+}
+const car = buildCarModel(assemble(config), { body: bodyParam !== 'none' });
 scene.add(car);
 
 const camera = new THREE.PerspectiveCamera(20, width / height, 1, 50000);

@@ -1,10 +1,16 @@
-// Three.js 程序化模型：Chevalier（MA 底盤）風格 1/32 迷你四驅車＋賽道
+// Three.js 程序化模型：中置雙軸馬達底盤的 1/32 迷你四驅車（底盤＋可換車殼）＋賽道
 // 單位 mm；車體座標 x 向前、y 向上、z 向右，原點在前後軸中點的地面上
-// 所有尺寸來自 config/spec.json 與 carLayout.js（與物理共用）
+// 第二階段：所有尺寸來自組裝結果（assembly.js 的 asm.spec，由零件資料組成）與 carLayout.js（與物理共用）
 import * as THREE from 'three';
-import { spec } from './spec.js';
+import { spec as globalSpec } from './spec.js';
 import { rollerLayout, wheelLayout, componentLayout } from './carLayout.js';
-import { buildChevalierBody } from './bodyShell.js';
+import { assemble, loadConfig } from './assembly.js';
+
+/**
+ * 建模期間使用的整車規格（buildCarModel 開頭設為 asm.spec；建模是同步的，模組內的函式共用這一份）
+ * @type {any}
+ */
+let spec = null;
 
 /** 橡膠表面雜訊貼圖（DataTexture，Node 測試環境也能建立；用固定種子的 LCG，結果可重現） */
 function rubberNoiseTexture() {
@@ -480,8 +486,9 @@ function crownTeeth(radius, teeth, depth, material) {
  */
 function gearTrainLayout() {
   const d = spec.drivetrain;
-  const motorY = componentLayout().motor.y;
-  const axleY = spec.tire.diameter_mm / 2;
+  const motorY = componentLayout(spec).motor.y;
+  // 底盤座標：輪軸高度 = 參考輪半徑（實際輪徑造成的升降由 buildCarModel 的 lift 處理）
+  const axleY = spec.chassis.refWheelDiameter_mm / 2;
   const hw = spec.chassis.wheelbase_mm / 2;
   const centerDist = d.counterSmallPitchRadius_mm + d.spurPitchRadius_mm;
   const counterX = hw - Math.sqrt(centerDist * centerDist - (axleY - motorY) ** 2);
@@ -589,7 +596,7 @@ const buildRoller = (mats, r) => {
 function buildChassis(mats) {
   const g = new THREE.Group();
   const c = spec.chassis;
-  const comp = componentLayout();
+  const comp = componentLayout(spec);
   const gt = gearTrainLayout();
   const y0 = c.groundClearance_mm;
   const t = c.plateThickness_mm;
@@ -807,7 +814,7 @@ function buildChassis(mats) {
     // 板面有 3 個內凹窗（深色底）＋窗間立肋＋上緣倒角條，讀起來是有厚度的成型件而非細線
     // iter-12：車殼下緣 6.4 → 8.6 mm（ref side-high：車門下方露出一整條黑色底盤側裙）→ 側壁頂 6.9 → 9.4 mm，窗與倒角條跟著上移
     const topY = 9.4;
-    const wheelY = spec.tire.diameter_mm / 2;
+    const wheelY = c.refWheelDiameter_mm / 2;
     const arcR = wheelY + 2.5;
     const prof = [];
     const nA = 10;
@@ -897,7 +904,7 @@ function buildChassis(mats) {
   // 中央橋接板＋兩支斜伸到導輪座的臂；臂與橋接板外緣有立起的邊框（厚度），臂下方有三角斜撐連回底盤，
   // 兩臂之間有 X 形補強，導輪座為圓柱凸台
   const rx = comp.rollerX;
-  const rz = c.overallWidth_mm / 2 - c.rollerDiameter_mm / 2;
+  const rz = c.frontRollerZ_mm;
   const bumperY = c.rollerCenterHeight_mm - 4.6;
   const bt = 2.4;
   /** @type {(x0: number, z0: number, x1: number, z1: number, w: number, h: number, y: number) => THREE.Mesh} 兩點之間的方樑 */
@@ -983,7 +990,7 @@ function buildChassis(mats) {
     }
   }
   g.add(buildRearStay(mats, rx, rz, bumperY + bt, c.rearUpperRollerHeight_mm - 4.4));
-  for (const r of rollerLayout()) {
+  for (const r of rollerLayout(spec)) {
     g.add(buildRoller(mats, r));
   }
 
@@ -1083,7 +1090,7 @@ function buildChassis(mats) {
   }
 
   // ---- 輪軸（2 mm 鋼軸，貫穿左右輪）----
-  for (const w of wheelLayout().filter((q) => q.z > 0)) {
+  for (const w of wheelLayout(spec).filter((q) => q.z > 0)) {
     const axle = new THREE.Mesh(new THREE.CylinderGeometry(1, 1, c.trackWidth_mm + 4, 12), mats.steel);
     axle.rotation.x = Math.PI / 2;
     axle.position.set(w.x, w.y, 0);
@@ -1099,26 +1106,42 @@ function buildChassis(mats) {
 }
 
 /**
- * 建立整台車
- * @returns {THREE.Group} 單位 mm
+ * 建立整台車（底盤、輪胎、車殼）。底盤座標的所有東西放在 sprung 群組，整組升降 asm.lift_mm（換輪徑時）
+ * @type {(asm?: any, opt?: { body?: boolean }) => THREE.Group} 單位 mm；asm 省略時用預設組裝；opt.body = false 不裝車殼
  */
-export function buildCarModel() {
+export function buildCarModel(asm = assemble(loadConfig('default')), opt = {}) {
+  spec = asm.spec;
   const mats = makeMaterials();
   const car = new THREE.Group();
   car.name = 'mini4wd';
-  car.add(buildChassis(mats));
-  for (const w of wheelLayout()) {
+  car.userData.assembly = { config: asm.config, mass_g: asm.mass_g, com_mm: asm.com_mm };
+  const sprung = new THREE.Group();
+  sprung.name = 'sprung';
+  sprung.position.y = asm.lift_mm;
+  car.add(sprung);
+  const chassis = buildChassis(mats);
+  chassis.name = 'chassis';
+  sprung.add(chassis);
+  for (const w of wheelLayout(spec)) {
     const side = w.z > 0 ? 1 : -1;
     const wheel = buildWheel(mats, side);
+    wheel.name = `wheel-${w.id}`;
+    wheel.userData.part = 'wheel';
     wheel.position.set(w.x, w.y, w.z);
     wheel.traverse((o) => {
       if (o.isMesh) {
         o.castShadow = true;
       }
     });
-    car.add(wheel);
+    sprung.add(wheel);
   }
-  car.add(buildChevalierBody(mats));
+  if (opt.body !== false) {
+    const body = asm.body.def.build(mats);
+    body.name = 'body';
+    body.userData.part = 'body';
+    body.userData.bodyId = asm.body.id;
+    sprung.add(body);
+  }
   return car;
 }
 
@@ -1317,7 +1340,7 @@ export function buildTrackModel(track) {
   // 換道立體橋（iter-00 只做外觀）：外側線道爬升、越過其他車道後落到內側線道
   if (track.laneChanger) {
     const lc = track.laneChanger;
-    const hBridge = spec.track.bridgeHeight_mm;
+    const hBridge = globalSpec.track.bridgeHeight_mm;
     const segN = 40;
     const deckPos = [];
     const deckIdx = [];

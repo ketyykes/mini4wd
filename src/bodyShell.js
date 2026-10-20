@@ -3,7 +3,11 @@
 // 曲面 S(x, u)：x 為縱向位置，u ∈ [0, 1] 為截面上「中線（0）→ 葉子板稜線（0.4）→ 側面最寬處（0.8）→ 底緣（1）」的參數
 // 條紋、頭燈、散熱口等用「貼在曲面上的獨立薄片幾何」（ribbon），邊緣是幾何邊，不會有頂點色的鋸齒
 import * as THREE from 'three';
-import { spec } from './spec.js';
+import { getPart } from './parts/index.js';
+
+/** 本車殼依 chassis-midship（26 mm 參考輪徑）設計，輪拱位置由底盤資料取得 */
+const CHASSIS = getPart('chassis-midship');
+const REF_WHEEL_R = CHASSIS.refWheelDiameter_mm / 2;
 
 /**
  * 以 Hermite 三次曲線內插表格（切線取前後差分），比 smoothstep 分段更平順，不會在節點產生平台
@@ -121,13 +125,13 @@ const BOTTOM_Y = 8.6;
 //   sidehigh 輪拱邊皆在胎頂上方 2 px（約 0.4 mm），側邊間隙前 1.2／後 1.5 mm
 /** 每個輪拱的開口圓：圓心高 = 輪心 + lift，半徑 r（mm） */
 const ARCHES = [
-  { x: spec.chassis.wheelbase_mm / 2, lift: -0.2, r: spec.tire.diameter_mm / 2 + 1.2 },
-  { x: -spec.chassis.wheelbase_mm / 2, lift: 0.5, r: spec.tire.diameter_mm / 2 + 1.5 },
+  { x: CHASSIS.wheelbase_mm / 2, lift: -0.2, r: REF_WHEEL_R + 1.2 },
+  { x: -CHASSIS.wheelbase_mm / 2, lift: 0.5, r: REF_WHEEL_R + 1.5 },
 ];
 
 /** 車殼底緣（含前後輪拱開口） */
 function bottomAt(x) {
-  const wheelY = spec.tire.diameter_mm / 2;
+  const wheelY = REF_WHEEL_R;
   let y = BOTTOM_Y;
   // 車尾下緣往上收（尾燈下方的擴散器開口，看得到底盤；ref rear34）
   if (x < -54) {
@@ -439,7 +443,10 @@ function buildHull(mat, innerMat) {
         idx[k + 2] = tmp;
       }
     }
-    g.add(new THREE.Mesh(geo, mat));
+    // iter-31：外表面標為結構殼（質量計算用）；內面是同一片殼的背面，不重複計算
+    const outer = new THREE.Mesh(geo, mat);
+    outer.userData.shell = true;
+    g.add(outer);
     g.add(new THREE.Mesh(geo, innerMat));
     // 底緣翻邊（沿底緣往內 1.3 mm、略往上），讓車殼邊緣有厚度，不再是薄片
     const pos = [];
@@ -706,115 +713,6 @@ function canvasTexture(w, h, draw) {
   return tex;
 }
 
-/** 引擎蓋騎士徽章（ref_chevalier-ma_hood-detail：深灰 V 形底、騎士頭盔、交叉雙劍、CHEVALIER 字樣）。畫布上方 = 車頭 */
-function drawHoodEmblem(ctx) {
-  ctx.clearRect(0, 0, 512, 512);
-  ctx.translate(256, 256);
-  // 轉 180°：從車頭往後看時字是正的（字的上方朝擋風玻璃）
-  ctx.rotate(Math.PI);
-  // 深灰 V 形底（尖端朝車頭）
-  ctx.fillStyle = '#23262e';
-  ctx.beginPath();
-  ctx.moveTo(0, 250);
-  ctx.lineTo(-150, -40);
-  ctx.lineTo(-100, -250);
-  ctx.lineTo(100, -250);
-  ctx.lineTo(150, -40);
-  ctx.closePath();
-  ctx.fill();
-  // 交叉雙劍
-  ctx.strokeStyle = '#f2f2f2';
-  ctx.lineCap = 'round';
-  for (const sg of [-1, 1]) {
-    ctx.lineWidth = 9;
-    ctx.beginPath();
-    ctx.moveTo(sg * -150, 40);
-    ctx.lineTo(sg * 170, -210);
-    ctx.stroke();
-    ctx.lineWidth = 14;
-    ctx.beginPath();
-    ctx.moveTo(sg * -150 + sg * 20, 40 - 30);
-    ctx.lineTo(sg * -150 - sg * 25, 40 + 5);
-    ctx.stroke();
-  }
-  // 騎士頭盔（白色，帶面罩橫縫與頂飾）
-  ctx.fillStyle = '#f4f4f4';
-  ctx.strokeStyle = '#111';
-  ctx.lineWidth = 6;
-  ctx.beginPath();
-  ctx.ellipse(0, -95, 62, 80, 0, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.stroke();
-  ctx.fillStyle = '#111';
-  for (const dy of [-110, -88]) {
-    ctx.fillRect(-48, dy, 96, 9);
-  }
-  ctx.fillRect(-4, -70, 8, 50);
-  ctx.fillStyle = '#f4f4f4';
-  ctx.beginPath();
-  ctx.moveTo(20, -170);
-  ctx.quadraticCurveTo(110, -215, 150, -150);
-  ctx.quadraticCurveTo(100, -175, 30, -150);
-  ctx.closePath();
-  ctx.fill();
-  ctx.stroke();
-  // 肩甲
-  ctx.beginPath();
-  ctx.ellipse(0, -10, 95, 30, 0, Math.PI, Math.PI * 2);
-  ctx.fill();
-  ctx.stroke();
-  // CHEVALIER 字樣（白字黑邊，略呈弧形）
-  ctx.font = 'bold italic 62px Arial Black, Arial, sans-serif';
-  ctx.textAlign = 'center';
-  ctx.textBaseline = 'middle';
-  const text = 'CHEVALIER';
-  const total = ctx.measureText(text).width;
-  let cx = -total / 2;
-  for (const ch of text) {
-    const cw = ctx.measureText(ch).width;
-    const xx = cx + cw / 2;
-    const yy = 55 + 0.0016 * xx * xx;
-    ctx.save();
-    ctx.translate(xx, yy);
-    ctx.rotate(xx * 0.0012);
-    ctx.lineWidth = 12;
-    ctx.strokeStyle = '#0c0c0c';
-    ctx.strokeText(ch, 0, 0);
-    ctx.fillStyle = '#ffffff';
-    ctx.fillText(ch, 0, 0);
-    ctx.restore();
-    cx += cw;
-  }
-}
-
-/** TAMIYA 標誌（白底黑框、雙星、TAMIYA 字） */
-function drawTamiya(ctx) {
-  // iter-17：改成參考的單色版（ref side-high 放大：透明底、兩個白色方塊內鏤空深藍星、下方白字 TAMIYA，
-  // 原本是白底紅藍彩色星）；材質加 alphaTest，透明處露出車身色
-  ctx.clearRect(0, 0, 256, 256);
-  const star = (cx, cy, r) => {
-    ctx.beginPath();
-    for (let k = 0; k < 10; k++) {
-      const a = -Math.PI / 2 + (k * Math.PI) / 5;
-      const rr = k % 2 === 0 ? r : r * 0.42;
-      ctx.lineTo(cx + Math.cos(a) * rr, cy + Math.sin(a) * rr);
-    }
-    ctx.closePath();
-    ctx.fill();
-  };
-  for (const cx of [72, 184]) {
-    ctx.fillStyle = '#ffffff';
-    ctx.fillRect(cx - 54, 22, 108, 112);
-    ctx.fillStyle = '#161c4e';
-    star(cx, 82, 50);
-  }
-  ctx.fillStyle = '#ffffff';
-  ctx.font = 'bold 60px Arial, sans-serif';
-  ctx.textAlign = 'center';
-  ctx.textBaseline = 'middle';
-  ctx.fillText('TAMIYA', 128, 190);
-}
-
 /** 兩端漸尖的寬度包絡 */
 const taper = (s, a = 0.15, b = 0.25) => Math.min(1, s / a, (1 - s) / b);
 
@@ -970,7 +868,9 @@ function buildCabin(bodyMat, glassMat, trimMat) {
     geo.addGroup(0, glassIdx.length, 0);
     geo.addGroup(glassIdx.length, bodyIdx.length, 1);
     geo.computeVertexNormals();
-    g.add(new THREE.Mesh(geo, [glassMat, bodyMat]));
+    const cabinShell = new THREE.Mesh(geo, [glassMat, bodyMat]);
+    cabinShell.userData.shell = true;
+    g.add(cabinShell);
   }
   // ---- iter-03：座艙分層（ref front34 / rear34 / side-high）----
   // 1) 車頂板：車身色獨立一層，比座艙面高 ROOF_LIFT，四周有立面 → 座艙玻璃與車頂之間出現分層折線
@@ -1197,15 +1097,6 @@ function roofDecal(xa, xb, ua, ub, mat, side) {
   return m;
 }
 
-/** 車頂 MIDSHIP AERO 字樣（ref_chevalier-ma_hood-detail：碳纖散熱口兩側的白字） */
-function drawMidship(ctx) {
-  ctx.clearRect(0, 0, 512, 64);
-  ctx.fillStyle = '#f2f4f8';
-  ctx.font = 'bold italic 44px Arial, sans-serif';
-  ctx.textAlign = 'center';
-  ctx.textBaseline = 'middle';
-  ctx.fillText('MIDSHIP AERO', 256, 34);
-}
 
 /**
  * 車尾立面（iter-05；ref rear34：車尾是一圈車身色邊框，中下方是看得到黑色底盤的開口，開口下緣有擴散器鰭片）
@@ -1287,7 +1178,7 @@ export const ARCH_LIP_IN = 0.25;
  */
 function buildArchLips(mat) {
   const g = new THREE.Group();
-  const wheelY = spec.tire.diameter_mm / 2;
+  const wheelY = REF_WHEEL_R;
   for (const a of ARCHES) {
     const cy = wheelY + a.lift;
     for (const side of [1, -1]) {
@@ -1338,7 +1229,7 @@ function buildArchLips(mat) {
 /** 輪拱內側（深色內襯，遮住車殼內面） */
 function buildWheelWells(mat) {
   const g = new THREE.Group();
-  const wy = spec.tire.diameter_mm / 2;
+  const wy = REF_WHEEL_R;
   for (const a of ARCHES) {
     const ax = a.x;
     for (const side of [1, -1]) {
@@ -1398,10 +1289,11 @@ const applyPaintFlop = (mat) => {
 };
 
 /**
- * 建立 Chevalier 車殼（含座艙、條紋、燈組、散熱口）
+ * 建立第一階段車殼（含座艙、條紋、燈組、散熱口）。iter-31 起移除所有品牌字樣與徽章；
+ * 外型仍沿用第一階段的參考車款，只當過渡用基準，原創車殼完成後移除
  * @param {object} mats 由 model.js 傳入的共用材質
  */
-export function buildChevalierBody(mats) {
+export function buildLegacyBody(mats) {
   const g = new THREE.Group();
   g.name = 'body';
   // iter-06：金屬珠光漆＋清漆層。不用金屬粒子法線貼圖（iter-04 反光扭曲主因），改用：
@@ -1460,24 +1352,12 @@ export function buildChevalierBody(mats) {
   const lipMat = paint.clone();
   lipMat.side = THREE.DoubleSide;
   applyPaintFlop(lipMat);
-  const emblemTex = canvasTexture(512, 512, drawHoodEmblem);
-  const emblemMat = emblemTex ? decal(0xffffff, { map: emblemTex, alphaTest: 0.3, polygonOffsetFactor: -4, polygonOffsetUnits: -4 }) : null;
-  const tamiyaTex = canvasTexture(256, 256, drawTamiya);
   // iter-14：側進氣口槽內腔體（頂點色含 alpha，淡出到後葉子板前緣）
   const cavityMat = new THREE.MeshStandardMaterial({ vertexColors: true, transparent: true, depthWrite: false, roughness: 0.85, metalness: 0.0, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2, side: THREE.DoubleSide });
-  const tamiyaMat = tamiyaTex ? decal(0xffffff, { map: tamiyaTex, alphaTest: 0.4, polygonOffsetFactor: -4, polygonOffsetUnits: -4 }) : null;
 
   g.add(buildHull(paint, inner));
   g.add(buildCabin(paint, glass, black));
   g.add(buildCabinInterior(interiorTub, interiorSeat));
-  const midTex = canvasTexture(512, 64, drawMidship);
-  if (midTex) {
-    const midMat = decal(0xffffff, { map: midTex, alphaTest: 0.35, polygonOffsetFactor: -4, polygonOffsetUnits: -4 });
-    // 字頭（貼圖 V = 0）都朝車頂中線、從車外側看是正字：
-    // 右側（+z）由後往前排字；左側（−z）由前往後排字（iter-02 左側也由後往前 → 俯視呈上下顛倒的鏡像字，reviewer 指出的 bug）
-    g.add(roofDecal(-33, -13, 0.33, 0.43, midMat, 1));
-    g.add(roofDecal(-13, -33, 0.33, 0.43, midMat, -1));
-  }
   g.add(buildWheelWells(new THREE.MeshStandardMaterial({ color: 0x101114, roughness: 0.9, side: THREE.DoubleSide })));
   g.add(buildArchLips(lipMat));
 
@@ -1573,16 +1453,6 @@ export function buildChevalierBody(mats) {
     // iter-14：改為車殼曲面本身往內凹（sideIntakeDepth：車門淺盤 → 「)」形唇邊 → 3.4 mm 深槽 → 後葉子板前緣升出），
     //   槽內貼深色腔體（buildIntakeCavity）；舊的平貼內面、唇邊牆、鰭片移除
     g.add(buildIntakeCavity(cavityMat, side));
-    // 引擎蓋騎士徽章＋CHEVALIER 字樣（Canvas 貼圖；左右兩半各取貼圖一半）
-    if (emblemMat) {
-      g.add(ribbon(71, 41, () => [0, 0.21], emblemMat, side, 0.1, { nu: 16, uv: (s, v) => [0.5 + side * 0.5 * v, s] }));
-    }
-    // TAMIYA 標誌（前輪後方下側；右側由後往前、左側由前往後，字才不會反）
-    if (tamiyaMat) {
-      const xa = side > 0 ? 16.6 : 23.6;
-      const xb = side > 0 ? 23.6 : 16.6;
-      g.add(ribbon(xa, xb, () => [0.82, 0.97], tamiyaMat, side, 0.1, { nu: 8, uv: (s, v) => [s, v] }));
-    }
     // 引擎蓋前方 NACA 進氣口（深色）
     // iter-05：深色底面貼在下凹曲面上（寬度與 nacaHalfU 一致）
     // iter-16：長槽只在槽尾 5 mm 貼深色（開口），前段維持車身色槽底；槽尾後方加導風罩（車身色頂面）＋深色前立面

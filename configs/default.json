@@ -1,0 +1,16 @@
+{
+  "_readme": "預設組裝（SPEC 1.12）。每個 slot 填零件 id；也可以填 { \"base\": \"<id>\", ...覆寫欄位 }。",
+  "chassis": "chassis-midship",
+  "motor": "motor-standard",
+  "gear": "gear-3.5",
+  "wheels": "wheel-26-lowprofile",
+  "bearings": "bearing-620",
+  "rollers": "roller-13",
+  "frontStay": "stay-front-standard",
+  "rearStay": "stay-rear-standard",
+  "battery": "battery-aa-nimh-950",
+  "batteryCover": "battery-cover-standard",
+  "switch": "switch-standard",
+  "axles": "axle-hex-60",
+  "body": "legacy"
+}

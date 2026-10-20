@@ -1,0 +1,56 @@
+// 馬達（130 尺寸碳刷馬達；本底盤為中置雙軸）
+// 線性 DC 馬達模型參數都以 3 V 為基準（SPEC 1.4 / 1.12），程式依電池端電壓縮放
+
+/** @type {import('./types').PartBase[]} */
+export const motorParts = [
+  {
+    id: 'motor-standard',
+    category: 'motor',
+    name: '套件普通馬達（雙軸，以 Mabuchi FA-130RA-18100 數值建模）',
+    sizeClass: '130',
+    shaft: 'dual',
+    ratedVoltage_V: 3.0,
+    noLoadRpm_atRated: 12300,
+    stallTorque_atRated_Nm: 0.00353,
+    stallCurrent_atRated_A: 2.1,
+    noLoadCurrent_A: 0.15,
+    coastMotorDrag: true,
+    frictionCoulombFraction: 0.5,
+    mass_g: 18,
+    body_mm: { diameter: 20.1, flat: 15.1, length: 25.0, shaftDiameter: 2.0 },
+    src: {
+      noLoadRpm_atRated: 'SPEC 1.4：Pololu #77 / Mabuchi 規格表，無載 12,300 rpm @3 V',
+      stallTorque_atRated_Nm: 'SPEC 1.4：堵轉 3.53 mN·m（36 g·cm）',
+      stallCurrent_atRated_A: 'SPEC 1.4：堵轉 2.10 A',
+      noLoadCurrent_A: 'SPEC 1.4：無載 0.15 A',
+      coastMotorDrag: '第一階段決策 D1：斷電滑行計入馬達內部摩擦（反拖）',
+      frictionCoulombFraction: '推估：馬達內部摩擦 = 庫侖（電刷、軸套）＋黏滯（鐵損、風損）各半；3 V 無載時合計 = k_t·I0',
+      mass_g: 'SPEC 1.4：約 18 g（推估）',
+      body_mm: '推估：130 型馬達外殼常見尺寸 20.1 × 15.1 × 25 mm',
+    },
+  },
+  {
+    id: 'motor-high-rev',
+    category: 'motor',
+    name: '高轉速雙軸馬達（130 尺寸，PRO 高轉速等級）',
+    sizeClass: '130',
+    shaft: 'dual',
+    ratedVoltage_V: 3.0,
+    noLoadRpm_atRated: 16000,
+    stallTorque_atRated_Nm: 0.00353,
+    stallCurrent_atRated_A: 2.8,
+    noLoadCurrent_A: 0.25,
+    coastMotorDrag: true,
+    frictionCoulombFraction: 0.5,
+    mass_g: 18,
+    body_mm: { diameter: 20.1, flat: 15.1, length: 25.0, shaftDiameter: 2.0 },
+    src: {
+      noLoadRpm_atRated: '暫定（iter-31）：待 PARTS_RESEARCH 依官方建議負載範圍推導',
+      stallTorque_atRated_Nm: '暫定（iter-31）',
+      stallCurrent_atRated_A: '暫定（iter-31）',
+      noLoadCurrent_A: '暫定（iter-31）',
+      mass_g: '暫定（iter-31）：同尺寸外殼，視為與普通馬達相同',
+      body_mm: '同 motor-standard（130 尺寸外殼）',
+    },
+  },
+];

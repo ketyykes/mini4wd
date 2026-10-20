@@ -276,7 +276,8 @@ describe('第二階段：零件組裝 / 規則 / 車殼（P04、P08、P09、P11�
       { code: 'LENGTH', over: { frontStay: { base: 'stay-front-standard', rollerX_mm: 85 } } },
       { code: 'WIDTH', over: { frontStay: { base: 'stay-front-standard', rollerZ_mm: 50 } } },
       { code: 'HEIGHT', over: { rearStay: { base: 'stay-rear-standard', upperRollerHeight_mm: 70 } } },
-      { code: 'MASS', over: { chassis: { base: 'chassis-midship', mass_g: 10 } } },
+      // 過輕：底盤本體與電池組都換成很輕的版本（只改底盤會因其他零件合計仍 ≥ 90 g 而不構成違規）
+      { code: 'MASS', over: { chassis: { base: 'chassis-midship', mass_g: 5 }, battery: { base: 'battery-aa-nimh-950', mass_g: 10 } } },
       { code: 'TIRE_DIAMETER', over: { wheels: { base: 'wheel-26-lowprofile', diameter_mm: 36 } } },
       { code: 'GROUND_CLEARANCE', over: { wheels: { base: 'wheel-26-lowprofile', diameter_mm: 23 } } },
       { code: 'DRIVE_4WD', over: { chassis: { base: 'chassis-midship', driveType: '2WD' } } },

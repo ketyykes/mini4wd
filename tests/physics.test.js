@@ -1,13 +1,15 @@
 // P01–P03、P05–P07、P10 物理驗證（定義見 SPEC.md 第 2 部分；容許誤差寫在本檔，不得為通過而放寬）
 // P04、P08、P09 第二階段改為透過零件組裝 / 每款車殼檢查，移到 modular.test.js
 import { describe, test, expect, beforeAll } from 'vitest';
-import { spec, deriveParams } from '../src/spec.js';
+import { spec } from '../src/spec.js';
 import { Battery, theoreticalTopSpeed, longitudinalForce } from '../src/powertrain.js';
+import { assemble, loadConfig } from '../src/assembly.js';
 import { buildCircuit, buildStraight } from '../src/track.js';
 import { initRapier, createWorld, createCar, stepCar, forwardSpeed, upAxis, wallPenetration, minWallContactDist, localToWorld } from '../src/sim.js';
 
-const P = deriveParams();
-const G_STD = spec.drivetrain.standardGearRatio;
+// 第二階段：P01–P10 使用預設組裝（configs/default.json，SPEC 1.12）
+const ASM = assemble(loadConfig('default'));
+const P = ASM.P;
 
 /** @type {(s: number) => string} */
 const f3 = (x) => x.toFixed(3);
@@ -18,7 +20,7 @@ const f3 = (x) => x.toFixed(3);
  */
 function runStraightTopSpeed({ soc, seconds = 7 }) {
   const env = createWorld(buildStraight(40));
-  const car = createCar(env, { s: 0.2, lane: 0, soc, drain: false });
+  const car = createCar(env, { assembly: ASM, s: 0.2, lane: 0, soc, drain: false });
   const steps = Math.round(seconds / spec.sim.dt_s);
   const tail = Math.round(0.5 / spec.sim.dt_s);
   let sum = 0;
@@ -38,7 +40,7 @@ function runCircuitLap() {
   const track = buildCircuit();
   const env = createWorld(track);
   const s0 = 0.15;
-  const car = createCar(env, { s: s0, lane: 0 });
+  const car = createCar(env, { assembly: ASM, s: s0, lane: 0 });
   const L = track.path.length;
   let progress = 0;
   let lastS = s0;
@@ -132,8 +134,7 @@ beforeAll(async () => {
 
 describe('物理驗證 P01–P03、P05–P07、P10', () => {
   test('P01_top_speed 理論極速 vs 模擬極速（誤差 < 10%）', () => {
-    const battery = new Battery(1);
-    const theory = theoreticalTopSpeed({ voc: battery.ocv(), gearRatio: G_STD, bearingType: 'bearing', massKg: P.massTotal });
+    const theory = theoreticalTopSpeed({ assembly: ASM, soc: 1 });
     const sim = runStraightTopSpeed({ soc: 1 });
     const err = Math.abs(sim.vSteady - theory.vTheory) / theory.vTheory;
     console.log(`[P01] v0=${f3(theory.v0)} m/s（無載理論）, 理論極速=${f3(theory.vTheory)} m/s, 模擬穩定極速=${f3(sim.vSteady)} m/s, 誤差=${(err * 100).toFixed(2)}%, 端電壓=${f3(sim.terminalVoltage)} V, 電流=${f3(sim.current)} A`);
@@ -142,12 +143,12 @@ describe('物理驗證 P01–P03、P05–P07、P10', () => {
 
   test('P02_battery_sag 端電壓隨放電量單調不增且下降 ≥ 5%', () => {
     // 以 1 s 步長積分：每一步在當下 SOC 求穩定行駛的工作點（電流），再扣除電量
-    const battery = new Battery(1);
+    const battery = new Battery(P, 1);
     const samples = [];
-    const cutoff = spec.battery.cells * spec.battery.cutoffCellVoltage_V;
+    const cutoff = P.cells * P.cutoffCellVoltage;
     for (let t = 0; t < 4 * 3600; t++) {
-      const theory = theoreticalTopSpeed({ voc: battery.ocv(), gearRatio: G_STD, bearingType: 'bearing', massKg: P.massTotal });
-      const op = longitudinalForce({ speed: theory.vTheory, gearRatio: G_STD, powered: true, battery, bearingType: 'bearing', massKg: P.massTotal });
+      const theory = theoreticalTopSpeed({ assembly: ASM, voc: battery.ocv() });
+      const op = longitudinalForce(P, { speed: theory.vTheory, powered: true, battery });
       samples.push({ mAh: battery.drainedC / 3.6, v: op.terminalVoltage, current: op.current });
       if (op.terminalVoltage <= cutoff || battery.soc <= 0) {
         break;
