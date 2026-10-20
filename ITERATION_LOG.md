@@ -2028,3 +2028,36 @@
 
 ### 迭代決策
 - 第 0 輪是基準，保留。下一輪（iter-31）：模組化核心（parts / assembly / regulation / bodies、sim 與 powertrain 改為每台車各自參數）＋移除品牌字樣＋`chassis_front34` 截圖。
+
+## iter-31（第 1 輪，00:55–01:35）
+
+### 規劃
+1. 模組化核心：`src/parts/`（零件資料）、`src/bodies/`（車殼模組，質量 = 結構殼面積 × 壁厚 × 密度）、`src/assembly.js`（組裝 → 零件清單、質量、重心、外框、物理參數）、`src/regulation.js`（規則檢查）。預期 P04、P09、P11–P14、P16 通過。
+2. `sim.js` / `powertrain.js` 改為每台車各自的參數（`asm.P`），`createCar(env, { assembly })`。
+3. 移除車殼上的品牌字樣與徽章；`render.mjs` 依車殼輸出 `iter-NN_<body>_<view>.png` 並加 `iter-NN_chassis_front34.png`。
+
+### 執行
+- `config/spec.json` 只留全域規格（規則、空氣、賽道、模擬）；零件數值全部移到 `src/parts/*.js`（附 src 來源欄位），整車數值由 `assemble()` 推導。舊的 `massChassisBodyMisc_g`、`comHeight_mm`、`overall*`、`body.*`、`referenceTotalMass_g` 刪除。
+- 底盤座標 vs 車體座標：底盤以 26 mm 參考輪徑設計，換輪徑時整個底盤（含導輪、車殼）升降 `lift = (D − 26)/2`；`buildCarModel` 用 `sprung` 群組處理。
+- 車殼碰撞方塊改由車殼外框（`asm.body.bbox_mm`）推導；剛體質量與重心改用 `setAdditionalMassProperties(asm.mass_g, asm.com_mm)`（慣性矩仍是 150×30×90 mm 均質方塊估算，之後再改）。
+- `bodyShell.js` 刪除 `drawHoodEmblem`、`drawTamiya`、`drawMidship` 與使用處；`buildChevalierBody` 改名 `buildLegacyBody`。
+- 測試輸入修正（非放寬誤差）：P11 的「過輕」案例原本只把底盤改成 10 g，其他零件合計仍 ≥ 90 g，不構成違規 → 改成底盤 5 g ＋ 電池組 10 g。
+
+### 驗證
+- 測試 **14/16**：P08 失敗（暫定零件質量加總 135.11 g，超出 105–135）、P15 失敗（只有 1 款車殼）。P01 誤差 0.22%、P06 穿透 0.689 mm（餘裕 0.31）、P14 零件 29 個加總與引擎一致。
+- 外觀（`shared/reviews/iter-31/REVIEW.md`）：錨點 7/6/5/6 = 6.00；本輪 7/6/**6**/6 = **6.25**（品牌字樣拿掉，車殼設計 +1；輪胎側壁還有廠商字樣；chassis 視角中央一整塊平板、看不到馬達）。
+- **總分 = 14/16 × 50 + 6.25 × 5 = 43.75 + 31.25 = 75.00**（iter-30：51.88）→ 保留。
+
+## iter-32（第 2 輪，01:35–01:50）
+
+### 規劃
+1. 零件質量與 `motor-high-rev` 參數改用 `shared/reference/PARTS_RESEARCH.md` 的查證值（預期 P08 回到範圍內）。
+2. 補上查證指出漏掉的零件：齒輪蓋 5.5 g（`gear-cover-standard`）、小五金 3.0 g（`hardware-standard`）；前保桿與底盤一體成型 → `stay-front-standard` 0 g（0 g 零件不列入零件清單）。
+3. 輪胎側壁字樣改成通用尺寸標示（reviewer iter-31：側壁還有廠商名稱）。
+
+### 執行 / 驗證
+- 換成查證值後 P12 失敗：motor-high-rev 模擬 11.83 m/s vs 理論 8.85 m/s。原因：高轉速車 7 秒約跑 62 m，超出測試用的 40 m 直線，車子衝出末端掉落，量到的是掉落中的速度。→ 測試直線改 100 m（測量條件修正，容許誤差不變）；之後 P12 模擬 8.805 vs 理論 8.849（0.50%）。
+- 測試 **15/16**（只剩 P15：車殼數量）。預設組裝 133.73 g、重心 (−2.41, 12.78, −0.54) mm。
+- 外觀：本輪只改輪胎側壁字樣、導輪高度 6.5 → 5 mm、輪框直徑 18 → 19.8 mm，沒有另外送評，外觀沿用 iter-31 的 6.25（未重評）。
+- **總分 ≈ 15/16 × 50 + 6.25 × 5 = 46.88 + 31.25 = 78.13** → 保留。
+- SPEC 1.2（77.7 g 更正）、1.4（PRO 馬達官方數值）、1.13（零件表）、1.14（座標系、安裝點、壁厚、密度）已合併。
