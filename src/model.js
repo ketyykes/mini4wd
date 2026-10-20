@@ -142,7 +142,8 @@ function makeMaterials() {
     pinion: new THREE.MeshStandardMaterial({ color: 0x8a4fd0, roughness: 0.5 }),
     counter: new THREE.MeshStandardMaterial({ color: 0x8be03a, roughness: 0.5 }),
     spur: new THREE.MeshStandardMaterial({ color: 0xf08aa0, roughness: 0.5 }),
-    battery: new THREE.MeshStandardMaterial({ color: 0x2b2f36, roughness: 0.4, metalness: 0.3 }),
+    // iter-37：電池外皮改成有辨識度的藍色熱縮包膜（無任何文字），從電池艙側窗看得出是電池
+    battery: new THREE.MeshStandardMaterial({ name: 'battery-wrap-blue', color: 0x1d5a9a, roughness: 0.32, metalness: 0.15 }),
     copper: new THREE.MeshStandardMaterial({ color: 0xc8874a, roughness: 0.3, metalness: 0.9 }),
     // iter-06：導輪改槍灰色半光塑膠（ref_ma-chassis），與底盤黑塑膠區分
     roller: new THREE.MeshPhysicalMaterial({ color: 0x4a4e55, roughness: 0.34, metalness: 0.25, clearcoat: 0.4, clearcoatRoughness: 0.25, side: THREE.DoubleSide }),
@@ -938,6 +939,17 @@ function buildChassis(mats) {
     lip.position.set(0, cellTop + 1.35 + 0.8, zc + sz * 6.8);
     g.add(lip);
   }
+  // iter-37：電池艙外側壁（reviewer iter-36：「側面一片肋條件浮在底盤外、沒固定」；原本側壁只到 y 9.4、頂蓋在 y≈18，中間是空的）：
+  // 從側裙頂到頂蓋的外側立壁，開兩個長窗看得到裡面的 AA 電池（reviewer：「電池從上方完全看不到」）
+  for (const sz of [-1, 1]) {
+    const zWall = sz * (Math.abs(comp.battery.zs[0]) + 7.4);
+    const wallTop = cellTop + 1.3;
+    const wallPts = [[-24.5, 9.0], [24.5, 9.0], [24.5, wallTop - 0.8], [23.7, wallTop], [-23.7, wallTop], [-24.5, wallTop - 0.8]];
+    const wins = [roundedRect(-10.5, (9.0 + wallTop) / 2 + 0.3, 15, 4.6, 1.6), roundedRect(10.5, (9.0 + wallTop) / 2 + 0.3, 15, 4.6, 1.6)];
+    const wall = extrudeXY(wallPts, 1.1, mats.chassis, wins);
+    wall.position.z = sz > 0 ? zWall - 1.1 : zWall;
+    g.add(wall);
+  }
   // iter-36：馬達上方改成兩端固定扣（reviewer iter-35：「MA 參考圖馬達從上方完整露出，本模型用一片橋板蓋住、只開小窗」）：
   // 罐身中段完全露出，只在兩端（罐口與端蓋處）各一道跨過馬達的扣條，扣條兩端往下接電池艙內側壁並有螺絲
   const motorTop = comp.motor.y + comp.motor.flat / 2;
@@ -1075,6 +1087,23 @@ function buildChassis(mats) {
       const plate = extrudeXZ(pts, bt, mats.chassis, holes, 0.35);
       plate.position.y = bumperY;
       g.add(plate);
+      // iter-37：補強肋（reviewer iter-36：「保桿是等厚平板，沒有加強肋與厚薄變化」）：
+      // 沿兩臂中線的凸肋（從根部到導輪座）＋前緣內凹弧的立邊，讓保桿有厚薄層次
+      for (const sz of [-1, 1]) {
+        const a0 = new THREE.Vector3(sx * 53, bumperY + bt + 0.45, sz * 17);
+        const a1 = new THREE.Vector3(sx * (rx - 3.5), bumperY + bt + 0.45, sz * (rz - 2.5));
+        const ribA = new THREE.Mesh(new THREE.BoxGeometry(a0.distanceTo(a1), 0.9, 1.3), mats.chassis);
+        ribA.position.copy(a0).lerp(a1, 0.5);
+        ribA.rotation.y = -Math.atan2(a1.z - a0.z, a1.x - a0.x);
+        g.add(ribA);
+      }
+      const lipPts = [];
+      for (let k = 0; k <= 16; k++) {
+        const zz = -(rz - 8) + (2 * (rz - 8) * k) / 16;
+        const xx = rx + 3 - 4.2 * (1 - (zz / (rz - 8)) ** 2);
+        lipPts.push(new THREE.Vector3(sx * xx, bumperY + bt + 0.5, zz));
+      }
+      g.add(new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(lipPts), 48, 0.55, 6, false), mats.chassis));
     }
     for (const sz of [-1, 1]) {
       const ax0 = sx * 54;
