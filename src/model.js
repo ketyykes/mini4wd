@@ -864,7 +864,8 @@ function buildChassis(mats) {
     const winY = y0 + 3.0;
     const winHoles = [-13, 0, 13].map((wx) => roundedRect(wx, winY, 9, 3.0, 1.0));
     const wallZ = sz > 0 ? 35.0 : -36.2;
-    const sideWall = extrudeXY(prof, 1.2, mats.chassis, winHoles);
+    // iter-39：側壁改深色（reviewer iter-38：「車殼下緣外露一大段灰色側框，像墊在台座上」），側視讀成底盤陰影而不是灰色台座
+    const sideWall = extrudeXY(prof, 1.2, mats.chassisDark, winHoles);
     sideWall.position.z = wallZ;
     g.add(sideWall);
     // 內凹窗底（深色，往內 0.8 mm）
@@ -937,6 +938,26 @@ function buildChassis(mats) {
     const lip = new THREE.Mesh(new THREE.BoxGeometry(48, 1.6, 1.0), mats.chassis);
     lip.position.set(0, cellTop + 1.35 + 0.8, zc + sz * 6.8);
     g.add(lip);
+  }
+  // iter-39：電池艙斜肩板（reviewer iter-36～38：「側面一片帶肋長條板浮在底盤外」——那是 z≈35 的側壁，
+  // 它和電池艙頂蓋（z ≤ 26.5、y≈18）之間上下左右都是空的）→ 從頂蓋外緣斜下到側壁頂，連成一體的側艙外形
+  for (const sz of [-1, 1]) {
+    const zIn = sz * (Math.abs(comp.battery.zs[0]) + 7.2);
+    const zOut = sz * 35.6;
+    const yIn = cellTop + 0.9;
+    const yOut = 9.4;
+    const len = Math.hypot(zOut - zIn, yOut - yIn);
+    const shoulder = new THREE.Mesh(new THREE.BoxGeometry(46, 1.0, len), mats.chassis);
+    shoulder.position.set(0, (yIn + yOut) / 2, (zIn + zOut) / 2);
+    shoulder.rotation.x = sz * Math.atan2(yIn - yOut, Math.abs(zOut - zIn));
+    g.add(shoulder);
+    // 斜肩板上 3 道縱向補強肋（射出件的肋）
+    for (const fx of [-15, 0, 15]) {
+      const rib = new THREE.Mesh(new THREE.BoxGeometry(1.0, 0.8, len * 0.9), mats.chassis);
+      rib.position.set(fx, (yIn + yOut) / 2 + 0.75, (zIn + zOut) / 2);
+      rib.rotation.x = shoulder.rotation.x;
+      g.add(rib);
+    }
   }
   // iter-36：馬達上方改成兩端固定扣（reviewer iter-35：「MA 參考圖馬達從上方完整露出，本模型用一片橋板蓋住、只開小窗」）：
   // 罐身中段完全露出，只在兩端（罐口與端蓋處）各一道跨過馬達的扣條，扣條兩端往下接電池艙內側壁並有螺絲
