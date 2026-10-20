@@ -4,7 +4,7 @@
 import * as THREE from 'three';
 import data from './data/body-skeleton.json';
 import { getPart } from '../parts/index.js';
-import { makeLoftKit, cachedBuild, namedMaterial, decalMaterial, buildMountTabs, buildRegion, sdNumber, sdConvexPolygon, sdRoundRect, topDecal, mergeGeos } from './loft.js';
+import { makeLoftKit, cachedBuild, namedMaterial, decalMaterial, buildMountTabs, buildRegion, sdNumber, sdConvexPolygon, sdRoundRect, sideDecal, topDecal, mergeGeos, smoothstep } from './loft.js';
 
 /** @typedef {import('./types').BodyDef} BodyDef */
 /** @typedef {import('./loft.js').BodyPart} BodyPart */
@@ -12,6 +12,12 @@ import { makeLoftKit, cachedBuild, namedMaterial, decalMaterial, buildMountTabs,
 
 /** @type {number} 開口 / 輪拱 / 下緣周圍的萊姆黃補強邊寬度（DESIGN.md §3.4：1.2 mm） */
 const BAND = 1.2;
+
+/**
+ * 葉子板隆起（iter-34）：讓輪拱切口留在側壁、不再切過肩部斜面（切過斜面會留下細長殼片與不規則補強邊）
+ * @type {(x: number, az: number) => number}
+ */
+const bump = (x, az) => smoothstep(18, 30, az) * 2.0 * (1.6 * Math.exp(-(((x - 45) / 11) ** 2)) + Math.exp(-(((x + 40) / 10) ** 2)));
 
 /** @type {() => Record<string, THREE.Material>} */
 const makeMaterials = () => ({
@@ -30,7 +36,7 @@ const makeMaterials = () => ({
 
 /** @type {() => BodyPart[]} */
 const compose = () => {
-  const kit = makeLoftKit(data, { mode: 'linear', sideZMin: 30 });
+  const kit = makeLoftKit(data, { mode: 'linear', sideZMin: 30, bump });
   const { surf } = kit;
   /** @type {BodyPart[]} */
   const parts = [];
@@ -38,9 +44,8 @@ const compose = () => {
   /** @type {(x: number, y: number, z: number) => number} 到開口、輪拱、下緣的距離（近似） */
   const edgeDist = (x, y, z) => {
     let d = kit.openingDist(x, y, z);
-    for (const a of kit.arches) {
-      d = Math.min(d, a(x, y, z, 0));
-    }
+    // 輪拱用「到實際切口邊界的 3D 距離」：葉子板頂面幾乎貼著切割圓柱，用圓柱距離會變成星形色塊（iter-33 reviewer）
+    d = Math.min(d, kit.archEdgeDist(x, y, z));
     d = Math.min(d, kit.sideRail(x, y, z, 0));
     return Math.min(d, y - surf.ctrl(x).yLow);
   };
@@ -83,14 +88,44 @@ const compose = () => {
     [-44, 27.5],
     [-57, 20],
   ]);
+  // 側面三角：六角側窗前端與前輪拱之間（側視 x–y）
+  const triSide = sdConvexPolygon([
+    [20.6, 10.9],
+    [23.8, 10.9],
+    [23.8, 19.6],
+  ]);
   parts.push({
-    geometry: mergeGeos([kit.decal((x, y, z) => -triFront(x, Math.abs(z))), kit.decal((x, y, z) => -triRear(x, Math.abs(z)))]),
+    geometry: mergeGeos([
+      kit.decal((x, y, z) => -triFront(x, Math.abs(z))),
+      kit.decal((x, y, z) => -triRear(x, Math.abs(z))),
+      kit.decal(sideDecal((u, v) => triSide(u, v) + 0.5, { x0: 0, y0: 0, zMin: 30, side: 1 }), { offset: 0.12 }),
+      kit.decal(sideDecal((u, v) => triSide(-u, v) + 0.5, { x0: 0, y0: 0, zMin: 30, side: -1 }), { offset: 0.12 }),
+    ]),
     mat: 'black',
     name: 'decal-triangles',
   });
   // 號碼 24：引擎蓋上的萊姆黃底板 + 黑字
-  parts.push({ geometry: kit.decal((x, y, z) => -sdRoundRect(x, z, 33.6, 42.4, -6.4, 6.4, 1.2)), mat: 'limeDecal', name: 'decal-number-plate' });
-  parts.push({ geometry: kit.decal(topDecal(sdNumber('24', { h: 6.2, w: 3.5, gap: 1.0 }), { x0: 38, yMin: 20 }), { offset: 0.12 }), mat: 'black', name: 'decal-number' });
+  // 側面號碼 24（DESIGN.md §4）：側面大半被六角側窗佔滿，放在側窗前端上方、前輪拱後方的側壁＋肩部
+  const sidePlate = (u, v) => sdRoundRect(u, v, -2.9, 2.9, -2.45, 2.45, 0.8);
+  parts.push({
+    geometry: mergeGeos([
+      kit.decal((x, y, z) => -sdRoundRect(x, z, 33.6, 42.4, -6.4, 6.4, 1.2)),
+      kit.decal(sideDecal(sidePlate, { x0: 22.4, y0: 23.2, zMin: 30 })),
+      // 側面三角的萊姆黃外框（黑三角內縮 0.5 mm 疊在上面）
+      kit.decal(sideDecal((u, v) => triSide(u, v), { x0: 0, y0: 0, zMin: 30, side: 1 })),
+      kit.decal(sideDecal((u, v) => triSide(-u, v), { x0: 0, y0: 0, zMin: 30, side: -1 })),
+    ]),
+    mat: 'limeDecal',
+    name: 'decal-number-plate',
+  });
+  parts.push({
+    geometry: mergeGeos([
+      kit.decal(topDecal(sdNumber('24', { h: 6.2, w: 3.5, gap: 1.0 }), { x0: 38, yMin: 20 }), { offset: 0.12 }),
+      kit.decal(sideDecal(sdNumber('24', { h: 3.9, w: 2.2, gap: 0.5 }), { x0: 22.4, y0: 23.2, zMin: 30 }), { offset: 0.12 }),
+    ]),
+    mat: 'black',
+    name: 'decal-number',
+  });
 
   parts.push({ geometry: buildMountTabs(MOUNTS, (x) => kit.innerYAt(x)), mat: 'mount', name: 'mount-tabs' });
   return parts;

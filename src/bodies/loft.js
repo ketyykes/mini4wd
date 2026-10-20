@@ -210,11 +210,19 @@ export function sdNumber(text, { h, w, gap, slant = 0.18 }) {
   const glyphs = [...text].map((ch, i) => {
     const x0 = -total / 2 + i * (w + gap);
     const boxes = [];
-    for (const seg of DIGIT_MAP[ch] ?? '') {
-      const [a, b, c, d] = DIGIT_SEGMENTS[seg];
-      boxes.push([x0 + a * w, x0 + c * w, -h / 2 + b * h, -h / 2 + d * h]);
+    /** @type {((u: number, v: number) => number)[]} 斜筆等非方塊筆畫 */
+    const extra = [];
+    if (ch === '7') {
+      // 7：加長的頂橫 + 從右上斜到左下的斜筆，避免被看成 1
+      boxes.push([x0, x0 + w, h / 2 - 0.19 * h, h / 2]);
+      extra.push(sdBar(x0 + w - 0.2 * w, h / 2 - 0.1 * h, x0 + 0.3 * w, -h / 2 - 0.05 * h, 0.34 * w));
+    } else {
+      for (const seg of DIGIT_MAP[ch] ?? '') {
+        const [a, b, c, d] = DIGIT_SEGMENTS[seg];
+        boxes.push([x0 + a * w, x0 + c * w, -h / 2 + b * h, -h / 2 + d * h]);
+      }
     }
-    return { x0, boxes };
+    return { x0, boxes, extra, round: ch !== '7' };
   });
   // 外框圓角（約 0.38 字寬）：讓 0 / 8 圓潤、和字母區隔
   const rOuter = 0.38 * w;
@@ -226,7 +234,10 @@ export function sdNumber(text, { h, w, gap, slant = 0.18 }) {
       for (const [x0, x1, y0, y1] of g.boxes) {
         dg = Math.min(dg, sdRoundRect(uu, v, x0, x1, y0, y1, 0.12));
       }
-      dg = Math.max(dg, sdRoundRect(uu, v, g.x0, g.x0 + w, -h / 2, h / 2, rOuter));
+      for (const f of g.extra) {
+        dg = Math.min(dg, f(uu, v));
+      }
+      dg = Math.max(dg, sdRoundRect(uu, v, g.x0, g.x0 + w, -h / 2, h / 2, g.round ? rOuter : 0.12));
       d = Math.min(d, dg);
     }
     return d;
@@ -268,9 +279,10 @@ export function topDecal(sd, { x0, z0 = 0, yMin }) {
  * 由設計資料建立車身外表面
  * - mode 'linear'：用 stationParams 的 4 點折線（中線頂 → 肩稜 → 最寬處 → 下緣），站間線性內插，稜線為面板邊界
  * - mode 'smooth'：用 stations[].halfProfile（已 Chaikin 平滑的 32 點），站間單調 Hermite（Catmull-Rom 類），剖面內 Catmull-Rom
- * @type {(data: any, mode: 'linear' | 'smooth', step?: number) => LoftSurface & { ctrl: (x: number) => any }}
+ * - bump(x, |z|)：額外的高度修飾（葉子板隆起等），兩種模式都會加在 y 上
+ * @type {(data: any, mode: 'linear' | 'smooth', step?: number, bump?: ((x: number, az: number) => number) | null) => LoftSurface & { ctrl: (x: number) => any }}
  */
-export function createBodySurface(data, mode, step = 0.5) {
+export function createBodySurface(data, mode, step = 0.5, bump = null) {
   const params = data.stationParams.slice().sort((a, b) => a.x - b.x);
   const sx = params.map((p) => p.x);
   const xMin = sx[0];
@@ -318,13 +330,14 @@ export function createBodySurface(data, mode, step = 0.5) {
       topY(x, z) {
         const c = ctrl(x);
         const az = Math.abs(z);
+        const b = bump ? bump(x, Math.min(az, c.halfW)) : 0;
         if (az <= c.zF) {
-          return lerp(c.yTop, c.yF, az / c.zF);
+          return lerp(c.yTop, c.yF, az / c.zF) + b;
         }
         if (az <= c.halfW) {
-          return lerp(c.yF, c.yShoulder, (az - c.zF) / Math.max(1e-6, c.halfW - c.zF));
+          return lerp(c.yF, c.yShoulder, (az - c.zF) / Math.max(1e-6, c.halfW - c.zF)) + b;
         }
-        return c.yShoulder;
+        return c.yShoulder + b;
       },
       panels: [
         { s0: -1, s1: -b2, n: n3 },
@@ -352,7 +365,7 @@ export function createBodySurface(data, mode, step = 0.5) {
           z = c.halfW;
           y = lerp(c.yShoulder, c.yLow, t);
         }
-        out[0] = y;
+        out[0] = bump ? y + bump(x, z) : y;
         out[1] = s < 0 ? -z : z;
       },
     };
@@ -432,7 +445,7 @@ export function createBodySurface(data, mode, step = 0.5) {
       p3[1] = tmp[1];
       const cr = (a, b, c, d) => 0.5 * (2 * b + (-a + c) * tt + (2 * a - 5 * b + 4 * c - d) * tt * tt + (-a + 3 * b - 3 * c + d) * tt * tt * tt);
       const z = cr(p0[0], p1[0], p2[0], p3[0]);
-      out[0] = cr(p0[1], p1[1], p2[1], p3[1]);
+      out[0] = cr(p0[1], p1[1], p2[1], p3[1]) + (bump ? bump(x, Math.abs(z)) : 0);
       out[1] = s < 0 ? -z : z;
     },
   };
@@ -485,7 +498,7 @@ export function createCanopySurface(canopy, body, smooth, step = 0.5) {
   const at = (x) => {
     const { k, t, h } = bracket(sx, x);
     const o = {};
-    if (smooth) {
+    if (smooth || canopy.section === 'trapezoid') {
       const hb = hermiteBasis(t);
       for (const key of keys) {
         o[key] = hb[0] * st[k][key] + hb[1] * h * slopes[key][k] + hb[2] * st[k + 1][key] + hb[3] * h * slopes[key][k + 1];
@@ -498,20 +511,14 @@ export function createCanopySurface(canopy, body, smooth, step = 0.5) {
     return o;
   };
   const trap = canopy.section === 'trapezoid';
-  const nS = Math.ceil(16 / step);
+  const nS = Math.ceil(20 / step);
   return {
     xMin: sx[0],
     xMax: sx[sx.length - 1],
     xs: subdivide(sx, step),
-    breaks: trap ? [1 / 3] : [],
+    breaks: [],
     halfWAt: (x) => (x < sx[0] || x > sx[sx.length - 1] ? 0 : at(x).halfW),
-    panels: trap
-      ? [
-          { s0: -1, s1: -1 / 3, n: nS },
-          { s0: -1 / 3, s1: 1 / 3, n: nS },
-          { s0: 1 / 3, s1: 1, n: nS },
-        ]
-      : [{ s0: -1, s1: 1, n: 2 * nS }],
+    panels: [{ s0: -1, s1: 1, n: 2 * nS }],
     eval(x, s, out) {
       const c = at(x);
       const u = Math.abs(s);
@@ -519,16 +526,12 @@ export function createCanopySurface(canopy, body, smooth, step = 0.5) {
       let z;
       let y;
       if (trap) {
-        if (u <= 1 / 3) {
-          z = 0.55 * c.halfW * (u * 3);
-          y = c.yBase + rise;
-          // 頂面也跟著車身微微下降，避免平頂浮在半空
-          y = surfaceTopY(body, x, z) + rise;
-        } else {
-          const t = (u - 1 / 3) / (2 / 3);
-          z = c.halfW * lerp(0.55, 1, t);
-          y = surfaceTopY(body, x, z) - 0.1 + rise * (1 - t);
-        }
+        // 低平梯形罩（iter-34）：漸縮的超橢圓剖面 → 平頂、斜側、圓角，整片平滑著色，頂寬約 0.55 × 底寬
+        const th = (1 - u) * (Math.PI / 2);
+        const zc = Math.cbrt(Math.cos(th));
+        const ys = Math.cbrt(Math.sin(th));
+        z = c.halfW * zc * (1 - 0.45 * ys);
+        y = surfaceTopY(body, x, z) - 0.1 + rise * ys;
       } else {
         const th = (1 - u) * (Math.PI / 2);
         z = c.halfW * Math.cos(th);
@@ -1046,8 +1049,17 @@ export function buildWingParts(wing) {
     new THREE.Vector2(ex1 - 3, ep.yBottom + ep.height),
     new THREE.Vector2(ex0, ep.yBottom + ep.height),
   ]);
-  const epR = new THREE.ExtrudeGeometry(epShape, { depth: ep.thickness, bevelEnabled: false });
-  epR.translate(0, 0, half);
+  // 端板倒角：bevel 0.3 mm（形狀本身內縮 0.3，外形尺寸不變）
+  const bev = 0.3;
+  const epShapeIn = new THREE.Shape(
+    epShape.getPoints().map((pt) => {
+      const cx = (ex0 + ex1) / 2;
+      const cy = ep.yBottom + ep.height / 2;
+      return new THREE.Vector2(pt.x - Math.sign(pt.x - cx) * bev, pt.y - Math.sign(pt.y - cy) * bev);
+    }),
+  );
+  const epR = new THREE.ExtrudeGeometry(epShapeIn, { depth: ep.thickness - 2 * bev, bevelEnabled: true, bevelThickness: bev, bevelSize: bev, bevelSegments: 2 });
+  epR.translate(0, 0, half + bev);
   const epL = epR.clone();
   epL.translate(0, 0, -half * 2 - ep.thickness);
   const endplates = mergeGeos([epR, epL]);
@@ -1090,37 +1102,80 @@ function sweepRect(curve, n, hz, hn, zc) {
     const nx = -tg.y;
     const ny = tg.x;
     const a = hn(t);
-    rings.push([
-      [p.x + nx * a, p.y + ny * a, zc - hz],
-      [p.x + nx * a, p.y + ny * a, zc + hz],
-      [p.x - nx * a, p.y - ny * a, zc + hz],
-      [p.x - nx * a, p.y - ny * a, zc - hz],
-    ]);
+    // 倒角斷面（八角形）：倒角量取短邊一半的 45%
+    const c = 0.45 * Math.min(a, hz);
+    /** @type {number[][]} 斷面 (法向偏移, z 偏移) */
+    const sec = [
+      [a, -hz + c],
+      [a, hz - c],
+      [a - c, hz],
+      [-a + c, hz],
+      [-a, hz - c],
+      [-a, -hz + c],
+      [-a + c, -hz],
+      [a - c, -hz],
+    ];
+    rings.push(sec.map(([en, ez]) => [p.x + nx * en, p.y + ny * en, zc + ez]));
   }
+  const m = rings[0].length;
   for (let i = 0; i < n; i++) {
     const r0 = rings[i];
     const r1 = rings[i + 1];
-    for (let k = 0; k < 4; k++) {
+    for (let k = 0; k < m; k++) {
       const a = r0[k];
-      const b = r0[(k + 1) % 4];
-      const c = r1[(k + 1) % 4];
+      const b = r0[(k + 1) % m];
+      const c = r1[(k + 1) % m];
       const d = r1[k];
       pos.push(...a, ...b, ...c, ...a, ...c, ...d);
     }
   }
-  for (const [r, flip] of [
-    [rings[0], true],
-    [rings[n], false],
-  ]) {
-    const order = flip ? [0, 2, 1, 0, 3, 2] : [0, 1, 2, 0, 2, 3];
-    for (const k of order) {
-      pos.push(...r[k]);
+  for (const r of [rings[0], rings[n]]) {
+    for (let k = 1; k < m - 1; k++) {
+      pos.push(...r[0], ...r[k], ...r[k + 1]);
     }
   }
   const g = new THREE.BufferGeometry();
   g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
   g.computeVertexNormals();
   // 繞向未逐面校正，支柱請用雙面材質
+  return g;
+}
+
+/**
+ * 尾部裙板：把車身尾段的下緣往下延伸到 yBottom（兩側直條 + 尾端平板），封住從後方看進去的底盤空隙
+ * @type {(surf: LoftSurface, opt: { xFrom: number, yBottom: number }) => THREE.BufferGeometry}
+ */
+export function buildTailValance(surf, { xFrom, yBottom }) {
+  const o = [0, 0];
+  const pos = [];
+  const xs = subdivide([surf.xMin, xFrom], 0.5);
+  /** @type {(x: number) => number[]} 右側下緣點 [y, z] */
+  const edge = (x) => {
+    surf.eval(x, 1, o);
+    return [o[0], o[1]];
+  };
+  for (let i = 0; i < xs.length - 1; i++) {
+    const [ya, za] = edge(xs[i]);
+    const [yb, zb] = edge(xs[i + 1]);
+    if (ya <= yBottom && yb <= yBottom) {
+      continue;
+    }
+    const ta = Math.max(ya, yBottom);
+    const tb = Math.max(yb, yBottom);
+    for (const sg of [-1, 1]) {
+      pos.push(xs[i], ta, sg * za, xs[i + 1], tb, sg * zb, xs[i + 1], yBottom, sg * zb);
+      pos.push(xs[i], ta, sg * za, xs[i + 1], yBottom, sg * zb, xs[i], yBottom, sg * za);
+    }
+  }
+  const [ye, ze] = edge(surf.xMin);
+  if (ye > yBottom) {
+    const x = surf.xMin;
+    pos.push(x, yBottom, -ze, x, yBottom, ze, x, ye, ze, x, yBottom, -ze, x, ye, ze, x, ye, -ze);
+  }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  g.computeVertexNormals();
+  // 繞向未逐面校正，請用雙面材質
   return g;
 }
 
@@ -1246,9 +1301,9 @@ const sideRailKeep = (x, y, z) => {
  * @type {(data: any, opt: { mode: 'linear' | 'smooth', step?: number, sideZMin?: number }) => any}
  */
 export function makeLoftKit(data, opt) {
-  const surf = createBodySurface(data, opt.mode, opt.step ?? 0.5);
+  const surf = createBodySurface(data, opt.mode, opt.step ?? 0.5, opt.bump ?? null);
   const t = data.wallThickness_mm;
-  const canopy = data.canopy ? createCanopySurface(data.canopy, surf, opt.mode === 'smooth', 0.5) : null;
+  const canopy = data.canopy ? createCanopySurface(data.canopy, surf, opt.mode === 'smooth', 0.35) : null;
   const arches = (data.wheelArches ?? []).map(archKeep);
   const openingSds = (data.openings ?? []).map((o) => featureSd(o, opt.sideZMin ?? 20));
   const holes = [...arches, ...openingSds.map((sd) => (x, y, z) => sd(x, y, z)), sideRailKeep];
@@ -1277,6 +1332,83 @@ export function makeLoftKit(data, opt) {
     const hw = canopy.halfWAt(x);
     return hw - Math.abs(z) - 0.2;
   };
+  /** @type {{ cell: number, map: Map<string, number[]> } | null} 輪拱切口邊界點的空間雜湊（延遲建立） */
+  let archHash = null;
+  /** 從實際裁切後的網格取出輪拱切口邊界（加密到 0.25 mm），用來畫沿切口等寬的補強邊 */
+  const buildArchHash = () => {
+    const reg = buildRegion(surf, holes, { offset: 0 });
+    const { raw, index } = reg.meta;
+    /** @type {Map<number, number>} */
+    const count = new Map();
+    for (let i = 0; i < index.length; i += 3) {
+      for (let e = 0; e < 3; e++) {
+        const a = index[i + e];
+        const b = index[i + ((e + 1) % 3)];
+        const key = a < b ? a * 4194304 + b : b * 4194304 + a;
+        count.set(key, (count.get(key) ?? 0) + 1);
+      }
+    }
+    const cell = 2;
+    /** @type {Map<string, number[]>} */
+    const map = new Map();
+    const P = (v) => [raw[6 * v], raw[6 * v + 1], raw[6 * v + 2]];
+    const onArch = (p) => arches.some((f) => Math.abs(f(p[0], p[1], p[2], 0)) < 0.02);
+    for (const [key, cnt] of count) {
+      if (cnt !== 1) {
+        continue;
+      }
+      const a = P(Math.floor(key / 4194304));
+      const b = P(key % 4194304);
+      if (!onArch(a) || !onArch(b)) {
+        continue;
+      }
+      const len = Math.hypot(b[0] - a[0], b[1] - a[1], b[2] - a[2]);
+      const n = Math.max(1, Math.ceil(len / 0.25));
+      for (let k = 0; k <= n; k++) {
+        const q = [lerp(a[0], b[0], k / n), lerp(a[1], b[1], k / n), lerp(a[2], b[2], k / n)];
+        const hk = `${Math.floor(q[0] / cell)},${Math.floor(q[1] / cell)},${Math.floor(q[2] / cell)}`;
+        let arr = map.get(hk);
+        if (!arr) {
+          arr = [];
+          map.set(hk, arr);
+        }
+        arr.push(q[0], q[1], q[2]);
+      }
+    }
+    return { cell, map };
+  };
+  /** @type {(x: number, y: number, z: number) => number} 到輪拱切口邊界的 3D 距離（最多查 2 格，超過回傳 4） */
+  const archEdgeDist = (x, y, z) => {
+    // 離所有輪拱圓柱都遠的點直接略過
+    if ((data.wheelArches ?? []).every((a) => Math.hypot(x - a.x, y - a.y) > a.radius + 4 || Math.abs(z) < a.cutZFrom - 4)) {
+      return 16;
+    }
+    if (!archHash) {
+      archHash = buildArchHash();
+    }
+    const { cell, map } = archHash;
+    const cx = Math.floor(x / cell);
+    const cy = Math.floor(y / cell);
+    const cz = Math.floor(z / cell);
+    let best = 16;
+    for (let i = -1; i <= 1; i++) {
+      for (let j = -1; j <= 1; j++) {
+        for (let k = -1; k <= 1; k++) {
+          const arr = map.get(`${cx + i},${cy + j},${cz + k}`);
+          if (!arr) {
+            continue;
+          }
+          for (let q = 0; q < arr.length; q += 3) {
+            const d2 = (arr[q] - x) ** 2 + (arr[q + 1] - y) ** 2 + (arr[q + 2] - z) ** 2;
+            if (d2 < best) {
+              best = d2;
+            }
+          }
+        }
+      }
+    }
+    return Math.sqrt(best);
+  };
   return {
     data,
     surf,
@@ -1284,6 +1416,7 @@ export function makeLoftKit(data, opt) {
     t,
     holes,
     arches,
+    archEdgeDist,
     sideRail: sideRailKeep,
     openingSds,
     recesses,

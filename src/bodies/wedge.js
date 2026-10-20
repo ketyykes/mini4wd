@@ -4,13 +4,23 @@
 import * as THREE from 'three';
 import data from './data/body-wedge.json';
 import { getPart } from '../parts/index.js';
-import { makeLoftKit, cachedBuild, namedMaterial, decalMaterial, buildMountTabs, buildRegion, sdNumber, sdConvexPolygon, sideDecal, topDecal, mergeGeos } from './loft.js';
+import { makeLoftKit, cachedBuild, namedMaterial, decalMaterial, buildMountTabs, buildRegion, sdNumber, sdConvexPolygon, sideDecal, topDecal, mergeGeos, smoothstep } from './loft.js';
 
 /** @typedef {import('./types').BodyDef} BodyDef */
 /** @typedef {import('./loft.js').BodyPart} BodyPart */
 
-/** @type {(x: number) => number} 石墨黑下緣分色線高度（往前略升，鼻部下緣也是黑色） */
-const lowerLine = (x) => 12.5 + 0.045 * x;
+/** @type {(x: number) => number} 石墨黑下半車身的分色線（iter-34 拉高到側面約一半；往前升、鼻部側面全黑；尾段往上收） */
+const lowerLine = (x) => 15.2 + 0.05 * x + 7 * smoothstep(-42, -62, x);
+
+/**
+ * 肩稜隆起（iter-34）：肩部整條抬高 0.9 mm，前後葉子板再隆起 2.4 mm，讓引擎蓋中央相對變成谷形
+ * @type {(x: number, az: number) => number}
+ */
+const bump = (x, az) => {
+  // 前葉子板中心往前移到 x = 44：輪拱前方的肩部也要高過切割圓，上視才不會有缺口
+  const fender = 1.4 * Math.exp(-(((x - 44) / 11) ** 2)) + Math.exp(-(((x + 40) / 11) ** 2));
+  return smoothstep(14, 28, az) * (0.9 + 2.4 * fender);
+};
 
 /** @type {() => Record<string, THREE.Material>} */
 const makeMaterials = () => ({
@@ -20,7 +30,7 @@ const makeMaterials = () => ({
   inner: namedMaterial('shell-inner-dark', { color: 0x2a201c, roughness: 0.85, side: THREE.BackSide }),
   recess: namedMaterial('trim-intake-black', { color: 0x141516, roughness: 0.85, side: THREE.DoubleSide }),
   cockpit: namedMaterial('cockpit-dark', { color: 0x16181b, roughness: 0.6 }),
-  glass: namedMaterial('pc-smoke-tint', { color: 0x1e2833, roughness: 0.05, metalness: 0.0, clearcoat: 1.0, transparent: true, opacity: 0.75, depthWrite: false, side: THREE.DoubleSide }),
+  glass: namedMaterial('pc-smoke-tint', { color: 0x1e2833, roughness: 0.06, metalness: 0.0, clearcoat: 1.0, clearcoatRoughness: 0.05, transparent: true, opacity: 0.8, depthWrite: false }),
   cyan: decalMaterial('decal-cyan', { color: 0x22c3e6, roughness: 0.3, clearcoat: 0.6 }),
   black: decalMaterial('decal-black', { color: 0x111214, roughness: 0.55 }),
   graphite: decalMaterial('decal-graphite', { color: 0x2b2d30, roughness: 0.6 }),
@@ -31,7 +41,7 @@ const makeMaterials = () => ({
 
 /** @type {() => BodyPart[]} */
 const compose = () => {
-  const kit = makeLoftKit(data, { mode: 'linear', sideZMin: 30 });
+  const kit = makeLoftKit(data, { mode: 'linear', sideZMin: 30, bump });
   const { surf } = kit;
   /** @type {BodyPart[]} */
   const parts = [];
@@ -60,8 +70,8 @@ const compose = () => {
   st.recessWall.forEach((g, i) => parts.push({ geometry: g, mat: 'recess', shell: true, name: `recess-wall-${i}` }));
 
   // 座艙罩：中間煙燻玻璃、周圍黑框
-  const glass = buildRegion(kit.canopy, [(x, y, z, s) => 0.8 - Math.abs(s)]).geometry;
-  const frame = buildRegion(kit.canopy, [(x, y, z, s) => Math.abs(s) - 0.8]).geometry;
+  const glass = buildRegion(kit.canopy, [(x, y, z, s) => 0.84 - Math.abs(s)]).geometry;
+  const frame = buildRegion(kit.canopy, [(x, y, z, s) => Math.abs(s) - 0.84]).geometry;
   parts.push({ geometry: frame, mat: 'lower', shell: true, name: 'canopy-frame' });
   parts.push({ geometry: glass, mat: 'glass', shell: true, renderOrder: 2, name: 'canopy-glass' });
 
@@ -77,10 +87,10 @@ const compose = () => {
   parts.push({ geometry: mergeGeos([kit.decal(crease), kit.decal(sill)]), mat: 'cyan', name: 'decal-cyan' });
 
   // 號碼 07：兩側車門、引擎蓋
-  const num = sdNumber('07', { h: 7.2, w: 4.0, gap: 1.1 });
+  const num = sdNumber('07', { h: 5.8, w: 3.5, gap: 0.9 });
   const hoodNum = sdNumber('07', { h: 6.2, w: 3.4, gap: 0.9 });
   parts.push({
-    geometry: mergeGeos([kit.decal(sideDecal(num, { x0: -15.5, y0: 16.9, zMin: 30 })), kit.decal(topDecal(hoodNum, { x0: 46.5, yMin: 20 }))]),
+    geometry: mergeGeos([kit.decal(sideDecal(num, { x0: -15.5, y0: 19.0, zMin: 30 })), kit.decal(topDecal(hoodNum, { x0: 46.5, yMin: 20 }))]),
     mat: 'black',
     name: 'decal-number',
   });

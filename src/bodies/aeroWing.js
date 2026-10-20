@@ -4,14 +4,22 @@
 import * as THREE from 'three';
 import data from './data/body-aero-wing.json';
 import { getPart } from '../parts/index.js';
-import { makeLoftKit, cachedBuild, namedMaterial, decalMaterial, buildMountTabs, buildRegion, buildWingParts, buildSplitter, sdNumber, sdConvexPolygon, sdBar, sideDecal, topDecal, mergeGeos, smoothstep } from './loft.js';
+import { makeLoftKit, cachedBuild, namedMaterial, decalMaterial, buildMountTabs, buildRegion, buildWingParts, buildSplitter, buildTailValance, sdNumber, sdConvexPolygon, sdBar, sideDecal, topDecal, mergeGeos, smoothstep } from './loft.js';
 
 /** @typedef {import('./types').BodyDef} BodyDef */
 /** @typedef {import('./loft.js').BodyPart} BodyPart */
 /** @typedef {import('./loft.js').KeepFn} KeepFn */
 
-/** @type {(x: number) => number} 深藏青下半車身的分色線（鼻部與尾部往上收） */
-const navyLine = (x) => 13 + 4.5 * smoothstep(40, 62, x) + 8 * smoothstep(-40, -56, x);
+/** @type {(x: number) => number} 深藏青下半車身的分色線（iter-34 拉高：中段約側面 1/3、往後升高成楔形，鼻部下半全藏青） */
+const navyLine = (x) => 14.2 - 0.07 * x + 7 * smoothstep(28, 58, x) + 6 * smoothstep(-34, -56, x);
+
+/**
+ * 前後葉子板隆起（iter-34）：蓋住輪拱切到肩部造成的 V 形缺口，也讓輪廓更有肌肉感
+ * @type {(x: number, az: number) => number}
+ */
+const bump = (x, az) =>
+  smoothstep(18, 30, az) * (5.5 * Math.exp(-(((x - 47) / 9) ** 2)) + 2.5 * Math.exp(-(((x - 34) / 7) ** 2)) + 2.0 * Math.exp(-(((x + 40) / 10) ** 2)));
+
 
 /** @type {THREE.Color} */
 const MAGENTA = new THREE.Color(0xe6007e);
@@ -20,7 +28,7 @@ const PURPLE = new THREE.Color(0x6a2bd9);
 
 /** @type {(x: number) => number[]} 漸層顏色（線性色彩空間）：前洋紅 → 後紫 */
 const gradient = (x) => {
-  const t = Math.min(1, Math.max(0, (24 - x) / 80));
+  const t = Math.min(1, Math.max(0, (58 - x) / 114));
   const c = MAGENTA.clone().lerp(PURPLE, t);
   return [c.r, c.g, c.b];
 };
@@ -45,7 +53,7 @@ const makeMaterials = () => ({
 
 /** @type {() => BodyPart[]} */
 const compose = () => {
-  const kit = makeLoftKit(data, { mode: 'smooth', sideZMin: 28 });
+  const kit = makeLoftKit(data, { mode: 'smooth', sideZMin: 28, bump });
   /** @type {BodyPart[]} */
   const parts = [];
   /** @type {KeepFn} */
@@ -73,18 +81,26 @@ const compose = () => {
   parts.push({ geometry: w.endplates, mat: 'navy2', shell: true, name: 'wing-endplates' });
   parts.push({ geometry: w.stays, mat: 'navy2', shell: true, name: 'wing-stays' });
   parts.push({ geometry: buildSplitter(data.splitter), mat: 'navy', shell: true, name: 'splitter' });
+  // 尾部裙板（iter-34）：尾段下緣往下延伸到 y 17.6（後導輪架最高約 16.8），封住從後方看進去的底盤
+  parts.push({ geometry: buildTailValance(kit.surf, { xFrom: -55.5, yBottom: 17.6 }), mat: 'navy2', shell: true, name: 'tail-valance' });
 
   // ---- 貼紙 ----
   // 洋紅 → 紫漸層弧線：前輪拱後方往後上掃到後葉子板，再沿後葉子板頂面往尾部
   /** @type {(x: number) => number} 弧線中心高度 */
-  const yc = (x) => 16.2 + (6 - x) * 0.25;
-  /** @type {(x: number) => number} 弧線寬度（往後漸寬） */
-  const wd = (x) => 0.5 + (2.4 * (6 - x)) / 33;
+  const yc = (x) => 17.4 + (5.5 - x) * 0.24;
+  /** @type {(x: number) => number} 弧線寬度（往後漸寬成大弧線，iter-34 加寬） */
+  const wd = (x) => 0.8 + (4.4 * (5.5 - x)) / 32.5;
   /** @type {KeepFn} */
-  const swoosh = (x, y, z) => Math.min(Math.abs(z) - 26, wd(x) / 2 - Math.abs(y - yc(x)), x + 27, 6 - x);
-  const fenderBar = sdBar(-27, 31.2, -55, 26.5, 1.8);
+  const swoosh = (x, y, z) => Math.min(Math.abs(z) - 26, wd(x) / 2 - Math.abs(y - yc(x)), x + 27, 5.5 - x);
+  const fenderBar = sdBar(-25, 31.8, -55, 26.2, 3.0);
+  // 引擎蓋兩側的漸層弧線（鼻部 → 座艙前）
+  const hoodBar = sdBar(57, 19.5, 27, 23.2, 2.2);
   parts.push({
-    geometry: mergeGeos([kit.decal(swoosh, { color: gradient }), kit.decal((x, y, z) => (y < 22 ? -1 : -fenderBar(x, Math.abs(z))), { color: gradient })]),
+    geometry: mergeGeos([
+      kit.decal(swoosh, { color: gradient }),
+      kit.decal((x, y, z) => (y < 22 ? -1 : -fenderBar(x, Math.abs(z))), { color: gradient }),
+      kit.decal((x, y, z) => (y < 19 ? -1 : -hoodBar(x, Math.abs(z))), { color: gradient }),
+    ]),
     mat: 'grad',
     name: 'decal-swoosh',
   });
@@ -105,7 +121,7 @@ const compose = () => {
   parts.push({
     geometry: mergeGeos([
       kit.decal(topDecal(sdNumber('88', { h: 5.4, w: 3.1, gap: 0.8 }), { x0: 56.8, yMin: 18 })),
-      kit.decal(sideDecal(sdNumber('88', { h: 6.8, w: 3.9, gap: 1.0 }), { x0: 12.5, y0: 16.7, zMin: 30 })),
+      kit.decal(sideDecal(sdNumber('88', { h: 6.8, w: 3.9, gap: 1.0 }), { x0: 12.5, y0: 16.9, zMin: 30 })),
     ]),
     mat: 'number',
     name: 'decal-number',
