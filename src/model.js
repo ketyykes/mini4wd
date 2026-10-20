@@ -119,7 +119,8 @@ function makeMaterials() {
   return {
     // iter-06：黑塑膠與橡膠胎粗糙度區分——底盤 ABS 半光（roughness 0.4＋薄清漆，邊緣有亮線），
     // 深色內層件平光（0.75），輪胎橡膠全霧（0.96，見 tire）
-    chassis: new THREE.MeshPhysicalMaterial({ color: 0x34373d, roughness: 0.4, metalness: 0.05, clearcoat: 0.3, clearcoatRoughness: 0.35 }),
+    // iter-34：底盤改深槍灰（ref_ma-chassis 為深灰成型件，純黑時肋條與倒角在棚拍光下看不出來）
+    chassis: new THREE.MeshPhysicalMaterial({ name: 'abs-chassis-gunmetal', color: 0x4a4e55, roughness: 0.45, metalness: 0.05, clearcoat: 0.3, clearcoatRoughness: 0.35 }),
     chassisDark: new THREE.MeshStandardMaterial({ color: 0x212226, roughness: 0.75, metalness: 0.0 }),
     body: new THREE.MeshPhysicalMaterial({ vertexColors: true, roughness: 0.28, metalness: 0.35, clearcoat: 1.0, clearcoatRoughness: 0.08 }),
     glass: new THREE.MeshPhysicalMaterial({ color: 0x15181d, roughness: 0.05, metalness: 0.2, clearcoat: 1.0 }),
@@ -154,12 +155,20 @@ function makeMaterials() {
 }
 
 /** 以俯視輪廓擠出板件（shape 在 x-z 平面，y 方向厚度） */
-function extrudeXZ(points, thickness, material, holes = []) {
+function extrudeXZ(points, thickness, material, holes = [], bevel = 0) {
   const shape = new THREE.Shape(points.map(([x, z]) => new THREE.Vector2(x, -z)));
   for (const h of holes) {
     shape.holes.push(new THREE.Path(h.map(([x, z]) => new THREE.Vector2(x, -z))));
   }
-  const geo = new THREE.ExtrudeGeometry(shape, { depth: thickness, bevelEnabled: false, curveSegments: 12 });
+  // iter-34：可選倒角（射出件邊緣圓角）；倒角往外長 bevel，厚度維持 thickness（底面在 0、頂面在 thickness）
+  let opts = { depth: thickness, bevelEnabled: false, curveSegments: 12 };
+  if (bevel > 0) {
+    opts = { depth: Math.max(0.01, thickness - 2 * bevel), bevelEnabled: true, bevelThickness: bevel, bevelSize: bevel * 0.8, bevelOffset: -bevel * 0.8, bevelSegments: 3, curveSegments: 12 };
+  }
+  const geo = new THREE.ExtrudeGeometry(shape, opts);
+  if (bevel > 0) {
+    geo.translate(0, 0, bevel);
+  }
   // ExtrudeGeometry 沿 +z 擠出：轉成沿 +y
   geo.rotateX(-Math.PI / 2);
   return new THREE.Mesh(geo, material);
@@ -878,9 +887,28 @@ function buildChassis(mats) {
   const cellTop = comp.battery.y + comp.battery.dia / 2;
   for (const sz of [-1, 1]) {
     const zc = sz * Math.abs(comp.battery.zs[0]);
-    const tub = extrudeXZ(roundedRect(0, zc, 50, 14.6, 3), 1.1, mats.chassis);
+    // iter-34：頂蓋邊緣倒角（reviewer：「平板加長條溝槽、像箱子」）＋外側弧形肋（ref_ma-chassis 電池段兩側的弧形骨架）
+    const tub = extrudeXZ(roundedRect(0, zc, 50, 14.6, 3), 1.3, mats.chassis, [], 0.45);
     tub.position.y = cellTop + 0.25;
     g.add(tub);
+    // 弧形肋：從頂蓋前端外側往內彎到中段、再彎回後端外側（俯視像括號），截面圓 0.55 mm
+    const arcCurve = new THREE.CatmullRomCurve3([
+      new THREE.Vector3(-23, cellTop + 1.7, zc + sz * 5.2),
+      new THREE.Vector3(-10, cellTop + 2.3, zc + sz * 2.0),
+      new THREE.Vector3(10, cellTop + 2.3, zc + sz * 2.0),
+      new THREE.Vector3(23, cellTop + 1.7, zc + sz * 5.2),
+    ]);
+    g.add(new THREE.Mesh(new THREE.TubeGeometry(arcCurve, 40, 0.55, 8, false), mats.chassis));
+    // 頂蓋上的 + / − 凹刻標示（電池方向，非文字商標）
+    const mark = new THREE.Mesh(new THREE.BoxGeometry(2.4, 0.2, 0.5), mats.chassisDark);
+    mark.position.set(17, cellTop + 1.6, zc - sz * 3);
+    g.add(mark);
+    const markV = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.2, 2.4), mats.chassisDark);
+    markV.position.set(17, cellTop + 1.6, zc - sz * 3);
+    g.add(markV);
+    const minus = new THREE.Mesh(new THREE.BoxGeometry(2.4, 0.2, 0.5), mats.chassisDark);
+    minus.position.set(-17, cellTop + 1.6, zc - sz * 3);
+    g.add(minus);
     // 頂蓋上的 4 道橫向補強肋與外緣立邊
     for (let k = 0; k < 4; k++) {
       const rib = new THREE.Mesh(new THREE.BoxGeometry(1.0, 0.8, 11.6), mats.chassis);
@@ -894,7 +922,7 @@ function buildChassis(mats) {
   // 框形齒輪蓋：罩住馬達上方，中央開窗露出罐身與端蓋，兩端往下接到齒輪箱側壁
   const motorTop = comp.motor.y + comp.motor.flat / 2;
   const coverHole = roundedRect(0, 0, 21, 15.4, 2.2);
-  const gearCover = extrudeXZ(roundedRect(0, 0, 30, 23, 3), 1.2, mats.chassis, [coverHole]);
+  const gearCover = extrudeXZ(roundedRect(0, 0, 30, 23, 3), 1.4, mats.chassis, [coverHole], 0.4);
   gearCover.position.y = motorTop + 0.6;
   g.add(gearCover);
   for (const sx of [-1, 1]) {
@@ -921,12 +949,18 @@ function buildChassis(mats) {
   }
   // 電源開關（switch 零件）：左側電池艙後端的滑動開關座＋撥桿
   const sw = SWITCH_POS;
-  const swBase = new THREE.Mesh(new THREE.BoxGeometry(7, 2.2, 5), mats.chassisDark);
-  swBase.position.set(sw.x, sw.y - 1.1, sw.z);
+  // iter-34：開關加大、撥桿改淺灰並加滑槽（reviewer：「開關看不出位置」）
+  const swBase = extrudeXZ(roundedRect(sw.x, sw.z, 9, 6, 1.2), 2.4, mats.chassisDark, [roundedRect(sw.x, sw.z, 6, 1.6, 0.7)], 0.3);
+  swBase.position.y = sw.y - 2.2;
   g.add(swBase);
-  const swKnob = new THREE.Mesh(new THREE.BoxGeometry(2.2, 1.6, 3), mats.motorCap);
-  swKnob.position.set(sw.x + 1.4, sw.y + 0.6, sw.z);
+  const swKnob = new THREE.Mesh(new THREE.BoxGeometry(2.4, 2.2, 3.6), mats.motorCap);
+  swKnob.position.set(sw.x + 1.3, sw.y + 0.9, sw.z);
   g.add(swKnob);
+  for (const dx of [-0.6, 0, 0.6]) {
+    const grip = new THREE.Mesh(new THREE.BoxGeometry(0.25, 0.3, 3.6), mats.chassisDark);
+    grip.position.set(sw.x + 1.3 + dx, sw.y + 2.05, sw.z);
+    g.add(grip);
+  }
   // 齒輪箱：外側壁（x-y 平面板，支撐中間齒輪軸與輪軸）＋頂蓋，底面保持開口
   for (const sx of [-1, 1]) {
     const x0 = sx * 15;
@@ -1050,10 +1084,7 @@ function buildChassis(mats) {
       web.position.set(sx > 0 ? 50 : -60, bumperY - 2.2, sz * 21.5 - 0.6);
       g.add(web);
     }
-    // 兩臂之間的 X 形補強（俯視可見）
-    for (const sz of [-1, 1]) {
-      g.add(beam(sx * 56, sz * 14, sx * (rx - 4), -sz * 8, 1.4, 1.6, bumperY + bt));
-    }
+    // iter-34：拿掉兩臂之間的 X 形補強（reviewer：「保桿上一根斜放的細桿，像多出來的零件」；上蓋已有安裝孔與邊框樑）
   }
   g.add(buildRearStay(mats, rx, rz, bumperY + bt, c.rearUpperRollerHeight_mm - 4.4));
   for (const r of rollerLayout(spec)) {
