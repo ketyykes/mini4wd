@@ -172,16 +172,27 @@ const buildGemCanopy = (surf) => {
   const glass = new THREE.BufferGeometry();
   glass.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
   glass.setAttribute('normal', new THREE.Float32BufferAttribute(nrm, 3));
-  // 窗框條：每條縱向稜線、每站的橫向折線
+  // 窗框條（iter-42）：只保留貼殼面的外圍一圈＋前後各一對柱（A 柱 / C 柱），線寬約 0.28 mm；其餘折面交界不畫線，稜線靠反光表現
   const bars = [];
-  for (let i = 0; i < rings.length - 1; i++) {
-    for (let k = 0; k < 6; k++) {
-      bars.push(barBetween(rings[i][k], rings[i + 1][k], 0.55, 0.35));
+  const last = rings.length - 1;
+  for (let i = 0; i < last; i++) {
+    bars.push(barBetween(rings[i][0], rings[i + 1][0], 0.3, 0.2));
+    bars.push(barBetween(rings[i][5], rings[i + 1][5], 0.3, 0.2));
+  }
+  // 前後端：沿罩子端緣把外圍框接起來
+  for (const i of [0, last]) {
+    for (let k = 0; k < 5; k++) {
+      bars.push(barBetween(rings[i][k], rings[i][k + 1], 0.28, 0.18));
     }
   }
-  for (const i of [1, 2, 3]) {
-    for (let k = 0; k < 5; k++) {
-      bars.push(barBetween(rings[i][k], rings[i][k + 1], 0.45, 0.3));
+  // A 柱（x ≈ 16）與 C 柱（x ≈ −8）：左右各一根，從殼面沿斜窗折線爬到平頂邊
+  for (const i of [1, 3]) {
+    for (const [a, b, c] of [
+      [0, 1, 2],
+      [5, 4, 3],
+    ]) {
+      bars.push(barBetween(rings[i][a], rings[i][b], 0.28, 0.18));
+      bars.push(barBetween(rings[i][b], rings[i][c], 0.28, 0.18));
     }
   }
   const xs = CANOPY.map((c) => c.x);
@@ -290,7 +301,7 @@ const makeMaterials = () => ({
   frame: namedMaterial('cockpit-dark', { color: 0x16181b, roughness: 0.5, side: THREE.DoubleSide }),
   // iter-40：茶色煙燻透明 PC（看得到座艙內裝），窗框條黑色
   glass: namedMaterial('pc-smoke-tint', { color: 0x5a4230, roughness: 0.04, metalness: 0.0, clearcoat: 1.0, clearcoatRoughness: 0.02, transparent: true, opacity: 0.45, depthWrite: false, side: THREE.DoubleSide }),
-  canopyFrame: namedMaterial('trim-black-gloss', { color: 0x0e0f11, roughness: 0.3, clearcoat: 0.6 }),
+  canopyFrame: namedMaterial('trim-smoke-gray', { color: 0x2e3238, roughness: 0.35, clearcoat: 0.5 }),
   seat: namedMaterial('cockpit-driver', { color: 0x3a3d44, roughness: 0.45, clearcoat: 0.4 }),
   tub: namedMaterial('cockpit-tub', { color: 0x141518, roughness: 0.8 }),
   recessWall: namedMaterial('trim-intake-wall', { color: 0x46494f, roughness: 0.7, side: THREE.DoubleSide }),
