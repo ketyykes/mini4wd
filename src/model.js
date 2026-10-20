@@ -865,10 +865,29 @@ function buildChassis(mats) {
     }
     const winY = y0 + 3.0;
     const winHoles = [-13, 0, 13].map((wx) => roundedRect(wx, winY, 9, 3.0, 1.0));
+    // iter-43：側框上緣下方一排減重圓孔（reviewer iter-42：「側面主框補上減重孔與卡榫」）
+    for (const hx of [-19.5, -6.5, 6.5, 19.5]) {
+      winHoles.push(circlePts(hx, topY - 1.6, 0.8, 12));
+    }
     const wallZ = sz > 0 ? 35.0 : -36.2;
     const sideWall = extrudeXY(prof, 1.2, mats.chassis, winHoles);
     sideWall.position.z = wallZ;
     g.add(sideWall);
+    // iter-43：上緣弧形外緣條（中段高、兩端順著輪拱降下，取代平直上緣的視覺）與兩個車殼卡榫凸片
+    {
+      const arcPts = [];
+      for (let k = 0; k <= 24; k++) {
+        const ax = -24 + (48 * k) / 24;
+        // 嵌在側框外緣上（側框 z 範圍約 35.0–36.2），只露出半圈當作弧形翻邊
+        arcPts.push(new THREE.Vector3(ax, topY - 0.3 - 1.4 * (ax / 24) ** 2, sz * 35.95));
+      }
+      g.add(new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(arcPts), 48, 0.5, 8, false), mats.chassis));
+      for (const tx of [-21, 21]) {
+        const tab = new THREE.Mesh(new THREE.BoxGeometry(3.2, 1.6, 1.0), mats.chassisBlack);
+        tab.position.set(tx, topY - 2.2, sz * 36.9);
+        g.add(tab);
+      }
+    }
     // 內凹窗底（深色，往內 0.8 mm）
     for (const wx of [-13, 0, 13]) {
       const back = extrudeXY(roundedRect(wx, winY, 9.4, 3.4, 1.1), 0.3, mats.chassisDark);
