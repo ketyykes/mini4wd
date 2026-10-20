@@ -295,6 +295,8 @@ export function createBodySurface(data, mode, step = 0.5, bump = null, extra = {
     const k = Math.max(0, (t - 0.35) / 0.65);
     return tuck * k * k;
   };
+  /** @type {((x: number, y: number) => number) | null} 側壁的內縮修飾（iter-37：側面斜向折線 / 導流雕塑），只作用在側壁面板 */
+  const sideIn = extra.sideIn ?? null;
   /** @type {string[]} */
   const ctrlKeys = ['yTop', 'zF', 'yF', 'halfW', 'yShoulder', 'yLow'];
   /** @type {Record<string, number[]>} xSmooth 用的單調 Hermite 斜率 */
@@ -390,8 +392,8 @@ export function createBodySurface(data, mode, step = 0.5, bump = null, extra = {
           y = lerp(c.yF, c.yShoulder, t);
         } else {
           const t = (u - b2) / (1 - b2);
-          z = c.halfW - tuckAt(t);
           y = lerp(c.yShoulder, c.yLow, t);
+          z = c.halfW - tuckAt(t) - (sideIn ? sideIn(x, y) : 0);
         }
         out[0] = bump ? y + bump(x, z) : y;
         out[1] = s < 0 ? -z : z;
@@ -400,7 +402,31 @@ export function createBodySurface(data, mode, step = 0.5, bump = null, extra = {
   }
 
   // smooth：halfProfile 32 點（z ≥ 0，由中線頂到下緣）
-  const st = data.stations.slice().sort((a, b) => a.x - b.x);
+  /**
+   * iter-37：可改用站位控制點直接做 Chaikin 3 次（不依弧長重取樣）。重取樣會讓第 i 點在各站對應到不同位置，
+   * 沿 x 內插時取樣點滑動，殼面反光出現波紋；Chaikin 點數與拓樸固定，第 i 點在每站都對應同一個幾何位置。
+   * @type {(p: any) => number[][]}
+   */
+  const chaikinProfile = (p) => {
+    let pts = [
+      [0, p.yTop],
+      [p.zF, p.yF],
+      [p.halfW, p.yShoulder],
+      [p.halfW, p.yLow],
+    ];
+    for (let it = 0; it < 3; it++) {
+      const next = [pts[0]];
+      for (let i = 0; i < pts.length - 1; i++) {
+        const [ax, ay] = pts[i];
+        const [bx, by] = pts[i + 1];
+        next.push([0.75 * ax + 0.25 * bx, 0.75 * ay + 0.25 * by], [0.25 * ax + 0.75 * bx, 0.25 * ay + 0.75 * by]);
+      }
+      next.push(pts[pts.length - 1]);
+      pts = next;
+    }
+    return pts;
+  };
+  const st = extra.chaikin ? params.map((p) => ({ x: p.x, halfProfile: chaikinProfile(p) })) : data.stations.slice().sort((a, b) => a.x - b.x);
   const nP = st[0].halfProfile.length;
   /** @type {number[][]} 每個取樣點沿 x 的 z、y 值 */
   const Z = [];
@@ -472,8 +498,10 @@ export function createBodySurface(data, mode, step = 0.5, bump = null, extra = {
       p3[0] = tmp[0];
       p3[1] = tmp[1];
       const cr = (a, b, c, d) => 0.5 * (2 * b + (-a + c) * tt + (2 * a - 5 * b + 4 * c - d) * tt * tt + (-a + 3 * b - 3 * c + d) * tt * tt * tt);
-      const z = cr(p0[0], p1[0], p2[0], p3[0]) - tuckAt((Math.abs(s) - 0.62) / 0.38);
-      out[0] = cr(p0[1], p1[1], p2[1], p3[1]) + (bump ? bump(x, Math.abs(z)) : 0);
+      const yRaw = cr(p0[1], p1[1], p2[1], p3[1]);
+      const sideW = sideIn ? smoothstep(0.5, 0.62, Math.abs(s)) * sideIn(x, yRaw) : 0;
+      const z = cr(p0[0], p1[0], p2[0], p3[0]) - tuckAt((Math.abs(s) - 0.62) / 0.38) - sideW;
+      out[0] = yRaw + (bump ? bump(x, Math.abs(z)) : 0);
       out[1] = s < 0 ? -z : z;
     },
   };
@@ -1129,11 +1157,12 @@ export function buildWingParts(wing) {
     new THREE.Vector3(tx, ty - 0.2, 0),
   ];
   const curve = new THREE.CatmullRomCurve3(ctrl, false, 'centripetal');
-  const [secZ, secN] = st.section;
   const staysGeos = [];
   for (const zc of [-st.z, st.z]) {
     // iter-36：支柱改細改扁（z 向厚 1 mm、沿流向寬約 2.5 → 1.8 mm 的倒角扁斷面），原設計斷面 secZ × secN 只當上限
-    staysGeos.push(sweepRect(curve, 64, Math.min(secZ / 2, 0.5), (t) => Math.min(secN / 2, lerp(1.25, 0.9, t)), zc));
+    // iter-37：板狀鵝頸支柱（側視寬 7 → 5 mm、厚 1.1 mm 的倒角板），從翼面上方吊掛
+    // 立柱段寬（3.5 → 2.6 mm 半寬），越過翼面上方的鉤段收窄到 1.3，避免鉤內側填成實心半圓
+    staysGeos.push(sweepRect(curve, 72, 0.55, (t) => (t < 0.5 ? lerp(3.5, 2.6, t / 0.5) : lerp(2.6, 1.3, smoothstep(0.5, 0.75, t))), zc));
   }
   return { wing: wingGeo, endplates, stays: mergeGeos(staysGeos) };
 }
@@ -1352,7 +1381,7 @@ const sideRailKeep = (x, y, z) => {
  * @type {(data: any, opt: { mode: 'linear' | 'smooth', step?: number, sideZMin?: number }) => any}
  */
 export function makeLoftKit(data, opt) {
-  const surf = createBodySurface(data, opt.mode, opt.step ?? 0.5, opt.bump ?? null, { tuck: opt.tuck ?? 0, xSmooth: opt.xSmooth ?? false });
+  const surf = createBodySurface(data, opt.mode, opt.step ?? 0.5, opt.bump ?? null, { tuck: opt.tuck ?? 0, xSmooth: opt.xSmooth ?? false, sideIn: opt.sideIn ?? null, chaikin: opt.chaikin ?? false });
   const t = data.wallThickness_mm;
   const canopy = data.canopy ? createCanopySurface(data.canopy, surf, opt.mode === 'smooth', 0.35) : null;
   const arches = (data.wheelArches ?? []).map(archKeep);

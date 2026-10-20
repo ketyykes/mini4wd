@@ -20,11 +20,29 @@ const RIB = 0.3;
  * @type {(x: number, az: number) => number}
  */
 const bump = (x, az) =>
-  smoothstep(18, 30, az) * 2.0 * (2.2 * Math.exp(-(((x - 46) / 13) ** 2)) + 1.5 * Math.exp(-(((x + 40) / 12) ** 2))) +
+  // iter-37：前葉子板隆起在 x > 52 之後淡出，鼻尖兩角不再往上翻成鏟子狀
+  smoothstep(18, 30, az) * 2.0 * (2.2 * Math.exp(-(((x - 46) / 13) ** 2)) * (1 - smoothstep(50, 62, x)) + 1.5 * Math.exp(-(((x + 40) / 12) ** 2))) +
   // iter-36：中線拱起 1.6 mm（x −40 ~ 46），車頂不再是平板
   1.6 * (1 - smoothstep(4, 24, az)) * smoothstep(-58, -40, x) * (1 - smoothstep(46, 60, x));
 
 /** @type {() => Record<string, THREE.Material>} */
+/**
+ * iter-37 鼻部站位：鼻尖往前下收（中線頂 16.5 → 15.6、x 62 處 18 → 17.4），其餘沿用設計資料
+ * @type {any}
+ */
+const SKELETON_DATA = {
+  ...data,
+  stationParams: data.stationParams.map((p) => {
+    if (p.x === 68) {
+      return { ...p, yTop: 15.6, yF: 15.5, yShoulder: 15.3 };
+    }
+    if (p.x === 62) {
+      return { ...p, yTop: 17.4, yF: 17.2 };
+    }
+    return p;
+  }),
+};
+
 const makeMaterials = () => ({
   smoke: namedMaterial('pc-smoke', { color: 0x3a3f44, roughness: 0.1, metalness: 0.0, clearcoat: 1.0, clearcoatRoughness: 0.05, transparent: true, opacity: 0.5, depthWrite: false }),
   smokeInner: namedMaterial('pc-smoke-inner', { color: 0x2c3034, roughness: 0.2, transparent: true, opacity: 0.3, depthWrite: false, side: THREE.BackSide }),
@@ -32,6 +50,8 @@ const makeMaterials = () => ({
   lime: namedMaterial('paint-lime', { color: 0xc8f31d, roughness: 0.4, emissive: 0xc8f31d, emissiveIntensity: 0.05, clearcoat: 0.5 }),
   limeInner: namedMaterial('paint-lime', { color: 0x9cbd16, roughness: 0.5, side: THREE.BackSide }),
   limeEdge: namedMaterial('paint-lime', { color: 0xb4dc18, roughness: 0.45, side: THREE.DoubleSide }),
+  // 開口切口面（殼厚 0.5 mm）：深橄欖色，和萊姆黃凸緣頂面區隔，看得出殼體厚度
+  cutFace: namedMaterial('pc-cut-edge', { color: 0x4a5410, roughness: 0.5, side: THREE.DoubleSide }),
   seat: namedMaterial('cockpit-dark', { color: 0x16181b, roughness: 0.6 }),
   glass: namedMaterial('pc-clear', { color: 0xc8d4e0, roughness: 0.02, transparent: true, opacity: 0.12, envMapIntensity: 0.35, depthWrite: false }),
   black: decalMaterial('decal-matte-black', { color: 0x111111, roughness: 0.8 }),
@@ -41,7 +61,7 @@ const makeMaterials = () => ({
 
 /** @type {() => BodyPart[]} */
 const compose = () => {
-  const kit = makeLoftKit(data, { mode: 'linear', sideZMin: 30, bump, tuck: 2.0, xSmooth: true });
+  const kit = makeLoftKit(SKELETON_DATA, { mode: 'linear', sideZMin: 30, bump, tuck: 2.0, xSmooth: true });
   const { surf } = kit;
   /** @type {BodyPart[]} */
   const parts = [];
@@ -77,7 +97,7 @@ const compose = () => {
   const innerSmoke = buildRegion(surf, [...kit.holes, (x, y, z, s) => -lime(x, y, z, s)], { offset: -kit.t }).geometry;
   parts.push({ geometry: innerLime, mat: 'limeInner', name: 'shell-inner-lime' });
   parts.push({ geometry: innerSmoke, mat: 'smokeInner', renderOrder: 1, name: 'shell-inner' });
-  parts.push({ geometry: st.rim, mat: 'limeEdge', name: 'shell-edge' });
+  parts.push({ geometry: st.rim, mat: 'cutFace', name: 'shell-edge' });
   parts.push({ geometry: mergeGeos([st.capFront, st.capRear]), mat: 'smoke', shell: true, renderOrder: 2, name: 'caps' });
   parts.push({ geometry: mergeGeos([st.capFrontIn, st.capRearIn]), mat: 'smokeInner', renderOrder: 1, name: 'cap-inner' });
 
@@ -149,7 +169,7 @@ export const skeletonBody = {
   name: '鏤空輕量款',
   material: 'PC',
   density_g_cm3: 1.2,
-  wallThickness_mm: data.wallThickness_mm,
+  wallThickness_mm: SKELETON_DATA.wallThickness_mm,
   mounts: MOUNTS.map((m) => ({ ...m })),
   build: cachedBuild(compose, makeMaterials),
   src: {

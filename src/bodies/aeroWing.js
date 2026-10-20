@@ -10,8 +10,8 @@ import { makeLoftKit, cachedBuild, namedMaterial, decalMaterial, buildMountTabs,
 /** @typedef {import('./loft.js').BodyPart} BodyPart */
 /** @typedef {import('./loft.js').KeepFn} KeepFn */
 
-/** @type {(x: number) => number} 深藏青下半車身的分色線（iter-34 拉高：中段約側面 1/3、往後升高成楔形，鼻部下半全藏青） */
-const navyLine = (x) => 14.2 - 0.07 * x + 7 * smoothstep(28, 58, x) + 6 * smoothstep(-34, -56, x);
+/** @type {(x: number) => number} 深藏青下半車身的分色線（iter-37 再拉高：側面下約 40% 為藏青、往後升高成楔形，鼻部下半全藏青） */
+const navyLine = (x) => 16.2 - 0.07 * x + 5 * smoothstep(28, 58, x) + 5 * smoothstep(-34, -56, x);
 
 /**
  * 前後葉子板隆起（iter-34）：蓋住輪拱切到肩部造成的 V 形缺口，也讓輪廓更有肌肉感
@@ -26,6 +26,12 @@ const bump = (x, az) =>
  * 本款放樣資料：D1 側導風孔改成有深度的凹腔（黑色腔體＋唇邊），其餘沿用設計資料
  * @type {any}
  */
+/**
+ * 側面導流雕塑（iter-37）：藏青分色線以下往內退 0.7 mm 形成往後上方的折面（只在兩輪拱之間）
+ * @type {(x: number, y: number) => number}
+ */
+const sideIn = (x, y) => 0.7 * smoothstep(navyLine(x) + 0.4, navyLine(x) - 0.4, y) * smoothstep(26, 21, x) * smoothstep(-27, -22, x);
+
 const AERO_DATA = {
   ...data,
   openings: [],
@@ -58,6 +64,7 @@ const makeMaterials = () => ({
   purple: decalMaterial('decal-purple', { color: 0x6a2bd9, roughness: 0.35, clearcoat: 0.6 }),
   magenta: decalMaterial('decal-magenta', { color: 0xe6007e, roughness: 0.35, clearcoat: 0.6 }),
   number: decalMaterial('decal-navy', { color: 0x1b2a5c, roughness: 0.5 }),
+  numberLight: decalMaterial('decal-pearl-white', { color: 0xf2f0ec, roughness: 0.4 }),
   lamp: decalMaterial('lamp-clear', { color: 0xe8f4ff, emissive: 0x9fc8ff, emissiveIntensity: 0.35, roughness: 0.05, clearcoat: 1.0 }),
   tail: decalMaterial('lamp-red', { color: 0xc4121c, emissive: 0x7a0008, emissiveIntensity: 0.4, roughness: 0.1, clearcoat: 1.0 }),
   mount: namedMaterial('abs-mount-black', { color: 0x222326, roughness: 0.6 }),
@@ -66,7 +73,7 @@ const makeMaterials = () => ({
 
 /** @type {() => BodyPart[]} */
 const compose = () => {
-  const kit = makeLoftKit(AERO_DATA, { mode: 'smooth', sideZMin: 28, bump, tuck: 2.2 });
+  const kit = makeLoftKit(AERO_DATA, { mode: 'smooth', sideZMin: 28, bump, tuck: 2.2, sideIn, chaikin: true });
   /** @type {BodyPart[]} */
   const parts = [];
   /** @type {KeepFn} */
@@ -171,10 +178,15 @@ const compose = () => {
   parts.push({
     geometry: mergeGeos([
       kit.decal(topDecal(sdNumber('88', { h: 5.4, w: 3.1, gap: 0.8 }), { x0: 56.8, yMin: 18 })),
-      kit.decal(sideDecal(sdNumber('88', { h: 6.8, w: 3.9, gap: 1.0 }), { x0: 12.5, y0: 16.9, zMin: 30 })),
     ]),
     mat: 'number',
     name: 'decal-number',
+  });
+  // 側面號碼：放在藏青下半部內，用珍珠白字
+  parts.push({
+    geometry: kit.decal(sideDecal(sdNumber('88', { h: 5.0, w: 2.9, gap: 0.8 }), { x0: 12, y0: 12.4, zMin: 30 })),
+    mat: 'numberLight',
+    name: 'decal-number-side',
   });
 
   // 頭燈（鼻部兩側斜切細燈）、尾燈（尾甲板末端）
