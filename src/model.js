@@ -787,6 +787,19 @@ function buildChassis(mats) {
   for (const sz of [-1, 1]) {
     g.add(screwHead(mats, 0, y0 + 0.5, sz * 12.0, 0.9).rotateX(Math.PI));
   }
+  // iter-36：底面馬達蓋（reviewer iter-35：「真實 MA 底面有馬達蓋」）：蓋住馬達窗的深色蓋板，開 3 × 4 的圓形散熱孔、周圍凸緣
+  {
+    /** @type {number[][][]} */
+    const vents = [];
+    for (let i = 0; i < 4; i++) {
+      for (let k = 0; k < 3; k++) {
+        vents.push(circlePts(-7.5 + i * 5, -5 + k * 5, 1.1, 12));
+      }
+    }
+    const motorCover = extrudeXZ(roundedRect(0, 0, 25.5, 19.5, 2.6), 0.9, mats.chassisDark, vents, 0.2);
+    motorCover.position.y = y0 + 0.08;
+    g.add(motorCover);
+  }
   // ---- 齒輪箱蓋（iter-03；iter-06 改成大檢視窗）----
   // iter-06：reviewer「齒輪只見兩小窗綠色」→ 齒輪箱底蓋改為外框＋大開口（不再用煙燻片），
   // 從底面依序看得到紫色小齒輪 → 綠色中間齒輪 → 粉紅輪軸齒輪與輪軸；開口周圍有凸起的窗框（第二層）與固定螺絲
@@ -794,12 +807,13 @@ function buildChassis(mats) {
     const cx = sx * (gt.counterX + 3);
     const winCx = sx * 30.25;
     const winCz = -4.5;
-    const winHole = roundedRect(winCx, winCz, 27.5, 14, 2.5);
+    // iter-36：reviewer iter-35「真實 MA 底面有齒輪蓋，不會直接看到齒輪」→ 底蓋改成封閉，只留一條小檢視槽
+    const winHole = roundedRect(winCx, winCz, 10, 3.4, 1.3);
     const cover = extrudeXZ(roundedRect(cx, -3.5, 32.6, 19.6, 3), 1.2, mats.chassisDark, [winHole]);
     cover.position.y = y0 + 0.05;
     g.add(cover);
     // 窗框（比底蓋高一層的細框，從底面看是一圈內縮的邊）
-    const frame = extrudeXZ(roundedRect(winCx, winCz, 29.5, 16, 3), 0.9, mats.chassis, [winHole]);
+    const frame = extrudeXZ(roundedRect(winCx, winCz, 12.5, 5.8, 2), 0.9, mats.chassis, [winHole]);
     frame.position.y = y0 + 1.25;
     g.add(frame);
     // 固定螺絲（四角）
@@ -924,18 +938,20 @@ function buildChassis(mats) {
     lip.position.set(0, cellTop + 1.35 + 0.8, zc + sz * 6.8);
     g.add(lip);
   }
-  // 框形齒輪蓋：罩住馬達上方，中央開窗露出罐身與端蓋，兩端往下接到齒輪箱側壁
+  // iter-36：馬達上方改成兩端固定扣（reviewer iter-35：「MA 參考圖馬達從上方完整露出，本模型用一片橋板蓋住、只開小窗」）：
+  // 罐身中段完全露出，只在兩端（罐口與端蓋處）各一道跨過馬達的扣條，扣條兩端往下接電池艙內側壁並有螺絲
   const motorTop = comp.motor.y + comp.motor.flat / 2;
-  const coverHole = roundedRect(0, 0, 21, 15.4, 2.2);
-  const gearCover = extrudeXZ(roundedRect(0, 0, 30, 23, 3), 1.4, mats.chassis, [coverHole], 0.4);
-  gearCover.position.y = motorTop + 0.6;
-  g.add(gearCover);
   for (const sx of [-1, 1]) {
-    // 齒輪蓋兩端的卡扣舌片
-    const tab = new THREE.Mesh(new THREE.BoxGeometry(2.2, 2.4, 9), mats.chassis);
-    tab.position.set(sx * 15.6, motorTop - 0.2, 0);
-    g.add(tab);
-    g.add(screwHead(mats, sx * 12.4, motorTop + 1.8, 9.2 * sx, 1.1));
+    const clipX = sx * 12.2;
+    const clip = extrudeXZ(roundedRect(clipX, 0, 3.0, 23, 1.0), 1.2, mats.chassis, [], 0.3);
+    clip.position.y = motorTop + 0.3;
+    g.add(clip);
+    for (const sz of [-1, 1]) {
+      const leg = new THREE.Mesh(new THREE.BoxGeometry(3.0, motorTop + 0.3 - (y0 + t), 1.6), mats.chassis);
+      leg.position.set(clipX, (motorTop + 0.3 + y0 + t) / 2, sz * 11.0);
+      g.add(leg);
+      g.add(screwHead(mats, clipX, motorTop + 1.5, sz * 9.6, 0.8));
+    }
   }
   // 車殼卡榫柱（chassis-midship.bodyMounts）：立柱＋頂端卡榫孔座，車殼的吊耳扣在這裡
   for (const mnt of BODY_MOUNTS) {
