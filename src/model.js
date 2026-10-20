@@ -122,6 +122,8 @@ function makeMaterials() {
     // iter-34：底盤改深槍灰（ref_ma-chassis 為深灰成型件，純黑時肋條與倒角在棚拍光下看不出來）
     chassis: new THREE.MeshPhysicalMaterial({ name: 'abs-chassis-gunmetal', color: 0x4a4e55, roughness: 0.45, metalness: 0.05, clearcoat: 0.3, clearcoatRoughness: 0.35 }),
     chassisDark: new THREE.MeshStandardMaterial({ color: 0x212226, roughness: 0.75, metalness: 0.0 }),
+    // iter-42：黑色 ABS 分件（電池艙頂蓋、齒輪箱外殼、馬達固定扣），和深槍灰主框做兩色分件（reviewer iter-41：「全部同一種深灰」）
+    chassisBlack: new THREE.MeshPhysicalMaterial({ name: 'abs-chassis-black', color: 0x18191c, roughness: 0.42, metalness: 0.0, clearcoat: 0.35, clearcoatRoughness: 0.3 }),
     body: new THREE.MeshPhysicalMaterial({ vertexColors: true, roughness: 0.28, metalness: 0.35, clearcoat: 1.0, clearcoatRoughness: 0.08 }),
     glass: new THREE.MeshPhysicalMaterial({ color: 0x15181d, roughness: 0.05, metalness: 0.2, clearcoat: 1.0 }),
     // iter-03：輪胎橡膠粗糙感（程序化雜訊 bump＋roughness 貼圖），顏色由死黑提亮到深炭灰
@@ -907,7 +909,7 @@ function buildChassis(mats) {
   for (const sz of [-1, 1]) {
     const zc = sz * Math.abs(comp.battery.zs[0]);
     // iter-34：頂蓋邊緣倒角（reviewer：「平板加長條溝槽、像箱子」）＋外側弧形肋（ref_ma-chassis 電池段兩側的弧形骨架）
-    const tub = extrudeXZ(roundedRect(0, zc, 50, 14.6, 3), 1.3, mats.chassis, [], 0.45);
+    const tub = extrudeXZ(roundedRect(0, zc, 50, 14.6, 3), 1.3, mats.chassisBlack, [], 0.45);
     tub.position.y = cellTop + 0.25;
     g.add(tub);
     // 弧形肋：從頂蓋前端外側往內彎到中段、再彎回後端外側（俯視像括號），截面圓 0.55 mm
@@ -917,7 +919,7 @@ function buildChassis(mats) {
       new THREE.Vector3(10, cellTop + 2.3, zc + sz * 2.0),
       new THREE.Vector3(23, cellTop + 1.7, zc + sz * 5.2),
     ]);
-    g.add(new THREE.Mesh(new THREE.TubeGeometry(arcCurve, 40, 0.55, 8, false), mats.chassis));
+    g.add(new THREE.Mesh(new THREE.TubeGeometry(arcCurve, 40, 0.55, 8, false), mats.chassisBlack));
     // 頂蓋上的 + / − 凹刻標示（電池方向，非文字商標）
     const mark = new THREE.Mesh(new THREE.BoxGeometry(2.4, 0.2, 0.5), mats.chassisDark);
     mark.position.set(17, cellTop + 1.6, zc - sz * 3);
@@ -930,11 +932,11 @@ function buildChassis(mats) {
     g.add(minus);
     // 頂蓋上的 4 道橫向補強肋與外緣立邊
     for (let k = 0; k < 4; k++) {
-      const rib = new THREE.Mesh(new THREE.BoxGeometry(1.0, 0.8, 11.6), mats.chassis);
+      const rib = new THREE.Mesh(new THREE.BoxGeometry(1.0, 0.8, 11.6), mats.chassisBlack);
       rib.position.set(-15 + k * 10, cellTop + 1.35 + 0.4, zc);
       g.add(rib);
     }
-    const lip = new THREE.Mesh(new THREE.BoxGeometry(48, 1.6, 1.0), mats.chassis);
+    const lip = new THREE.Mesh(new THREE.BoxGeometry(48, 1.6, 1.0), mats.chassisBlack);
     lip.position.set(0, cellTop + 1.35 + 0.8, zc + sz * 6.8);
     g.add(lip);
   }
@@ -943,11 +945,11 @@ function buildChassis(mats) {
   const motorTop = comp.motor.y + comp.motor.flat / 2;
   for (const sx of [-1, 1]) {
     const clipX = sx * 12.2;
-    const clip = extrudeXZ(roundedRect(clipX, 0, 3.0, 23, 1.0), 1.2, mats.chassis, [], 0.3);
+    const clip = extrudeXZ(roundedRect(clipX, 0, 3.0, 23, 1.0), 1.2, mats.chassisBlack, [], 0.3);
     clip.position.y = motorTop + 0.3;
     g.add(clip);
     for (const sz of [-1, 1]) {
-      const leg = new THREE.Mesh(new THREE.BoxGeometry(3.0, motorTop + 0.3 - (y0 + t), 1.6), mats.chassis);
+      const leg = new THREE.Mesh(new THREE.BoxGeometry(3.0, motorTop + 0.3 - (y0 + t), 1.6), mats.chassisBlack);
       leg.position.set(clipX, (motorTop + 0.3 + y0 + t) / 2, sz * 11.0);
       g.add(leg);
       g.add(screwHead(mats, clipX, motorTop + 1.5, sz * 9.6, 0.8));
@@ -1201,12 +1203,12 @@ function buildChassis(mats) {
     const winC = [sx * (gt.counterX + hw) / 2, (axleY + gt.counterY) / 2];
     // roundedRect 回傳 [x, 第二座標]，這裡第二座標當作 y（x-y 平面板）
     const win = roundedRect(winC[0], winC[1], 21, 11, 2.5);
-    const nearWall = extrudeXY(nearOrdered, 1.2, mats.chassis, [sx > 0 ? win : win.slice().reverse()]);
+    const nearWall = extrudeXY(nearOrdered, 1.2, mats.chassisBlack, [sx > 0 ? win : win.slice().reverse()]);
     nearWall.position.z = -10.6;
     g.add(nearWall);
     // 槽窗開在齒輪正上方（輪軸齒輪與中間齒輪小齒在 z ≈ −5 ~ −8），從上方看得到齒輪
     const hoodHole = roundedRect(sx * (gt.counterX + hw) / 2, -5.6, 22, 7.4, 2.2);
-    const hood = extrudeXZ(roundedRect(sx * (Math.abs(gx0) + Math.abs(gx1)) / 2, -2.7, Math.abs(gx1 - gx0), 16.2, 2.2), 0.8, mats.chassis, [hoodHole], 0.25);
+    const hood = extrudeXZ(roundedRect(sx * (Math.abs(gx0) + Math.abs(gx1)) / 2, -2.7, Math.abs(gx1 - gx0), 16.2, 2.2), 0.8, mats.chassisBlack, [hoodHole], 0.25);
     hood.position.y = 19.6;
     g.add(hood);
     for (const sz of [-1, 1]) {
