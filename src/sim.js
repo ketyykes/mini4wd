@@ -110,15 +110,8 @@ export function createCar(env, opt = {}) {
   const massKg = asm.mass_g / 1000;
   const com = { x: asm.com_mm.x * MM, y: asm.com_mm.y * MM, z: asm.com_mm.z * MM };
 
-  // 慣性矩以 150×30×90 mm 均質方塊估算（推估）
-  const Lx = 0.15;
-  const Ly = 0.03;
-  const Lz = 0.09;
-  const inertia = {
-    x: (massKg / 12) * (Ly * Ly + Lz * Lz),
-    y: (massKg / 12) * (Lx * Lx + Lz * Lz),
-    z: (massKg / 12) * (Lx * Lx + Ly * Ly),
-  };
+  // 慣性矩由零件組裝推導（assembly.js：零件質點＋底盤本體與車殼的外框方塊，iter-33）
+  const inertia = asm.inertia_kgm2;
 
   const bodyDesc = RAPIER.RigidBodyDesc.dynamic()
     .setTranslation(start.x, 0.0005, start.z)

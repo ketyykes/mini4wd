@@ -189,6 +189,33 @@ export function assemble(config) {
   }
   const com_mm = { x: mom.x / mass_g, y: mom.y / mass_g, z: mom.z / mass_g };
 
+  // ---- 慣性矩（主軸近似，忽略慣性積）：各零件以質點計（平行軸定理），
+  // 底盤本體與車殼另加自身外框的均質方塊慣性（推估：兩者是分佈最廣的零件）----
+  /** @type {(m: number, b: { min: Vec3, max: Vec3 }) => Vec3} 均質方塊對自身中心的慣性（g·mm²） */
+  const boxInertia = (m, b) => {
+    const lx = b.max.x - b.min.x;
+    const ly = b.max.y - b.min.y;
+    const lz = b.max.z - b.min.z;
+    return { x: (m / 12) * (ly * ly + lz * lz), y: (m / 12) * (lx * lx + lz * lz), z: (m / 12) * (lx * lx + ly * ly) };
+  };
+  const inertia = { x: 0, y: 0, z: 0 };
+  for (const q of parts) {
+    const dx = q.pos.x - com_mm.x;
+    const dy = q.pos.y - com_mm.y;
+    const dz = q.pos.z - com_mm.z;
+    inertia.x += q.mass_g * (dy * dy + dz * dz);
+    inertia.y += q.mass_g * (dx * dx + dz * dz);
+    inertia.z += q.mass_g * (dx * dx + dy * dy);
+  }
+  for (const [m, b] of [[ch.mass_g, ch.bbox_mm], [bodyProps.mass_g, bodyProps.bbox_mm]]) {
+    const bi = boxInertia(m, b);
+    inertia.x += bi.x;
+    inertia.y += bi.y;
+    inertia.z += bi.z;
+  }
+  // g·mm² → kg·m²
+  const inertia_kgm2 = { x: inertia.x * 1e-9, y: inertia.y * 1e-9, z: inertia.z * 1e-9 };
+
   // ---- 外框（車體座標）：底盤本體、輪胎、導輪、車殼的聯集 ----
   const R = p.wheels.diameter_mm / 2;
   const halfTire = p.wheels.width_mm / 2;
@@ -212,6 +239,8 @@ export function assemble(config) {
     }
   }
   const bbox_mm = { min, max, size: { x: max.x - min.x, y: max.y - min.y, z: max.z - min.z } };
+  // 迎風面積（SPEC 1.11）：外框寬 × 高 × 填充比例
+  const frontalArea_mm2 = bbox_mm.size.z * bbox_mm.size.y * globalSpec.aero.frontalAreaFill;
   // 離地高度：輪胎以外的最低點（底盤本體、車殼、導輪）
   const groundClearance_mm = Math.min(...boxes.filter((_, i) => i < 2).map((b) => b.min.y), ...rollers.map((r) => r.y - r.h / 2 + lift));
 
@@ -223,11 +252,13 @@ export function assemble(config) {
     com_mm,
     bbox_mm,
     groundClearance_mm,
+    frontalArea_mm2,
     lift_mm: lift,
     gearRatio: p.gear.ratio,
     driveType: ch.driveType,
     spec: s,
-    P: deriveParams(s, mass_g),
+    inertia_kgm2,
+    P: deriveParams({ ...s, frontalArea_mm2 }, mass_g),
     layout: {
       wheels: wheels.map((w) => ({ ...lifted(w, lift), id: w.id, r: R, width: p.wheels.width_mm })),
       rollers: rollers.map((r) => ({ ...r, y: r.y + lift })),

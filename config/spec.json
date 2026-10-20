@@ -44,8 +44,8 @@
     "airDensity_src": "SPEC 1.11",
     "dragCoeff": 0.6,
     "dragCoeff_src": "SPEC 1.11 / 1.12",
-    "frontalArea_mm2": 2600,
-    "frontalArea_mm2_src": "SPEC 1.11 / 1.12：2.6×10⁻³ m²"
+    "frontalAreaFill": 0.7,
+    "frontalAreaFill_src": "SPEC 1.11：迎風面積 = 外框寬 × 高 × 0.7（扣掉車殼斜面與輪間空隙，推估）；iter-33 起寬、高由組裝外框推導（MA 參考 97 × 38 × 0.7 ≈ 2.6×10⁻³ m²）"
   },
   "track": {
     "laneWidth_mm": 115.0,
