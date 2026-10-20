@@ -2022,3 +2022,9 @@
 ### 執行 / 驗證
 - 基準測試：P01 P02 P03 P05 P06 P07 P10 通過；P04 P08 P09 P11–P16 失敗（模組化 API 尚未實作，預期中）→ **7/16，測試分 21.88**。
 - 截圖：`renders/iter-30_legacy_{side,top,front34,bottom,track,rear34}.png`（`legacy` = 第一階段車殼，暫時保留當基準，之後會被原創車殼取代並刪除）。本輪沒有 `chassis_front34`。
+- 外觀（reviewer，附錨點，`shared/reviews/iter-30/REVIEW.md`）：錨點 7/6/5/6 = 6.00；本輪 legacy 7/6/5/6 = **6.00**（和錨點同一套程式碼，逐張無差異）。
+  主要扣分：車殼有品牌字樣與徽章、仿市售車款（車殼設計 5）；缺 `chassis_front34`；保桿 / 導輪架缺孔位與肋、看不到開關與培林；材質偏 CG（還沒有 Blender 圖）。
+- **總分 = 7/16 × 50 + 6.00 × 5 = 21.88 + 30.00 = 51.88**（基準）。
+
+### 迭代決策
+- 第 0 輪是基準，保留。下一輪（iter-31）：模組化核心（parts / assembly / regulation / bodies、sim 與 powertrain 改為每台車各自參數）＋移除品牌字樣＋`chassis_front34` 截圖。
