@@ -149,6 +149,8 @@ function makeMaterials() {
     // iter-14：導輪本體改黑色塑膠（ref side-high／front34／ma-chassis 素組為黑色塑膠導輪；reviewer「導輪雙層灰色視覺份量重」）；
     //   尺寸 13 mm 為 SPEC 不改。只換導輪本體，電池艙倒角條等沿用 roller 的部件不動
     rollerBody: new THREE.MeshPhysicalMaterial({ color: 0x0e0f12, roughness: 0.38, metalness: 0.0, clearcoat: 0.35, clearcoatRoughness: 0.3, side: THREE.DoubleSide }),
+    // iter-35：鋁合金導輪（roller 零件 finish = 'aluminum'，例如 roller-19）：車削鋁的亮銀色
+    rollerAlu: new THREE.MeshPhysicalMaterial({ name: 'metal-roller-aluminum', color: 0xc4c9d0, roughness: 0.28, metalness: 0.95, side: THREE.DoubleSide }),
     screw: new THREE.MeshStandardMaterial({ color: 0xd8d8d8, roughness: 0.25, metalness: 1.0 }),
     light: new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: 0x99aabb, emissiveIntensity: 0.3, roughness: 0.2 }),
   };
@@ -551,7 +553,8 @@ const buildRoller = (mats, r) => {
     [brgR, -H + recessDepth],
   ];
   const bodyGeo = new THREE.LatheGeometry(prof.map(([a, b]) => new THREE.Vector2(a, b)).reverse(), 48);
-  const body = new THREE.Mesh(bodyGeo, mats.rollerBody);
+  // 導輪本體材質依零件：塑膠（黑）或鋁合金（亮銀）
+  const body = new THREE.Mesh(bodyGeo, spec.chassis.rollerFinish === 'aluminum' ? mats.rollerAlu : mats.rollerBody);
   g.add(body);
   for (const sy of [-1, 1]) {
     const faceRot = sy > 0 ? -Math.PI / 2 : Math.PI / 2;

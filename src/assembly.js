@@ -87,6 +87,7 @@ function buildSpec(p) {
       plateThickness_mm: ch.plateThickness_mm,
       rollerDiameter_mm: ro.diameter_mm,
       rollerHeight_mm: ro.height_mm,
+      rollerFinish: ro.finish,
       rollerCenterHeight_mm: fs.rollerY_mm,
       frontRollerX_mm: fs.rollerX_mm,
       frontRollerZ_mm: fs.rollerZ_mm,

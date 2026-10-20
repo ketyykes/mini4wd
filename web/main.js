@@ -117,9 +117,10 @@ sun.shadow.radius = 3;
 scene.add(sun);
 scene.add(sun.target);
 
-// ?body=<id> 換車殼（預設依 configs/default.json）；?body=none 只看底盤（chassis 視角）
+// ?body=<id> 換車殼（預設依組裝設定）；?body=none 只看底盤（chassis 視角）
 const bodyParam = params.get('body');
-const config = loadConfig('default');
+// ?config=<名稱> 換整份組裝設定（configs/*.json，例如 technical = 4:1 齒輪＋19 mm 導輪）
+const config = loadConfig(params.get('config') ?? 'default');
 if (bodyParam && bodyParam !== 'none') {
   config.body = bodyParam;
 }
