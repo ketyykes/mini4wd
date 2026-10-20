@@ -12,14 +12,17 @@ import { makeLoftKit, cachedBuild, namedMaterial, decalMaterial, buildMountTabs,
 
 /** @type {number} 開口 / 輪拱 / 下緣周圍的萊姆黃補強邊寬度（DESIGN.md §3.4：1.2 mm） */
 const BAND = 1.2;
-/** @type {number} 補強肋凸出殼面的高度（mm，iter-35 reviewer：要有厚度） */
-const RIB = 0.7;
+/** @type {number} 補強凸緣高出殼面的高度（mm）：iter-36 改成貼著殼面的薄平凸緣（約 1.2 寬 × 0.3 高），不要像圓管 */
+const RIB = 0.3;
 
 /**
- * 葉子板隆起（iter-34）：讓輪拱切口留在側壁、不再切過肩部斜面（切過斜面會留下細長殼片與不規則補強邊）
+ * 葉子板隆起（iter-34）：讓輪拱切口留在側壁、不再切過肩部斜面；iter-36 改寬緩（σ 13 mm），補強邊沿葉子板不再起伏
  * @type {(x: number, az: number) => number}
  */
-const bump = (x, az) => smoothstep(18, 30, az) * 2.0 * (2.5 * Math.exp(-(((x - 48) / 9) ** 2)) + 1.5 * Math.exp(-(((x + 40) / 10) ** 2)));
+const bump = (x, az) =>
+  smoothstep(18, 30, az) * 2.0 * (2.2 * Math.exp(-(((x - 46) / 13) ** 2)) + 1.5 * Math.exp(-(((x + 40) / 12) ** 2))) +
+  // iter-36：中線拱起 1.6 mm（x −40 ~ 46），車頂不再是平板
+  1.6 * (1 - smoothstep(4, 24, az)) * smoothstep(-58, -40, x) * (1 - smoothstep(46, 60, x));
 
 /** @type {() => Record<string, THREE.Material>} */
 const makeMaterials = () => ({
@@ -38,7 +41,7 @@ const makeMaterials = () => ({
 
 /** @type {() => BodyPart[]} */
 const compose = () => {
-  const kit = makeLoftKit(data, { mode: 'linear', sideZMin: 30, bump, tuck: 2.0 });
+  const kit = makeLoftKit(data, { mode: 'linear', sideZMin: 30, bump, tuck: 2.0, xSmooth: true });
   const { surf } = kit;
   /** @type {BodyPart[]} */
   const parts = [];
@@ -61,7 +64,7 @@ const compose = () => {
   /** @type {KeepFn} */
   const cab = (x, y, z) => kit.underCanopy(x, z);
 
-  // 萊姆黃補強肋（iter-35）：沿開口、輪拱、下緣與肩稜凸起 RIB mm，側面用牆面接回殼面，看得出厚度
+  // 萊姆黃補強凸緣：沿開口、輪拱、下緣與肩稜，平頂、高出殼面 RIB mm，側面用窄牆接回殼面
   const limeRib = buildRegion(surf, [...kit.holes, lime], { offset: RIB, smoothOffset: true });
   parts.push({ geometry: limeRib.geometry, mat: 'lime', shell: true, name: 'shell-lime-frame' });
   parts.push({ geometry: buildRim(limeRib, 0, RIB), mat: 'limeEdge', name: 'shell-lime-rib-wall' });

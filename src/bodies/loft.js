@@ -526,7 +526,8 @@ export function createCanopySurface(canopy, body, smooth, step = 0.5) {
   const at = (x) => {
     const { k, t, h } = bracket(sx, x);
     const o = {};
-    if (smooth) {
+    // iter-36：梯形罩也用 Hermite 沿 x 平滑（只保留平頂與斜窗交界的稜線），消除站位處的 low-poly 折面
+    if (smooth || canopy.section === 'trapezoid') {
       const hb = hermiteBasis(t);
       for (const key of keys) {
         o[key] = hb[0] * st[k][key] + hb[1] * h * slopes[key][k] + hb[2] * st[k + 1][key] + hb[3] * h * slopes[key][k + 1];
@@ -1121,17 +1122,18 @@ export function buildWingParts(wing) {
     new THREE.Vector3(bx, by - 0.6, 0),
     new THREE.Vector3(bx - 0.4, by + 7, 0),
     new THREE.Vector3(bx - 1.4, ty - 1.0, 0),
-    new THREE.Vector3(bx - 3.0, ty + 3.6, 0),
-    new THREE.Vector3(bx - 6.5, ty + 5.2, 0),
-    new THREE.Vector3(tx + 2.2, ty + 4.0, 0),
-    new THREE.Vector3(tx + 0.4, ty + 1.6, 0),
+    new THREE.Vector3(bx - 3.0, ty + 2.6, 0),
+    new THREE.Vector3(bx - 6.5, ty + 3.6, 0),
+    new THREE.Vector3(tx + 2.2, ty + 2.8, 0),
+    new THREE.Vector3(tx + 0.4, ty + 1.2, 0),
     new THREE.Vector3(tx, ty - 0.2, 0),
   ];
   const curve = new THREE.CatmullRomCurve3(ctrl, false, 'centripetal');
   const [secZ, secN] = st.section;
   const staysGeos = [];
   for (const zc of [-st.z, st.z]) {
-    staysGeos.push(sweepRect(curve, 48, secZ / 2, (t) => (secN / 2) * lerp(1, 0.36, Math.min(1, t * 1.25)), zc));
+    // iter-36：支柱改細改扁（z 向厚 1 mm、沿流向寬約 2.5 → 1.8 mm 的倒角扁斷面），原設計斷面 secZ × secN 只當上限
+    staysGeos.push(sweepRect(curve, 64, Math.min(secZ / 2, 0.5), (t) => Math.min(secN / 2, lerp(1.25, 0.9, t)), zc));
   }
   return { wing: wingGeo, endplates, stays: mergeGeos(staysGeos) };
 }

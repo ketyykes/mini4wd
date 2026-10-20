@@ -14,26 +14,26 @@ const lowerLine = (x) => 15.2 + 0.05 * x + 7 * smoothstep(-42, -62, x);
 
 /**
  * iter-35 站位表（以 DESIGN.md §3.2 為底修改；reviewer：側視要是「從鼻尖一路往後拉高」的單一斜線，不要馬鞍形）
- * - 中線頂 yTop、肩稜 yF 從前到後單調上升（yF 一路高於 yTop → 全長谷形引擎蓋）
+ * - 中線頂 yTop、肩稜 yF 從前到後單調上升；iter-36 中線再壓低，比肩稜低約 3 mm → 明顯的谷形引擎蓋與肩稜折線
  * - 最寬處 yShoulder 在前輪拱處 ≥ 28.6（蓋住 R15 輪拱頂 28），中段不再下凹
  * - 鼻尖、半寬、下緣與原設計相同
  * @type {{ x: number, yTop: number, zF: number, yF: number, halfW: number, yShoulder: number, yLow: number }[]}
  */
 const STATIONS = [
   [72, 16, 12, 16, 20, 15.5, 15],
-  [66, 17.5, 20, 18.5, 30, 16.8, 15],
-  [58, 20.5, 24, 23, 34, 20.5, 15],
-  [50, 23.5, 28, 27.3, 37, 25.5, 13],
-  [40, 25.8, 30, 30, 39, 29, 10],
-  [30, 27.4, 30, 30.3, 39, 28, 8],
-  [15, 29.2, 30, 30.7, 38, 27.3, 7],
-  [0, 30.2, 30, 31, 37.5, 27.3, 7],
-  [-15, 30.7, 30, 31.3, 38, 27.6, 7],
-  [-30, 31, 30, 31.6, 39, 28.3, 8],
-  [-40, 31.2, 30, 31.9, 39.5, 29.6, 10],
-  [-50, 31.3, 29, 32.1, 38, 29.4, 17],
-  [-58, 31.4, 27, 32.3, 35, 29.2, 18],
-  [-64, 32.8, 25, 32.9, 32, 29.6, 24],
+  [66, 17.2, 20, 18.5, 30, 16.8, 15],
+  [58, 19.8, 24, 23, 34, 20.5, 15],
+  [50, 22.6, 28, 27.3, 37, 25.5, 13],
+  [40, 25, 30, 30, 39, 29, 10],
+  [30, 27, 30, 30.3, 39, 28, 8],
+  [15, 28, 30, 30.7, 38, 27.3, 7],
+  [0, 28.2, 30, 31, 37.5, 27.3, 7],
+  [-15, 28.6, 30, 31.3, 38, 27.6, 7],
+  [-30, 29, 30, 31.6, 39, 28.3, 8],
+  [-40, 29.4, 30, 31.9, 39.5, 29.6, 10],
+  [-50, 29.8, 29, 32.1, 38, 29.4, 17],
+  [-58, 30.4, 27, 32.3, 35, 29.2, 18],
+  [-64, 32.4, 25, 32.9, 32, 29.6, 24],
 ].map(([x, yTop, zF, yF, halfW, yShoulder, yLow]) => ({ x, yTop, zF, yF, halfW, yShoulder, yLow }));
 
 /** @type {any} 本款實際放樣用的資料（站位表換成 iter-35 版本，其餘沿用設計資料） */
@@ -74,13 +74,23 @@ const buildSlat = (surf, z, x0, x1, depth) => {
 };
 
 /**
- * 鼻部下方的尖牙（往前下方的三角形，厚 1.4 mm，比下唇更往前突出）
- * @type {(zc: number) => THREE.BufferGeometry}
+ * 立板（x–y 平面的多邊形，沿 z 給厚度）：鼻部下唇導流片、尾部擴散器鰭片
+ * @type {(pts: number[][], zc: number, thick: number) => THREE.BufferGeometry}
  */
-const buildFang = (zc) => {
-  const shape = new THREE.Shape([new THREE.Vector2(62, 15.4), new THREE.Vector2(73.4, 15.4), new THREE.Vector2(72.6, 11.2)]);
-  const g = new THREE.ExtrudeGeometry(shape, { depth: 1.4, bevelEnabled: false });
-  g.translate(0, 0, zc - 0.7);
+const buildFin = (pts, zc, thick) => {
+  const shape = new THREE.Shape(pts.map(([x, y]) => new THREE.Vector2(x, y)));
+  const g = new THREE.ExtrudeGeometry(shape, { depth: thick, bevelEnabled: false });
+  g.translate(0, 0, zc - thick / 2);
+  return g;
+};
+
+/**
+ * 盒子（尾燈燈殼、號碼牌槽）
+ * @type {(x0: number, x1: number, y0: number, y1: number, z0: number, z1: number) => THREE.BufferGeometry}
+ */
+const buildBox = (x0, x1, y0, y1, z0, z1) => {
+  const g = new THREE.BoxGeometry(x1 - x0, y1 - y0, z1 - z0);
+  g.translate((x0 + x1) / 2, (y0 + y1) / 2, (z0 + z1) / 2);
   return g;
 };
 
@@ -148,6 +158,13 @@ const compose = () => {
   // 青藍細線：沿黑色下緣上方（兩輪拱之間）
   const sill = (x, y, z) => Math.min(Math.abs(z) - 30, y - (lowerLine(x) + 0.5), lowerLine(x) + 1.5 - y, x + 27, 24 - x);
   parts.push({ geometry: mergeGeos([kit.decal(crease), kit.decal(sill)]), mat: 'cyan', name: 'decal-cyan' });
+  // iter-36：肩稜外側 1.6 mm 的石墨黑細窄斜面，讓折線與谷形引擎蓋在平光下也讀得出來
+  const bevel = (x, y, z) => {
+    const c = surf.ctrl(x);
+    const az = Math.abs(z);
+    return Math.min(az - (c.zF + 0.15), c.zF + 1.75 - az, x + 60, 66 - x);
+  };
+  parts.push({ geometry: kit.decal(bevel), mat: 'graphite', name: 'decal-crease-bevel' });
 
   // 號碼 07：兩側車門、引擎蓋
   const num = sdNumber('07', { h: 5.8, w: 3.5, gap: 0.9 });
@@ -180,20 +197,31 @@ const compose = () => {
   ]);
   parts.push({ geometry: kit.decal((x, y, z) => -head(x, Math.abs(z)), { offset: 0.08 }), mat: 'lamp', name: 'lamp-head' });
 
-  // 尾燈與尾部擴散器：貼在尾板外側的薄片
-  const xr = surf.xMin - 0.06;
-  const tail = [];
+  // 尾部（iter-36）：黑色燈殼＋紅色細長燈條、中央號碼牌凹槽、尾板下方擴散器鰭片
+  const xr = surf.xMin;
+  const housings = [];
+  const lamps = [];
   for (const sgn of [-1, 1]) {
-    const g = new THREE.PlaneGeometry(9, 1.3);
-    g.rotateY(-Math.PI / 2);
-    g.translate(xr, 28.2, sgn * 21.5);
-    tail.push(g);
+    housings.push(buildBox(xr - 0.6, xr + 0.2, 27.0, 29.6, sgn > 0 ? 13.5 : -27.5, sgn > 0 ? 27.5 : -13.5));
+    lamps.push(buildBox(xr - 0.75, xr - 0.5, 27.6, 29.0, sgn > 0 ? 14.3 : -26.7, sgn > 0 ? 26.7 : -14.3));
   }
-  parts.push({ geometry: mergeGeos(tail), mat: 'tail', name: 'lamp-tail' });
-  const diff = new THREE.PlaneGeometry(56, 2.2);
-  diff.rotateY(-Math.PI / 2);
-  diff.translate(xr, 25.3, 0);
-  parts.push({ geometry: diff, mat: 'graphite', name: 'rear-diffuser' });
+  housings.push(buildBox(xr - 0.3, xr + 0.2, 25.0, 28.6, -6.5, 6.5));
+  parts.push({ geometry: mergeGeos(housings), mat: 'lower', name: 'tail-housing' });
+  parts.push({ geometry: mergeGeos(lamps), mat: 'tail', name: 'lamp-tail' });
+  const fins = [-19, -12, -5, 5, 12, 19].map((zc) =>
+    buildFin(
+      [
+        [xr - 0.4, 18.6],
+        [xr + 6.5, 18.6],
+        [xr + 6.5, 23],
+        [xr - 0.4, 24.4],
+      ],
+      zc,
+      0.8,
+    ),
+  );
+  fins.push(buildBox(xr - 0.4, xr + 6.5, 18.2, 18.8, -21, 21));
+  parts.push({ geometry: mergeGeos(fins), mat: 'lower2', name: 'rear-diffuser' });
 
   // 卡座吊耳
   // 鼻部分層進氣口與尖牙（iter-35）：進氣口內 2 片導流片、鼻下 4 根尖牙、一層石墨黑下唇
@@ -203,9 +231,31 @@ const compose = () => {
       slats.push(buildSlat(surf, sg * zc, 56.8, 63.6, 2.0));
     }
   }
-  parts.push({ geometry: mergeGeos(slats), mat: 'lower2', shell: true, name: 'nose-slats' });
-  parts.push({ geometry: mergeGeos([-18, -10.5, 10.5, 18].map(buildFang)), mat: 'paint', shell: true, name: 'nose-fangs' });
-  parts.push({ geometry: buildSplitter({ x: [60, 72.6], halfW: 23, yBottom: 13.9, thickness: 0.8 }), mat: 'lower', shell: true, name: 'nose-lip' });
+  parts.push({ geometry: mergeGeos(slats), mat: 'lower2', name: 'nose-slats' });
+  // iter-36：鼻下改成兩層石墨黑下唇＋直立導流片（取代 iter-35 的橘色尖牙）
+  parts.push({
+    geometry: mergeGeos([
+      buildSplitter({ x: [60, 72.6], halfW: 23, yBottom: 13.9, thickness: 0.8 }),
+      buildSplitter({ x: [62, 73.6], halfW: 19, yBottom: 12.2, thickness: 0.7 }),
+    ]),
+    mat: 'lower',
+    shell: true,
+    name: 'nose-lip',
+  });
+  const strakes = [-16, -8, 8, 16].map((zc) =>
+    buildFin(
+      [
+        [63, 12.4],
+        [73.2, 12.4],
+        [72.4, 14.2],
+        [63, 15.2],
+      ],
+      zc,
+      0.7,
+    ),
+  );
+  // 薄立板兩面面積 × 壁厚會把質量算成兩倍，鰭片類不標 shell（實際約 0.3 g，忽略）
+  parts.push({ geometry: mergeGeos(strakes), mat: 'lower2', name: 'nose-strakes' });
 
   parts.push({ geometry: buildMountTabs(MOUNTS, (x) => kit.innerYAt(x)), mat: 'mount', name: 'mount-tabs' });
   return parts;

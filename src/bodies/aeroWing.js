@@ -4,7 +4,7 @@
 import * as THREE from 'three';
 import data from './data/body-aero-wing.json';
 import { getPart } from '../parts/index.js';
-import { makeLoftKit, cachedBuild, namedMaterial, decalMaterial, buildMountTabs, buildRegion, buildWingParts, buildSplitter, buildTailValance, lerp, sdNumber, sdConvexPolygon, sdBar, sideDecal, topDecal, mergeGeos, smoothstep } from './loft.js';
+import { makeLoftKit, cachedBuild, namedMaterial, decalMaterial, buildMountTabs, buildRegion, buildWingParts, buildSplitter, buildTailValance, buildRim, featureSd, lerp, sdNumber, sdConvexPolygon, sdBar, sideDecal, topDecal, mergeGeos, smoothstep } from './loft.js';
 
 /** @typedef {import('./types').BodyDef} BodyDef */
 /** @typedef {import('./loft.js').BodyPart} BodyPart */
@@ -18,7 +18,19 @@ const navyLine = (x) => 14.2 - 0.07 * x + 7 * smoothstep(28, 58, x) + 6 * smooth
  * @type {(x: number, az: number) => number}
  */
 const bump = (x, az) =>
-  smoothstep(18, 30, az) * (5.5 * Math.exp(-(((x - 47) / 9) ** 2)) + 2.5 * Math.exp(-(((x - 34) / 7) ** 2)) + 2.0 * Math.exp(-(((x + 40) / 10) ** 2)));
+  smoothstep(12, 30, az) * (3.4 * Math.exp(-(((x - 49) / 8) ** 2)) + 2.5 * Math.exp(-(((x - 34) / 7) ** 2)) + 2.0 * Math.exp(-(((x + 40) / 10) ** 2))) +
+  // iter-36：引擎蓋中央同步抬高 3 mm，葉子板與引擎蓋之間過渡平順（不再像兩個耳朵）
+  3.0 * (1 - smoothstep(10, 26, az)) * Math.exp(-(((x - 44) / 13) ** 2));
+
+/**
+ * 本款放樣資料：D1 側導風孔改成有深度的凹腔（黑色腔體＋唇邊），其餘沿用設計資料
+ * @type {any}
+ */
+const AERO_DATA = {
+  ...data,
+  openings: [],
+  recesses: data.openings.map((o) => ({ ...o, depth: 2.5 })),
+};
 
 
 /** @type {THREE.Color} */
@@ -49,11 +61,12 @@ const makeMaterials = () => ({
   lamp: decalMaterial('lamp-clear', { color: 0xe8f4ff, emissive: 0x9fc8ff, emissiveIntensity: 0.35, roughness: 0.05, clearcoat: 1.0 }),
   tail: decalMaterial('lamp-red', { color: 0xc4121c, emissive: 0x7a0008, emissiveIntensity: 0.4, roughness: 0.1, clearcoat: 1.0 }),
   mount: namedMaterial('abs-mount-black', { color: 0x222326, roughness: 0.6 }),
+  vent: namedMaterial('trim-intake-black', { color: 0x121316, roughness: 0.85, side: THREE.DoubleSide }),
 });
 
 /** @type {() => BodyPart[]} */
 const compose = () => {
-  const kit = makeLoftKit(data, { mode: 'smooth', sideZMin: 28, bump, tuck: 2.2 });
+  const kit = makeLoftKit(AERO_DATA, { mode: 'smooth', sideZMin: 28, bump, tuck: 2.2 });
   /** @type {BodyPart[]} */
   const parts = [];
   /** @type {KeepFn} */
@@ -66,6 +79,13 @@ const compose = () => {
   parts.push({ geometry: kit.outer([cab]), mat: 'cockpit', shell: true, name: 'shell-cockpit' });
 
   const st = kit.structure();
+  // D1 側導風孔凹腔：黑色腔底與腔壁＋高出殼面 0.3 mm 的藏青唇邊
+  st.recessFloor.forEach((g, i) => parts.push({ geometry: g, mat: 'vent', shell: true, name: `vent-floor-${i}` }));
+  st.recessWall.forEach((g, i) => parts.push({ geometry: g, mat: 'vent', shell: true, name: `vent-wall-${i}` }));
+  const ventSd = featureSd(AERO_DATA.recesses[0], 28);
+  const lip = buildRegion(kit.surf, [...kit.holes, (x, y, z) => ventSd(x, y, z), (x, y, z) => 0.9 - ventSd(x, y, z)], { offset: 0.3, smoothOffset: true });
+  parts.push({ geometry: lip.geometry, mat: 'navy', name: 'vent-lip' });
+  parts.push({ geometry: buildRim(lip, 0, 0.3), mat: 'navy2', name: 'vent-lip-wall' });
   parts.push({ geometry: st.inner, mat: 'inner', name: 'shell-inner' });
   parts.push({ geometry: st.rim, mat: 'edge', name: 'shell-edge' });
   parts.push({ geometry: mergeGeos([st.capFront, st.capRear]), mat: 'navy', shell: true, name: 'caps' });
