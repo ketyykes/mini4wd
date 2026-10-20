@@ -4,7 +4,7 @@
 import * as THREE from 'three';
 import data from './data/body-aero-wing.json';
 import { getPart } from '../parts/index.js';
-import { makeLoftKit, cachedBuild, namedMaterial, decalMaterial, buildMountTabs, buildRegion, buildWingParts, buildSplitter, buildTailValance, sdNumber, sdConvexPolygon, sdBar, sideDecal, topDecal, mergeGeos, smoothstep } from './loft.js';
+import { makeLoftKit, cachedBuild, namedMaterial, decalMaterial, buildMountTabs, buildRegion, buildWingParts, buildSplitter, buildTailValance, lerp, sdNumber, sdConvexPolygon, sdBar, sideDecal, topDecal, mergeGeos, smoothstep } from './loft.js';
 
 /** @typedef {import('./types').BodyDef} BodyDef */
 /** @typedef {import('./loft.js').BodyPart} BodyPart */
@@ -53,7 +53,7 @@ const makeMaterials = () => ({
 
 /** @type {() => BodyPart[]} */
 const compose = () => {
-  const kit = makeLoftKit(data, { mode: 'smooth', sideZMin: 28, bump });
+  const kit = makeLoftKit(data, { mode: 'smooth', sideZMin: 28, bump, tuck: 2.2 });
   /** @type {BodyPart[]} */
   const parts = [];
   /** @type {KeepFn} */
@@ -80,27 +80,57 @@ const compose = () => {
   parts.push({ geometry: w.wing, mat: 'pearl', shell: true, name: 'wing' });
   parts.push({ geometry: w.endplates, mat: 'navy2', shell: true, name: 'wing-endplates' });
   parts.push({ geometry: w.stays, mat: 'navy2', shell: true, name: 'wing-stays' });
-  parts.push({ geometry: buildSplitter(data.splitter), mat: 'navy', shell: true, name: 'splitter' });
+  // iter-35：splitter 往前伸到 x 74.5、加厚到 1.4 mm、半寬 27，前 3/4 看得到（仍在導輪 x 78 / 規則外框內）
+  parts.push({ geometry: buildSplitter({ ...data.splitter, x: [58, 74.5], halfW: 27, thickness: 1.4, yBottom: 14.6 }), mat: 'navy', shell: true, name: 'splitter' });
   // 尾部裙板（iter-34）：尾段下緣往下延伸到 y 17.6（後導輪架最高約 16.8），封住從後方看進去的底盤
   parts.push({ geometry: buildTailValance(kit.surf, { xFrom: -55.5, yBottom: 17.6 }), mat: 'navy2', shell: true, name: 'tail-valance' });
 
   // ---- 貼紙 ----
   // 洋紅 → 紫漸層弧線：前輪拱後方往後上掃到後葉子板，再沿後葉子板頂面往尾部
-  /** @type {(x: number) => number} 弧線中心高度 */
-  const yc = (x) => 17.4 + (5.5 - x) * 0.24;
-  /** @type {(x: number) => number} 弧線寬度（往後漸寬成大弧線，iter-34 加寬） */
-  const wd = (x) => 0.8 + (4.4 * (5.5 - x)) / 32.5;
+  // iter-35：一條連續的長弧線（側視 Catmull-Rom 中心線＋新月形寬度），從前輪拱後方一路掃到後葉子板頂、收尾在尾部
+  const arc = new THREE.CatmullRomCurve3(
+    [
+      [6.5, 15.4],
+      [-4, 17.8],
+      [-14, 22.0],
+      [-24, 26.5],
+      [-34, 30.2],
+      [-44, 31.4],
+      [-55, 28.6],
+    ].map(([x, y]) => new THREE.Vector3(x, y, 0)),
+    false,
+    'centripetal',
+  );
+  /** @type {number[][]} 中心線取樣 [x, y]（x 遞減） */
+  const arcPts = arc.getSpacedPoints(160).map((p) => [p.x, p.y]);
+  /** @type {(x: number) => number} 中心線在 x 的高度 */
+  const arcY = (x) => {
+    for (let i = 0; i < arcPts.length - 1; i++) {
+      const [xa, ya] = arcPts[i];
+      const [xb, yb] = arcPts[i + 1];
+      if (x <= xa && x >= xb) {
+        return lerp(ya, yb, (xa - x) / (xa - xb));
+      }
+    }
+    return NaN;
+  };
+  /** @type {(x: number) => number} 新月形寬度：前尖、中段最寬 3.6、尾端收細 */
+  const arcW = (x) => {
+    const t = (6.5 - x) / 61.5;
+    return 0.5 + 3.6 * Math.sin(Math.PI * Math.min(1, Math.max(0, t)) ** 0.8);
+  };
   /** @type {KeepFn} */
-  const swoosh = (x, y, z) => Math.min(Math.abs(z) - 26, wd(x) / 2 - Math.abs(y - yc(x)), x + 27, 5.5 - x);
-  const fenderBar = sdBar(-25, 31.8, -55, 26.2, 3.0);
+  const swoosh = (x, y, z) => {
+    // 只投影在側面與肩部外側（|z| 超過最寬處 − 6），避免弧線掉到尾甲板頂面變成色塊
+    if (x > 6.5 || x < -55 || Math.abs(z) < kit.surf.ctrl(x).halfW - 6) {
+      return -1;
+    }
+    return arcW(x) / 2 - Math.abs(y - arcY(x));
+  };
   // 引擎蓋兩側的漸層弧線（鼻部 → 座艙前）
   const hoodBar = sdBar(57, 19.5, 27, 23.2, 2.2);
   parts.push({
-    geometry: mergeGeos([
-      kit.decal(swoosh, { color: gradient }),
-      kit.decal((x, y, z) => (y < 22 ? -1 : -fenderBar(x, Math.abs(z))), { color: gradient }),
-      kit.decal((x, y, z) => (y < 19 ? -1 : -hoodBar(x, Math.abs(z))), { color: gradient }),
-    ]),
+    geometry: mergeGeos([kit.decal(swoosh, { color: gradient }), kit.decal((x, y, z) => (y < 19 ? -1 : -hoodBar(x, Math.abs(z))), { color: gradient })]),
     mat: 'grad',
     name: 'decal-swoosh',
   });

@@ -4,7 +4,7 @@
 import * as THREE from 'three';
 import data from './data/body-wedge.json';
 import { getPart } from '../parts/index.js';
-import { makeLoftKit, cachedBuild, namedMaterial, decalMaterial, buildMountTabs, buildRegion, sdNumber, sdConvexPolygon, sideDecal, topDecal, mergeGeos, smoothstep } from './loft.js';
+import { makeLoftKit, cachedBuild, namedMaterial, decalMaterial, buildMountTabs, buildRegion, buildSplitter, surfaceTopY, sdNumber, sdConvexPolygon, sideDecal, topDecal, mergeGeos, smoothstep } from './loft.js';
 
 /** @typedef {import('./types').BodyDef} BodyDef */
 /** @typedef {import('./loft.js').BodyPart} BodyPart */
@@ -13,13 +13,75 @@ import { makeLoftKit, cachedBuild, namedMaterial, decalMaterial, buildMountTabs,
 const lowerLine = (x) => 15.2 + 0.05 * x + 7 * smoothstep(-42, -62, x);
 
 /**
- * 肩稜隆起（iter-34）：肩部整條抬高 0.9 mm，前後葉子板再隆起 2.4 mm，讓引擎蓋中央相對變成谷形
+ * iter-35 站位表（以 DESIGN.md §3.2 為底修改；reviewer：側視要是「從鼻尖一路往後拉高」的單一斜線，不要馬鞍形）
+ * - 中線頂 yTop、肩稜 yF 從前到後單調上升（yF 一路高於 yTop → 全長谷形引擎蓋）
+ * - 最寬處 yShoulder 在前輪拱處 ≥ 28.6（蓋住 R15 輪拱頂 28），中段不再下凹
+ * - 鼻尖、半寬、下緣與原設計相同
+ * @type {{ x: number, yTop: number, zF: number, yF: number, halfW: number, yShoulder: number, yLow: number }[]}
+ */
+const STATIONS = [
+  [72, 16, 12, 16, 20, 15.5, 15],
+  [66, 17.5, 20, 18.5, 30, 16.8, 15],
+  [58, 20.5, 24, 23, 34, 20.5, 15],
+  [50, 23.5, 28, 27.3, 37, 25.5, 13],
+  [40, 25.8, 30, 30, 39, 29, 10],
+  [30, 27.4, 30, 30.3, 39, 28, 8],
+  [15, 29.2, 30, 30.7, 38, 27.3, 7],
+  [0, 30.2, 30, 31, 37.5, 27.3, 7],
+  [-15, 30.7, 30, 31.3, 38, 27.6, 7],
+  [-30, 31, 30, 31.6, 39, 28.3, 8],
+  [-40, 31.2, 30, 31.9, 39.5, 29.6, 10],
+  [-50, 31.3, 29, 32.1, 38, 29.4, 17],
+  [-58, 31.4, 27, 32.3, 35, 29.2, 18],
+  [-64, 32.8, 25, 32.9, 32, 29.6, 24],
+].map(([x, yTop, zF, yF, halfW, yShoulder, yLow]) => ({ x, yTop, zF, yF, halfW, yShoulder, yLow }));
+
+/** @type {any} 本款實際放樣用的資料（站位表換成 iter-35 版本，其餘沿用設計資料） */
+const WEDGE_DATA = { ...data, stationParams: STATIONS };
+
+/**
+ * 前葉子板小隆起：只補輪拱前緣（x ≈ 45）肩部高度，避免上視缺口
  * @type {(x: number, az: number) => number}
  */
-const bump = (x, az) => {
-  // 前葉子板中心往前移到 x = 44：輪拱前方的肩部也要高過切割圓，上視才不會有缺口
-  const fender = 1.4 * Math.exp(-(((x - 44) / 11) ** 2)) + Math.exp(-(((x + 40) / 11) ** 2));
-  return smoothstep(14, 28, az) * (0.9 + 2.4 * fender);
+const bump = (x, az) => smoothstep(14, 28, az) * 0.9 * Math.exp(-(((x - 45) / 8) ** 2));
+
+/**
+ * 鼻部進氣口裡的直立導流片（沿 x，貼著殼面往下到凹陷底）：做出概念圖的分層進氣口
+ * @type {(surf: any, z: number, x0: number, x1: number, depth: number) => THREE.BufferGeometry}
+ */
+const buildSlat = (surf, z, x0, x1, depth) => {
+  const pos = [];
+  const n = 12;
+  const hz = 0.3;
+  const ring = [];
+  for (let i = 0; i <= n; i++) {
+    const x = x0 + ((x1 - x0) * i) / n;
+    const yt = surfaceTopY(surf, x, Math.abs(z)) - 0.15;
+    ring.push([x, yt, yt - depth + 0.2]);
+  }
+  for (let i = 0; i < n; i++) {
+    const [xa, ta, ba] = ring[i];
+    const [xb, tb, bb] = ring[i + 1];
+    for (const dz of [-hz, hz]) {
+      pos.push(xa, ta, z + dz, xb, tb, z + dz, xb, bb, z + dz, xa, ta, z + dz, xb, bb, z + dz, xa, ba, z + dz);
+    }
+    pos.push(xa, ta, z - hz, xb, tb, z - hz, xb, tb, z + hz, xa, ta, z - hz, xb, tb, z + hz, xa, ta, z + hz);
+  }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  g.computeVertexNormals();
+  return g;
+};
+
+/**
+ * 鼻部下方的尖牙（往前下方的三角形，厚 1.4 mm，比下唇更往前突出）
+ * @type {(zc: number) => THREE.BufferGeometry}
+ */
+const buildFang = (zc) => {
+  const shape = new THREE.Shape([new THREE.Vector2(62, 15.4), new THREE.Vector2(73.4, 15.4), new THREE.Vector2(72.6, 11.2)]);
+  const g = new THREE.ExtrudeGeometry(shape, { depth: 1.4, bevelEnabled: false });
+  g.translate(0, 0, zc - 0.7);
+  return g;
 };
 
 /** @type {() => Record<string, THREE.Material>} */
@@ -29,6 +91,7 @@ const makeMaterials = () => ({
   edge: namedMaterial('shell-edge-orange', { color: 0xd9530a, roughness: 0.5, side: THREE.DoubleSide }),
   inner: namedMaterial('shell-inner-dark', { color: 0x2a201c, roughness: 0.85, side: THREE.BackSide }),
   recess: namedMaterial('trim-intake-black', { color: 0x141516, roughness: 0.85, side: THREE.DoubleSide }),
+  lower2: namedMaterial('paint-graphite-black', { color: 0x2b2d30, roughness: 0.6, side: THREE.DoubleSide }),
   cockpit: namedMaterial('cockpit-dark', { color: 0x16181b, roughness: 0.6 }),
   glass: namedMaterial('pc-smoke-tint', { color: 0x1e2833, roughness: 0.06, metalness: 0.0, clearcoat: 1.0, clearcoatRoughness: 0.05, transparent: true, opacity: 0.8, depthWrite: false }),
   cyan: decalMaterial('decal-cyan', { color: 0x22c3e6, roughness: 0.3, clearcoat: 0.6 }),
@@ -41,7 +104,7 @@ const makeMaterials = () => ({
 
 /** @type {() => BodyPart[]} */
 const compose = () => {
-  const kit = makeLoftKit(data, { mode: 'linear', sideZMin: 30, bump });
+  const kit = makeLoftKit(WEDGE_DATA, { mode: 'linear', sideZMin: 30, bump, tuck: 2.2, xSmooth: true });
   const { surf } = kit;
   /** @type {BodyPart[]} */
   const parts = [];
@@ -90,7 +153,7 @@ const compose = () => {
   const num = sdNumber('07', { h: 5.8, w: 3.5, gap: 0.9 });
   const hoodNum = sdNumber('07', { h: 6.2, w: 3.4, gap: 0.9 });
   parts.push({
-    geometry: mergeGeos([kit.decal(sideDecal(num, { x0: -15.5, y0: 19.0, zMin: 30 })), kit.decal(topDecal(hoodNum, { x0: 46.5, yMin: 20 }))]),
+    geometry: mergeGeos([kit.decal(sideDecal(num, { x0: -15.5, y0: 19.6, zMin: 30 })), kit.decal(topDecal(hoodNum, { x0: 46.5, yMin: 20 }))]),
     mat: 'black',
     name: 'decal-number',
   });
@@ -133,6 +196,17 @@ const compose = () => {
   parts.push({ geometry: diff, mat: 'graphite', name: 'rear-diffuser' });
 
   // 卡座吊耳
+  // 鼻部分層進氣口與尖牙（iter-35）：進氣口內 2 片導流片、鼻下 4 根尖牙、一層石墨黑下唇
+  const slats = [];
+  for (const sg of [-1, 1]) {
+    for (const zc of [12.7, 17.3]) {
+      slats.push(buildSlat(surf, sg * zc, 56.8, 63.6, 2.0));
+    }
+  }
+  parts.push({ geometry: mergeGeos(slats), mat: 'lower2', shell: true, name: 'nose-slats' });
+  parts.push({ geometry: mergeGeos([-18, -10.5, 10.5, 18].map(buildFang)), mat: 'paint', shell: true, name: 'nose-fangs' });
+  parts.push({ geometry: buildSplitter({ x: [60, 72.6], halfW: 23, yBottom: 13.9, thickness: 0.8 }), mat: 'lower', shell: true, name: 'nose-lip' });
+
   parts.push({ geometry: buildMountTabs(MOUNTS, (x) => kit.innerYAt(x)), mat: 'mount', name: 'mount-tabs' });
   return parts;
 };
@@ -147,7 +221,7 @@ export const wedgeBody = {
   name: '楔形競速款',
   material: 'ABS',
   density_g_cm3: 1.05,
-  wallThickness_mm: data.wallThickness_mm,
+  wallThickness_mm: WEDGE_DATA.wallThickness_mm,
   mounts: MOUNTS.map((m) => ({ ...m })),
   build: cachedBuild(compose, makeMaterials),
   src: {

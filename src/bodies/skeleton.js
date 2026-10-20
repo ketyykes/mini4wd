@@ -4,7 +4,7 @@
 import * as THREE from 'three';
 import data from './data/body-skeleton.json';
 import { getPart } from '../parts/index.js';
-import { makeLoftKit, cachedBuild, namedMaterial, decalMaterial, buildMountTabs, buildRegion, sdNumber, sdConvexPolygon, sdRoundRect, sideDecal, topDecal, mergeGeos, smoothstep } from './loft.js';
+import { makeLoftKit, cachedBuild, namedMaterial, decalMaterial, buildMountTabs, buildRegion, buildRim, sdNumber, sdConvexPolygon, sdRoundRect, sideDecal, topDecal, mergeGeos, smoothstep } from './loft.js';
 
 /** @typedef {import('./types').BodyDef} BodyDef */
 /** @typedef {import('./loft.js').BodyPart} BodyPart */
@@ -12,12 +12,14 @@ import { makeLoftKit, cachedBuild, namedMaterial, decalMaterial, buildMountTabs,
 
 /** @type {number} 開口 / 輪拱 / 下緣周圍的萊姆黃補強邊寬度（DESIGN.md §3.4：1.2 mm） */
 const BAND = 1.2;
+/** @type {number} 補強肋凸出殼面的高度（mm，iter-35 reviewer：要有厚度） */
+const RIB = 0.7;
 
 /**
  * 葉子板隆起（iter-34）：讓輪拱切口留在側壁、不再切過肩部斜面（切過斜面會留下細長殼片與不規則補強邊）
  * @type {(x: number, az: number) => number}
  */
-const bump = (x, az) => smoothstep(18, 30, az) * 2.0 * (1.6 * Math.exp(-(((x - 45) / 11) ** 2)) + Math.exp(-(((x + 40) / 10) ** 2)));
+const bump = (x, az) => smoothstep(18, 30, az) * 2.0 * (2.5 * Math.exp(-(((x - 48) / 9) ** 2)) + 1.5 * Math.exp(-(((x + 40) / 10) ** 2)));
 
 /** @type {() => Record<string, THREE.Material>} */
 const makeMaterials = () => ({
@@ -36,7 +38,7 @@ const makeMaterials = () => ({
 
 /** @type {() => BodyPart[]} */
 const compose = () => {
-  const kit = makeLoftKit(data, { mode: 'linear', sideZMin: 30, bump });
+  const kit = makeLoftKit(data, { mode: 'linear', sideZMin: 30, bump, tuck: 2.0 });
   const { surf } = kit;
   /** @type {BodyPart[]} */
   const parts = [];
@@ -53,13 +55,16 @@ const compose = () => {
   const lime = (x, y, z) => {
     const c = surf.ctrl(x);
     const az = Math.abs(z);
-    const crease = Math.min(az - (c.zF - 1.0), c.zF - az, x + 58, 64 - x);
+    const crease = Math.min(az - (c.zF - 1.9), c.zF - 0.7 - az, x + 58, 64 - x);
     return Math.max(BAND - edgeDist(x, y, z), crease);
   };
   /** @type {KeepFn} */
   const cab = (x, y, z) => kit.underCanopy(x, z);
 
-  parts.push({ geometry: kit.outer([lime]), mat: 'lime', shell: true, name: 'shell-lime-frame' });
+  // 萊姆黃補強肋（iter-35）：沿開口、輪拱、下緣與肩稜凸起 RIB mm，側面用牆面接回殼面，看得出厚度
+  const limeRib = buildRegion(surf, [...kit.holes, lime], { offset: RIB, smoothOffset: true });
+  parts.push({ geometry: limeRib.geometry, mat: 'lime', shell: true, name: 'shell-lime-frame' });
+  parts.push({ geometry: buildRim(limeRib, 0, RIB), mat: 'limeEdge', name: 'shell-lime-rib-wall' });
   parts.push({ geometry: kit.outer([(x, y, z, s) => -lime(x, y, z, s), (x, y, z, s) => -cab(x, y, z, s)]), mat: 'smoke', shell: true, renderOrder: 2, name: 'shell-smoke' });
   parts.push({ geometry: kit.outer([(x, y, z, s) => -lime(x, y, z, s), cab]), mat: 'seat', shell: true, name: 'shell-cockpit' });
 

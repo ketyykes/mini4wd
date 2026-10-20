@@ -26,7 +26,7 @@ import * as THREE from 'three';
 // ---------------------------------------------------------------------------
 
 /** @type {(a: number, b: number, t: number) => number} */
-const lerp = (a, b, t) => a + (b - a) * t;
+export const lerp = (a, b, t) => a + (b - a) * t;
 
 /** @type {(e0: number, e1: number, x: number) => number} */
 export const smoothstep = (e0, e1, x) => {
@@ -282,18 +282,46 @@ export function topDecal(sd, { x0, z0 = 0, yMin }) {
  * - bump(x, |z|)：額外的高度修飾（葉子板隆起等），兩種模式都會加在 y 上
  * @type {(data: any, mode: 'linear' | 'smooth', step?: number, bump?: ((x: number, az: number) => number) | null) => LoftSurface & { ctrl: (x: number) => any }}
  */
-export function createBodySurface(data, mode, step = 0.5, bump = null) {
+export function createBodySurface(data, mode, step = 0.5, bump = null, extra = {}) {
   const params = data.stationParams.slice().sort((a, b) => a.x - b.x);
   const sx = params.map((p) => p.x);
   const xMin = sx[0];
   const xMax = sx[sx.length - 1];
   const xs = subdivide(sx, step);
+  /** @type {number} 側裙下緣往內收的量（mm，iter-35） */
+  const tuck = extra.tuck ?? 0;
+  /** @type {(t: number) => number} 側壁參數 t（0 = 肩部、1 = 下緣）對應的內收量：下 65% 以二次曲線往內收 */
+  const tuckAt = (t) => {
+    const k = Math.max(0, (t - 0.35) / 0.65);
+    return tuck * k * k;
+  };
+  /** @type {string[]} */
+  const ctrlKeys = ['yTop', 'zF', 'yF', 'halfW', 'yShoulder', 'yLow'];
+  /** @type {Record<string, number[]>} xSmooth 用的單調 Hermite 斜率 */
+  const ctrlSlopes = {};
+  if (extra.xSmooth) {
+    for (const key of ctrlKeys) {
+      ctrlSlopes[key] = limitedSlopes(
+        sx,
+        params.map((p) => p[key]),
+      );
+    }
+  }
 
-  /** @type {(x: number) => any} 控制點線性內插（兩種模式都可用來放貼紙等） */
+  /** @type {(x: number) => any} 控制點內插（預設線性；xSmooth 時用單調 Hermite，站位處不再有折痕，稜線仍由面板邊界保留） */
   const ctrl = (x) => {
-    const { k, t } = bracket(sx, x);
+    const { k, t, h } = bracket(sx, x);
     const a = params[k];
     const b = params[k + 1];
+    if (extra.xSmooth) {
+      const hb = hermiteBasis(t);
+      /** @type {Record<string, number>} */
+      const o = {};
+      for (const key of ctrlKeys) {
+        o[key] = hb[0] * a[key] + hb[1] * h * ctrlSlopes[key][k] + hb[2] * b[key] + hb[3] * h * ctrlSlopes[key][k + 1];
+      }
+      return o;
+    }
     return {
       yTop: lerp(a.yTop, b.yTop, t),
       zF: lerp(a.zF, b.zF, t),
@@ -362,7 +390,7 @@ export function createBodySurface(data, mode, step = 0.5, bump = null) {
           y = lerp(c.yF, c.yShoulder, t);
         } else {
           const t = (u - b2) / (1 - b2);
-          z = c.halfW;
+          z = c.halfW - tuckAt(t);
           y = lerp(c.yShoulder, c.yLow, t);
         }
         out[0] = bump ? y + bump(x, z) : y;
@@ -444,7 +472,7 @@ export function createBodySurface(data, mode, step = 0.5, bump = null) {
       p3[0] = tmp[0];
       p3[1] = tmp[1];
       const cr = (a, b, c, d) => 0.5 * (2 * b + (-a + c) * tt + (2 * a - 5 * b + 4 * c - d) * tt * tt + (-a + 3 * b - 3 * c + d) * tt * tt * tt);
-      const z = cr(p0[0], p1[0], p2[0], p3[0]);
+      const z = cr(p0[0], p1[0], p2[0], p3[0]) - tuckAt((Math.abs(s) - 0.62) / 0.38);
       out[0] = cr(p0[1], p1[1], p2[1], p3[1]) + (bump ? bump(x, Math.abs(z)) : 0);
       out[1] = s < 0 ? -z : z;
     },
@@ -498,7 +526,7 @@ export function createCanopySurface(canopy, body, smooth, step = 0.5) {
   const at = (x) => {
     const { k, t, h } = bracket(sx, x);
     const o = {};
-    if (smooth || canopy.section === 'trapezoid') {
+    if (smooth) {
       const hb = hermiteBasis(t);
       for (const key of keys) {
         o[key] = hb[0] * st[k][key] + hb[1] * h * slopes[key][k] + hb[2] * st[k + 1][key] + hb[3] * h * slopes[key][k + 1];
@@ -516,9 +544,15 @@ export function createCanopySurface(canopy, body, smooth, step = 0.5) {
     xMin: sx[0],
     xMax: sx[sx.length - 1],
     xs: subdivide(sx, step),
-    breaks: [],
+    breaks: trap ? [0.4] : [],
     halfWAt: (x) => (x < sx[0] || x > sx[sx.length - 1] ? 0 : at(x).halfW),
-    panels: [{ s0: -1, s1: 1, n: 2 * nS }],
+    panels: trap
+      ? [
+          { s0: -1, s1: -0.4, n: nS },
+          { s0: -0.4, s1: 0.4, n: nS },
+          { s0: 0.4, s1: 1, n: nS },
+        ]
+      : [{ s0: -1, s1: 1, n: 2 * nS }],
     eval(x, s, out) {
       const c = at(x);
       const u = Math.abs(s);
@@ -526,12 +560,16 @@ export function createCanopySurface(canopy, body, smooth, step = 0.5) {
       let z;
       let y;
       if (trap) {
-        // 低平梯形罩（iter-34）：漸縮的超橢圓剖面 → 平頂、斜側、圓角，整片平滑著色，頂寬約 0.55 × 底寬
-        const th = (1 - u) * (Math.PI / 2);
-        const zc = Math.cbrt(Math.cos(th));
-        const ys = Math.cbrt(Math.sin(th));
-        z = c.halfW * zc * (1 - 0.45 * ys);
-        y = surfaceTopY(body, x, z) - 0.1 + rise * ys;
+        // 低平梯形罩（iter-35）：水平平頂（頂寬 0.55 × 底寬）＋兩側斜窗，平頂與斜窗交界是銳利稜線（面板邊界）
+        const roofY = surfaceTopY(body, x, 0) - 0.1 + rise;
+        if (u <= 0.4) {
+          z = 0.55 * c.halfW * (u / 0.4);
+          y = roofY;
+        } else {
+          const t = (u - 0.4) / 0.6;
+          z = c.halfW * lerp(0.55, 1, t);
+          y = lerp(roofY, surfaceTopY(body, x, z) - 0.1, t);
+        }
       } else {
         const th = (1 - u) * (Math.PI / 2);
         z = c.halfW * Math.cos(th);
@@ -620,7 +658,7 @@ function getGrid(surf) {
 
 /**
  * 在曲面上建立一個區域（所有保留函式都 ≥ 0 的部分），沿法線偏移 offset（負值往內）
- * @type {(surf: LoftSurface, fns: KeepFn[], opt?: { offset?: number, color?: (x: number, y: number, z: number) => number[] }) => { geometry: THREE.BufferGeometry, meta: any }}
+ * @type {(surf: LoftSurface, fns: KeepFn[], opt?: { offset?: number, smoothOffset?: boolean, color?: (x: number, y: number, z: number) => number[] }) => { geometry: THREE.BufferGeometry, meta: any }}
  */
 export function buildRegion(surf, fns, opt = {}) {
   const offset = opt.offset ?? 0;
@@ -645,7 +683,14 @@ export function buildRegion(surf, fns, opt = {}) {
   const nn = [0, 0, 0];
 
   /** @type {(px: number, py: number, pz: number, nx: number, ny: number, nz: number, x: number, s: number, pi: number) => number} */
+  const fullPanel = { s0: -1, s1: 1, n: 1 };
+  const sn = [0, 0, 0];
   const emit = (px, py, pz, nx, ny, nz, x, s, pi) => {
+    if (opt.smoothOffset) {
+      // 凸起件用跨面板的平滑法線偏移：稜線兩側的頂點偏移到同一點，不會裂開
+      surfNormal(surf, fullPanel, x, s, sn);
+      [nx, ny, nz] = sn;
+    }
     // 偏移後不可超出曲面前後端（避免內面從封口後方露出）
     const ox = Math.min(surf.xMax, Math.max(surf.xMin, px + offset * nx));
     pos.push(ox, py + offset * ny, pz + offset * nz);
@@ -1041,13 +1086,15 @@ export function buildWingParts(wing) {
   const exTE = Math.min(wing.xLE, wing.xTE);
   const ex0 = exTE;
   const ex1 = exTE + ep.length;
+  // iter-35：端板改成前低後高的後掠板（下緣斜切），側視不再是一大塊矩形
+  const yTopEp = ep.yBottom + ep.height;
   const epShape = new THREE.Shape([
-    new THREE.Vector2(ex0, ep.yBottom),
-    new THREE.Vector2(ex1 - 4, ep.yBottom),
-    new THREE.Vector2(ex1, ep.yBottom + 4),
-    new THREE.Vector2(ex1, ep.yBottom + ep.height - 1.5),
-    new THREE.Vector2(ex1 - 3, ep.yBottom + ep.height),
-    new THREE.Vector2(ex0, ep.yBottom + ep.height),
+    new THREE.Vector2(ex0, ep.yBottom + 2.5),
+    new THREE.Vector2(ex1 - 5, ep.yBottom + 4.6),
+    new THREE.Vector2(ex1, ep.yBottom + 6.4),
+    new THREE.Vector2(ex1, yTopEp - 1.4),
+    new THREE.Vector2(ex1 - 4, yTopEp),
+    new THREE.Vector2(ex0, yTopEp),
   ]);
   // 端板倒角：bevel 0.3 mm（形狀本身內縮 0.3，外形尺寸不變）
   const bev = 0.3;
@@ -1069,13 +1116,15 @@ export function buildWingParts(wing) {
   const [bx, by] = st.base;
   const [tx, ty] = st.top;
   // 控制點：先幾乎垂直往上，越過前緣上方後往後彎，從翼面上方落到 (tx, ty)
+  // iter-35：鵝頸弧度加大，明顯高過翼面再往後下彎、從翼面上方吊住
   const ctrl = [
     new THREE.Vector3(bx, by - 0.6, 0),
-    new THREE.Vector3(bx - 0.6, by + 6.6, 0),
-    new THREE.Vector3(bx - 1.8, ty - 3.5, 0),
-    new THREE.Vector3(bx - 4.5, ty + 1.2, 0),
-    new THREE.Vector3(tx + 3.5, ty + 1.6, 0),
-    new THREE.Vector3(tx + 0.8, ty + 0.8, 0),
+    new THREE.Vector3(bx - 0.4, by + 7, 0),
+    new THREE.Vector3(bx - 1.4, ty - 1.0, 0),
+    new THREE.Vector3(bx - 3.0, ty + 3.6, 0),
+    new THREE.Vector3(bx - 6.5, ty + 5.2, 0),
+    new THREE.Vector3(tx + 2.2, ty + 4.0, 0),
+    new THREE.Vector3(tx + 0.4, ty + 1.6, 0),
     new THREE.Vector3(tx, ty - 0.2, 0),
   ];
   const curve = new THREE.CatmullRomCurve3(ctrl, false, 'centripetal');
@@ -1301,7 +1350,7 @@ const sideRailKeep = (x, y, z) => {
  * @type {(data: any, opt: { mode: 'linear' | 'smooth', step?: number, sideZMin?: number }) => any}
  */
 export function makeLoftKit(data, opt) {
-  const surf = createBodySurface(data, opt.mode, opt.step ?? 0.5, opt.bump ?? null);
+  const surf = createBodySurface(data, opt.mode, opt.step ?? 0.5, opt.bump ?? null, { tuck: opt.tuck ?? 0, xSmooth: opt.xSmooth ?? false });
   const t = data.wallThickness_mm;
   const canopy = data.canopy ? createCanopySurface(data.canopy, surf, opt.mode === 'smooth', 0.35) : null;
   const arches = (data.wheelArches ?? []).map(archKeep);
