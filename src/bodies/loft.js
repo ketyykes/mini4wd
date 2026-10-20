@@ -400,7 +400,31 @@ export function createBodySurface(data, mode, step = 0.5, bump = null, extra = {
   }
 
   // smooth：halfProfile 32 點（z ≥ 0，由中線頂到下緣）
-  const st = data.stations.slice().sort((a, b) => a.x - b.x);
+  /**
+   * iter-40：可改用站位控制點直接做 Chaikin 3 次（不依弧長重取樣）。halfProfile 是「Chaikin 後依弧長重取樣」，
+   * 第 i 點在各站對應到不同的幾何位置，沿 x 內插時取樣點會滑動，殼面反光出現波紋；Chaikin 點數與拓樸固定，第 i 點在每站都對應同一位置。
+   * @type {(p: any) => number[][]}
+   */
+  const chaikinProfile = (p) => {
+    let pts = [
+      [0, p.yTop],
+      [p.zF, p.yF],
+      [p.halfW, p.yShoulder],
+      [p.halfW, p.yLow],
+    ];
+    for (let it = 0; it < 3; it++) {
+      const next = [pts[0]];
+      for (let i = 0; i < pts.length - 1; i++) {
+        const [ax, ay] = pts[i];
+        const [bx, by] = pts[i + 1];
+        next.push([0.75 * ax + 0.25 * bx, 0.75 * ay + 0.25 * by], [0.25 * ax + 0.75 * bx, 0.25 * ay + 0.75 * by]);
+      }
+      next.push(pts[pts.length - 1]);
+      pts = next;
+    }
+    return pts;
+  };
+  const st = extra.chaikin ? params.map((p) => ({ x: p.x, halfProfile: chaikinProfile(p) })) : data.stations.slice().sort((a, b) => a.x - b.x);
   const nP = st[0].halfProfile.length;
   /** @type {number[][]} 每個取樣點沿 x 的 z、y 值 */
   const Z = [];
@@ -482,7 +506,7 @@ export function createBodySurface(data, mode, step = 0.5, bump = null, extra = {
 /**
  * 多點折線剖面曲面（iter-38，body-wedge 用）：每站給同樣點數的半剖面 pts（z 不遞減，最後一段為側壁），
  * 每段一個面板（稜線銳利），站間單調 Hermite 內插；最後一段可往內收 tuck。
- * @type {(stations: { x: number, pts: number[][] }[], opt?: { step?: number, tuck?: number }) => LoftSurface & { ctrl: (x: number) => any, topY: (x: number, z: number) => number }}
+ * @type {(stations: { x: number, pts: number[][] }[], opt?: { step?: number, tuck?: number, smoothAngle?: number, hard?: number[] }) => LoftSurface & { ctrl: (x: number) => any, topY: (x: number, z: number) => number }}
  */
 export function createPolySurface(stations, opt = {}) {
   const step = opt.step ?? 0.5;
@@ -490,17 +514,21 @@ export function createPolySurface(stations, opt = {}) {
   const st = stations.slice().sort((a, b) => a.x - b.x);
   const sx = st.map((p) => p.x);
   const nPt = st[0].pts.length;
-  /** @type {number[][][]} 每點每座標的 Hermite 斜率 [i][c][k] */
+  /**
+   * 每點每座標的 Hermite 斜率 [i][c][k]。iter-40：改用不限制的中央差分（Catmull-Rom 型）。
+   * 原本的單調限制斜率在資料局部極值處把斜率歸零，站位之間形成平台＋轉折，車頂反光沿 x 出現波浪。
+   * @type {number[][][]}
+   */
   const slopes = [];
+  /** @type {(v: number[]) => number[]} */
+  const centralSlopes = (v) =>
+    v.map((_, k) => {
+      const a = Math.max(0, k - 1);
+      const b = Math.min(v.length - 1, k + 1);
+      return (v[b] - v[a]) / (sx[b] - sx[a]);
+    });
   for (let i = 0; i < nPt; i++) {
-    slopes.push(
-      [0, 1].map((c) =>
-        limitedSlopes(
-          sx,
-          st.map((p) => p.pts[i][c]),
-        ),
-      ),
-    );
+    slopes.push([0, 1].map((c) => (opt.xLimited ? limitedSlopes : (_x, v) => centralSlopes(v))(sx, st.map((p) => p.pts[i][c]))));
   }
   // 段長平均 → 面板在 s 上的比例
   const segLen = [];
@@ -517,8 +545,35 @@ export function createPolySurface(stations, opt = {}) {
     brk.push(brk[brk.length - 1] + l / total);
   }
   brk[brk.length - 1] = 1;
+  // iter-40：只有 hard 列出的點是銳利稜線；其餘相鄰點之間用 Catmull-Rom（張力 0.85）平滑通過，
+  // 剖面變成 C1 連續曲線 → 反光沿車身連續流動，不再是一片片平面＋折線造成的條紋。
+  const hard = [...new Set([0, nPt - 1, ...(opt.hard ?? Array.from({ length: nPt }, (_, i) => i))])].sort((a, b) => a - b);
+  /** @type {(i: number) => number[]} 線段 i 所在的平滑區段 [h0, h1]（點索引） */
+  const runOf = (i) => {
+    let h0 = 0;
+    let h1 = nPt - 1;
+    for (const h of hard) {
+      if (h <= i) {
+        h0 = h;
+      }
+      if (h > i) {
+        h1 = h;
+        break;
+      }
+    }
+    return [h0, h1];
+  };
   /** @type {Panel[]} */
-  const half = segLen.map((l, i) => ({ s0: brk[i], s1: brk[i + 1], n: Math.max(3, Math.ceil(l / step)) }));
+  const half = [];
+  for (let r = 0; r < hard.length - 1; r++) {
+    const a = hard[r];
+    const b = hard[r + 1];
+    let n = 0;
+    for (let i = a; i < b; i++) {
+      n += Math.max(3, Math.ceil(segLen[i] / step));
+    }
+    half.push({ s0: brk[a], s1: brk[b], n });
+  }
   const panels = [...half.map((p) => ({ s0: -p.s1, s1: -p.s0, n: p.n })).reverse(), ...half];
   /** @type {(x: number) => number[][]} 在 x 的半剖面點 */
   const at = (x) => {
@@ -548,21 +603,33 @@ export function createPolySurface(stations, opt = {}) {
     xs: subdivide(sx, step),
     breaks: brk.slice(1, -1),
     panels,
+    smoothAngle: opt.smoothAngle ?? 0,
     profileAt: at,
     ctrl: (x) => {
       const p = atCached(x);
       return { yTop: p[0][1], zF: p[nPt - 3][0], yF: p[nPt - 3][1], halfW: p[nPt - 1][0], yShoulder: p[nPt - 2][1], yLow: p[nPt - 1][1] };
     },
     topY(x, z) {
-      const p = atCached(x);
+      // 頂面（側壁以前）以二分法找 z(s) = |z| 的位置
       const az = Math.abs(z);
-      for (let i = 0; i < nPt - 2; i++) {
-        if (az <= p[i + 1][0]) {
-          const dz = p[i + 1][0] - p[i][0];
-          return dz > 1e-9 ? lerp(p[i][1], p[i + 1][1], (az - p[i][0]) / dz) : p[i + 1][1];
+      const o = [0, 0];
+      let lo = 0;
+      let hi = brk[nPt - 2];
+      this.eval(x, hi, o);
+      if (az >= o[1]) {
+        return o[0];
+      }
+      for (let it = 0; it < 30; it++) {
+        const m = (lo + hi) / 2;
+        this.eval(x, m, o);
+        if (o[1] >= az) {
+          hi = m;
+        } else {
+          lo = m;
         }
       }
-      return p[nPt - 2][1];
+      this.eval(x, hi, o);
+      return o[0];
     },
     eval(x, s, out) {
       const p = atCached(x);
@@ -572,8 +639,34 @@ export function createPolySurface(stations, opt = {}) {
         i++;
       }
       const t = (u - brk[i]) / (brk[i + 1] - brk[i]);
-      let z = lerp(p[i][0], p[i + 1][0], t);
-      const y = lerp(p[i][1], p[i + 1][1], t);
+      const [h0, h1] = runOf(i);
+      /** @type {(j: number) => number[]} 區段內的點；區段外用反射外插（中線處用鏡射點 → 中線切線水平） */
+      const P = (j) => {
+        if (j < h0) {
+          if (h0 === 0) {
+            return [-p[1][0], p[1][1]];
+          }
+          return [2 * p[h0][0] - p[h0 + 1][0], 2 * p[h0][1] - p[h0 + 1][1]];
+        }
+        if (j > h1) {
+          return [2 * p[h1][0] - p[h1 - 1][0], 2 * p[h1][1] - p[h1 - 1][1]];
+        }
+        return p[j];
+      };
+      let z;
+      let y;
+      if (h1 - h0 === 1) {
+        z = lerp(p[i][0], p[i + 1][0], t);
+        y = lerp(p[i][1], p[i + 1][1], t);
+      } else {
+        const a = P(i - 1);
+        const b = P(i + 2);
+        const hb = hermiteBasis(t);
+        const k = 0.5 * 0.85;
+        const c = [0, 1].map((q) => hb[0] * p[i][q] + hb[1] * k * (p[i + 1][q] - a[q]) + hb[2] * p[i + 1][q] + hb[3] * k * (b[q] - p[i][q]));
+        z = c[0];
+        y = c[1];
+      }
       if (i === nPt - 2 && tuck > 0) {
         const kk = Math.max(0, (t - 0.35) / 0.65);
         z -= tuck * kk * kk;
@@ -699,6 +792,43 @@ const gridCache = new WeakMap();
  * @type {(surf: LoftSurface, panel: Panel, x: number, s: number, out: number[]) => void}
  */
 function surfNormal(surf, panel, x, s, out) {
+  rawNormal(surf, panel, x, s, out);
+  // iter-40：依角度平滑（surf.smoothAngle 度）。面板邊界上的頂點若和相鄰面板的法線夾角小於門檻，取兩側平均，
+  // 避免幾乎共平面的折線（例如 wedge 後段 1–3° 的小折角）在反光上變成一條條硬邊條紋；大於門檻的才保留為銳利稜線。
+  const ang = surf.smoothAngle ?? 0;
+  if (ang <= 0) {
+    return;
+  }
+  const eps = 1e-9;
+  let other = null;
+  if (Math.abs(s - panel.s0) < eps) {
+    other = surf.panels.find((p) => Math.abs(p.s1 - panel.s0) < eps);
+  } else if (Math.abs(s - panel.s1) < eps) {
+    other = surf.panels.find((p) => Math.abs(p.s0 - panel.s1) < eps);
+  }
+  if (!other) {
+    return;
+  }
+  const o2 = [0, 0, 0];
+  rawNormal(surf, other, x, s, o2);
+  const dot = out[0] * o2[0] + out[1] * o2[1] + out[2] * o2[2];
+  if (dot < Math.cos((ang * Math.PI) / 180)) {
+    return;
+  }
+  const nx = out[0] + o2[0];
+  const ny = out[1] + o2[1];
+  const nz = out[2] + o2[2];
+  const len = Math.hypot(nx, ny, nz) || 1;
+  out[0] = nx / len;
+  out[1] = ny / len;
+  out[2] = nz / len;
+}
+
+/**
+ * 單一面板內的有限差分法線
+ * @type {(surf: LoftSurface, panel: Panel, x: number, s: number, out: number[]) => void}
+ */
+function rawNormal(surf, panel, x, s, out) {
   const hx = 0.05;
   const hs = (panel.s1 - panel.s0) * 0.002;
   const xa = Math.max(surf.xMin, x - hx);
@@ -881,9 +1011,16 @@ export function buildRegion(surf, fns, opt = {}) {
         const v11 = (i + 1) * ns + j + 1;
         const v01 = i * ns + j + 1;
         for (let q = 0; q < 2; q++) {
-          tri[0] = v00;
-          tri[1] = q === 0 ? v10 : v11;
-          tri[2] = q === 0 ? v11 : v01;
+          // iter-40：左半邊（s < 0）用鏡射方向的對角線，左右三角化對稱，反光不會一邊順一邊斜
+          if (panel.s1 <= 0) {
+            tri[0] = v10;
+            tri[1] = q === 0 ? v11 : v01;
+            tri[2] = q === 0 ? v01 : v00;
+          } else {
+            tri[0] = v00;
+            tri[1] = q === 0 ? v10 : v11;
+            tri[2] = q === 0 ? v11 : v01;
+          }
           let drop = false;
           let allIn = true;
           for (let k = nf - 1; k >= 0 && !drop; k--) {
@@ -1465,7 +1602,7 @@ const sideRailKeep = (x, y, z) => {
  * @type {(data: any, opt: { mode: 'linear' | 'smooth', step?: number, sideZMin?: number }) => any}
  */
 export function makeLoftKit(data, opt) {
-  const surf = opt.surface ?? createBodySurface(data, opt.mode, opt.step ?? 0.5, opt.bump ?? null, { tuck: opt.tuck ?? 0, xSmooth: opt.xSmooth ?? false });
+  const surf = opt.surface ?? createBodySurface(data, opt.mode, opt.step ?? 0.5, opt.bump ?? null, { tuck: opt.tuck ?? 0, xSmooth: opt.xSmooth ?? false, chaikin: opt.chaikin ?? false });
   const t = data.wallThickness_mm;
   const canopy = data.canopy ? createCanopySurface(data.canopy, surf, opt.mode === 'smooth', 0.35) : null;
   const arches = (data.wheelArches ?? []).map(archKeep);

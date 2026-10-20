@@ -66,7 +66,7 @@ const makeMaterials = () => ({
 
 /** @type {() => BodyPart[]} */
 const compose = () => {
-  const kit = makeLoftKit(AERO_DATA, { mode: 'smooth', sideZMin: 28, bump, tuck: 2.2 });
+  const kit = makeLoftKit(AERO_DATA, { mode: 'smooth', sideZMin: 28, bump, tuck: 2.2, chaikin: true });
   /** @type {BodyPart[]} */
   const parts = [];
   /** @type {KeepFn} */

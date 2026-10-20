@@ -96,32 +96,23 @@ const compose = () => {
     [-44, 27.5],
     [-57, 20],
   ]);
-  // 側面三角：六角側窗前端與前輪拱之間（側視 x–y）
-  const triSide = sdConvexPolygon([
-    [20.6, 10.9],
-    [23.8, 10.9],
-    [23.8, 19.6],
-  ]);
   parts.push({
-    geometry: mergeGeos([
-      kit.decal((x, y, z) => -triFront(x, Math.abs(z))),
-      kit.decal((x, y, z) => -triRear(x, Math.abs(z))),
-      kit.decal(sideDecal((u, v) => triSide(u, v) + 0.5, { x0: 0, y0: 0, zMin: 30, side: 1 }), { offset: 0.12 }),
-      kit.decal(sideDecal((u, v) => triSide(-u, v) + 0.5, { x0: 0, y0: 0, zMin: 30, side: -1 }), { offset: 0.12 }),
-    ]),
+    geometry: mergeGeos([kit.decal((x, y, z) => -triFront(x, Math.abs(z))), kit.decal((x, y, z) => -triRear(x, Math.abs(z)))]),
     mat: 'black',
     name: 'decal-triangles',
   });
   // 號碼 24：引擎蓋上的萊姆黃底板 + 黑字
-  // 側面號碼 24（DESIGN.md §4）：側面大半被六角側窗佔滿，放在側窗前端上方、前輪拱後方的側壁＋肩部
-  const sidePlate = (u, v) => sdRoundRect(u, v, -2.9, 2.9, -2.45, 2.45, 0.8);
+  // 側面號碼（iter-40）：原本跨在葉子板與肩稜的曲面上會變形；改成「2 上 4 下」直排，放在六角側窗前端與前輪拱之間的平直側壁
+  // （x 20.6–24.2、y 12.4–20.8），萊姆黃底板與旁邊的補強凸緣連成一體
+  const sidePlate = (u, v) => sdRoundRect(u, v, -1.75, 1.75, -4.2, 4.2, 0.6);
+  const digitTop = sdNumber('2', { h: 3.3, w: 2.1, gap: 0, slant: 0.1 });
+  const digitBottom = sdNumber('4', { h: 3.3, w: 2.1, gap: 0, slant: 0.1 });
+  /** @type {(u: number, v: number) => number} */
+  const stacked = (u, v) => Math.min(digitTop(u, v - 1.95), digitBottom(u, v + 1.95));
   parts.push({
     geometry: mergeGeos([
       kit.decal((x, y, z) => -sdRoundRect(x, z, 33.6, 42.4, -6.4, 6.4, 1.2)),
-      kit.decal(sideDecal(sidePlate, { x0: 22.4, y0: 23.2, zMin: 30 })),
-      // 側面三角的萊姆黃外框（黑三角內縮 0.5 mm 疊在上面）
-      kit.decal(sideDecal((u, v) => triSide(u, v), { x0: 0, y0: 0, zMin: 30, side: 1 })),
-      kit.decal(sideDecal((u, v) => triSide(-u, v), { x0: 0, y0: 0, zMin: 30, side: -1 })),
+      kit.decal(sideDecal(sidePlate, { x0: 22.4, y0: 16.6, zMin: 30 })),
     ]),
     mat: 'limeDecal',
     name: 'decal-number-plate',
@@ -129,7 +120,7 @@ const compose = () => {
   parts.push({
     geometry: mergeGeos([
       kit.decal(topDecal(sdNumber('24', { h: 6.2, w: 3.5, gap: 1.0 }), { x0: 38, yMin: 20 }), { offset: 0.12 }),
-      kit.decal(sideDecal(sdNumber('24', { h: 3.9, w: 2.2, gap: 0.5 }), { x0: 22.4, y0: 23.2, zMin: 30 }), { offset: 0.12 }),
+      kit.decal(sideDecal(stacked, { x0: 22.4, y0: 16.6, zMin: 30 }), { offset: 0.12 }),
     ]),
     mat: 'black',
     name: 'decal-number',
