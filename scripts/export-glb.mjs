@@ -1,5 +1,5 @@
 // 匯出整台車為 GLB（給 render/ 的 Blender 展示圖管線使用）
-// 用法：node scripts/export-glb.mjs [bodyId]   → exports/<bodyId>.glb（bodyId 預設 legacy）
+// 用法：node scripts/export-glb.mjs [bodyId]   → exports/<bodyId>.glb（bodyId 預設 body-wedge）
 // 流程：vite 起伺服器 → Playwright 無頭 Chromium 開 web/export.html?body=<id> → 頁面內 GLTFExporter → base64 傳回 node 寫檔
 import { createServer } from 'vite';
 import { chromium } from 'playwright';
@@ -10,7 +10,7 @@ import { fileURLToPath } from 'node:url';
 /** @type {string} app/ 根目錄 */
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 /** @type {string} */
-const bodyId = process.argv[2] ?? 'legacy';
+const bodyId = process.argv[2] ?? 'body-wedge';
 /** @type {number} 與 render.mjs（5181）錯開，兩者可同時跑 */
 const port = 5182;
 

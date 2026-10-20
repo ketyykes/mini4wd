@@ -1,12 +1,15 @@
 // 車殼目錄：所有車殼都裝在同一組安裝點上；質量、重心、外框由車殼幾何計算
 import * as THREE from 'three';
-import { legacyBody } from './legacy.js';
+import { wedgeBody } from './wedge.js';
+import { skeletonBody } from './skeleton.js';
+import { aeroWingBody } from './aeroWing.js';
 
 /** @typedef {import('./types').BodyDef} BodyDef */
 /** @typedef {import('./types').BodyMassProps} BodyMassProps */
 
+// 三款原創車殼（iter-33 起移除第一階段的過渡車殼，它的外型仿自市售車款，不放進成品）
 /** @type {BodyDef[]} */
-const bodies = [legacyBody];
+const bodies = [wedgeBody, skeletonBody, aeroWingBody];
 
 /** @type {() => BodyDef[]} */
 export const listBodies = () => bodies.slice();

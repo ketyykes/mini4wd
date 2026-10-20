@@ -1,6 +1,6 @@
 // 用 vite 啟動靜態伺服器，Playwright 無頭 Chromium 依序截圖到 renders/
 // 用法：node scripts/render.mjs <iter> [views] [bodies] [extra query]
-//   views 預設 side,top,front34,bottom,track；bodies 預設 legacy（逗號分隔）
+//   views 預設 side,top,front34,bottom,track；bodies 預設三款原創車殼（逗號分隔）
 //   每款車殼輸出 renders/iter-NN_<body>_<view>.png，另外輸出 iter-NN_chassis_front34.png（拿掉車殼）
 import { createServer } from 'vite';
 import { chromium } from 'playwright';
@@ -10,7 +10,7 @@ import { fileURLToPath } from 'node:url';
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const iter = process.argv[2] ?? '00';
 const views = (process.argv[3] ?? 'side,top,front34,bottom,track').split(',');
-const bodies = (process.argv[4] ?? 'legacy').split(',');
+const bodies = (process.argv[4] ?? 'body-wedge,body-skeleton,body-aero-wing').split(',');
 const extra = process.argv[5] ?? '';
 
 const server = await createServer({ root, logLevel: 'error', server: { port: 5181 } });

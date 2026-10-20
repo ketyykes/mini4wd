@@ -8,7 +8,7 @@ import { assemble, loadConfig } from '../src/assembly.js';
 
 /**
  * 建立要匯出的車輛模型（模型 API 改為依組裝設定 / 車殼 id 建模時，只需改這個函式）
- * bodyId：車殼 id（預設 'legacy'，目前尚未使用）；回傳單位 mm，x 向前、y 向上、z 向右
+ * bodyId：車殼 id（預設 body-wedge；'none' 只匯出底盤）；回傳單位 mm，x 向前、y 向上、z 向右
  * @type {(bodyId: string) => THREE.Object3D}
  */
 // eslint-disable-next-line no-unused-vars
@@ -267,7 +267,7 @@ async function exportGlb(root) {
 
 async function main() {
   const params = new URLSearchParams(location.search);
-  const bodyId = params.get('body') || 'legacy';
+  const bodyId = params.get('body') || 'body-wedge';
   const model = buildModelForExport(bodyId);
   model.name = `mini4wd_${bodyId}`;
   model.userData = { m4BodyId: bodyId, m4Units: 'mm', m4Axes: 'x-forward,y-up,z-right' };

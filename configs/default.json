@@ -12,7 +12,7 @@
   "batteryCover": "battery-cover-standard",
   "switch": "switch-standard",
   "axles": "axle-hex-60",
-  "body": "legacy",
+  "body": "body-wedge",
   "gearCover": "gear-cover-standard",
   "hardware": "hardware-standard"
 }
