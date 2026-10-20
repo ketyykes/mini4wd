@@ -112,6 +112,55 @@ function classifyMaterial(mat, zone) {
   return 'unknown';
 }
 
+/**
+ * 依材質原名對應類別（優先於屬性推斷）；對不到回傳 null
+ * 名稱慣例見 src/bodies：paint-*、pc-smoke / pc-clear、decal-*、lamp-*、shell-inner-dark 等
+ * @type {(name: string, mat?: THREE.Material) => string | null}
+ */
+const categoryFromName = (name, mat) => {
+  const n = (name || '').toLowerCase();
+  if (!n) {
+    return null;
+  }
+  /** @type {[RegExp, string][]} 依序比對，先符合先採用 */
+  const rules = [
+    [/^decal-/, 'decal'],
+    [/^lamp-.*(lens|cover)/, 'lens'],
+    [/^lamp-/, 'lamp'],
+    [/pc-clear|clear-pc|lens/, 'lens'],
+    [/pc-smoke|smoke|glass|canopy-glass/, 'glass'],
+    [/pearl/, 'paint_pearl'],
+    [/metallic|^paint-.*metal/, 'paint'],
+    [/^paint-/, 'paint_gloss'],
+    [/inner|interior|dark-matte/, 'plastic_matte'],
+    [/carbon/, 'carbon'],
+    [/rubber|tire|tyre/, 'rubber'],
+    [/(^|-)(abs|plastic|pom|nylon)(-|$)/, (mat && (mat.roughness ?? 1) < 0.5) ? 'plastic_gloss' : 'plastic_matte'],
+    [/chrome|steel|(^|-)(metal|alu|aluminium|brass|copper)(-|$)/, 'metal'],
+  ];
+  for (const [re, cat] of rules) {
+    if (re.test(n)) {
+      return cat;
+    }
+  }
+  return null;
+};
+
+/**
+ * 只保留 userData 中可 JSON 序列化的原始值（字串 / 數字 / 布林），避免 GLTFExporter 序列化材質物件
+ * @type {(ud: Record<string, unknown> | undefined) => Record<string, string | number | boolean>}
+ */
+const plainUserData = (ud) => {
+  /** @type {Record<string, string | number | boolean>} */
+  const out = {};
+  for (const [k, v] of Object.entries(ud || {})) {
+    if (['string', 'number', 'boolean'].includes(typeof v)) {
+      out[k] = v;
+    }
+  }
+  return out;
+};
+
 /** side 列舉 → 字串 */
 function sideName(side) {
   if (side === THREE.BackSide) {
@@ -144,13 +193,18 @@ function annotateModel(root) {
     const cats = [];
     for (const mat of mats) {
       if (!matNames.has(mat)) {
-        const category = classifyMaterial(mat, zone);
+        const origName = mat.name || '';
+        const category = categoryFromName(origName, mat) ?? classifyMaterial(mat, zone);
         counts[category] = (counts[category] ?? 0) + 1;
-        const name = `m4_${category}_${String(matNames.size).padStart(3, '0')}`;
+        // 有原名就沿用原名（Blender 依 extras 的 m4Category 換材質，名稱只給人看）；沒有才用 m4_<類別>_NNN
+        const name = origName || `m4_${category}_${String(matNames.size).padStart(3, '0')}`;
         matNames.set(mat, name);
         const c = mat.color ? mat.color : new THREE.Color(1, 1, 1);
-        // userData 可能含不可序列化的物件（例如 inner.userData.flange 是另一個材質），整個換成乾淨的匯出資訊
+        // userData 可能含不可序列化的物件（例如 inner.userData.flange 是另一個材質）：只保留可序列化的原始值，再補上匯出資訊
         mat.userData = {
+          ...plainUserData(mat.userData),
+          m4Name: origName,
+          m4CategorySource: categoryFromName(origName, mat) ? 'name' : 'props',
           m4Category: category,
           m4Zone: zone,
           m4Side: sideName(mat.side),
@@ -167,15 +221,16 @@ function annotateModel(root) {
       cats.push(matNames.get(mat));
     }
     const first = mats[0].userData.m4Category;
-    obj.name = `${zone}_${first}_${String(meshIndex).padStart(4, '0')}`;
-    obj.userData = { m4Zone: zone, m4Materials: cats.join(','), m4Side: mats[0].userData.m4Side };
+    const origMesh = obj.name || '';
+    obj.name = `${zone}_${first}_${String(meshIndex).padStart(4, '0')}${origMesh ? `_${origMesh}` : ''}`;
+    obj.userData = { ...plainUserData(obj.userData), m4MeshName: origMesh, m4Zone: zone, m4Materials: cats.join(','), m4Side: mats[0].userData.m4Side };
     meshIndex += 1;
   });
   /** @type {string[]} 每個材質一行摘要（除錯用） */
   const list = [...matNames.entries()].map(([m, n]) => {
     const u = m.userData;
     const hex = m.color ? `#${m.color.getHexString()}` : '-';
-    return `${n} ${u.m4Zone} ${hex} met=${u.m4Metalness} rough=${u.m4Roughness} cc=${u.m4Clearcoat} op=${u.m4Opacity} side=${u.m4Side} map=${Boolean(m.map)}`;
+    return `${n} [${u.m4Category}/${u.m4CategorySource}] ${u.m4Zone} ${hex} met=${u.m4Metalness} rough=${u.m4Roughness} cc=${u.m4Clearcoat} op=${u.m4Opacity} side=${u.m4Side} map=${Boolean(m.map)}`;
   });
   return { meshes: meshIndex, materials: counts, materialList: list };
 }

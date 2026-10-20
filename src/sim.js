@@ -300,11 +300,75 @@ export function stepCar(env, car) {
   }
 
   env.world.step();
+  if (spec.sim.wallPositionProjection) {
+    projectRollersOutOfWalls(env, car);
+  }
 
   if (car.powered && car.drain) {
     car.battery.drain(lf.current, dt);
   }
   car.last = { current: lf.current, terminalVoltage: lf.terminalVoltage, speed: v };
+}
+
+/**
+ * 導輪不穿牆的位置投影（iter-34）：Rapier 的軟接觸在導輪高頻抖動（前後導輪交替貼牆、約 500 Hz）時
+ * 會累積約 0.6–1.1 mm 的穩態穿透，而且對質量的極小變化很敏感（0.0002 g 就能讓峰值從 0.75 跳到 1.1 mm，見 ITERATION_LOG iter-34）。
+ * 提高接觸剛度（contact_natural_frequency 30–10000 Hz）、求解迭代、縮小步長、關 CCD、恢復係數 0 都沒有改善。
+ * 這裡在每步積分後做標準的位置投影（constraint stabilization）：導輪中心沿賽道橫向超過牆面 slop 時，
+ * 把車體沿牆面法向推回 slop 以內（只改位置、不改速度；速度仍由 Rapier 的接觸求解處理）。牆是剛體，這只是補強不穿透約束。
+ * 試過同時移除朝牆的線速度 → 導輪在彎道中反覆彈離牆面（貼牆比例 100% → 約 55%），不合實車，已放棄。
+ * @param {ReturnType<typeof createWorld>} env
+ * @param {ReturnType<typeof createCar>} car
+ */
+function projectRollersOutOfWalls(env, car) {
+  const { track } = env;
+  const slop = spec.sim.wallProjectionSlop_mm * MM;
+  const half = track.dims.wallT / 2;
+  const t = car.chassis.translation();
+  const center = track.path.project(t.x, t.z);
+  let worst = 0;
+  let dir = 0;
+  let sAt = center.s;
+  for (const r of car.rollers) {
+    const w = localToWorld(car, { x: r.x * MM, y: r.y * MM, z: r.z * MM });
+    const pp = track.path.project(w.x, w.z);
+    const lines = track.lineOffsetsAt(pp.s);
+    let upper = Infinity;
+    let lower = -Infinity;
+    for (const d of lines) {
+      if (d >= center.d) {
+        upper = Math.min(upper, d);
+      } else {
+        lower = Math.max(lower, d);
+      }
+    }
+    const rr = r.r * MM;
+    const penUpper = pp.d + rr - (upper - half);
+    const penLower = lower + half - (pp.d - rr);
+    if (penUpper - slop > worst) {
+      worst = penUpper - slop;
+      dir = -1;
+      sAt = pp.s;
+    }
+    if (penLower - slop > worst) {
+      worst = penLower - slop;
+      dir = 1;
+      sAt = pp.s;
+    }
+  }
+  if (worst <= 0) {
+    return;
+  }
+  // 賽道橫向（d 增加方向）的單位向量
+  const p0 = track.path.point(sAt, center.d);
+  const p1 = track.path.point(sAt, center.d + 0.001);
+  const nx = (p1.x - p0.x) / 0.001;
+  const nz = (p1.z - p0.z) / 0.001;
+  const nl = Math.hypot(nx, nz);
+  const ux = (dir * nx) / nl;
+  const uz = (dir * nz) / nl;
+  const frac = spec.sim.wallProjectionFraction;
+  car.chassis.setTranslation({ x: t.x + ux * worst * frac, y: t.y, z: t.z + uz * worst * frac }, true);
 }
 
 /**
