@@ -5,6 +5,11 @@ import * as THREE from 'three';
 import { spec as globalSpec } from './spec.js';
 import { rollerLayout, wheelLayout, componentLayout } from './carLayout.js';
 import { assemble, loadConfig } from './assembly.js';
+import { getPart } from './parts/index.js';
+
+/** 車殼卡榫與開關位置（底盤座標，取自底盤零件資料） */
+const BODY_MOUNTS = getPart('chassis-midship').bodyMounts;
+const SWITCH_POS = getPart('chassis-midship').switchPos_mm;
 
 /**
  * 建模期間使用的整車規格（buildCarModel 開頭設為 asm.spec；建模是同步的，模組內的函式共用這一份）
@@ -868,10 +873,60 @@ function buildChassis(mats) {
       g.add(rim);
     }
   }
-  // 內層上蓋（馬達、電池上方的底盤頂板，深色），擋住從開口往上看到的車殼內面
-  const deck = extrudeXZ(roundedRect(0, 0, 52, 48, 4), 1.2, mats.chassisDark);
-  deck.position.y = 20.4;
-  g.add(deck);
+  // iter-33：拿掉 iter-31 以前蓋住馬達與電池的整塊頂板（reviewer：「中央一整塊平板、看不到馬達」；ref_ma-chassis 上方看得到馬達與齒輪）
+  // 改成：兩側電池艙頂蓋（帶補強肋）＋馬達上方的框形齒輪蓋（gear-cover 零件，開窗看得到罐身）＋車殼卡榫柱＋開關
+  const cellTop = comp.battery.y + comp.battery.dia / 2;
+  for (const sz of [-1, 1]) {
+    const zc = sz * Math.abs(comp.battery.zs[0]);
+    const tub = extrudeXZ(roundedRect(0, zc, 50, 14.6, 3), 1.1, mats.chassis);
+    tub.position.y = cellTop + 0.25;
+    g.add(tub);
+    // 頂蓋上的 4 道橫向補強肋與外緣立邊
+    for (let k = 0; k < 4; k++) {
+      const rib = new THREE.Mesh(new THREE.BoxGeometry(1.0, 0.8, 11.6), mats.chassis);
+      rib.position.set(-15 + k * 10, cellTop + 1.35 + 0.4, zc);
+      g.add(rib);
+    }
+    const lip = new THREE.Mesh(new THREE.BoxGeometry(48, 1.6, 1.0), mats.chassis);
+    lip.position.set(0, cellTop + 1.35 + 0.8, zc + sz * 6.8);
+    g.add(lip);
+  }
+  // 框形齒輪蓋：罩住馬達上方，中央開窗露出罐身與端蓋，兩端往下接到齒輪箱側壁
+  const motorTop = comp.motor.y + comp.motor.flat / 2;
+  const coverHole = roundedRect(0, 0, 21, 15.4, 2.2);
+  const gearCover = extrudeXZ(roundedRect(0, 0, 30, 23, 3), 1.2, mats.chassis, [coverHole]);
+  gearCover.position.y = motorTop + 0.6;
+  g.add(gearCover);
+  for (const sx of [-1, 1]) {
+    // 齒輪蓋兩端的卡扣舌片
+    const tab = new THREE.Mesh(new THREE.BoxGeometry(2.2, 2.4, 9), mats.chassis);
+    tab.position.set(sx * 15.6, motorTop - 0.2, 0);
+    g.add(tab);
+    g.add(screwHead(mats, sx * 12.4, motorTop + 1.8, 9.2 * sx, 1.1));
+  }
+  // 車殼卡榫柱（chassis-midship.bodyMounts）：立柱＋頂端卡榫孔座，車殼的吊耳扣在這裡
+  for (const mnt of BODY_MOUNTS) {
+    const h = mnt.y - (y0 + t);
+    const post = new THREE.Mesh(new THREE.BoxGeometry(3.2, h, 6.4), mats.chassis);
+    post.position.set(mnt.x, y0 + t + h / 2, mnt.z);
+    g.add(post);
+    const head = new THREE.Mesh(new THREE.CylinderGeometry(1.9, 1.9, 7.2, 16), mats.chassis);
+    head.rotation.x = Math.PI / 2;
+    head.position.set(mnt.x, mnt.y, mnt.z);
+    g.add(head);
+    const pin = new THREE.Mesh(new THREE.CylinderGeometry(0.75, 0.75, 7.6, 12), mats.steel);
+    pin.rotation.x = Math.PI / 2;
+    pin.position.set(mnt.x, mnt.y, mnt.z);
+    g.add(pin);
+  }
+  // 電源開關（switch 零件）：左側電池艙後端的滑動開關座＋撥桿
+  const sw = SWITCH_POS;
+  const swBase = new THREE.Mesh(new THREE.BoxGeometry(7, 2.2, 5), mats.chassisDark);
+  swBase.position.set(sw.x, sw.y - 1.1, sw.z);
+  g.add(swBase);
+  const swKnob = new THREE.Mesh(new THREE.BoxGeometry(2.2, 1.6, 3), mats.motorCap);
+  swKnob.position.set(sw.x + 1.4, sw.y + 0.6, sw.z);
+  g.add(swKnob);
   // 齒輪箱：外側壁（x-y 平面板，支撐中間齒輪軸與輪軸）＋頂蓋，底面保持開口
   for (const sx of [-1, 1]) {
     const x0 = sx * 15;

@@ -26,7 +26,7 @@ export const chassisParts = [
       { id: 'rear', x: -50, y: 15, z: 0 },
     ],
     /** 開關位置（底盤座標，開關零件質心） */
-    switchPos_mm: { x: -30, y: 6, z: -24 },
+    switchPos_mm: { x: -21, y: 20.6, z: -19.2 },
     src: {
       wheelbase_mm: 'SPEC 1.2 [CS]：MA 軸距 80 mm',
       trackWidth_mm: 'SPEC 1.2 [CS]：MA 輪距 59.5 mm',
