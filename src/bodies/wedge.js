@@ -62,8 +62,10 @@ const STATIONS = [
  * @type {any[]}
  */
 const RECESSES = [
-  { id: '側面進氣口（下層）', view: 'side', shape: 'poly', pts: [[22, 11], [10, 20], [-8, 20], [4, 11]], depth: 2.6 },
-  { id: '側面進氣口（上層）', view: 'side', shape: 'poly', pts: [[13, 21.5], [7, 24.6], [-9, 24.6], [-3, 21.5]], depth: 1.6 },
+  { id: '側面進氣口（下層）', view: 'side', shape: 'poly', pts: [[22, 11], [10, 20], [-8, 20], [4, 11]], depth: 3.0 },
+  { id: '側面進氣口（上層）', view: 'side', shape: 'poly', pts: [[13, 21.5], [7, 24.6], [-9, 24.6], [-3, 21.5]], depth: 2.0 },
+  // iter-40：鼻部溝槽內的梯形進氣口（真的內凹 2.5 mm）
+  { id: '鼻部進氣口 ×2', view: 'top', shape: 'poly', pts: [[66, 5.2], [66, 9.4], [57, 15.2], [57, 6.8]], depth: 2.5 },
   ...data.recesses.filter((r) => r.shape === 'slots'),
 ];
 
@@ -89,7 +91,23 @@ const CANOPY = [
 ];
 
 /**
- * 多面折角座艙罩（平面著色的切面）：回傳 glass（平頂＋上斜窗）與 frame（下斜面框）
+ * 細長方條（窗框條）：從 p 到 q，斷面 w × h
+ * @type {(p: number[], q: number[], w: number, h: number) => THREE.BufferGeometry}
+ */
+const barBetween = (p, q, w, h) => {
+  const a = new THREE.Vector3(...p);
+  const b = new THREE.Vector3(...q);
+  const dir = b.clone().sub(a);
+  const len = dir.length();
+  const g = new THREE.BoxGeometry(w, h, len + w * 0.6);
+  g.applyQuaternion(new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 0, 1), dir.normalize()));
+  g.translate((a.x + b.x) / 2, (a.y + b.y) / 2, (a.z + b.z) / 2);
+  return g;
+};
+
+/**
+ * 多面折角座艙罩（iter-40）：煙燻茶色透明 PC 切面＋沿每條稜線的黑色窗框條。
+ * 每個四邊形折面用同一個法線（兩個三角形共平面著色），面內反光平整。
  * @type {(surf: any) => { glass: THREE.BufferGeometry, frame: THREE.BufferGeometry, halfWAt: (x: number) => number }}
  */
 const buildGemCanopy = (surf) => {
@@ -107,40 +125,69 @@ const buildGemCanopy = (surf) => {
       [c.x, yb(c.b), c.b],
     ];
   });
-  const glass = [];
-  const frame = [];
+  /** @type {number[]} */
+  const pos = [];
+  /** @type {number[]} */
+  const nrm = [];
+  const v = (p) => new THREE.Vector3(...p);
+  /** @type {(quad: number[][]) => void} 四邊形折面（兩三角形共用面法線，朝外） */
+  const pushQuad = (quad) => {
+    const [p0, p1, p2, p3] = quad.map(v);
+    const n = p2.clone().sub(p0).cross(p3.clone().sub(p1)).normalize();
+    const c = p0.clone().add(p1).add(p2).add(p3).multiplyScalar(0.25);
+    const hint = new THREE.Vector3(0, 1, Math.sign(c.z) * 0.6);
+    let order = [p0, p1, p2, p0, p2, p3];
+    if (n.dot(hint) < 0) {
+      n.negate();
+    }
+    const tn = p1.clone().sub(p0).cross(p2.clone().sub(p0));
+    if (tn.dot(n) < 0) {
+      order = [p0, p2, p1, p0, p3, p2];
+    }
+    for (const q of order) {
+      pos.push(q.x, q.y, q.z);
+      nrm.push(n.x, n.y, n.z);
+    }
+  };
   for (let i = 0; i < rings.length - 1; i++) {
     const a = rings[i];
     const b = rings[i + 1];
     for (let k = 0; k < 5; k++) {
-      const target = k === 0 || k === 4 ? frame : glass;
-      // 由前往後，外法線朝上 / 朝外
-      target.push(...a[k], ...a[k + 1], ...b[k + 1], ...a[k], ...b[k + 1], ...b[k]);
+      pushQuad([a[k], a[k + 1], b[k + 1], b[k]]);
     }
   }
-  // 前後端封面
-  for (const [ring, flip] of [
-    [rings[0], false],
-    [rings[rings.length - 1], true],
+  // 前後端的小封面（同一平面，共用面法線）
+  for (const [ring, sign] of [
+    [rings[0], 1],
+    [rings[rings.length - 1], -1],
   ]) {
     for (let k = 1; k < 5; k++) {
-      const tri = flip ? [ring[0], ring[k + 1], ring[k]] : [ring[0], ring[k], ring[k + 1]];
-      for (const p of tri) {
-        frame.push(...p);
+      const tri = sign > 0 ? [ring[0], ring[k + 1], ring[k]] : [ring[0], ring[k], ring[k + 1]];
+      for (const q of tri) {
+        pos.push(...q);
+        nrm.push(sign, 0, 0);
       }
     }
   }
-  /** @type {(arr: number[]) => THREE.BufferGeometry} */
-  const toGeo = (arr) => {
-    const g = new THREE.BufferGeometry();
-    g.setAttribute('position', new THREE.Float32BufferAttribute(arr, 3));
-    g.computeVertexNormals();
-    return g;
-  };
+  const glass = new THREE.BufferGeometry();
+  glass.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  glass.setAttribute('normal', new THREE.Float32BufferAttribute(nrm, 3));
+  // 窗框條：每條縱向稜線、每站的橫向折線
+  const bars = [];
+  for (let i = 0; i < rings.length - 1; i++) {
+    for (let k = 0; k < 6; k++) {
+      bars.push(barBetween(rings[i][k], rings[i + 1][k], 0.55, 0.35));
+    }
+  }
+  for (const i of [1, 2, 3]) {
+    for (let k = 0; k < 5; k++) {
+      bars.push(barBetween(rings[i][k], rings[i][k + 1], 0.45, 0.3));
+    }
+  }
   const xs = CANOPY.map((c) => c.x);
   return {
-    glass: toGeo(glass),
-    frame: toGeo(frame),
+    glass,
+    frame: mergeGeos(bars),
     halfWAt: (x) => {
       if (x > xs[0] || x < xs[xs.length - 1]) {
         return 0;
@@ -152,6 +199,46 @@ const buildGemCanopy = (surf) => {
       return lerp(CANOPY[i].b, CANOPY[i + 1].b, (xs[i] - x) / (xs[i] - xs[i + 1]));
     },
   };
+};
+
+/**
+ * 座艙內裝（iter-41）：深色內襯桶＋後傾椅背、簡化的駕駛人剪影（頭盔、肩部、軀幹），透過煙燻罩看得到
+ * @type {(surf: any) => { tub: THREE.BufferGeometry, driver: THREE.BufferGeometry }}
+ */
+const buildCockpit = (surf) => {
+  const deck = (x) => surf.topY(x, 0) - 0.1;
+  /** @type {THREE.BufferGeometry[]} 深色內襯桶與座椅 */
+  const tub = [];
+  /** @type {THREE.BufferGeometry[]} 駕駛人剪影 */
+  const driver = [];
+  // 內襯桶：沿座艙底的低矮圓角槽（用壓扁的膠囊，避免方塊感）
+  const liner = new THREE.CapsuleGeometry(4.2, 22, 6, 16);
+  liner.rotateZ(Math.PI / 2);
+  liner.scale(1, 0.32, 1.6);
+  liner.translate(4, deck(4) - 0.6, 0);
+  tub.push(liner);
+  // 座椅：往後傾的椅背（扁膠囊）＋椅面
+  const back = new THREE.CapsuleGeometry(2.6, 2.2, 4, 12);
+  back.scale(0.35, 1, 1.1);
+  back.rotateZ(0.55);
+  back.translate(-8.2, deck(-8) + 1.6, 0);
+  tub.push(back);
+  // 駕駛人：頭盔（球＋深色護目鏡帶由材質區分不了，改用略扁的球）、肩部（橫向膠囊）、軀幹
+  const d = deck(-4);
+  const helmet = new THREE.SphereGeometry(1.75, 20, 14);
+  helmet.scale(1.12, 1, 0.95);
+  helmet.translate(-4.6, d + 3.0, 0);
+  driver.push(helmet);
+  const shoulders = new THREE.CapsuleGeometry(1.0, 4.2, 4, 12);
+  shoulders.rotateX(Math.PI / 2);
+  shoulders.translate(-6.2, d + 1.3, 0);
+  driver.push(shoulders);
+  const torso = new THREE.CapsuleGeometry(1.4, 4.5, 4, 12);
+  torso.rotateZ(Math.PI / 2 - 0.35);
+  torso.scale(1, 0.7, 1.4);
+  torso.translate(-2.5, d + 0.6, 0);
+  driver.push(torso);
+  return { tub: mergeGeos(tub), driver: mergeGeos(driver) };
 };
 
 /** @type {(a: number, b: number, t: number) => number} */
@@ -199,9 +286,14 @@ const makeMaterials = () => ({
   lower2: namedMaterial('paint-graphite-black', { color: 0x2b2d30, roughness: 0.55, side: THREE.DoubleSide }),
   edge: namedMaterial('shell-edge-orange', { color: 0xd9530a, roughness: 0.5, side: THREE.DoubleSide }),
   inner: namedMaterial('shell-inner-dark', { color: 0x2a201c, roughness: 0.85, side: THREE.BackSide }),
-  recess: namedMaterial('trim-intake-black', { color: 0x141516, roughness: 0.85, side: THREE.DoubleSide }),
+  recess: namedMaterial('trim-intake-black', { color: 0x0b0b0c, roughness: 0.9, side: THREE.DoubleSide }),
   frame: namedMaterial('cockpit-dark', { color: 0x16181b, roughness: 0.5, side: THREE.DoubleSide }),
-  glass: namedMaterial('pc-smoke-tint', { color: 0x1e2833, roughness: 0.05, metalness: 0.0, clearcoat: 1.0, clearcoatRoughness: 0.03, transparent: true, opacity: 0.82, depthWrite: false, side: THREE.DoubleSide }),
+  // iter-40：茶色煙燻透明 PC（看得到座艙內裝），窗框條黑色
+  glass: namedMaterial('pc-smoke-tint', { color: 0x5a4230, roughness: 0.04, metalness: 0.0, clearcoat: 1.0, clearcoatRoughness: 0.02, transparent: true, opacity: 0.45, depthWrite: false, side: THREE.DoubleSide }),
+  canopyFrame: namedMaterial('trim-black-gloss', { color: 0x0e0f11, roughness: 0.3, clearcoat: 0.6 }),
+  seat: namedMaterial('cockpit-driver', { color: 0x3a3d44, roughness: 0.45, clearcoat: 0.4 }),
+  tub: namedMaterial('cockpit-tub', { color: 0x141518, roughness: 0.8 }),
+  recessWall: namedMaterial('trim-intake-wall', { color: 0x46494f, roughness: 0.7, side: THREE.DoubleSide }),
   cyan: decalMaterial('decal-cyan', { color: 0x22c3e6, roughness: 0.3, clearcoat: 0.6 }),
   black: decalMaterial('decal-black', { color: 0x111214, roughness: 0.55 }),
   lamp: decalMaterial('lamp-clear', { color: 0xe8f4ff, emissive: 0x9fc8ff, emissiveIntensity: 0.35, roughness: 0.05, clearcoat: 1.0 }),
@@ -248,12 +340,13 @@ const compose = () => {
   parts.push({ geometry: st.capRear, mat: 'lower', shell: true, name: 'cap-rear' });
   parts.push({ geometry: mergeGeos([st.capFrontIn, st.capRearIn]), mat: 'inner', name: 'cap-inner' });
   st.recessFloor.forEach((g, i) => parts.push({ geometry: g, mat: 'recess', shell: true, name: `recess-floor-${i}` }));
-  st.recessWall.forEach((g, i) => parts.push({ geometry: g, mat: 'recess', shell: true, name: `recess-wall-${i}` }));
+  // 凹腔側壁用較亮的深灰，腔底近黑 → 看得出深度與陰影（iter-40）
+  st.recessWall.forEach((g, i) => parts.push({ geometry: g, mat: 'recessWall', shell: true, name: `recess-wall-${i}` }));
 
   // 側面進氣口的石墨黑唇邊（0.9 mm 寬、凸出 0.3 mm）
   const lips = [];
   const lipWalls = [];
-  for (const r of RECESSES.filter((q) => q.view === 'side')) {
+  for (const r of RECESSES.filter((q) => q.shape === 'poly')) {
     const sd = featureSd(r, 30);
     const lip = buildRegion(surf, [...kit.holes, (x, y, z) => sd(x, y, z), (x, y, z) => 0.9 - sd(x, y, z)], { offset: 0.3, smoothOffset: true });
     lips.push(lip.geometry);
@@ -263,8 +356,34 @@ const compose = () => {
   parts.push({ geometry: mergeGeos(lipWalls), mat: 'lower2', name: 'intake-lip-wall' });
 
   // 多面折角座艙罩
-  parts.push({ geometry: canopy.frame, mat: 'frame', shell: true, name: 'canopy-frame' });
+  parts.push({ geometry: canopy.frame, mat: 'canopyFrame', name: 'canopy-frame' });
   parts.push({ geometry: canopy.glass, mat: 'glass', shell: true, renderOrder: 2, name: 'canopy-glass' });
+  const cockpit = buildCockpit(surf);
+  parts.push({ geometry: cockpit.tub, mat: 'tub', name: 'cockpit-tub' });
+  parts.push({ geometry: cockpit.driver, mat: 'seat', name: 'cockpit-driver' });
+
+  // 鼻部進氣口內的直立導流片（分層感）
+  const noseSlats = [];
+  for (const sg of [-1, 1]) {
+    for (const zc of [8.8, 11.6]) {
+      const x0 = 57.8;
+      const x1 = 65.2;
+      const top = (x) => surf.topY(x, zc) - 0.2;
+      noseSlats.push(
+        buildFin(
+          [
+            [x0, top(x0) - 2.3],
+            [x1, top(x1) - 2.3],
+            [x1, top(x1)],
+            [x0, top(x0)],
+          ],
+          sg * zc,
+          0.45,
+        ),
+      );
+    }
+  }
+  parts.push({ geometry: mergeGeos(noseSlats), mat: 'lower2', name: 'nose-intake-slats' });
 
   // ---- 貼紙（不標 shell） ----
   // 青藍細線：翼艙內稜（溝槽外緣）＋側面分色線上方

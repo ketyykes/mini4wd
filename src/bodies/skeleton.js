@@ -24,6 +24,15 @@ const bump = (x, az) =>
   // iter-36：中線拱起 1.6 mm（x −40 ~ 46），車頂不再是平板
   1.6 * (1 - smoothstep(4, 24, az)) * smoothstep(-58, -40, x) * (1 - smoothstep(46, 60, x));
 
+/**
+ * iter-41：六角側窗 S1 前端從 x 20 縮到 x 8.5，空出 x 9.5–21 的平直側板放橫排號碼「24」（設計資料其餘不變）
+ * @type {any}
+ */
+const SKELETON_DATA = {
+  ...data,
+  openings: data.openings.map((o) => (o.view === 'side' && o.shape === 'hex' ? { ...o, x: [o.x[0], 8.5] } : o)),
+};
+
 /** @type {() => Record<string, THREE.Material>} */
 const makeMaterials = () => ({
   smoke: namedMaterial('pc-smoke', { color: 0x3a3f44, roughness: 0.1, metalness: 0.0, clearcoat: 1.0, clearcoatRoughness: 0.05, transparent: true, opacity: 0.5, depthWrite: false }),
@@ -41,7 +50,7 @@ const makeMaterials = () => ({
 
 /** @type {() => BodyPart[]} */
 const compose = () => {
-  const kit = makeLoftKit(data, { mode: 'linear', sideZMin: 30, bump, tuck: 2.0, xSmooth: true });
+  const kit = makeLoftKit(SKELETON_DATA, { mode: 'linear', sideZMin: 30, bump, tuck: 2.0, xSmooth: true });
   const { surf } = kit;
   /** @type {BodyPart[]} */
   const parts = [];
@@ -114,11 +123,12 @@ const compose = () => {
   });
   // 號碼 24：引擎蓋上的萊姆黃底板 + 黑字
   // 側面號碼 24（DESIGN.md §4）：側面大半被六角側窗佔滿，放在側窗前端上方、前輪拱後方的側壁＋肩部
-  const sidePlate = (u, v) => sdRoundRect(u, v, -2.9, 2.9, -2.45, 2.45, 0.8);
+  // iter-41：橫排號碼放在側窗前方的平直側板（x 10.5–20、y 13.4–19），底板 9.5 × 5.6
+  const sidePlate = (u, v) => sdRoundRect(u, v, -4.75, 4.75, -2.8, 2.8, 0.8);
   parts.push({
     geometry: mergeGeos([
       kit.decal((x, y, z) => -sdRoundRect(x, z, 33.6, 42.4, -6.4, 6.4, 1.2)),
-      kit.decal(sideDecal(sidePlate, { x0: 22.4, y0: 23.2, zMin: 30 })),
+      kit.decal(sideDecal(sidePlate, { x0: 15.25, y0: 16.2, zMin: 30 })),
       // 側面三角的萊姆黃外框（黑三角內縮 0.5 mm 疊在上面）
       kit.decal(sideDecal((u, v) => triSide(u, v), { x0: 0, y0: 0, zMin: 30, side: 1 })),
       kit.decal(sideDecal((u, v) => triSide(-u, v), { x0: 0, y0: 0, zMin: 30, side: -1 })),
@@ -129,7 +139,7 @@ const compose = () => {
   parts.push({
     geometry: mergeGeos([
       kit.decal(topDecal(sdNumber('24', { h: 6.2, w: 3.5, gap: 1.0 }), { x0: 38, yMin: 20 }), { offset: 0.12 }),
-      kit.decal(sideDecal(sdNumber('24', { h: 3.9, w: 2.2, gap: 0.5 }), { x0: 22.4, y0: 23.2, zMin: 30 }), { offset: 0.12 }),
+      kit.decal(sideDecal(sdNumber('24', { h: 4.2, w: 2.6, gap: 0.8, slant: 0.12 }), { x0: 15.25, y0: 16.2, zMin: 30 }), { offset: 0.12 }),
     ]),
     mat: 'black',
     name: 'decal-number',
@@ -149,7 +159,7 @@ export const skeletonBody = {
   name: '鏤空輕量款',
   material: 'PC',
   density_g_cm3: 1.2,
-  wallThickness_mm: data.wallThickness_mm,
+  wallThickness_mm: SKELETON_DATA.wallThickness_mm,
   mounts: MOUNTS.map((m) => ({ ...m })),
   build: cachedBuild(compose, makeMaterials),
   src: {
