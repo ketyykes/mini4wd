@@ -1,11 +1,10 @@
-// P01–P10 共用物理驗證（定義見 SPEC.md 第 2 部分；容許誤差寫在本檔，不得為通過而放寬）
+// P01–P03、P05–P07、P10 物理驗證（定義見 SPEC.md 第 2 部分；容許誤差寫在本檔，不得為通過而放寬）
+// P04、P08、P09 第二階段改為透過零件組裝 / 每款車殼檢查，移到 modular.test.js
 import { describe, test, expect, beforeAll } from 'vitest';
-import * as THREE from 'three';
 import { spec, deriveParams } from '../src/spec.js';
-import { Battery, theoreticalTopSpeed, longitudinalForce, axleFrictionForce, motorCoastDragForce, counterGearLossFraction } from '../src/powertrain.js';
+import { Battery, theoreticalTopSpeed, longitudinalForce } from '../src/powertrain.js';
 import { buildCircuit, buildStraight } from '../src/track.js';
 import { initRapier, createWorld, createCar, stepCar, forwardSpeed, upAxis, wallPenetration, minWallContactDist, localToWorld } from '../src/sim.js';
-import { buildCarModel } from '../src/model.js';
 
 const P = deriveParams();
 const G_STD = spec.drivetrain.standardGearRatio;
@@ -123,29 +122,6 @@ function runCircuitLap() {
   };
 }
 
-/**
- * 直線上斷電滑行距離
- * @type {(bearingType: 'bearing'|'bushing', v0: number) => number}
- */
-function coastDistance(bearingType, v0) {
-  const env = createWorld(buildStraight(60));
-  const car = createCar(env, { s: 0.3, lane: 0, powered: false, bearingType });
-  for (let i = 0; i < 100; i++) {
-    stepCar(env, car);
-  }
-  const f = { x: 1, y: 0, z: 0 };
-  car.chassis.setLinvel({ x: f.x * v0, y: 0, z: 0 }, true);
-  const x0 = car.chassis.translation().x;
-  const maxSteps = Math.round(60 / spec.sim.dt_s);
-  for (let i = 0; i < maxSteps; i++) {
-    stepCar(env, car);
-    if (forwardSpeed(car) < 0.01) {
-      break;
-    }
-  }
-  return car.chassis.translation().x - x0;
-}
-
 let lap = null;
 
 beforeAll(async () => {
@@ -154,7 +130,7 @@ beforeAll(async () => {
   console.log('[circuit lap]', JSON.stringify(lap));
 });
 
-describe('Track A 物理驗證 P01–P10', () => {
+describe('物理驗證 P01–P03、P05–P07、P10', () => {
   test('P01_top_speed 理論極速 vs 模擬極速（誤差 < 10%）', () => {
     const battery = new Battery(1);
     const theory = theoreticalTopSpeed({ voc: battery.ocv(), gearRatio: G_STD, bearingType: 'bearing', massKg: P.massTotal });
@@ -199,18 +175,6 @@ describe('Track A 物理驗證 P01–P10', () => {
     expect(low.vSteady).toBeLessThan(full.vSteady);
   }, 60000);
 
-  test('P04_bearing_coast 培林滑行距離 ≥ 塑膠軸承 × 1.2', () => {
-    const v0 = 3.0;
-    const dBearing = coastDistance('bearing', v0);
-    const dBushing = coastDistance('bushing', v0);
-    const ratio = dBearing / dBushing;
-    for (const bt of ['bearing', 'bushing']) {
-      console.log(`[P04] ${bt}：輪軸 4 處 ${(axleFrictionForce(bt, P.massTotal) * 1000).toFixed(2)} mN、中間齒輪（前後各 1，各自傳一半扭力）損失比 k_c=${counterGearLossFraction(bt).toFixed(4)}、馬達反拖（含中間齒輪）@3 m/s ${(motorCoastDragForce(G_STD, 3, bt) * 1000).toFixed(2)} mN、滾阻 ${(P.crr * P.massTotal * P.gravity * 1000).toFixed(2)} mN`);
-    }
-    console.log(`[P04] 初速 ${v0} m/s：培林 ${f3(dBearing)} m, 塑膠軸承 ${f3(dBushing)} m, 比值 ${ratio.toFixed(3)}（coastMotorDrag=${spec.motor.coastMotorDrag}）`);
-    expect(ratio).toBeGreaterThanOrEqual(1.2);
-  }, 120000);
-
   test('P05_roller_wall_contact 彎道外側導輪貼牆時間比例 ≥ 50%', () => {
     console.log(`[P05] 彎道外側導輪接觸比例 ${(lap.arcContactFrac * 100).toFixed(1)}%`);
     expect(lap.arcContactFrac).toBeGreaterThanOrEqual(0.5);
@@ -231,30 +195,6 @@ describe('Track A 物理驗證 P01–P10', () => {
     expect(lap.maxY).toBeLessThan(spec.track.wallHeight_mm * 0.001);
     expect(lap.minY).toBeGreaterThan(-0.005);
     expect(lap.maxPen).toBeLessThanOrEqual(0.001);
-  });
-
-  test('P08_mass 總重 ≥ 90 g 且與 SPEC 1.12 建議總重誤差 ≤ 10%', () => {
-    const env = createWorld(buildStraight(2));
-    const car = createCar(env, {});
-    // Rapier 在第一次 step 後才更新質量屬性
-    env.world.step();
-    const bodyMass_g = car.chassis.mass() * 1000;
-    const ref = spec.rules.referenceTotalMass_g;
-    const err = Math.abs(bodyMass_g - ref) / ref;
-    console.log(`[P08] 物理剛體質量 ${bodyMass_g.toFixed(2)} g（設定檔加總 ${P.massTotal_g} g：不含電池 ${P.massNoBattery_g} g＋電池 ${P.massBattery_g} g）, SPEC 建議 ${ref} g, 誤差 ${(err * 100).toFixed(2)}%`);
-    expect(bodyMass_g).toBeGreaterThanOrEqual(spec.rules.minMassWithBatteryMotor_g);
-    expect(err).toBeLessThanOrEqual(0.1);
-  });
-
-  test('P09_dimensions 模型外框 ≤ SPEC 上限', () => {
-    const model = buildCarModel();
-    model.updateMatrixWorld(true);
-    const box = new THREE.Box3().setFromObject(model);
-    const size = box.getSize(new THREE.Vector3());
-    console.log(`[P09] 模型外框 長 ${size.x.toFixed(2)} × 寬 ${size.z.toFixed(2)} × 高 ${size.y.toFixed(2)} mm（上限 ${spec.rules.maxLength_mm} × ${spec.rules.maxWidth_mm} × ${spec.rules.maxHeight_mm}）, 最低點 y=${box.min.y.toFixed(2)} mm`);
-    expect(size.x).toBeLessThan(spec.rules.maxLength_mm);
-    expect(size.z).toBeLessThan(spec.rules.maxWidth_mm);
-    expect(size.y).toBeLessThan(spec.rules.maxHeight_mm);
   });
 
   test('P10_lane_changer 通過換道段後換到相鄰車道且未卡住、未飛出', () => {

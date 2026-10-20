@@ -1986,3 +1986,39 @@
 - 最終驗證：程式碼與 iter-19 完全一致，`npx vitest run` 10/10，工作區乾淨。
 - 最佳截圖：`renders/iter-19_{side,sidehigh,front34,rear34,top,bottom,track}.png`。
 - 未解決：P06 導輪 chatter（餘裕 0.32 mm）、P01 與理論值同公式、車重為設定值、比例項 reviewer 意見反覆（iter-20～28 連續 9 輪持平）。
+
+---
+---
+
+# 第二階段：模組化四驅車（2026-10-21 起，截止 18:00）
+
+任務見根目錄 `GOAL.md`，規格與驗證項目見 `SPEC.md`（P01–P16）。
+`總分 = 測試通過數 / 16 × 50 + 外觀平均 × 5`。外觀評分附固定錨點（`renders/iter-19_*`，第一階段最終版）。
+分數用 `node scripts/score.mjs [外觀平均]` 計算（依 P-ID 彙整 vitest 結果，同一 ID 底下全部通過才算通過）。
+
+## 第二階段的 app/ 結構（第 0 輪決定，之後依實作調整）
+- `src/parts/`：零件資料（每類一個檔，含尺寸、質量、物理參數、來源），`src/parts/index.js` 提供 `getPart(id)`。
+- `src/bodies/`：車殼模組，`src/bodies/index.js` 提供 `listBodies()`；每款車殼有 id、安裝點、材料密度、建模函式。
+- `configs/*.json`：整車組裝設定，每個 slot 填零件 id，或 `{ base: '<id>', ...覆寫欄位 }`（測試用來製造違規組裝）。
+  slot：`chassis`、`motor`、`gear`、`wheels`、`bearings`、`rollers`、`frontStay`、`rearStay`、`battery`、`body`。
+- `src/assembly.js`：`loadConfig(name)`、`assemble(config)` → 零件清單（含位置）、質量、重心、外框、物理參數、安裝點、layout。
+- `src/regulation.js`：`validateAssembly(asm)` → `{ ok, violations: [{ code, message }] }`。
+- `sim.createCar(env, { assembly })`、`powertrain.theoreticalTopSpeed({ assembly, soc })`、`model.buildCarModel(asm)`。
+- 座標：沿用 Three.js（x 向前、y 向上、z 向右，原點在前後軸中點的地面，mm）。SPEC 1.14 原寫 y 向左、z 向上，第 0 輪改成和程式一致。
+
+## iter-30（第 0 輪，00:44–）
+
+### 探索
+- 現況：app 是第一階段 Track A 最終版（iter-19 程式碼），P01–P10 全過；車殼是複製市售車款的外型，還有品牌字樣貼圖（`bodyShell.js` 的 `drawTamiya`、`drawHoodEmblem`、`drawMidship`），第二階段一定要移除。
+- 質量、重心、外框都寫死在 `config/spec.json`（`massChassisBodyMisc_g`、`comHeight_mm`、`chassis.overall*`），不是由零件推導。
+- `deriveParams()` 在 `sim.js`、`powertrain.js` 都是模組層級常數，換零件無法生效 → 第 1 輪要改成每台車各自的參數。
+
+### 規劃
+1. 依 SPEC 第 2 部分寫好 P11–P16，並把 P04、P08、P09 改成透過零件組裝 / 每款車殼檢查（移到 `tests/modular.test.js`，用動態 import，模組沒實作時只有那幾項失敗）。
+2. 新增 `scripts/score.mjs` 統一計分。
+3. 平行（subagent）：零件規格查證 → `shared/reference/PARTS_RESEARCH.md`；車殼概念設計 → `shared/design/`；Blender 管線 → `render/`、`scripts/export-glb.mjs`、`web/export.*`。
+4. reviewer 依新版 `shared/REVIEWER_BRIEF.md` 評基準外觀（附錨點）。
+
+### 執行 / 驗證
+- 基準測試：P01 P02 P03 P05 P06 P07 P10 通過；P04 P08 P09 P11–P16 失敗（模組化 API 尚未實作，預期中）→ **7/16，測試分 21.88**。
+- 截圖：`renders/iter-30_legacy_{side,top,front34,bottom,track,rear34}.png`（`legacy` = 第一階段車殼，暫時保留當基準，之後會被原創車殼取代並刪除）。本輪沒有 `chassis_front34`。

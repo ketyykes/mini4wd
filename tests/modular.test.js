@@ -1,0 +1,423 @@
+// 第二階段：零件組裝 / 規則 / 車殼相關驗證（P04、P08、P09、P11–P16，定義見 SPEC.md 第 2 部分）
+// 容許誤差寫在本檔，不得為通過而放寬。
+// 模組化 API（src/assembly.js、src/regulation.js、src/bodies/、src/parts/）用動態 import：
+// 模組還沒實作時只有對應項目失敗，不影響 physics.test.js 的其他項目。
+import { describe, test, expect, beforeAll } from 'vitest';
+import * as THREE from 'three';
+
+/** @type {(x: number) => string} */
+const f3 = (x) => x.toFixed(3);
+
+/** SPEC 1.1 規則上限 / 下限 */
+const RULE = { maxLength: 165, maxWidth: 105, maxHeight: 70, minMass: 90, minClearance: 1 };
+/** SPEC 1.12 預設組裝總重預期範圍（合理性檢查） */
+const MASS_RANGE = [105, 135];
+
+let M = null;
+let loadError = null;
+
+/** 載入模組化 API；任何一個模組不存在都記錄錯誤 */
+async function loadModular() {
+  const assembly = await import('../src/assembly.js');
+  const regulation = await import('../src/regulation.js');
+  const bodies = await import('../src/bodies/index.js');
+  const parts = await import('../src/parts/index.js');
+  const sim = await import('../src/sim.js');
+  const powertrain = await import('../src/powertrain.js');
+  const track = await import('../src/track.js');
+  const model = await import('../src/model.js');
+  await sim.initRapier();
+  return { ...assembly, ...regulation, ...bodies, ...parts, sim, powertrain, track, model };
+}
+
+/** 取得模組；載入失敗時讓呼叫的測試失敗並顯示原因 */
+function api() {
+  if (!M) {
+    throw new Error(`模組化 API 尚未實作：${loadError?.message ?? '未知錯誤'}`);
+  }
+  return M;
+}
+
+/** 預設設定加上覆寫（slot 值可為零件 id 或 { base, ...覆寫欄位 }） */
+function cfgWith(over = {}) {
+  return { ...api().loadConfig('default'), ...over };
+}
+
+/**
+ * 直線全速跑，回傳穩定極速（最後 0.5 s 平均）
+ * @type {(asm: object, soc?: number, seconds?: number) => { vSteady: number }}
+ */
+function runStraightTopSpeed(asm, soc = 1, seconds = 7) {
+  const { sim, track } = api();
+  const env = sim.createWorld(track.buildStraight(40));
+  const car = sim.createCar(env, { assembly: asm, s: 0.2, lane: 0, soc, drain: false });
+  const dt = env.world.timestep;
+  const steps = Math.round(seconds / dt);
+  const tail = Math.round(0.5 / dt);
+  let sum = 0;
+  for (let i = 0; i < steps; i++) {
+    sim.stepCar(env, car);
+    if (i >= steps - tail) {
+      sum += sim.forwardSpeed(car);
+    }
+  }
+  return { vSteady: sum / tail };
+}
+
+/**
+ * 主賽道跑一圈（從換道段前的內側線道出發），回傳 P06／P07／P10 需要的資料
+ * @type {(asm: object) => object}
+ */
+function runCircuitLap(asm) {
+  const { sim, track: T } = api();
+  const track = T.buildCircuit();
+  const env = sim.createWorld(track);
+  const s0 = 0.15;
+  const car = sim.createCar(env, { assembly: asm, s: s0, lane: 0 });
+  const L = track.path.length;
+  const dt = env.world.timestep;
+  let progress = 0;
+  let lastS = s0;
+  let maxPen = -Infinity;
+  let minContactDist = Infinity;
+  let minUp = 1;
+  let maxY = -Infinity;
+  let minY = Infinity;
+  let laneBefore = null;
+  let laneAfter = null;
+  const lc = track.laneChanger;
+  const maxSteps = Math.round(10 / dt);
+  let steps = 0;
+  for (; steps < maxSteps && progress < L + 0.05; steps++) {
+    sim.stepCar(env, car);
+    const t = car.chassis.translation();
+    const c = track.path.project(t.x, t.z);
+    let ds = c.s - lastS;
+    if (ds < -L / 2) {
+      ds += L;
+    }
+    if (ds > L / 2) {
+      ds -= L;
+    }
+    progress += ds;
+    lastS = c.s;
+    maxPen = Math.max(maxPen, sim.wallPenetration(env, car));
+    for (const r of car.rollers) {
+      minContactDist = Math.min(minContactDist, sim.minWallContactDist(env, r.collider));
+    }
+    minContactDist = Math.min(minContactDist, sim.minWallContactDist(env, car.bodyCol));
+    minUp = Math.min(minUp, sim.upAxis(car).y);
+    minY = Math.min(minY, t.y);
+    maxY = Math.max(maxY, t.y);
+    const sAbs = s0 + progress;
+    if (laneBefore === null && sAbs >= lc.start - 0.1) {
+      laneBefore = track.laneOf(c.d);
+    }
+    if (laneAfter === null && sAbs >= lc.end + 0.25) {
+      laneAfter = track.laneOf(c.d);
+    }
+  }
+  return { lapLength: L, progress, time: steps * dt, maxPen, contactPen: Math.max(0, -minContactDist), minUp, minY, maxY, laneBefore, laneAfter };
+}
+
+/**
+ * 直線斷電滑行距離
+ * @type {(asm: object, v0: number) => number}
+ */
+function coastDistance(asm, v0) {
+  const { sim, track } = api();
+  const env = sim.createWorld(track.buildStraight(60));
+  const car = sim.createCar(env, { assembly: asm, s: 0.3, lane: 0, powered: false });
+  for (let i = 0; i < 100; i++) {
+    sim.stepCar(env, car);
+  }
+  car.chassis.setLinvel({ x: v0, y: 0, z: 0 }, true);
+  const x0 = car.chassis.translation().x;
+  const maxSteps = Math.round(60 / env.world.timestep);
+  for (let i = 0; i < maxSteps; i++) {
+    sim.stepCar(env, car);
+    if (sim.forwardSpeed(car) < 0.01) {
+      break;
+    }
+  }
+  return car.chassis.translation().x - x0;
+}
+
+/** 物件是否屬於某零件類別（自己或祖先的 userData.part） */
+function partOf(obj) {
+  let o = obj;
+  while (o) {
+    if (o.userData?.part) {
+      return o.userData.part;
+    }
+    o = o.parent;
+  }
+  return null;
+}
+
+/** 走訪模型中所有 mesh 頂點（模型座標，mm） */
+function forEachVertex(root, fn) {
+  root.updateMatrixWorld(true);
+  const v = new THREE.Vector3();
+  root.traverse((o) => {
+    if (!o.isMesh || !o.geometry?.attributes?.position) {
+      return;
+    }
+    const pos = o.geometry.attributes.position;
+    for (let i = 0; i < pos.count; i++) {
+      v.fromBufferAttribute(pos, i).applyMatrix4(o.matrixWorld);
+      fn(v, o);
+    }
+  });
+}
+
+/**
+ * 點到有限圓柱的距離（外部為正、內部為負），mm
+ * @param {THREE.Vector3} p
+ * @param {{ x: number, y: number, z: number }} c 圓柱中心
+ * @param {'y'|'z'} axis 圓柱軸
+ * @param {number} r 半徑
+ * @param {number} halfLen 半長
+ */
+function cylinderDistance(p, c, axis, r, halfLen) {
+  let radial;
+  let along;
+  if (axis === 'z') {
+    radial = Math.hypot(p.x - c.x, p.y - c.y);
+    along = Math.abs(p.z - c.z);
+  } else {
+    radial = Math.hypot(p.x - c.x, p.z - c.z);
+    along = Math.abs(p.y - c.y);
+  }
+  const dr = radial - r;
+  const da = along - halfLen;
+  if (dr <= 0 && da <= 0) {
+    return Math.max(dr, da);
+  }
+  return Math.hypot(Math.max(dr, 0), Math.max(da, 0));
+}
+
+beforeAll(async () => {
+  try {
+    M = await loadModular();
+  } catch (e) {
+    loadError = e;
+    console.log('[modular] 模組化 API 載入失敗：', e.message);
+  }
+});
+
+describe('第二階段：零件組裝 / 規則 / 車殼（P04、P08、P09、P11–P16）', () => {
+  test('P04_bearing_coast 只換組裝設定（bearing-620 → bushing-plastic），培林滑行距離 ≥ 塑膠軸承 × 1.2', () => {
+    const { assemble } = api();
+    const v0 = 3.0;
+    const asmBearing = assemble(cfgWith({ bearings: 'bearing-620' }));
+    const asmBushing = assemble(cfgWith({ bearings: 'bushing-plastic' }));
+    const dBearing = coastDistance(asmBearing, v0);
+    const dBushing = coastDistance(asmBushing, v0);
+    const ratio = dBearing / dBushing;
+    console.log(`[P04] 初速 ${v0} m/s：bearing-620 ${f3(dBearing)} m（${f3(asmBearing.mass_g)} g）, bushing-plastic ${f3(dBushing)} m（${f3(asmBushing.mass_g)} g）, 比值 ${ratio.toFixed(3)}`);
+    expect(ratio).toBeGreaterThanOrEqual(1.2);
+  }, 120000);
+
+  test('P08_mass 每款車殼整車質量 ≥ 90 g 且在 105–135 g', () => {
+    const { assemble, listBodies, sim, track } = api();
+    const bodies = listBodies();
+    expect(bodies.length).toBeGreaterThan(0);
+    for (const b of bodies) {
+      const asm = assemble(cfgWith({ body: b.id }));
+      const env = sim.createWorld(track.buildStraight(2));
+      const car = sim.createCar(env, { assembly: asm });
+      // Rapier 在第一次 step 後才更新質量屬性
+      env.world.step();
+      const mass_g = car.chassis.mass() * 1000;
+      console.log(`[P08] ${b.id}：物理剛體 ${mass_g.toFixed(2)} g（零件加總 ${asm.mass_g.toFixed(2)} g）`);
+      expect(mass_g).toBeGreaterThanOrEqual(RULE.minMass);
+      expect(mass_g).toBeGreaterThanOrEqual(MASS_RANGE[0]);
+      expect(mass_g).toBeLessThanOrEqual(MASS_RANGE[1]);
+    }
+  });
+
+  test('P09_dimensions 每款車殼由程式碼重新組裝後量測：外框 < 規則上限、離地 ≥ 1 mm', () => {
+    const { assemble, listBodies, model } = api();
+    for (const b of listBodies()) {
+      const asm = assemble(cfgWith({ body: b.id }));
+      const car = model.buildCarModel(asm);
+      car.updateMatrixWorld(true);
+      const box = new THREE.Box3().setFromObject(car);
+      const size = box.getSize(new THREE.Vector3());
+      // 離地高度：輪胎（userData.part = 'wheel'）以外所有頂點的最低 y
+      let minY = Infinity;
+      let wheelMinY = Infinity;
+      forEachVertex(car, (v, o) => {
+        if (partOf(o) === 'wheel') {
+          wheelMinY = Math.min(wheelMinY, v.y);
+        } else {
+          minY = Math.min(minY, v.y);
+        }
+      });
+      const clearance = minY - wheelMinY;
+      console.log(`[P09] ${b.id}：長 ${size.x.toFixed(2)} × 寬 ${size.z.toFixed(2)} × 高 ${size.y.toFixed(2)} mm, 離地 ${clearance.toFixed(2)} mm（輪胎最低 y=${wheelMinY.toFixed(2)}）`);
+      expect(Number.isFinite(wheelMinY)).toBe(true);
+      expect(size.x).toBeLessThan(RULE.maxLength);
+      expect(size.z).toBeLessThan(RULE.maxWidth);
+      expect(size.y).toBeLessThan(RULE.maxHeight);
+      expect(clearance).toBeGreaterThanOrEqual(RULE.minClearance);
+    }
+  });
+
+  test('P11_regulation 預設組裝合法；8 種故意違規都被擋下且代碼正確', () => {
+    const { assemble, validateAssembly } = api();
+    const ok = validateAssembly(assemble(cfgWith()));
+    console.log(`[P11] 預設組裝：ok=${ok.ok}, 違規 ${JSON.stringify(ok.violations.map((v) => v.code))}`);
+    expect(ok.ok).toBe(true);
+    expect(ok.violations).toHaveLength(0);
+
+    const cases = [
+      { code: 'LENGTH', over: { frontStay: { base: 'stay-front-standard', rollerX_mm: 85 } } },
+      { code: 'WIDTH', over: { frontStay: { base: 'stay-front-standard', rollerZ_mm: 50 } } },
+      { code: 'HEIGHT', over: { rearStay: { base: 'stay-rear-standard', upperRollerHeight_mm: 70 } } },
+      { code: 'MASS', over: { chassis: { base: 'chassis-midship', mass_g: 10 } } },
+      { code: 'TIRE_DIAMETER', over: { wheels: { base: 'wheel-26-lowprofile', diameter_mm: 36 } } },
+      { code: 'GROUND_CLEARANCE', over: { wheels: { base: 'wheel-26-lowprofile', diameter_mm: 23 } } },
+      { code: 'DRIVE_4WD', over: { chassis: { base: 'chassis-midship', driveType: '2WD' } } },
+      { code: 'GEAR_RATIO', over: { gear: { base: 'gear-3.5', ratio: 3.0 } } },
+    ];
+    for (const c of cases) {
+      const res = validateAssembly(assemble(cfgWith(c.over)));
+      const codes = res.violations.map((v) => v.code);
+      console.log(`[P11] ${c.code}：ok=${res.ok}, 違規 ${JSON.stringify(codes)} — ${res.violations.map((v) => v.message).join('；')}`);
+      expect(res.ok).toBe(false);
+      expect(codes).toEqual([c.code]);
+    }
+  });
+
+  test('P12_motor_swap 只換組裝設定成 motor-high-rev：模擬極速 > 預設，且與自身理論極速誤差 < 10%', () => {
+    const { assemble, powertrain } = api();
+    const asmStd = assemble(cfgWith());
+    const asmHr = assemble(cfgWith({ motor: 'motor-high-rev' }));
+    const std = runStraightTopSpeed(asmStd);
+    const hr = runStraightTopSpeed(asmHr);
+    const thHr = powertrain.theoreticalTopSpeed({ assembly: asmHr, soc: 1 });
+    const err = Math.abs(hr.vSteady - thHr.vTheory) / thHr.vTheory;
+    console.log(`[P12] 預設馬達模擬 ${f3(std.vSteady)} m/s；motor-high-rev：v0=${f3(thHr.v0)}, 理論 ${f3(thHr.vTheory)}, 模擬 ${f3(hr.vSteady)} m/s, 誤差 ${(err * 100).toFixed(2)}%`);
+    expect(hr.vSteady).toBeGreaterThan(std.vSteady);
+    expect(err).toBeLessThan(0.1);
+  }, 120000);
+
+  test('P13_gear_swap 只換組裝設定成 gear-4.0：理論與模擬極速都低於 3.5:1，且各自誤差 < 10%', () => {
+    const { assemble, powertrain } = api();
+    const asm35 = assemble(cfgWith({ gear: 'gear-3.5' }));
+    const asm40 = assemble(cfgWith({ gear: 'gear-4.0' }));
+    const th35 = powertrain.theoreticalTopSpeed({ assembly: asm35, soc: 1 });
+    const th40 = powertrain.theoreticalTopSpeed({ assembly: asm40, soc: 1 });
+    const sim35 = runStraightTopSpeed(asm35);
+    const sim40 = runStraightTopSpeed(asm40);
+    const err35 = Math.abs(sim35.vSteady - th35.vTheory) / th35.vTheory;
+    const err40 = Math.abs(sim40.vSteady - th40.vTheory) / th40.vTheory;
+    console.log(`[P13] 3.5:1 理論 ${f3(th35.vTheory)} / 模擬 ${f3(sim35.vSteady)}（${(err35 * 100).toFixed(2)}%）；4.0:1 理論 ${f3(th40.vTheory)} / 模擬 ${f3(sim40.vSteady)}（${(err40 * 100).toFixed(2)}%）`);
+    expect(asm40.gearRatio).toBe(4.0);
+    expect(th40.vTheory).toBeLessThan(th35.vTheory);
+    expect(sim40.vSteady).toBeLessThan(sim35.vSteady);
+    expect(err35).toBeLessThan(0.1);
+    expect(err40).toBeLessThan(0.1);
+  }, 120000);
+
+  test('P14_mass_com_from_parts 質量 = 零件加總、重心 = 質量加權位置，且物理引擎實際使用這兩個值', () => {
+    const { assemble, getPart, sim, track } = api();
+    const asm = assemble(cfgWith());
+    expect(asm.parts.length).toBeGreaterThanOrEqual(10);
+    let sum = 0;
+    const mom = { x: 0, y: 0, z: 0 };
+    for (const p of asm.parts) {
+      expect(p.mass_g).toBeGreaterThan(0);
+      sum += p.mass_g;
+      for (const k of ['x', 'y', 'z']) {
+        mom[k] += p.mass_g * p.pos[k];
+      }
+    }
+    const com = { x: mom.x / sum, y: mom.y / sum, z: mom.z / sum };
+    console.log(`[P14] 零件 ${asm.parts.length} 個，加總 ${f3(sum)} g（組裝 ${f3(asm.mass_g)} g）；重心 (${f3(com.x)}, ${f3(com.y)}, ${f3(com.z)}) mm（組裝 (${f3(asm.com_mm.x)}, ${f3(asm.com_mm.y)}, ${f3(asm.com_mm.z)})）`);
+    expect(Math.abs(sum - asm.mass_g)).toBeLessThan(0.1);
+    for (const k of ['x', 'y', 'z']) {
+      expect(Math.abs(com[k] - asm.com_mm[k])).toBeLessThan(0.1);
+    }
+
+    // 換零件時質量跟著零件資料變：26 mm → 31 mm 輪胎，質量差 = 4 × 單顆差
+    const asm31 = assemble(cfgWith({ wheels: 'wheel-31-large' }));
+    const dExpect = 4 * (getPart('wheel-31-large').mass_g - getPart('wheel-26-lowprofile').mass_g);
+    console.log(`[P14] 換 31 mm 輪胎：質量 ${f3(asm.mass_g)} → ${f3(asm31.mass_g)} g（預期差 ${f3(dExpect)} g），重心高 ${f3(asm.com_mm.y)} → ${f3(asm31.com_mm.y)} mm`);
+    expect(Math.abs(asm31.mass_g - asm.mass_g - dExpect)).toBeLessThan(0.1);
+    expect(asm31.com_mm.y).toBeGreaterThan(asm.com_mm.y);
+
+    // 物理引擎實際使用的值
+    for (const a of [asm, asm31]) {
+      const env = sim.createWorld(track.buildStraight(2));
+      const car = sim.createCar(env, { assembly: a });
+      env.world.step();
+      const m = car.chassis.mass() * 1000;
+      const lc = car.chassis.localCom();
+      console.log(`[P14] 引擎：質量 ${f3(m)} g、重心 (${f3(lc.x * 1000)}, ${f3(lc.y * 1000)}, ${f3(lc.z * 1000)}) mm`);
+      expect(Math.abs(m - a.mass_g)).toBeLessThan(0.1);
+      expect(Math.abs(lc.x * 1000 - a.com_mm.x)).toBeLessThan(0.1);
+      expect(Math.abs(lc.y * 1000 - a.com_mm.y)).toBeLessThan(0.1);
+      expect(Math.abs(lc.z * 1000 - a.com_mm.z)).toBeLessThan(0.1);
+    }
+  });
+
+  test('P15_body_swap ≥ 3 款車殼：對齊安裝點、底盤零件位置不變、與輪胎 / 導輪間隙 ≥ 1 mm', () => {
+    const { assemble, listBodies, model } = api();
+    const bodies = listBodies();
+    console.log(`[P15] 車殼 ${bodies.length} 款：${bodies.map((b) => b.id).join(', ')}`);
+    expect(bodies.length).toBeGreaterThanOrEqual(3);
+    const base = assemble(cfgWith());
+    const chassisParts = (a) => a.parts.filter((p) => p.category !== 'body').map((p) => ({ slot: p.slot, id: p.id, pos: p.pos }));
+    for (const b of bodies) {
+      const asm = assemble(cfgWith({ body: b.id }));
+      // 1) 安裝點對齊
+      expect(asm.chassisMounts.length).toBeGreaterThanOrEqual(2);
+      for (const m of asm.chassisMounts) {
+        const bm = asm.body.mounts.find((x) => x.id === m.id);
+        expect(bm, `${b.id} 缺安裝點 ${m.id}`).toBeTruthy();
+        const d = Math.hypot(bm.x - m.x, bm.y - m.y, bm.z - m.z);
+        expect(d).toBeLessThan(0.01);
+      }
+      // 2) 底盤零件位置不變
+      expect(chassisParts(asm)).toEqual(chassisParts(base));
+      // 3) 車殼與輪胎、導輪間隙
+      const car = model.buildCarModel(asm);
+      const bodyGroup = car.getObjectByName('body');
+      expect(bodyGroup, `${b.id} 模型中沒有名為 body 的群組`).toBeTruthy();
+      let minWheel = Infinity;
+      let minRoller = Infinity;
+      forEachVertex(bodyGroup, (v) => {
+        for (const w of asm.layout.wheels) {
+          minWheel = Math.min(minWheel, cylinderDistance(v, w, 'z', w.r, w.width / 2));
+        }
+        for (const r of asm.layout.rollers) {
+          minRoller = Math.min(minRoller, cylinderDistance(v, r, 'y', r.r, r.h / 2));
+        }
+      });
+      console.log(`[P15] ${b.id}：車殼 ${f3(asm.body.mass_g)} g，與輪胎最小間隙 ${f3(minWheel)} mm、與導輪最小間隙 ${f3(minRoller)} mm`);
+      expect(minWheel).toBeGreaterThanOrEqual(1);
+      expect(minRoller).toBeGreaterThanOrEqual(1);
+    }
+  });
+
+  test('P16_every_body_lap 每款車殼各跑完 1 圈（含彎道與 lane changer），不穿牆、不飛出、未翻覆', () => {
+    const { assemble, listBodies } = api();
+    const bodies = listBodies();
+    expect(bodies.length).toBeGreaterThan(0);
+    for (const b of bodies) {
+      const lap = runCircuitLap(assemble(cfgWith({ body: b.id })));
+      const pen = Math.max(lap.maxPen, lap.contactPen);
+      console.log(`[P16] ${b.id}：進度 ${f3(lap.progress)} / ${f3(lap.lapLength)} m, ${f3(lap.time)} s, 穿透 ${(pen * 1000).toFixed(3)} mm, 最小 up.y ${f3(lap.minUp)}, 車道 ${lap.laneBefore} → ${lap.laneAfter}`);
+      expect(lap.progress).toBeGreaterThanOrEqual(lap.lapLength);
+      expect(pen).toBeLessThanOrEqual(0.001);
+      expect(lap.minUp).toBeGreaterThan(0.8);
+      expect(lap.maxY).toBeLessThan(0.05);
+      expect(lap.minY).toBeGreaterThan(-0.005);
+      expect(lap.laneBefore).not.toBeNull();
+      expect(lap.laneAfter).toBe(lap.laneBefore + 1);
+    }
+  }, 300000);
+});
