@@ -228,12 +228,14 @@ function buildWheel(mats, side) {
   const hub = new THREE.Mesh(new THREE.CylinderGeometry(2.6, 2.8, 1.6, 20), mats.rim);
   hub.rotation.x = Math.PI / 2;
   face.add(hub);
-  // 中央圓頂輪轂蓋
-  const dome = new THREE.Mesh(new THREE.SphereGeometry(2.3, 20, 10, 0, Math.PI * 2, 0, Math.PI / 2), mats.rim);
-  dome.rotation.x = side * Math.PI / 2;
-  dome.scale.set(1, 0.6, 1);
-  dome.position.z = side * 0.8;
-  face.add(dome);
+  // iter-35：輪轂中心露出 2 mm 六角輪軸端（reviewer iter-34：「輪轂中心沒有細節」；實車輪框中心孔可看到六角軸頭）
+  const hubRing = new THREE.Mesh(new THREE.TorusGeometry(1.9, 0.35, 8, 24), mats.rim);
+  hubRing.position.z = side * 0.85;
+  face.add(hubRing);
+  const hexEnd = new THREE.Mesh(new THREE.CylinderGeometry(1.15, 1.15, 1.6, 6), mats.steel);
+  hexEnd.rotation.x = Math.PI / 2;
+  hexEnd.position.z = side * 0.6;
+  face.add(hexEnd);
   // iter-03：彎曲 Y 字分岔輪輻（ref_chevalier-ma_wheel-detail：5 組輻條，每組在中段分岔成兩支往同一方向彎曲的臂）
   // 每支臂沿二次曲線中心線取樣、左右各偏移半寬，組成多邊形後擠出 1.2 mm
   /** @type {(p0: number[], p1: number[], p2: number[], w0: number, w1: number) => THREE.Mesh} 彎曲臂（二次 Bézier 中心線，寬度 w0 → w1） */
@@ -1031,44 +1033,60 @@ function buildChassis(mats) {
     const ribLayer = extrudeXZ(bridge, 1.4, mats.chassis, pockets);
     ribLayer.position.y = bumperY;
     g.add(ribLayer);
-    // iter-33：上蓋開安裝孔（reviewer：「保桿是薄平板，缺真車整排的安裝孔」；ref_ma-chassis 保桿上有中央一排＋兩側成對的圓孔）
-    /** @type {number[][][]} */
-    const lidHoles = [];
-    for (const hx of [55.5, 61.5, 67.5]) {
-      lidHoles.push(circlePts(sx * hx, 0, 1.1, 14));
-    }
-    for (const sz of [-1, 1]) {
-      lidHoles.push(circlePts(sx * 54, sz * 13.5, 1.0, 14));
-      lidHoles.push(circlePts(sx * 59.5, sz * 9.5, 1.0, 14));
-    }
-    const skin = extrudeXZ(bridge, bt - 1.4, mats.chassisDark, lidHoles);
-    skin.position.y = bumperY + 1.4;
-    g.add(skin);
-    // 上蓋外緣邊框樑（沿橋接板斜邊）
-    for (const sz of [-1, 1]) {
-      g.add(beam(sx * 62, sz * 19.6, sx * (rx + 2.6), sz * 8.8, 1.1, 1.1, bumperY + bt));
-    }
+    // iter-35：舊的上蓋與邊框樑由下方的一體寬保桿取代
     for (const sz of [-1, 1]) {
       g.add(screwHead(mats, sx * 58, bumperY + bt, sz * 6, 1.5));
     }
     // 橋接板前緣立起的厚邊（保桿正面）
     g.add(beam(sx * (rx + 2.4), -9, sx * (rx + 2.4), 9, 1.4, 4.2, bumperY));
+    // iter-35：導輪臂改成和橋接板一體成形的寬保桿（reviewer iter-34：「細長的直桿導輪架加一塊平板」；
+    // ref_ma-chassis：前後保桿是一整片帶曲線外形的寬板，兩端包住導輪座，板上有減重孔，外緣有立起的圓角肋）
+    {
+      /** @type {(t: number) => number[]} 保桿外形（俯視）：t 由左導輪座外側 → 根部 → 右導輪座外側，回傳 [X, Z]（X 為距中心的 |x|） */
+      const outline = [];
+      const rootX = 50;
+      // 外側後緣：根部 (50, ±22) 以二次曲線往外前方接到導輪座後外側
+      const arc = (a, b, c, n) => {
+        for (let k = 0; k <= n; k++) {
+          const u = k / n;
+          outline.push([(1 - u) * (1 - u) * a[0] + 2 * u * (1 - u) * b[0] + u * u * c[0], (1 - u) * (1 - u) * a[1] + 2 * u * (1 - u) * b[1] + u * u * c[1]]);
+        }
+      };
+      arc([rootX, -22], [rx - 12, -24], [rx - 2.5, -(rz + 4.4)], 10);
+      // 包住導輪座的前外角
+      arc([rx + 1.5, -(rz + 4.6)], [rx + 5.2, -(rz + 3)], [rx + 5, -(rz - 3.5)], 6);
+      // 前緣內凹弧：兩導輪座之間往內凹，中段是保桿正面
+      arc([rx + 3.2, -(rz - 9)], [rx - 1, -12], [rx + 3, -6], 8);
+      outline.push([rx + 3, 6]);
+      arc([rx - 1 + 4, 6], [rx - 1, 12], [rx + 3.2, rz - 9], 8);
+      arc([rx + 5, rz - 3.5], [rx + 5.2, rz + 3], [rx + 1.5, rz + 4.6], 6);
+      arc([rx - 2.5, rz + 4.4], [rx - 12, 24], [rootX, 22], 10);
+      const pts = outline.map(([X, Z]) => [sx * X, Z]);
+      /** @type {number[][][]} 減重孔：兩臂各一排長圓孔＋中央一排圓孔 */
+      const holes = [];
+      for (const hx of [56, 62]) {
+        holes.push(circlePts(sx * hx, 0, 1.1, 14));
+      }
+      for (const sz of [-1, 1]) {
+        for (let k = 0; k < 3; k++) {
+          const f = 0.22 + k * 0.24;
+          const hx = 55 + (rx - 55) * f;
+          const hz = 18 + (rz - 18) * f;
+          holes.push(roundedRect(sx * hx, sz * hz, 3.6, 2.2, 1.0));
+        }
+        holes.push(circlePts(sx * 54, sz * 13.5, 1.0, 14));
+      }
+      const plate = extrudeXZ(pts, bt, mats.chassis, holes, 0.35);
+      plate.position.y = bumperY;
+      g.add(plate);
+    }
     for (const sz of [-1, 1]) {
-      // 導輪臂：底板＋兩側立起的邊框（I 字斷面，臂厚約 5 mm）
       const ax0 = sx * 54;
       const az0 = sz * 16;
       const ax1 = sx * rx;
       const az1 = sz * rz;
-      // iter-05：導輪臂底板改為擠出板件並開 2 個減重孔（reviewer「保桿缺螺絲孔」；ref ma-chassis：臂上一排圓孔）
-      g.add(armPlate(ax0, az0, ax1, az1, 6.5, bt, bumperY, 3, mats.chassis));
       const dirX = ax1 - ax0;
       const dirZ = az1 - az0;
-      const L = Math.hypot(dirX, dirZ);
-      const nx = -dirZ / L;
-      const nz = dirX / L;
-      for (const off of [-2.6, 2.6]) {
-        g.add(beam(ax0 + nx * off, az0 + nz * off, ax1 + nx * off, az1 + nz * off, 1.2, 2.2, bumperY + bt));
-      }
       // 導輪座（圓柱凸台，導輪下方）
       const boss = new THREE.Mesh(new THREE.CylinderGeometry(4.6, 4.6, bt + 1.0, 24), mats.chassis);
       boss.position.set(ax1, bumperY + (bt + 1.0) / 2 - 0.5, az1);
@@ -1175,6 +1193,29 @@ function buildChassis(mats) {
     const spur = gear(d.spurPitchRadius_mm + 0.4, 22, 3.0, mats.spur);
     spur.position.set(sx * hw, axleY, gt.crownZ - 2.4 - 1.5);
     g.add(spur);
+  }
+
+  // iter-35：齒輪箱外殼（reviewer iter-34：「齒輪直接裝在薄隔板上，看起來沒有齒輪箱外殼」）：
+  // 近側（−z）壁開大窗＋頂蓋開槽窗，保留看得到齒輪的檢視窗，整體讀成一個有外殼的齒輪箱
+  for (const sx of [-1, 1]) {
+    const gx0 = sx * 15.5;
+    const gx1 = sx * (hw + 5);
+    const nearPts = [[gx0, y0 + t], [gx0, 17.5], [sx * 22, 20], [sx * (hw - 2), 20], [gx1, 17.5], [gx1, y0 + t]];
+    const nearOrdered = sx > 0 ? nearPts : nearPts.slice().reverse();
+    const winC = [sx * (gt.counterX + hw) / 2, (axleY + gt.counterY) / 2];
+    // roundedRect 回傳 [x, 第二座標]，這裡第二座標當作 y（x-y 平面板）
+    const win = roundedRect(winC[0], winC[1], 21, 11, 2.5);
+    const nearWall = extrudeXY(nearOrdered, 1.2, mats.chassis, [sx > 0 ? win : win.slice().reverse()]);
+    nearWall.position.z = -10.6;
+    g.add(nearWall);
+    // 槽窗開在齒輪正上方（輪軸齒輪與中間齒輪小齒在 z ≈ −5 ~ −8），從上方看得到齒輪
+    const hoodHole = roundedRect(sx * (gt.counterX + hw) / 2, -5.6, 22, 7.4, 2.2);
+    const hood = extrudeXZ(roundedRect(sx * (Math.abs(gx0) + Math.abs(gx1)) / 2, -2.7, Math.abs(gx1 - gx0), 16.2, 2.2), 0.8, mats.chassis, [hoodHole], 0.25);
+    hood.position.y = 19.6;
+    g.add(hood);
+    for (const sz of [-1, 1]) {
+      g.add(screwHead(mats, sx * (Math.abs(gx0) + 2.6), 20.4, -2.7 + sz * 5.6, 0.9));
+    }
   }
 
   // ---- 電池（兩顆 AA，置於馬達兩側；藏在電池蓋內）----
