@@ -4,7 +4,7 @@
 import * as THREE from 'three';
 import data from './data/body-skeleton.json';
 import { getPart } from '../parts/index.js';
-import { makeLoftKit, cachedBuild, namedMaterial, decalMaterial, buildMountTabs, buildRegion, buildRim, sdNumber, sdConvexPolygon, sdRoundRect, sideDecal, topDecal, mergeGeos, smoothstep } from './loft.js';
+import { makeLoftKit, cachedBuild, namedMaterial, decalMaterial, buildMountTabs, buildRegion, buildRim, sdNumber, sdConvexPolygon, sdRoundRect, sdBar, sideDecal, topDecal, mergeGeos, smoothstep } from './loft.js';
 
 /** @typedef {import('./types').BodyDef} BodyDef */
 /** @typedef {import('./loft.js').BodyPart} BodyPart */
@@ -13,7 +13,9 @@ import { makeLoftKit, cachedBuild, namedMaterial, decalMaterial, buildMountTabs,
 /** @type {number} 開口 / 輪拱 / 下緣周圍的萊姆黃補強邊寬度（DESIGN.md §3.4：1.2 mm） */
 const BAND = 1.2;
 /** @type {number} 補強凸緣高出殼面的高度（mm）：iter-36 改成貼著殼面的薄平凸緣（約 1.2 寬 × 0.3 高），不要像圓管 */
-const RIB = 0.3;
+const RIB = 0.8;
+/** @type {number} 凸緣頂部的倒角階（mm）：外圈 CHAMFER 寬的一階低 CHAMFER 高 */
+const CHAMFER = 0.3;
 
 /**
  * 葉子板隆起（iter-34）：讓輪拱切口留在側壁、不再切過肩部斜面；iter-36 改寬緩（σ 13 mm），補強邊沿葉子板不再起伏
@@ -25,12 +27,87 @@ const bump = (x, az) =>
   1.6 * (1 - smoothstep(4, 24, az)) * smoothstep(-58, -40, x) * (1 - smoothstep(46, 60, x));
 
 /**
- * iter-41：六角側窗 S1 前端從 x 20 縮到 x 8.5，空出 x 9.5–21 的平直側板放橫排號碼「24」（設計資料其餘不變）
+ * 頂面大型多邊形開口（iter-45，俯視 (x, z)，z 為實際座標、左右各自列出）：開口對準內部零件，少而大。
+ * 依據 componentLayout：馬達 x −12.5~12.5、|z| < 10；電池 x −25~25、|z| 12~26.4；前 / 後齒輪箱 |x| 15.5~45、z −11~+1；
+ * 座艙泡 x 6~32、|z| < 9.5（保留實心當座艙底）；前後卡座 (52, 0)、(−50, 0) 留中央肋；引擎蓋號碼牌 x 33.6~42.4。
+ * 開口之間的肋寬 ≥ 2.5 mm（萊姆黃凸緣沿開口一圈 1.2 mm）。
+ * @type {{ id: string, pts: number[][] }[]}
+ */
+const TOP_HOLES = [
+  // 前齒輪箱上方：左右兩個往前收尖的五角形（中央留 6 mm 肋給前卡座）
+  { id: 'F-L', pts: [[45, -3.2], [60.5, -3.2], [60.5, -9], [53, -17.5], [45, -17.5]] },
+  { id: 'F-R', pts: [[45, 3.2], [60.5, 3.2], [60.5, 9], [53, 17.5], [45, 17.5]] },
+  // 馬達正上方：跨中線的大六角形（座艙泡後方）
+  { id: 'M', pts: [[4.5, -6], [4.5, 6], [-2, 10.4], [-17, 10.4], [-23, 5], [-23, -5], [-17, -10.4], [-2, -10.4]] },
+  // 左右電池艙：長六角形（沿電池 x −25~24，|z| 12.9~25.5，前端繞過座艙泡）
+  { id: 'B-L', pts: [[-27, -19], [-22, -12.9], [3.5, -12.9], [24, -13.5], [26, -19], [22, -25.5], [-22, -25.5]] },
+  { id: 'B-R', pts: [[-27, 19], [-22, 12.9], [3.5, 12.9], [24, 13.5], [26, 19], [22, 25.5], [-22, 25.5]] },
+  // 後齒輪箱上方：中央大三角（尖端朝前）＋左右後甲板五角形（中央留肋給後卡座）
+  { id: 'R-C', pts: [[-26.5, 0], [-43, 9.5], [-43, -9.5]] },
+  { id: 'R-L', pts: [[-46, -3.2], [-61, -3.2], [-61, -14], [-50, -18.5], [-41, -14]] },
+  { id: 'R-R', pts: [[-46, 3.2], [-61, 3.2], [-61, 14], [-50, 18.5], [-41, 14]] },
+].map((h) => ({ ...h, sd: sdConvexPolygon(h.pts) }));
+
+/** @type {(x: number, y: number, z: number) => number} 頂面開口的距離（負值 = 挖空；只投影到頂面 / 肩部，不切側壁） */
+const topHolesSd = (x, y, z) => {
+  if (Math.abs(z) > 30) {
+    return 10;
+  }
+  let d = Infinity;
+  for (const h of TOP_HOLES) {
+    d = Math.min(d, h.sd(x, z));
+  }
+  return d;
+};
+
+/**
+ * 側窗 S1：六角窗以三根斜撐分成三角格（側視 (x, y)），只作用在側壁
+ * @type {(x: number, y: number, z: number) => number}
+ */
+const sideWindowSd = (() => {
+  const s1 = data.openings.find((o) => o.view === 'side' && o.shape === 'hex');
+  const [x0] = s1.x;
+  const x1 = 8.5;
+  const [y0, y1] = s1.y;
+  const c = (y1 - y0) / 2;
+  const hex = sdConvexPolygon([
+    [x0, (y0 + y1) / 2],
+    [x0 + c, y1],
+    [x1 - c, y1],
+    [x1, (y0 + y1) / 2],
+    [x1 - c, y0],
+    [x0 + c, y0],
+  ]);
+  const xs = [-17.5, -10.5, -3.5, 3.5];
+  /** @type {((u: number, v: number) => number)[]} */
+  const struts = [];
+  for (let i = 0; i < xs.length - 1; i++) {
+    const ya = i % 2 === 0 ? y0 - 1 : y1 + 1;
+    const yb = i % 2 === 0 ? y1 + 1 : y0 - 1;
+    struts.push(sdBar(xs[i], ya, xs[i + 1], yb, 1.6));
+  }
+  return (x, y, z) => {
+    if (Math.abs(z) < 30) {
+      return 10;
+    }
+    let ds = Infinity;
+    for (const f of struts) {
+      ds = Math.min(ds, f(x, y));
+    }
+    return Math.max(hex(x, y), -ds);
+  };
+})();
+
+/**
+ * iter-44：頂部 / 肩部的圓角矩形開口（H1–H4）改成 Voronoi 網格骨架；側窗 S1 前端縮到 x 8.5（iter-41 號碼位置）並加三角分格
  * @type {any}
  */
 const SKELETON_DATA = {
   ...data,
-  openings: data.openings.map((o) => (o.view === 'side' && o.shape === 'hex' ? { ...o, x: [o.x[0], 8.5] } : o)),
+  openings: [
+    { id: 'T 頂面大型多邊形開口 ×8', view: 'top', shape: 'fn', sd: topHolesSd },
+    { id: 'S1 側窗（三角分格）', view: 'side', shape: 'fn', sd: sideWindowSd },
+  ],
 };
 
 /** @type {() => Record<string, THREE.Material>} */
@@ -42,7 +119,10 @@ const makeMaterials = () => ({
   limeInner: namedMaterial('paint-lime', { color: 0x9cbd16, roughness: 0.5, side: THREE.BackSide }),
   limeEdge: namedMaterial('paint-lime', { color: 0xb4dc18, roughness: 0.45, side: THREE.DoubleSide }),
   seat: namedMaterial('cockpit-dark', { color: 0x16181b, roughness: 0.6 }),
-  glass: namedMaterial('pc-clear', { color: 0xc8d4e0, roughness: 0.02, transparent: true, opacity: 0.12, envMapIntensity: 0.35, depthWrite: false }),
+  // iter-44：淺煙燻透明泡罩（降低鏡面與環境反射，不再讀成灰色實心塊）
+  glass: namedMaterial('pc-clear', { color: 0x5c6670, roughness: 0.08, specularIntensity: 0.4, transparent: true, opacity: 0.22, envMapIntensity: 0.25, depthWrite: false }),
+  driver: namedMaterial('cockpit-driver', { color: 0x3a3d44, roughness: 0.45, clearcoat: 0.4 }),
+  helmet: namedMaterial('cockpit-helmet-lime', { color: 0xc8f31d, roughness: 0.3, clearcoat: 0.8 }),
   black: decalMaterial('decal-matte-black', { color: 0x111111, roughness: 0.8 }),
   limeDecal: decalMaterial('decal-lime', { color: 0xc8f31d, roughness: 0.4, emissive: 0xc8f31d, emissiveIntensity: 0.05 }),
   mount: namedMaterial('abs-mount-black', { color: 0x222326, roughness: 0.6 }),
@@ -74,9 +154,14 @@ const compose = () => {
   const cab = (x, y, z) => kit.underCanopy(x, z);
 
   // 萊姆黃補強凸緣：沿開口、輪拱、下緣與肩稜，平頂、高出殼面 RIB mm，側面用窄牆接回殼面
-  const limeRib = buildRegion(surf, [...kit.holes, lime], { offset: RIB, smoothOffset: true });
+  // iter-45：凸緣高 RIB = 0.8 mm、頂部外圈一階 CHAMFER 倒角（外圈 0.3 mm 寬的環低 0.3 mm）
+  /** @type {KeepFn} */
+  const limeTop = (x, y, z, s) => lime(x, y, z, s) - CHAMFER;
+  const limeStep = buildRegion(surf, [...kit.holes, lime, (x, y, z, s) => -limeTop(x, y, z, s)], { offset: RIB - CHAMFER, smoothOffset: true });
+  const limeRib = buildRegion(surf, [...kit.holes, limeTop], { offset: RIB, smoothOffset: true });
   parts.push({ geometry: limeRib.geometry, mat: 'lime', shell: true, name: 'shell-lime-frame' });
-  parts.push({ geometry: buildRim(limeRib, 0, RIB), mat: 'limeEdge', name: 'shell-lime-rib-wall' });
+  parts.push({ geometry: limeStep.geometry, mat: 'limeEdge', name: 'shell-lime-chamfer' });
+  parts.push({ geometry: mergeGeos([buildRim(limeStep, 0, RIB - CHAMFER), buildRim(limeRib, RIB - CHAMFER, RIB)]), mat: 'limeEdge', name: 'shell-lime-rib-wall' });
   parts.push({ geometry: kit.outer([(x, y, z, s) => -lime(x, y, z, s), (x, y, z, s) => -cab(x, y, z, s)]), mat: 'smoke', shell: true, renderOrder: 2, name: 'shell-smoke' });
   parts.push({ geometry: kit.outer([(x, y, z, s) => -lime(x, y, z, s), cab]), mat: 'seat', shell: true, name: 'shell-cockpit' });
 
@@ -92,19 +177,27 @@ const compose = () => {
 
   // 座艙泡（透明 PC）
   parts.push({ geometry: buildRegion(kit.canopy, []).geometry, mat: 'glass', shell: true, renderOrder: 3, name: 'canopy' });
+  // 座艙內裝（iter-44）：後傾椅背＋駕駛人剪影（萊姆黃頭盔、深色肩部與軀幹），透過泡罩看得到
+  const deck = (x) => kit.innerYAt(x) + kit.t;
+  const seatBack = new THREE.CapsuleGeometry(2.2, 2.0, 4, 12);
+  seatBack.scale(0.35, 1, 1.1);
+  seatBack.rotateZ(0.55);
+  seatBack.translate(9.6, deck(10) + 1.4, 0);
+  const shoulders = new THREE.CapsuleGeometry(0.9, 3.6, 4, 12);
+  shoulders.rotateX(Math.PI / 2);
+  shoulders.translate(12, deck(12) + 1.2, 0);
+  const torso = new THREE.CapsuleGeometry(1.2, 4.0, 4, 12);
+  torso.rotateZ(Math.PI / 2 - 0.35);
+  torso.scale(1, 0.7, 1.4);
+  torso.translate(15, deck(15) + 0.5, 0);
+  parts.push({ geometry: mergeGeos([seatBack, shoulders, torso]), mat: 'driver', name: 'cockpit-driver' });
+  const helmet = new THREE.SphereGeometry(1.55, 20, 14);
+  helmet.scale(1.12, 1, 0.95);
+  helmet.translate(13.6, deck(13.6) + 2.9, 0);
+  parts.push({ geometry: helmet, mat: 'helmet', name: 'cockpit-helmet' });
 
   // ---- 貼紙 ----
-  // 霧黑三角：前肩、後甲板兩側
-  const triFront = sdConvexPolygon([
-    [41, 18],
-    [27, 18],
-    [27, 26.5],
-  ]);
-  const triRear = sdConvexPolygon([
-    [-44, 20],
-    [-44, 27.5],
-    [-57, 20],
-  ]);
+  // iter-44：頂部霧黑三角拿掉（會被網格骨架切碎），只保留側面三角
   // 側面三角：六角側窗前端與前輪拱之間（側視 x–y）
   const triSide = sdConvexPolygon([
     [20.6, 10.9],
@@ -113,8 +206,6 @@ const compose = () => {
   ]);
   parts.push({
     geometry: mergeGeos([
-      kit.decal((x, y, z) => -triFront(x, Math.abs(z))),
-      kit.decal((x, y, z) => -triRear(x, Math.abs(z))),
       kit.decal(sideDecal((u, v) => triSide(u, v) + 0.5, { x0: 0, y0: 0, zMin: 30, side: 1 }), { offset: 0.12 }),
       kit.decal(sideDecal((u, v) => triSide(-u, v) + 0.5, { x0: 0, y0: 0, zMin: 30, side: -1 }), { offset: 0.12 }),
     ]),
