@@ -811,9 +811,32 @@ function buildChassis(mats) {
     const winCz = -4.5;
     // iter-36：reviewer iter-35「真實 MA 底面有齒輪蓋，不會直接看到齒輪」→ 底蓋改成封閉，只留一條小檢視槽
     const winHole = roundedRect(winCx, winCz, 10, 3.4, 1.3);
-    const cover = extrudeXZ(roundedRect(cx, -3.5, 32.6, 19.6, 3), 1.2, mats.chassisDark, [winHole]);
+    // iter-45：底蓋改成三角肋格（reviewer iter-44：「底盤主體是大面積平板，缺補強肋與成型細節」）：
+    // 底蓋開一排排三角形口袋（深 0.8 mm），上方另有一片背板封住 → 從底面看是三角補強肋格，離地高度不變
+    /** @type {number[][][]} */
+    const pockets = [winHole];
+    for (let i = 0; i < 6; i++) {
+      for (const row of [-1, 1]) {
+        const px = cx - 13 + i * 5.2;
+        const pz = -3.5 + row * 4.6;
+        const up = (i + (row > 0 ? 1 : 0)) % 2 === 0 ? 1 : -1;
+        // 避開檢視槽（外擴 1.2 mm）與四角螺絲（±15, ±8.6）
+        if (Math.abs(px - winCx) < 7.2 && Math.abs(pz - winCz) < 3.4) {
+          continue;
+        }
+        if (Math.abs(Math.abs(px - cx) - 15) < 3 && Math.abs(Math.abs(pz + 3.5) - 8.6) < 3) {
+          continue;
+        }
+        pockets.push([[px - 2.45, pz - up * 1.9], [px + 2.45, pz - up * 1.9], [px, pz + up * 2.1]]);
+      }
+    }
+    const cover = extrudeXZ(roundedRect(cx, -3.5, 32.6, 19.6, 3), 0.8, mats.chassisDark, pockets);
     cover.position.y = y0 + 0.05;
     g.add(cover);
+    // 背板用深槍灰，口袋底和黑色肋形成對比，肋格才讀得出來
+    const coverBack = extrudeXZ(roundedRect(cx, -3.5, 32.0, 19.0, 2.8), 0.4, mats.chassis, [winHole]);
+    coverBack.position.y = y0 + 0.85;
+    g.add(coverBack);
     // 窗框（比底蓋高一層的細框，從底面看是一圈內縮的邊）
     const frame = extrudeXZ(roundedRect(winCx, winCz, 12.5, 5.8, 2), 0.9, mats.chassis, [winHole]);
     frame.position.y = y0 + 1.25;
