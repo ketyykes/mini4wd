@@ -2409,3 +2409,17 @@
 2. 車殼 B 組（subagent）：body-gazelle-leap、body-halo-orbit、body-dartfrog-hop（`homageB.js`）。
 3. 新零件規格查證（subagent，`PARTS_RESEARCH.md` 第四階段節）；概念圖由主 agent 依序用 Codex 產生（429 間隔重試）。
 - 預期：6 款新致敬款上線 → 舊三款退役 → P20 通過（20/20），外觀「設計完成度與多樣性」與「致敬風格感」提升。
+
+### 執行（iter-54）
+- 概念圖：Codex 依序生 12 張（02:12 起），9 張遇 429，改為失敗後等 180 s 重試，02:45 全數完成（失敗紀錄 `codex_log_*_fail429_*.txt` 保留）。
+- A 組（tortoise-dome 13.81 g、marlin-sail 14.56 g、owl-hush 14.99 g）、B 組（gazelle-leap 12.94 g、halo-orbit 16.10 g、dartfrog-hop 14.11 g）上線；31 mm 合法：tortoise、gazelle、dartfrog。
+- 整合（主 agent）：刪除 wedge / beast / fork（＋`data/body-wedge.json`）；`configs/default.json` 車殼先改 marlin-sail → `P17_ballast` 失敗（`ballast-hex-1g@center` 在 marlin 低矮車殼下 BALLAST_BODY_CLEARANCE，是真實干涉，不是測試問題）→ 預設改 **owl-hush**（各安裝點配重皆合法、31 mm 不合法，P11 的 BODY_TIRE_CLEARANCE 案例成立）；speed → marlin-sail、race-frp → halo-orbit；P19 不合法案例改 skeleton＋31 mm；render / export 預設清單更新。
+- 驗證方式：零件 subagent 同時在工作區改 sim.js 等檔案，所以在乾淨 worktree（HEAD＋只有車殼整合）跑 score：**20/20**（P20 新定義通過）。commit a2a033c 後主線 HEAD 以 `reset --mixed` 移過去，零件工作區變更保留未提交。
+- 零件工作流回報：工作區曾出現 `P17_brake_sponge` 失敗（平地極速差 0.57%），根因是新加的純滾動約束只算摩擦圓的正向剩餘容量，起步打滑時傳動系與車體脫鉤、車速超過理論極速；改為縱向摩擦衝量雙向限制在 ±μN，並加 `P17_traction_limit` 防回歸（未放寬容許值）。
+- 零件工作流（subagent，同輪並行）：完成第 1–8 項（可動保桿未做）；新檔 `src/parts/inertia.js`、`src/parts/stabilizers.js`；預設車 J_eq 2557 g·mm²（等效 15.1 g），起步 0.3 s 模擬 1.129 vs 含 J 解析 1.133 m/s；motor-sprint 依玩家實測修正（ω0 49,700 → 31,000 rpm，電流回代 −35% 已註明）；P11 / P14 / P17 / P18 / P19 新增案例，既有測試只有新增、沒有放寬。示範設定 `configs/p4-tech.json`（初版 2 mm 海綿離地 0.40 mm 被 GROUND_CLEARANCE 擋下 → 改 1 mm）。
+- 測試 **20/20**（主線工作區 03:09 與 p4-tech 加入後各跑一次）。
+
+### 驗證（iter-54）
+- 外觀（`shared/reviews/iter-54/REVIEW.md`）：錨點 5.67；對照 7 / 6 / 7 / 6 / 7 / 7（6.67）；本輪 6 / 7 / 8 / 6 / 6 / 7.5 = **6.75** → **83.75**。A/B：比例差、風格感好、原創性好、設計持平（多樣性大增、完成度降）、材質差、零件好。原創性逐款全判「否」。
+- 決策：依 A/B 配對規則應 revert（有兩項差），但本輪核心是 GOAL 硬性要求（全新 6 款、舊款退役、P20）與物理正確性修正（轉動慣量、sprint 馬達參數），revert 會回到 19/20、總分 80.42 且違反 GOAL；比照 iter-49 的先例 **保留**，比例與材質兩項退步列為 iter-55 首要修正，iter-55 起恢復嚴格 A/B（同款新車殼對照）。
+- 評審重點：車尾平切 / 輪拱露空腔；招牌造型件（halo 光環、gazelle 角、dartfrog 蹼翼與眼泡、marlin 背帆與新月尾、owl 鋸齒翼）太細太小太平；dartfrog 芥末黃、halo 光環 app 白 / Blender 黑、marlin 銀白發灰；甲片、眼燈只靠貼紙。
