@@ -1,10 +1,7 @@
 // 車殼目錄：所有車殼都裝在同一組安裝點上；質量、重心、外框由車殼幾何計算
 import * as THREE from 'three';
-import { wedgeBody } from './wedge.js';
 import { skeletonBody } from './skeleton.js';
 import { aeroWingBody } from './aeroWing.js';
-import { beastBody } from './beast.js';
-import { forkBody } from './fork.js';
 import { pcBoxBody } from './pcBox.js';
 import { homageBodiesA } from './homageA.js';
 import { homageBodiesB } from './homageB.js';
@@ -12,10 +9,11 @@ import { homageBodiesB } from './homageB.js';
 /** @typedef {import('./types').BodyDef} BodyDef */
 /** @typedef {import('./types').BodyMassProps} BodyMassProps */
 
-// 六款原創車殼（iter-46）：致敬《爆走兄弟》風格 3 款（wedge / beast / fork）＋常見比賽車殼型式 3 款（skeleton / aero-wing / pc-box）
+// 第四階段（iter-54）：全新 6 款致敬《爆走兄弟》風格車殼（A 組 tortoise-dome / marlin-sail / owl-hush、B 組 gazelle-leap / halo-orbit / dartfrog-hop，
+// 分別註冊在 homageA.js / homageB.js）＋常見比賽車殼型式 3 款（skeleton / aero-wing / pc-box）。
+// 第三階段的致敬款 wedge / beast / fork 已退役（程式碼保留在 git 歷史，設計說明在 shared/design/ 標註已退役）
 /** @type {BodyDef[]} */
-// 第四階段（iter-54 起）：新致敬款分 A / B 兩組註冊（homageA.js / homageB.js）；舊致敬款 wedge / beast / fork 待新款通過 P20 後退役
-const bodies = [...homageBodiesA, ...homageBodiesB, wedgeBody, beastBody, forkBody, skeletonBody, aeroWingBody, pcBoxBody];
+const bodies = [...homageBodiesA, ...homageBodiesB, skeletonBody, aeroWingBody, pcBoxBody];
 
 /** @type {() => BodyDef[]} */
 export const listBodies = () => bodies.slice();

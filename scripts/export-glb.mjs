@@ -1,6 +1,6 @@
 // 匯出整台車為 GLB（給 render/ 的 Blender 展示圖管線使用）
 // 用法：node scripts/export-glb.mjs [bodyId] [--config <名稱>] [--out <檔名>]
-//   不帶 --config：exports/<bodyId>.glb（預設組裝設定，bodyId 預設 body-wedge）
+//   不帶 --config：exports/<bodyId>.glb（預設組裝設定，bodyId 預設 body-owl-hush）
 //   帶 --config：exports/config-<名稱>[-<bodyId>].glb（bodyId 省略 = 用設定裡的車殼；none = 只有底盤與零件）
 // 流程：vite 起伺服器 → Playwright 無頭 Chromium 開 web/export.html?body=<id> → 頁面內 GLTFExporter → base64 傳回 node 寫檔
 import { createServer } from 'vite';
@@ -24,7 +24,7 @@ const configName = flagValue('--config') ?? '';
 /** @type {string[]} 去掉旗標與其值後的位置參數 */
 const positional = argv.filter((a, i) => !a.startsWith('--') && !(i > 0 && argv[i - 1].startsWith('--')));
 /** @type {string} */
-const bodyId = positional[0] ?? (configName ? '' : 'body-wedge');
+const bodyId = positional[0] ?? (configName ? '' : 'body-owl-hush');
 /** @type {string} 輸出檔名（不含副檔名） */
 const outName = flagValue('--out') ?? (configName ? `config-${configName}${bodyId ? `-${bodyId}` : ''}` : bodyId);
 /** @type {number} 與 render.mjs（5181）錯開，兩者可同時跑 */

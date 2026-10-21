@@ -331,8 +331,8 @@ async function exportGlb(root) {
 async function main() {
   const params = new URLSearchParams(location.search);
   const configName = params.get('config') || '';
-  // 沒指定組裝設定時維持舊行為（預設設定＋車殼 id，預設 body-wedge）；指定設定時車殼預設用設定裡的
-  const bodyId = params.get('body') || (configName ? '' : 'body-wedge');
+  // 沒指定組裝設定時維持舊行為（預設設定＋車殼 id，預設 body-owl-hush）；指定設定時車殼預設用設定裡的
+  const bodyId = params.get('body') || (configName ? '' : 'body-owl-hush');
   const model = buildModelForExport(bodyId, configName || 'default');
   model.name = `mini4wd_${configName ? `${configName}_` : ''}${bodyId || 'config-body'}`;
   model.userData = { m4BodyId: bodyId, m4Config: configName || 'default', m4Units: 'mm', m4Axes: 'x-forward,y-up,z-right' };

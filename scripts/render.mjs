@@ -10,7 +10,7 @@ import { fileURLToPath } from 'node:url';
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const iter = process.argv[2] ?? '00';
 const views = (process.argv[3] ?? 'side,top,front34,bottom,track').split(',');
-const bodies = (process.argv[4] ?? 'body-wedge,body-beast,body-fork,body-skeleton,body-aero-wing,body-pc-box').split(',');
+const bodies = (process.argv[4] ?? 'body-tortoise-dome,body-marlin-sail,body-owl-hush,body-gazelle-leap,body-halo-orbit,body-dartfrog-hop,body-skeleton,body-aero-wing,body-pc-box').split(',');
 const extra = process.argv[5] ?? '';
 
 // port 0：由系統分配空閒埠，多個截圖程序可同時執行（原本寫死 5181 會互相搶埠）

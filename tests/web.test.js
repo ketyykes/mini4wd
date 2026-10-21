@@ -170,7 +170,7 @@ describe('P19 網頁換件', () => {
 
   test('P19_不合法組合顯示違規原因且停用上賽道', async () => {
     await page.selectOption('select[data-slot="config"]', 'default');
-    await changeSlot('body', 'body-wedge');
+    await changeSlot('body', 'body-skeleton');
     await changeSlot('wheels', 'wheel-31-large');
     const g = await garageState();
     expectMatchesNode(g);
@@ -241,7 +241,7 @@ describe('P19 網頁換件', () => {
     expect((await garageState()).distance).toBeGreaterThan(d1);
     await page.click('[data-action="garage"]');
     await expect.poll(async () => (await garageState()).running).toBe(false);
-    await changeSlot('body', 'body-wedge');
+    await changeSlot('body', 'body-skeleton');
   }, 90000);
 
   test('P19_URL 參數可還原組裝', async () => {

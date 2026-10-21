@@ -1,5 +1,5 @@
 // 網頁換件頁截圖：換件頁一張、上賽道（車在立體換道橋上）一張
-// 用法：node scripts/garage-shots.mjs <iter> [URL 查詢字串，例如 "body=body-fork&rollers=roller-13-alu"]
+// 用法：node scripts/garage-shots.mjs <iter> [URL 查詢字串，例如 "body=body-owl-hush&rollers=roller-13-alu"]
 import { createServer } from 'vite';
 import { chromium } from 'playwright';
 import path from 'node:path';
