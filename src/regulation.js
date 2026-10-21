@@ -7,7 +7,7 @@ import { spec } from './spec.js';
 const EPS = 1e-9;
 
 /**
- * 檢查整車組裝是否符合比賽規則；另外回傳不屬於比賽規則、但零件互相干涉的相容性警告（不影響 ok）
+ * 檢查整車組裝是否符合比賽規則與實體組裝條件（車殼與輪胎 / 導輪不得干涉）；warnings 保留給不影響 ok 的提醒
  * @type {(asm: any) => { ok: boolean, violations: Violation[], warnings: Violation[] }}
  */
 export function validateAssembly(asm) {
@@ -58,14 +58,15 @@ export function validateAssembly(asm) {
   if (b.size !== r.batterySize || b.cells !== r.batteryCells) {
     fail('BATTERY', `電池須為 ${r.batteryCells} 顆 ${r.batterySize}；目前 ${b.cells} 顆 ${b.size}`);
   }
-  /** @type {Violation[]} */
-  const warnings = [];
-  // SPEC 1.14：車殼與輪胎 / 導輪間隙 ≥ 1 mm（相容性，不是比賽規則）
+  // SPEC 1.14：車殼與輪胎 / 導輪間隙必須 ≥ 1 mm。兩個實體零件不能重疊（< 0 mm 是互相穿透，0–1 mm 是會摩擦的干涉），
+  // 這種組合實際上裝不起來或輪胎會磨車殼 → 判為違規（2026-10-21 使用者要求：零件替換要符合物理，原本只是警告）
   if (asm.fit && asm.fit.tire_mm < 1) {
-    warnings.push({ code: 'BODY_TIRE_CLEARANCE', message: `車殼 ${asm.body.id} 與輪胎間隙 ${asm.fit.tire_mm.toFixed(2)} mm（< 1 mm，會干涉），這款車殼不適合 ${p.wheels.diameter_mm} mm 輪胎` });
+    fail('BODY_TIRE_CLEARANCE', `車殼 ${asm.body.id} 與輪胎間隙 ${asm.fit.tire_mm.toFixed(2)} mm（須 ≥ 1 mm；${asm.fit.tire_mm < 0 ? '輪胎穿進車殼' : '輪胎會磨到車殼'}），這款車殼的輪拱不適合 ${p.wheels.diameter_mm} mm 輪胎`);
   }
   if (asm.fit && asm.fit.roller_mm < 1) {
-    warnings.push({ code: 'BODY_ROLLER_CLEARANCE', message: `車殼 ${asm.body.id} 與導輪間隙 ${asm.fit.roller_mm.toFixed(2)} mm（< 1 mm）` });
+    fail('BODY_ROLLER_CLEARANCE', `車殼 ${asm.body.id} 與導輪間隙 ${asm.fit.roller_mm.toFixed(2)} mm（須 ≥ 1 mm）`);
   }
+  /** @type {Violation[]} 目前沒有非違規的提醒；保留欄位給之後的相容性提示 */
+  const warnings = [];
   return { ok: violations.length === 0, violations, warnings };
 }

@@ -266,7 +266,7 @@ describe('第二階段：零件組裝 / 規則 / 車殼（P04、P08、P09、P11�
     }
   });
 
-  test('P11_regulation 預設組裝合法；8 種故意違規都被擋下且代碼正確', () => {
+  test('P11_regulation 預設組裝合法；8 種故意違規＋車殼干涉都被擋下且代碼正確', () => {
     const { assemble, validateAssembly } = api();
     const ok = validateAssembly(assemble(cfgWith()));
     console.log(`[P11] 預設組裝：ok=${ok.ok}, 違規 ${JSON.stringify(ok.violations.map((v) => v.code))}`);
@@ -279,7 +279,10 @@ describe('第二階段：零件組裝 / 規則 / 車殼（P04、P08、P09、P11�
       { code: 'HEIGHT', over: { rearStay: { base: 'stay-rear-standard', upperRollerHeight_mm: 70 } } },
       // 過輕：底盤本體與電池組都換成很輕的版本（只改底盤會因其他零件合計仍 ≥ 90 g 而不構成違規）
       { code: 'MASS', over: { chassis: { base: 'chassis-midship', mass_g: 5 }, battery: { base: 'battery-aa-nimh-950', mass_g: 10 } } },
-      { code: 'TIRE_DIAMETER', over: { wheels: { base: 'wheel-26-lowprofile', diameter_mm: 36 } } },
+      // 36 mm 輪胎超出規則，同時一定會撞到車殼輪拱（輪拱依 26 mm 輪胎設計）→ 兩個代碼都要回報
+      { code: 'TIRE_DIAMETER', codes: ['TIRE_DIAMETER', 'BODY_TIRE_CLEARANCE'], over: { wheels: { base: 'wheel-26-lowprofile', diameter_mm: 36 } } },
+      // 31 mm 大徑輪胎本身合規，但會穿進車殼（2026-10-21 使用者要求：零件替換要符合物理，干涉要擋下）
+      { code: 'BODY_TIRE_CLEARANCE', over: { wheels: 'wheel-31-large' } },
       { code: 'GROUND_CLEARANCE', over: { wheels: { base: 'wheel-26-lowprofile', diameter_mm: 23 } } },
       { code: 'DRIVE_4WD', over: { chassis: { base: 'chassis-midship', driveType: '2WD' } } },
       { code: 'GEAR_RATIO', over: { gear: { base: 'gear-3.5', ratio: 3.0 } } },
@@ -289,7 +292,7 @@ describe('第二階段：零件組裝 / 規則 / 車殼（P04、P08、P09、P11�
       const codes = res.violations.map((v) => v.code);
       console.log(`[P11] ${c.code}：ok=${res.ok}, 違規 ${JSON.stringify(codes)} — ${res.violations.map((v) => v.message).join('；')}`);
       expect(res.ok).toBe(false);
-      expect(codes).toEqual([c.code]);
+      expect(codes).toEqual(c.codes ?? [c.code]);
     }
   });
 
