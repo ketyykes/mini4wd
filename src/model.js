@@ -451,6 +451,27 @@ function buildWheel(mats, side) {
   back.position.z = -side * (w * 0.2);
   back.rotation.y = side > 0 ? 0 : Math.PI;
   g.add(back);
+  // iter-51：輪框內側（reviewer：底視缺培林與輪軸細節）：內側輪轂凸台＋六角軸孔（輪軸六角端插入處）＋5 條補強肋＋內緣唇邊。
+  // 全部在輪框半徑與輪胎寬度內，不改變外框
+  const innerZ = -side * (w * 0.2);
+  const innerHub = new THREE.Mesh(new THREE.CylinderGeometry(2.7, 3.1, 1.4, 24), mats.rim);
+  innerHub.rotation.x = Math.PI / 2;
+  innerHub.position.z = innerZ - side * 0.7;
+  g.add(innerHub);
+  const hexSock = new THREE.Mesh(new THREE.CylinderGeometry(1.2, 1.2, 0.2, 6), mats.chassisDark);
+  hexSock.rotation.x = Math.PI / 2;
+  hexSock.position.z = innerZ - side * 1.41;
+  g.add(hexSock);
+  for (let k = 0; k < 5; k++) {
+    const a = (k / 5) * Math.PI * 2 + 0.3;
+    const rib = new THREE.Mesh(new THREE.BoxGeometry(rr - 3.4, 0.8, 0.9), mats.rimBarrel);
+    rib.position.set(Math.cos(a) * (3.1 + (rr - 3.4) / 2), Math.sin(a) * (3.1 + (rr - 3.4) / 2), innerZ - side * 0.45);
+    rib.rotation.z = a;
+    g.add(rib);
+  }
+  const innerLip = new THREE.Mesh(new THREE.TorusGeometry(rr - 0.3, 0.3, 8, 40), mats.rim);
+  innerLip.position.z = -side * (w * 0.45 - 0.3);
+  g.add(innerLip);
   return g;
 }
 
@@ -1194,6 +1215,20 @@ function buildChassis(mats) {
   for (const sz of [-1, 1]) {
     g.add(screwHead(mats, 0, y0 + 0.5, sz * 12.0, 0.9).rotateX(Math.PI));
   }
+  // iter-51：底板前後段的固定螺絲（底板與上層框鎖在一起的位置；皿頭，埋在肋格之間的板底，不凸出底面）
+  for (const sx of [-1, 1]) {
+    for (const [px, pz] of [[46, 12], [46, -17]]) {
+      const head = new THREE.Mesh(new THREE.CylinderGeometry(1.1, 1.1, 0.12, 16), mats.screw);
+      head.position.set(sx * px, y0 + BOTTOM_RIB_H - 0.06, pz);
+      g.add(head);
+      for (const rot of [Math.PI / 4, -Math.PI / 4]) {
+        const slot = new THREE.Mesh(new THREE.BoxGeometry(1.5, 0.14, 0.3), mats.chassisDark);
+        slot.position.set(sx * px, y0 + BOTTOM_RIB_H - 0.08, pz);
+        slot.rotation.y = rot;
+        g.add(slot);
+      }
+    }
+  }
   // iter-36：底面馬達蓋（reviewer iter-35：「真實 MA 底面有馬達蓋」）：蓋住馬達窗的深色蓋板，開 3 × 4 的圓形散熱孔、周圍凸緣
   {
     /** @type {number[][][]} */
@@ -1527,6 +1562,79 @@ function buildChassis(mats) {
         web.position.set(w.x, w.y, w.z);
         g.add(web);
       }
+      // iter-51：保桿底面的加強肋格（reviewer：底視仍以平板為主）：寬保桿板底下一層 1.0 mm 深的肋格，
+      // 沿兩支導輪臂開一排口袋（口袋底為深色），中央橋接板與減重孔處挖空。
+      // 肋格（槍灰）底 = 保桿底 5.4 − 1.0 = 4.4 mm，高於底板 2.2 mm，不影響離地高度與外框
+      {
+        /** @type {(x: number, z: number, poly: number[][]) => boolean} */
+        const inP = (x, z, poly) => {
+          let c = false;
+          for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
+            const [xi, zi] = poly[i];
+            const [xj, zj] = poly[j];
+            if (zi > z !== zj > z && x < ((xj - xi) * (z - zi)) / (zj - zi) + xi) {
+              c = !c;
+            }
+          }
+          return c;
+        };
+        // 橋接板範圍（前緣內縮到 rx + 1，確保在寬保桿外形內）
+        const bridgeHole = bg.bridge.map(([x, z]) => [Math.sign(x) * Math.min(Math.abs(x), bg.rx + 1), z]);
+        /** @type {number[][][]} */
+        const ribHoles = [bridgeHole, ...bg.wideHoles.filter((h) => !h.some(([x, z]) => inP(x, z, bridgeHole)))];
+        // 沿導輪臂切成一格一格的口袋（每格長 4.6 mm、格間肋 1.0 mm），口袋寬度到臂的外形內 1.0 mm 為止（減重孔落在口袋裡）
+        for (const sz of [-1, 1]) {
+          const a0 = [53.5, 17];
+          const a1 = [bg.rx - 5.5, bg.rz - 2.5];
+          const L = Math.hypot(a1[0] - a0[0], a1[1] - a0[1]);
+          const ux = (a1[0] - a0[0]) / L;
+          const uz = (a1[1] - a0[1]) / L;
+          const nx = -uz;
+          const nz = ux;
+          const P = (t, v) => [sx * (a0[0] + ux * t + nx * v), sz * (a0[1] + uz * t + nz * v)];
+          /** @type {(t: number, dir: number) => number} 臂在 t 處往 ±v 方向到外形邊緣的距離 */
+          const reach = (t, dir) => {
+            let v = 0;
+            while (v < 20) {
+              const [x, z] = P(t, dir * (v + 0.1));
+              if (!inP(x, z, bg.wide) || inP(x, z, bridgeHole)) {
+                break;
+              }
+              v += 0.1;
+            }
+            return v;
+          };
+          for (let t0 = 0.5; t0 + 4.6 <= L; t0 += 5.6) {
+            const t1 = t0 + 4.6;
+            const vp = Math.min(reach(t0, 1), reach(t1, 1), reach((t0 + t1) / 2, 1)) - 1.0;
+            const vm = Math.min(reach(t0, -1), reach(t1, -1), reach((t0 + t1) / 2, -1)) - 1.0;
+            if (vp + vm < 2.5) {
+              continue;
+            }
+            ribHoles.push([P(t0, -vm), P(t1, -vm), P(t1, vp), P(t0, vp)]);
+          }
+        }
+        // 口袋已涵蓋的減重孔不再單獨列（避免孔重疊）
+        for (let i = ribHoles.length - 1; i >= 1; i--) {
+          const h = ribHoles[i];
+          if (h.length > 4 && ribHoles.some((q, j) => j !== i && q.length === 4 && h.every(([x, z]) => inP(x, z, q)))) {
+            ribHoles.splice(i, 1);
+          }
+        }
+        const ribGrid = extrudeXZ(bg.wide, 1.0, mats.chassis, ribHoles);
+        ribGrid.position.y = bumperY - 1.0;
+        g.add(ribGrid);
+        // 口袋底：保桿板底面貼一層深色薄面（口袋讀起來是凹進去的深色格子，肋是槍灰色）
+        const pocketFloor = extrudeXZ(bg.wide, 0.05, mats.chassisDark, [bridgeHole, ...bg.wideHoles.filter((h) => !h.some(([x, z]) => inP(x, z, bridgeHole)))]);
+        pocketFloor.position.y = bumperY - 0.06;
+        g.add(pocketFloor);
+      }
+      for (const sz of [-1, 1]) {
+        // 保桿鎖點的六角螺帽（上方十字螺絲的另一端）
+        const nut = new THREE.Mesh(new THREE.CylinderGeometry(1.5, 1.5, 1.0, 6), mats.steel);
+        nut.position.set(sx * 58, bumperY - 0.5, sz * 6);
+        g.add(nut);
+      }
     }
     // iter-34：拿掉兩臂之間的 X 形補強（reviewer：「保桿上一根斜放的細桿，像多出來的零件」；上蓋已有安裝孔與邊框樑）
   }
@@ -1686,12 +1794,48 @@ function buildChassis(mats) {
     g.add(cell);
   }
 
-  // ---- 輪軸（2 mm 鋼軸，貫穿左右輪）----
+  // ---- 輪軸（2 mm 六角鋼軸，貫穿左右輪；iter-51 改成六角斷面，外接圓 φ2.3）----
   for (const w of wheelLayout(spec).filter((q) => q.z > 0)) {
-    const axle = new THREE.Mesh(new THREE.CylinderGeometry(1, 1, c.trackWidth_mm + 4, 12), mats.steel);
+    const axle = new THREE.Mesh(new THREE.CylinderGeometry(1.15, 1.15, c.trackWidth_mm + 4, 6), mats.steel);
     axle.rotation.x = Math.PI / 2;
     axle.position.set(w.x, w.y, 0);
     g.add(axle);
+  }
+  // ---- 輪軸培林（iter-51）：620 培林（外徑 6、內徑 2、寬 2.5，SPEC 1.6 / bearing 零件）嵌在側框外側的軸承座，
+  // 外端面和側框外表面齊平（z = ±24.5，輪胎內側 ≥ 24.75 mm，不碰輪胎）：鋼外環、防塵蓋（培林為深色、塑膠軸承為白色 POM）、鋼內環＋軸承座凸緣。
+  // 位置與 assembly.js 的輪軸軸承相同（x = ±軸距/2、z = ±23.4），只是外觀，不另計質量（質量已在 bearings 零件）
+  {
+    const brg = asmCur.partsBySlot.bearings;
+    const od = (brg.outerDiameter_mm ?? 6) / 2;
+    const id = (brg.innerDiameter_mm ?? 2) / 2;
+    const shieldMat = brg.kind === 'ball' ? mats.chassisDark : mats.motorCap;
+    const faceZ = 24.5;
+    for (const w of wheelLayout(spec)) {
+      const sz = Math.sign(w.z);
+      const housing = new THREE.Mesh(new THREE.RingGeometry(od, od + 1.0, 32), mats.chassisBlack);
+      housing.position.set(w.x, w.y, sz * (faceZ + 0.04));
+      housing.rotation.y = sz > 0 ? 0 : Math.PI;
+      g.add(housing);
+      const outer = new THREE.Mesh(new THREE.RingGeometry(od - 0.55, od, 32), mats.steel);
+      outer.position.set(w.x, w.y, sz * (faceZ + 0.06));
+      outer.rotation.y = sz > 0 ? 0 : Math.PI;
+      g.add(outer);
+      if (brg.kind === 'ball') {
+        const shield = new THREE.Mesh(new THREE.RingGeometry(id + 0.45, od - 0.55, 32), shieldMat);
+        shield.position.set(w.x, w.y, sz * (faceZ + 0.02));
+        shield.rotation.y = sz > 0 ? 0 : Math.PI;
+        g.add(shield);
+        const inner = new THREE.Mesh(new THREE.RingGeometry(id + 0.05, id + 0.45, 24), mats.steel);
+        inner.position.set(w.x, w.y, sz * (faceZ + 0.05));
+        inner.rotation.y = sz > 0 ? 0 : Math.PI;
+        g.add(inner);
+      } else {
+        const bush = new THREE.Mesh(new THREE.RingGeometry(id + 0.05, od - 0.55, 32), shieldMat);
+        bush.position.set(w.x, w.y, sz * (faceZ + 0.05));
+        bush.rotation.y = sz > 0 ? 0 : Math.PI;
+        g.add(bush);
+      }
+    }
   }
   g.traverse((o) => {
     if (o.isMesh) {

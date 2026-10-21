@@ -19,6 +19,7 @@ import { makeLoftKit, createPolySurface, cachedBuild, buildRegion, buildMountTab
  * @property {number} wallThickness_mm
  * @property {{ x: number, pts: number[][] }[]} stations 半剖面站位表（見 createPolySurface）
  * @property {number} [tuck] 側裙下緣內收量
+ * @property {boolean} [innerSkipRecess] 內面避開凹陷（預設 false）
  * @property {number[]} [hard] 有給時改用平滑剖面（createSmoothPolySurface），只有這些點是銳利稜線
  * @property {{ x: number, y: number, radius: number, cutZFrom: number }[]} wheelArches
  * @property {any[]} [openings]
@@ -395,7 +396,9 @@ export function makePolyBody(cfg) {
       parts.push({ geometry: kit.outer([cab]), mat: cfg.mats.cockpit ?? cfg.mats.inner, shell: true, name: 'shell-cockpit' });
     }
     const st = kit.structure();
-    parts.push({ geometry: st.inner, mat: cfg.mats.inner, name: 'shell-inner' });
+    // innerSkipRecess（iter-51 新增選項，預設關閉＝原行為）：內面避開凹陷，Blender 雙面算圖時內面不會擋在凹腔前面
+    const innerGeo = cfg.innerSkipRecess ? buildRegion(surf, [...kit.holes, kit.notRecess], { offset: -kit.t }).geometry : st.inner;
+    parts.push({ geometry: innerGeo, mat: cfg.mats.inner, name: 'shell-inner' });
     parts.push({ geometry: st.rim, mat: cfg.mats.edge, name: 'shell-edge' });
     parts.push({ geometry: mergeGeos([st.capFront, st.capRear]), mat: cfg.mats.cap, shell: true, name: 'caps' });
     parts.push({ geometry: mergeGeos([st.capFrontIn, st.capRearIn]), mat: cfg.mats.inner, name: 'cap-inner' });

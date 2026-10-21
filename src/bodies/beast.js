@@ -10,18 +10,19 @@ import { namedMaterial, decalMaterial, buildRegion, buildRim, featureSd, sdNumbe
 /**
  * 半剖面站位表（8 點：中線頂 → 衝角邊 → 眉溝內 → 眉溝外 → 翼艙內稜 → 翼艙外稜 → 最寬處 → 下緣）
  * - 前段 x 40–54 中線頂 37–38（獸頭最高點），往後降到 28.5：和其他款「前低後高」相反的反楔形
+ * - iter-51：獸頭再加高 2–4 mm（x 22–62），翼艙內稜（第 4 點）抬高成往外斜下的裝甲分面、中央衝角座再隆起（加高為主、不加寬，俯視 IoU 不變）；最寬處（第 6 點，輪拱上方）維持原高度，31 mm 輪胎間隙不變
  * - 翼艙最寬 45（前後輪上方），腰線 32：俯視是「啞鈴」形
  * - 輪拱 R17.5（可裝 31 mm 大徑輪）
  * @type {{ x: number, pts: number[][] }[]}
  */
 const STATIONS = [
   [68, [[0, 20], [3, 19.6], [6, 18.5], [9, 18.4], [12, 18.8], [16, 18.6], [24, 17], [24, 15]]],
-  [62, [[0, 27], [4, 26.4], [8, 24], [11, 23.8], [16, 25.5], [26, 25], [34, 21], [34, 15]]],
-  [54, [[0, 33], [5, 32.4], [10, 28.5], [13, 28.3], [19, 31], [34, 31], [41, 26], [41, 14]]],
-  [46, [[0, 37], [5, 36.4], [11, 31.5], [14, 31.2], [20, 33.5], [36, 33.5], [44.5, 28.5], [44.5, 11.5]]],
-  [40, [[0, 38], [5, 37.4], [11, 32], [14, 31.6], [20, 34], [36, 34], [45, 29], [45, 10]]],
-  [32, [[0, 36.5], [5, 36], [11, 31.5], [14, 31], [20, 33], [35, 33], [43, 28], [43, 9.5]]],
-  [22, [[0, 33.5], [5, 33], [11, 30], [14, 29.6], [19, 30.5], [26, 30.5], [31.5, 27], [31.5, 9.5]]],
+  [62, [[0, 29.5], [4, 28.9], [8, 26.0], [11, 25.8], [16, 28.5], [26, 27.0], [34, 21], [34, 15]]],
+  [54, [[0, 37.2], [5, 36.6], [10, 31.7], [13, 31.5], [19, 35.8], [34, 34.2], [41, 26], [41, 14]]],
+  [46, [[0, 42.2], [5, 41.6], [11, 35.5], [14, 35.2], [20, 39.5], [36, 37.5], [44.5, 28.5], [44.5, 11.5]]],
+  [40, [[0, 43.2], [5, 42.6], [11, 36.0], [14, 35.6], [20, 40.0], [36, 38.0], [45, 29], [45, 10]]],
+  [32, [[0, 40.3], [5, 39.8], [11, 34.5], [14, 34.0], [20, 37.6], [35, 36.0], [43, 28], [43, 9.5]]],
+  [22, [[0, 35.2], [5, 34.7], [11, 31.4], [14, 31.0], [19, 32.7], [26, 31.9], [31.5, 27], [31.5, 9.5]]],
   [8, [[0, 31.5], [5, 31.2], [11, 29], [14, 28.7], [18, 29], [24, 28.8], [29.5, 26], [29.5, 9.5]]],
   [-8, [[0, 30.8], [5, 30.6], [11, 28.6], [14, 28.4], [18, 28.8], [24, 28.8], [29.5, 26], [29.5, 9.5]]],
   [-22, [[0, 30.4], [5, 30.2], [11, 28.6], [14, 28.5], [19, 30], [28, 30.2], [35, 27], [35, 9.5]]],
@@ -47,8 +48,8 @@ const materials = () => ({
   bronze: namedMaterial('brass-horn-bronze', { color: 0xb08d57, roughness: 0.28, metalness: 0.9, clearcoat: 0.3 }),
   inner: namedMaterial('shell-inner-dark', { color: 0x221a1a, roughness: 0.85, side: THREE.BackSide }),
   edge: namedMaterial('shell-edge-crimson', { color: 0x6e141a, roughness: 0.5, side: THREE.DoubleSide }),
-  recess: namedMaterial('trim-intake-black', { color: 0x0b0b0c, roughness: 0.9, side: THREE.DoubleSide }),
-  recessWall: namedMaterial('trim-intake-wall', { color: 0x46494f, roughness: 0.7, side: THREE.DoubleSide }),
+  recess: namedMaterial('plastic-gill-black', { color: 0x050505, roughness: 0.9, side: THREE.DoubleSide }),
+  recessWall: namedMaterial('paint-gunmetal', { color: 0x3a3d42, roughness: 0.4, metalness: 0.45, side: THREE.DoubleSide }),
   eye: namedMaterial('lamp-amber', { color: 0xffb020, emissive: 0xff8a00, emissiveIntensity: 0.9, roughness: 0.1, clearcoat: 1.0 }),
   black: decalMaterial('decal-black', { color: 0x111214, roughness: 0.55 }),
   gold: decalMaterial('decal-bronze', { color: 0xc49a5a, roughness: 0.35, metalness: 0.5 }),
@@ -74,11 +75,14 @@ export const beastBody = makePolyBody({
     // iter-47：細長菱形、往外上斜（iter-47b 放大 1.4 倍、iter-50 再放大 1.2 倍：長約 17、寬 4.3），淺凹 1 mm，槽底整面琥珀燈
     { id: '獸眼 ×2', view: 'top', shape: 'poly', pts: [[63.85, 1.5], [60.57, 9.14], [53.44, 15.23], [57.06, 6.53]], depth: 1.0 },
     // 側面層疊鰓狀進氣口（側視三道斜槽）
-    { id: '鰓 1', view: 'side', shape: 'poly', pts: [[20, 14], [22.5, 14], [16, 25], [13.5, 25]], depth: 2.2 },
-    { id: '鰓 2', view: 'side', shape: 'poly', pts: [[14, 14], [16.5, 14], [10, 25], [7.5, 25]], depth: 2.2 },
-    { id: '鰓 3', view: 'side', shape: 'poly', pts: [[8, 14], [10.5, 14], [4, 25], [1.5, 25]], depth: 2.2 },
+    // iter-51：鰓加寬（3.6 mm）、加深（2.8 mm），內面避開凹陷（innerSkipRecess），腔底純黑、腔壁槍灰，側視看得出深度
+    // 最前一道離前輪（31 mm 輪胎半徑 15.5）保持 ≥ 2 mm：鰓整組往後移 2.6 mm
+    { id: '鰓 1', view: 'side', shape: 'poly', pts: [[17.9, 14], [21.5, 14], [15, 25], [11.4, 25]], depth: 2.8 },
+    { id: '鰓 2', view: 'side', shape: 'poly', pts: [[11.4, 14], [15, 14], [8.5, 25], [4.9, 25]], depth: 2.8 },
+    { id: '鰓 3', view: 'side', shape: 'poly', pts: [[4.9, 14], [8.5, 14], [2, 25], [-1.6, 25]], depth: 2.8 },
   ],
   sideZMin: 28,
+  innerSkipRecess: true,
   zones: () => [
     { mat: 'gunmetal', keep: (x, y) => lowerLine(x) - y },
     // 眉溝（衝角兩側的凹溝）塗槍灰
@@ -98,18 +102,20 @@ export const beastBody = makePolyBody({
     // 中央衝角（獸角）：鼻部中線上往前上方伸出的古銅色刃片
     const top = (x) => kit.surf.topY(x, 0);
     // iter-47b：衝角做成有厚度的立體角——沿往前上翹的弧線掃掠橢圓斷面，根部 5.6 × 6.4 mm 埋在殼裡，尖端收到 0.4 mm
+    // iter-51：衝角加粗（根部 7.6 × 8.4 mm，埋在加高後的獸頭裡）並更往上彎（尖端 y ≈ 52）
     const horn = sweepEllipse(
       [
-        [39, top(39) - 2.2, 0],
-        [46, top(46) - 0.2, 0],
-        [53, 38.6, 0],
-        [60, 40, 0],
-        [66, 42.2, 0],
-        [71, 45.4, 0],
+        [38, top(38) - 3.0, 0],
+        [45, top(45) - 0.6, 0],
+        [52, top(52) + 1.8, 0],
+        [58, top(58) + 4.4, 0],
+        [63, top(63) + 7.8, 0],
+        [67.5, top(64) + 11.3, 0],
+        [70.5, top(64) + 15.2, 0],
       ],
-      56,
-      (t) => [lerp(2.9, 0.2, t ** 1.2), lerp(3.4, 0.2, t ** 1.05)],
-      20,
+      64,
+      (t) => [lerp(3.8, 0.3, t ** 2.2), lerp(4.2, 0.3, t ** 1.9)],
+      24,
     );
     parts.push({ geometry: horn, mat: 'bronze', outline: true, solid: true, name: 'horn' });
     // 肩部翼艙上的短鰭（後翼艙上方，左右各一，往外傾 10°）
