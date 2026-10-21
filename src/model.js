@@ -247,6 +247,53 @@ function spongePoreTexture() {
   return t;
 }
 
+/**
+ * 海綿氣孔貼圖（iter-55：reviewer「煞車海綿只是一個平塊」）：淺底色上隨機分佈的圓形氣孔（中心深、邊緣漸淡），
+ * 一張貼圖 = 4 mm 見方（repeat 1/4，ExtrudeGeometry 的 UV 以 mm 為單位）→ 氣孔直徑約 0.25–0.6 mm（發泡海綿的開孔尺寸，推估）
+ * @type {() => THREE.DataTexture}
+ */
+function spongeCellTexture() {
+  const w = 128;
+  const data = new Uint8Array(w * w * 4);
+  let seed = 4242;
+  const rand = () => {
+    seed = (seed * 1664525 + 1013904223) % 4294967296;
+    return seed / 4294967296;
+  };
+  const val = new Float32Array(w * w).fill(1);
+  for (let k = 0; k < 260; k++) {
+    const cx = rand() * w;
+    const cy = rand() * w;
+    const r = 4 + rand() * 6;
+    const depth = 0.35 + 0.35 * rand();
+    for (let dy = -Math.ceil(r); dy <= Math.ceil(r); dy++) {
+      for (let dx = -Math.ceil(r); dx <= Math.ceil(r); dx++) {
+        const d = Math.hypot(dx, dy) / r;
+        if (d > 1) {
+          continue;
+        }
+        // 平鋪：座標取模，貼圖邊緣無接縫
+        const x = (Math.floor(cx + dx) + w) % w;
+        const y = (Math.floor(cy + dy) + w) % w;
+        val[y * w + x] = Math.min(val[y * w + x], 1 - depth * (1 - d * d));
+      }
+    }
+  }
+  for (let k = 0; k < w * w; k++) {
+    const v = Math.round(255 * Math.max(0, Math.min(1, val[k] - 0.04 * rand())));
+    data[k * 4] = v;
+    data[k * 4 + 1] = v;
+    data[k * 4 + 2] = v;
+    data[k * 4 + 3] = 255;
+  }
+  const t = new THREE.DataTexture(data, w, w, THREE.RGBAFormat);
+  t.wrapS = THREE.RepeatWrapping;
+  t.wrapT = THREE.RepeatWrapping;
+  t.repeat.set(1 / 4, 1 / 4);
+  t.needsUpdate = true;
+  return t;
+}
+
 /** 建立材質集合 */
 function makeMaterials() {
   return {
@@ -263,7 +310,7 @@ function makeMaterials() {
     tire: new THREE.MeshStandardMaterial({ color: 0x232325, roughness: 0.96, metalness: 0.0, bumpMap: rubberNoiseTexture(), bumpScale: 0.6, roughnessMap: rubberNoiseTexture(), envMapIntensity: 0.6 }),
     tireTread: new THREE.MeshStandardMaterial({ color: 0x161617, roughness: 0.97, metalness: 0.0 }),
     // 第四階段：海綿胎（細孔發泡、全霧）、超硬 / 拱形硬胎（硬膠，表面略亮）
-    tireSponge: new THREE.MeshStandardMaterial({ name: 'sponge-tire', color: 0x2b2b2e, map: cachedTexture('sponge', spongePoreTexture), bumpMap: cachedTexture('sponge', spongePoreTexture), bumpScale: 0.5, roughness: 1.0, metalness: 0.0 }),
+    tireSponge: new THREE.MeshStandardMaterial({ name: 'sponge-tire', color: 0x2b2b2e, map: cachedTexture('sponge-cell', spongeCellTexture), bumpMap: cachedTexture('sponge-cell', spongeCellTexture), bumpScale: 1.0, roughness: 1.0, metalness: 0.0 }),
     tireHard: new THREE.MeshStandardMaterial({ name: 'tire-hard', color: 0x2a2a2d, roughness: 0.62, metalness: 0.0, envMapIntensity: 0.8 }),
     // 穩定零件（POM 樹脂，白色半霧）
     stabPom: new THREE.MeshPhysicalMaterial({ name: 'pom-stabilizer', color: 0xe9e7e0, roughness: 0.45, metalness: 0.0, clearcoat: 0.2, clearcoatRoughness: 0.5 }),
@@ -305,8 +352,14 @@ function makeMaterials() {
     carbonEdge: new THREE.MeshStandardMaterial({ name: 'carbon-plate-edge', color: 0x5d6166, roughness: 0.75, metalness: 0.05 }),
     aluNut: new THREE.MeshStandardMaterial({ name: 'alu-nut-blue', color: 0x3f6fb8, roughness: 0.3, metalness: 0.85 }),
     steelWeight: new THREE.MeshStandardMaterial({ name: 'steel-weight', color: 0xc3c8ce, roughness: 0.3, metalness: 0.85, emissive: 0x15171a }),
-    spongeWhite: new THREE.MeshStandardMaterial({ name: 'sponge-white', color: 0xf8f6ee, map: cachedTexture('sponge', spongePoreTexture), bumpMap: cachedTexture('sponge', spongePoreTexture), bumpScale: 0.4, roughness: 1.0, metalness: 0.0, emissive: 0x3a3a36 }),
-    spongeBlue: new THREE.MeshStandardMaterial({ name: 'sponge-blue', color: 0x3c86f0, map: cachedTexture('sponge', spongePoreTexture), bumpMap: cachedTexture('sponge', spongePoreTexture), bumpScale: 0.4, roughness: 1.0, metalness: 0.0, emissive: 0x06142a }),
+    // iter-55：煞車海綿改用較大的開孔氣孔貼圖（spongeCellTexture），bump 加深，看得出發泡孔隙
+    spongeWhite: new THREE.MeshStandardMaterial({ name: 'sponge-white', color: 0xf8f6ee, map: cachedTexture('sponge-cell', spongeCellTexture), bumpMap: cachedTexture('sponge-cell', spongeCellTexture), bumpScale: 1.2, roughness: 1.0, metalness: 0.0, emissive: 0x2a2a26 }),
+    spongeBlue: new THREE.MeshStandardMaterial({ name: 'sponge-blue', color: 0x3c86f0, map: cachedTexture('sponge-cell', spongeCellTexture), bumpMap: cachedTexture('sponge-cell', spongeCellTexture), bumpScale: 1.2, roughness: 1.0, metalness: 0.0, emissive: 0x06142a }),
+    // 雙面膠層（海綿與煞車板之間，淡琥珀色、半光澤，和海綿的霧面白區分）
+    tape: new THREE.MeshStandardMaterial({ name: 'tape-double-sided', color: 0xe6d29a, roughness: 0.35, metalness: 0.0 }),
+    // 中空不鏽鋼輪軸（較亮的緞面不鏽鋼）與中孔內壁（暗）
+    stainless: new THREE.MeshStandardMaterial({ name: 'metal-stainless', color: 0xdfe3e8, roughness: 0.18, metalness: 1.0 }),
+    boreDark: new THREE.MeshStandardMaterial({ name: 'bore-dark', color: 0x0c0c0e, roughness: 0.8, metalness: 0.2 }),
     light: new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: 0x99aabb, emissiveIntensity: 0.3, roughness: 0.2 }),
   };
 }
@@ -405,10 +458,26 @@ function buildWheel(mats, side) {
   const hubRing = new THREE.Mesh(new THREE.TorusGeometry(1.9, 0.35, 8, 24), mats.rim);
   hubRing.position.z = side * 0.85;
   face.add(hubRing);
-  const hexEnd = new THREE.Mesh(new THREE.CylinderGeometry(1.15, 1.15, 1.6, 6), mats.steel);
+  // iter-55：中空輪軸（零件 boreDiameter_mm > 0）：不鏽鋼軸端凸出輪轂 0.6 mm，端面看得到中孔（暗色孔＋倒角亮環），孔徑取自零件資料
+  const axlePart = asmCur?.partsBySlot?.axles;
+  const bore = axlePart?.boreDiameter_mm ?? 0;
+  // 軸端最外到 z = 1.6（face 內）→ 離輪子中心 4.48 mm，仍在胎寬 9 mm 之內，不改變外框
+  const hexLen = bore > 0 ? 2.0 : 1.6;
+  const hexEnd = new THREE.Mesh(new THREE.CylinderGeometry(1.15, 1.15, hexLen, 6), bore > 0 ? mats.stainless : mats.steel);
   hexEnd.rotation.x = Math.PI / 2;
   hexEnd.position.z = side * 0.6;
   face.add(hexEnd);
+  if (bore > 0) {
+    const endZ = side * (0.6 + hexLen / 2 + 0.01);
+    const hole = new THREE.Mesh(new THREE.CircleGeometry(bore / 2, 24), mats.boreDark);
+    hole.position.z = endZ + side * 0.005;
+    hole.rotation.y = side > 0 ? 0 : Math.PI;
+    face.add(hole);
+    const chamfer = new THREE.Mesh(new THREE.RingGeometry(bore / 2, bore / 2 + 0.22, 24), mats.screw);
+    chamfer.position.z = endZ;
+    chamfer.rotation.y = side > 0 ? 0 : Math.PI;
+    face.add(chamfer);
+  }
   // iter-03：彎曲 Y 字分岔輪輻（ref_chevalier-ma_wheel-detail：5 組輻條，每組在中段分岔成兩支往同一方向彎曲的臂）
   // 每支臂沿二次曲線中心線取樣、左右各偏移半寬，組成多邊形後擠出 1.2 mm
   /** @type {(p0: number[], p1: number[], p2: number[], w0: number, w1: number) => THREE.Mesh} 彎曲臂（二次 Bézier 中心線，寬度 w0 → w1） */
@@ -444,18 +513,31 @@ function buildWheel(mats, side) {
   const rimIn = rr - 0.5;
   // 第四階段：輕量鏤空輪框（rimStyle = lightweight，腹板挖掉 rimWebCutout）→ 輻條寬度依剩餘比例縮小（與 inertia.js 的腹板質量同一個比例）
   const spokeScale = spec.tire.rimStyle === 'lightweight' ? Math.max(0.35, 1 - (spec.tire.rimWebCutout ?? 0)) : 1;
+  const lightweight = spec.tire.rimStyle === 'lightweight';
   for (let k = 0; k < 5; k++) {
     const a = (k / 5) * Math.PI * 2;
     const spoke = new THREE.Group();
-    // 主幹（輪轂 → 分岔點）
-    spoke.add(curvedArm([2.2, 0], [3.6, 0.15 * side], [4.9, 0.35 * side], 2.3 * Math.sqrt(spokeScale), 1.9 * Math.sqrt(spokeScale)));
-    // 兩支分岔臂：同向彎曲（twist），外端在輪框內緣
-    for (const sgn of [-1, 1]) {
-      const ang = sgn * 0.36 + 0.16 * side;
-      spoke.add(curvedArm([4.7, 0.35 * side], [6.9, sgn * 1.0 + 0.9 * side], [Math.cos(ang) * rimIn, Math.sin(ang) * rimIn], 1.25 * spokeScale, 1.0 * spokeScale));
+    if (lightweight) {
+      // iter-55：輕量鏤空輪框——Y 字輻條的分岔臂與腹板都挖掉，只留 5 支細直輻（寬 = 標準主幹 × 剩餘比例），
+      // 輻條之間是貫穿的大開口（背板與內側補強肋也不畫，看得到裡面的輪轂與底盤），和標準輪框的密集 Y 字輻對比明顯
+      const wSp = Math.max(0.7, 2.0 * spokeScale);
+      spoke.add(curvedArm([2.2, 0], [(2.2 + rimIn) / 2, 0.25 * side], [rimIn + 0.2, 0.5 * side], wSp * 1.15, wSp));
+    } else {
+      // 主幹（輪轂 → 分岔點）
+      spoke.add(curvedArm([2.2, 0], [3.6, 0.15 * side], [4.9, 0.35 * side], 2.3, 1.9));
+      // 兩支分岔臂：同向彎曲（twist），外端在輪框內緣
+      for (const sgn of [-1, 1]) {
+        const ang = sgn * 0.36 + 0.16 * side;
+        spoke.add(curvedArm([4.7, 0.35 * side], [6.9, sgn * 1.0 + 0.9 * side], [Math.cos(ang) * rimIn, Math.sin(ang) * rimIn], 1.25, 1.0));
+      }
     }
     spoke.rotation.z = a;
     face.add(spoke);
+  }
+  if (lightweight) {
+    // 開口內緣的加強環（輪轂外圈）：鏤空後輪轂周圍留一圈 0.5 mm 的肋
+    const hubRib = new THREE.Mesh(new THREE.TorusGeometry(2.9, 0.32, 8, 32), mats.rim);
+    face.add(hubRib);
   }
   // 輪框外緣凸緣（面向外側的金屬唇邊）
   const flange = new THREE.Mesh(new THREE.TorusGeometry(rr - 0.35, 0.45, 8, 40), mats.rim);
@@ -470,10 +552,13 @@ function buildWheel(mats, side) {
   wall.rotation.y = side > 0 ? 0 : Math.PI;
   wall.userData.wallOuter = wallOuter;
   g.add(wall);
-  const back = new THREE.Mesh(new THREE.CircleGeometry(rr, 32), mats.chassisDark);
-  back.position.z = -side * (w * 0.2);
-  back.rotation.y = side > 0 ? 0 : Math.PI;
-  g.add(back);
+  // 背板：標準輪框的腹板（暗色）。輕量鏤空輪框腹板已挖掉 → 不畫，開口可以看穿
+  if (!lightweight) {
+    const back = new THREE.Mesh(new THREE.CircleGeometry(rr, 32), mats.chassisDark);
+    back.position.z = -side * (w * 0.2);
+    back.rotation.y = side > 0 ? 0 : Math.PI;
+    g.add(back);
+  }
   // iter-51：輪框內側（reviewer：底視缺培林與輪軸細節）：內側輪轂凸台＋六角軸孔（輪軸六角端插入處）＋5 條補強肋＋內緣唇邊。
   // 全部在輪框半徑與輪胎寬度內，不改變外框
   const innerZ = -side * (w * 0.2);
@@ -485,7 +570,7 @@ function buildWheel(mats, side) {
   hexSock.rotation.x = Math.PI / 2;
   hexSock.position.z = innerZ - side * 1.41;
   g.add(hexSock);
-  for (let k = 0; k < 5; k++) {
+  for (let k = 0; k < (lightweight ? 0 : 5); k++) {
     const a = (k / 5) * Math.PI * 2 + 0.3;
     const rib = new THREE.Mesh(new THREE.BoxGeometry(rr - 3.4, 0.8, 0.9), mats.rimBarrel);
     rib.position.set(Math.cos(a) * (3.1 + (rr - 3.4) / 2), Math.sin(a) * (3.1 + (rr - 3.4) / 2), innerZ - side * 0.45);
@@ -1025,21 +1110,49 @@ const buildOptionalParts = (mats) => {
     const lx = b.max.x - b.min.x;
     const lz = b.max.z - b.min.z;
     const ly = b.max.y - b.min.y;
-    const shape = new THREE.Shape();
-    const rr = Math.min(1.5, lx / 4, lz / 4);
-    shape.moveTo(-lx / 2 + rr, -lz / 2);
-    shape.lineTo(lx / 2 - rr, -lz / 2);
-    shape.quadraticCurveTo(lx / 2, -lz / 2, lx / 2, -lz / 2 + rr);
-    shape.lineTo(lx / 2, lz / 2 - rr);
-    shape.quadraticCurveTo(lx / 2, lz / 2, lx / 2 - rr, lz / 2);
-    shape.lineTo(-lx / 2 + rr, lz / 2);
-    shape.quadraticCurveTo(-lx / 2, lz / 2, -lx / 2, lz / 2 - rr);
-    shape.lineTo(-lx / 2, -lz / 2 + rr);
-    shape.quadraticCurveTo(-lx / 2, -lz / 2, -lx / 2 + rr, -lz / 2);
-    const geo = new THREE.ExtrudeGeometry(shape, { depth: ly, bevelEnabled: false, curveSegments: 6 });
+    /** @type {(hx: number, hz: number, rc: number) => THREE.Shape} 圓角矩形（半長 hx、半寬 hz、圓角 rc） */
+    const roundRect = (hx, hz, rc) => {
+      const sh = new THREE.Shape();
+      sh.moveTo(-hx + rc, -hz);
+      sh.lineTo(hx - rc, -hz);
+      sh.quadraticCurveTo(hx, -hz, hx, -hz + rc);
+      sh.lineTo(hx, hz - rc);
+      sh.quadraticCurveTo(hx, hz, hx - rc, hz);
+      sh.lineTo(-hx + rc, hz);
+      sh.quadraticCurveTo(-hx, hz, -hx, hz - rc);
+      sh.lineTo(-hx, -hz + rc);
+      sh.quadraticCurveTo(-hx, -hz, -hx + rc, -hz);
+      return sh;
+    };
+    // iter-55（reviewer：「煞車海綿只是一個平塊，沒有黏貼邊與厚度層次」）：
+    // 由上而下 = 雙面膠層（0.12 mm，淡琥珀色）＋海綿本體（剪刀裁切的圓角、下緣倒角 bevel、開孔氣孔貼圖）。
+    // 全部在組裝的海綿實體方塊（spongeBox，與干涉 / 離地 / 接觸模型同一份）之內：倒角往內收，不改外框
+    const tapeT = Math.min(0.12, ly * 0.15);
+    const cx = (b.min.x + b.max.x) / 2;
+    const cz = (b.min.z + b.max.z) / 2;
+    const rc = Math.min(1.5, lx / 4, lz / 4);
+    const tapeGeo = new THREE.ExtrudeGeometry(roundRect(lx / 2 - 0.05, lz / 2 - 0.05, rc), { depth: tapeT, bevelEnabled: false, curveSegments: 6 });
+    tapeGeo.rotateX(Math.PI / 2);
+    const tape = new THREE.Mesh(tapeGeo, mats.tape);
+    tape.position.set(cx, b.max.y, cz);
+    tape.name = 'brake-sponge-tape';
+    tape.userData.part = 'brake-sponge';
+    g.add(tape);
+    const bev = Math.min(0.3, (ly - tapeT) * 0.3);
+    const body = ly - tapeT - 2 * bev;
+    const geo = new THREE.ExtrudeGeometry(roundRect(lx / 2 - bev, lz / 2 - bev, Math.max(0.2, rc - bev)), {
+      depth: Math.max(0.05, body),
+      bevelEnabled: true,
+      bevelThickness: bev,
+      bevelSize: bev,
+      bevelSegments: 2,
+      curveSegments: 6,
+    });
+    // ExtrudeGeometry 的 bevel 往 −z 與 +z 各長 bevelThickness：先平移讓整塊落在 [0, ly − tapeT]，再轉到 −y
+    geo.translate(0, 0, bev);
     geo.rotateX(Math.PI / 2);
     const m = new THREE.Mesh(geo, o.sponge.part.color === 'blue' ? mats.spongeBlue : mats.spongeWhite);
-    m.position.set((b.min.x + b.max.x) / 2, b.max.y, (b.min.z + b.max.z) / 2);
+    m.position.set(cx, b.max.y - tapeT, cz);
     m.name = 'brake-sponge';
     m.userData.part = 'brake-sponge';
     g.add(m);
@@ -1101,13 +1214,17 @@ const buildOptionalParts = (mats) => {
     const spacer = new THREE.Mesh(new THREE.CylinderGeometry(1.8, 1.8, sp, 16), mats.steel);
     spacer.position.set(c.x, c.y - h / 2 - sp / 2, c.z);
     grp.add(spacer);
+    // iter-55：螺絲頭下的平墊片（φ4.4 × 0.3）＋螺絲頭；穩定零件下方的墊片已在上面（spacer）
+    const washer = new THREE.Mesh(new THREE.CylinderGeometry(2.2, 2.2, 0.3, 24), mats.steel);
+    washer.position.set(c.x, c.y + h / 2 + 0.15, c.z);
+    grp.add(washer);
     const head = new THREE.Mesh(new THREE.SphereGeometry(1.9, 18, 8, 0, Math.PI * 2, 0, Math.PI / 2), mats.screw);
     head.scale.y = 0.5;
-    head.position.set(c.x, c.y + h / 2, c.z);
+    head.position.set(c.x, c.y + h / 2 + 0.3, c.z);
     grp.add(head);
     for (const rot of [0, Math.PI / 2]) {
       const slot = new THREE.Mesh(new THREE.BoxGeometry(2.3, 0.45, 0.4), mats.chassisDark);
-      slot.position.set(c.x, c.y + h / 2 + 0.85, c.z);
+      slot.position.set(c.x, c.y + h / 2 + 1.15, c.z);
       slot.rotation.y = rot;
       grp.add(slot);
     }
@@ -1872,7 +1989,9 @@ function buildChassis(mats) {
 
   // ---- 輪軸（2 mm 六角鋼軸，貫穿左右輪；iter-51 改成六角斷面，外接圓 φ2.3）----
   for (const w of wheelLayout(spec).filter((q) => q.z > 0)) {
-    const axle = new THREE.Mesh(new THREE.CylinderGeometry(1.15, 1.15, c.trackWidth_mm + 4, 6), mats.steel);
+    // iter-55：中空輪軸（boreDiameter_mm > 0）用不鏽鋼材質（[T15440] 中空ステンレスシャフト），和一般鋼軸區分
+    const hollowAxle = (asmCur?.partsBySlot?.axles?.boreDiameter_mm ?? 0) > 0;
+    const axle = new THREE.Mesh(new THREE.CylinderGeometry(1.15, 1.15, c.trackWidth_mm + 4, 6), hollowAxle ? mats.stainless : mats.steel);
     axle.rotation.x = Math.PI / 2;
     axle.position.set(w.x, w.y, 0);
     g.add(axle);
