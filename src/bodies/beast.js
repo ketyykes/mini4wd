@@ -103,20 +103,22 @@ export const beastBody = makePolyBody({
     const top = (x) => kit.surf.topY(x, 0);
     // iter-47b：衝角做成有厚度的立體角——沿往前上翹的弧線掃掠橢圓斷面，根部 5.6 × 6.4 mm 埋在殼裡，尖端收到 0.4 mm
     // iter-51：衝角加粗（根部 7.6 × 8.4 mm，埋在加高後的獸頭裡）並更往上彎（尖端 y ≈ 52）
-    const horn = sweepEllipse(
-      [
-        [38, top(38) - 3.0, 0],
-        [45, top(45) - 0.6, 0],
-        [52, top(52) + 1.8, 0],
-        [58, top(58) + 4.4, 0],
-        [63, top(63) + 7.8, 0],
-        [67.5, top(64) + 11.3, 0],
-        [70.5, top(64) + 15.2, 0],
-      ],
-      64,
-      (t) => [lerp(3.8, 0.3, t ** 2.2), lerp(4.2, 0.3, t ** 1.9)],
-      24,
-    );
+    // iter-52：單一凸弧（不再有 S 形回勾）——從根部到尖端的直線，往上拱起一段正弦弧；
+    // 角的上緣至少高出殼面 1.2 mm；截面後半段就收細，尖端 0.08 mm。起點、尖端位置不變（外框與輪廓不變）
+    const root = [38, top(38) - 3.0];
+    const tip = [70.5, top(64) + 15.2];
+    const hornPts = [];
+    for (let i = 0; i <= 8; i++) {
+      const u = i / 8;
+      const x = lerp(root[0], tip[0], u);
+      let y = lerp(root[1], tip[1], u) + 2.5 * Math.sin(Math.PI * u);
+      if (i > 0) {
+        // 角的上緣至少高出殼面 1.2 mm（中心線可以埋在殼裡，根部不會鼓成一個包）
+        y = Math.max(y, top(Math.min(x, 64)) + 1.2 - lerp(4.2, 0.08, u ** 1.35));
+      }
+      hornPts.push([x, y, 0]);
+    }
+    const horn = sweepEllipse(hornPts, 64, (t) => [lerp(3.8, 0.08, t ** 1.5), lerp(4.2, 0.08, t ** 1.35)], 24);
     parts.push({ geometry: horn, mat: 'bronze', outline: true, solid: true, name: 'horn' });
     // 肩部翼艙上的短鰭（後翼艙上方，左右各一，往外傾 10°）
     const fins = [];
