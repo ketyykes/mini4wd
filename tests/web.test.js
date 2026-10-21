@@ -228,8 +228,9 @@ describe('P19 網頁換件', () => {
     expect(g.asm.bodyMass_g).toBe(0);
     expectMatchesNode(g);
     expect(new URL(page.url()).searchParams.get('body')).toBe('none');
-    // 3D 模型已依不裝車殼的設定重建
-    expect(g.modelKey).toBe(JSON.stringify(g.config));
+    // 3D 模型已依不裝車殼的設定重建：模型是非同步重建，依 SPEC P19「1 秒內更新」在期限內輪詢
+    //（17:53 定時驗證時讀到重建前的 modelKey 而偶發失敗；判定標準不變）
+    await expect.poll(async () => (await garageState()).modelKey, { timeout: UPDATE_LIMIT_MS }).toBe(JSON.stringify(g.config));
     // 拿掉車殼仍符合規則（總重 ≥ 90 g、尺寸變小），可以上賽道
     expect(g.validation.ok).toBe(true);
     await expect.poll(() => page.locator('[data-action="race"]').isEnabled()).toBe(true);
