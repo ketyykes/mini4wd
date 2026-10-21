@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="zh-Hant">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>迷你四驅車 換件車庫</title>
+    <link rel="stylesheet" href="./garage.css" />
+  </head>
+  <body>
+    <div class="app" id="app">
+      <header class="topbar">
+        <h1 class="brand">迷你四驅車<span class="brand-sub">換件車庫</span></h1>
+        <div class="preset">
+          <label for="sel-config">預設組裝設定</label>
+          <select id="sel-config" data-slot="config"></select>
+          <span class="badge badge-muted" id="preset-modified" hidden>已修改</span>
+        </div>
+        <div class="topbar-status" id="status-pill" role="status" aria-live="polite">載入中…</div>
+      </header>
+
+      <aside class="panel panel-parts" aria-label="零件選擇">
+        <h2 class="panel-title">零件</h2>
+        <div class="field" id="field-body">
+          <label for="sel-body">車殼</label>
+          <select id="sel-body" data-slot="body"></select>
+        </div>
+        <div id="slot-fields"></div>
+        <div class="field field-check">
+          <label><input type="checkbox" id="chk-com" checked /> 顯示重心標記</label>
+        </div>
+        <p class="hint" id="warm-hint" aria-live="polite"></p>
+      </aside>
+
+      <section class="viewport" id="viewport" aria-label="3D 檢視">
+        <div class="hud" id="hud" hidden>
+          <div class="hud-speed">
+            <span class="hud-big" id="hud-kmh">0.0</span><span class="hud-unit">km/h</span>
+            <span class="hud-sub" id="hud-ms">0.00 m/s</span>
+          </div>
+          <dl class="hud-grid">
+            <dt>圈數</dt><dd id="hud-laps">0 / 3</dd>
+            <dt>行駛距離</dt><dd id="hud-dist">0.00 m</dd>
+            <dt>電池電壓</dt><dd id="hud-volt">–</dd>
+            <dt>馬達電流</dt><dd id="hud-amp">–</dd>
+            <dt>車道</dt><dd id="hud-lane">–</dd>
+            <dt>模擬時間</dt><dd id="hud-time">0.00 s</dd>
+          </dl>
+          <p class="hud-note" id="hud-note"></p>
+          <button type="button" class="btn btn-secondary" data-action="garage" id="btn-garage">回車庫</button>
+        </div>
+        <div class="viewport-hint" id="viewport-hint">拖曳旋轉・右鍵平移・滾輪縮放</div>
+        <div class="loading" id="loading" role="status">建立車輛模型…</div>
+      </section>
+
+      <aside class="panel panel-stats" aria-label="數值與規則檢查">
+        <h2 class="panel-title">數值</h2>
+        <dl class="stats" id="stats"></dl>
+        <h2 class="panel-title">規則檢查</h2>
+        <div class="rules" id="rules" aria-live="polite"></div>
+        <div class="race-box">
+          <button type="button" class="btn btn-primary" data-action="race" id="btn-race" disabled>上賽道</button>
+          <p class="hint" id="race-hint"></p>
+        </div>
+      </aside>
+    </div>
+    <script type="module" src="./garage.js"></script>
+  </body>
+</html>

@@ -1,0 +1,21 @@
+{
+  "_readme": "示範（第三階段）：FRP 前後導輪板＋13 mm 鋁導輪＋3.7:1＋扭力型馬達，後導輪板下貼 2 mm 強力煞車海綿、中央 1 g 配重",
+  "chassis": "chassis-midship",
+  "motor": "motor-torque",
+  "gear": "gear-3.7",
+  "wheels": "wheel-26-lowprofile",
+  "bearings": "bearing-620",
+  "rollers": "roller-13-alu",
+  "frontStay": "stay-front-frp",
+  "rearStay": "stay-rear-frp",
+  "battery": "battery-aa-nimh-950",
+  "batteryCover": "battery-cover-standard",
+  "switch": "switch-standard",
+  "axles": "axle-hex-60",
+  "body": "body-wedge",
+  "gearCover": "gear-cover-standard",
+  "hardware": "hardware-standard",
+  "massDamper": null,
+  "brakeSponge": "sponge-2mm-strong",
+  "ballast": "ballast-hex-1g@center"
+}

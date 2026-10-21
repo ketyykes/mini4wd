@@ -25,6 +25,17 @@ export const chassisParts = [
       { id: 'front', x: 52, y: 13, z: 0 },
       { id: 'rear', x: -50, y: 15, z: 0 },
     ],
+    /** 底盤提供的安裝點（選配零件的 compat.requires 要對得上） */
+    features: ['side-damper-mount'],
+    /** 側制振器座：底盤兩側（前後輪之間）的托架，底面高度與距中線距離（底盤座標） */
+    sideDamperMount: { x_mm: 0, z_mm: 33, y_mm: 2.0 },
+    /** 前後保桿下緣高度（底盤座標，與 model.js 保桿一致）：導輪板、煞車海綿、前後配重都鎖在這個面下方 */
+    bumperBottomY_mm: 5.4,
+    /** 前後保桿（底盤一體）上的導輪座位置：保桿外形以此為準；FRP / 碳纖導輪板另外決定導輪位置 */
+    bumperRollerX_mm: 71.5,
+    bumperRollerZ_mm: 42,
+    /** 配重安裝點：front / rear 鎖在前後保桿（或導輪板）下方；center 貼在齒輪蓋頂面（y 由組裝計算） */
+    ballastMounts: { front: { x_mm: 67, z_mm: 0 }, center: { x_mm: 0, z_mm: 0 }, rear: { x_mm: -67, z_mm: 0 } },
     /** 開關位置（底盤座標，開關零件質心） */
     switchPos_mm: { x: -21, y: 20.6, z: -19.2 },
     src: {
@@ -37,6 +48,8 @@ export const chassisParts = [
       com_mm: '推估：底板＋側壁＋保桿的幾何中心，底板在 2.2–3.7 mm、側壁高到約 9.4 mm、保桿約 5–8 mm',
       bbox_mm: '由 iter-31 模型量測（不含導輪架上的導輪座）',
       bodyMounts: '本專案定義（SPEC 1.14，第 0 輪決定）',
+      sideDamperMount: '推估：MA 底盤側面有側護板鎖孔，側制振器托架鎖在前後輪之間（x = 0），制振器（寬 6 mm）中心 z = ±33，內緣離底盤側壁（±29）1 mm，底面離地 2.0 mm',
+      ballastMounts: '推估：配重常見貼在前後保桿下方或底盤上方；本專案提供前、中、後三處',
     },
   },
 ];

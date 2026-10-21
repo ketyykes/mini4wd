@@ -9,6 +9,10 @@ export interface BodyMount extends Vec3 {
 export interface BodyDef {
   id: string;
   category: 'body';
+  /** 'homage' = 致敬《爆走兄弟》風格；'race' = 常見比賽車殼型式（GOAL「車殼」、SPEC P20） */
+  style: 'homage' | 'race';
+  /** 一句話主題 */
+  theme: string;
   name: string;
   /** 'ABS' | 'PC' 等，決定密度 */
   material: string;

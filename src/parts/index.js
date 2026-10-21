@@ -8,6 +8,7 @@ import { rollerParts } from './rollers.js';
 import { stayParts } from './stays.js';
 import { batteryParts } from './batteries.js';
 import { miscParts } from './misc.js';
+import { massDamperParts, brakeSpongeParts, ballastParts } from './options.js';
 
 /** @typedef {import('./types').PartBase} PartBase */
 /** @typedef {import('./types').SlotValue} SlotValue */
@@ -23,6 +24,9 @@ export const allParts = [
   ...stayParts,
   ...batteryParts,
   ...miscParts,
+  ...massDamperParts,
+  ...brakeSpongeParts,
+  ...ballastParts,
 ];
 
 /** @type {Map<string, PartBase>} */
@@ -41,19 +45,31 @@ export const getPart = (id) => {
 export const listParts = (category) => allParts.filter((p) => p.category === category);
 
 /**
- * 解析 slot 值：字串 = 零件 id；物件 = 以 base 零件為底覆寫欄位（id 標成 base+custom）
+ * 解析 slot 值：
+ * - 字串 = 零件 id；可用 `id@安裝點` 指定安裝位置（例如 `ballast-hex-1g@front`，安裝點須在零件的 mountPoints 內，否則由規則檢查器擋下）
+ * - 物件 = 以 base 零件為底覆寫欄位（id 標成 base+custom）；只覆寫 mount 時 id 不變
+ * - null = 不裝（只允許選配 slot，由 assembly.js 判斷）
  * @type {(value: SlotValue, category: string) => PartBase}
  */
 export const resolvePart = (value, category) => {
   let part;
   if (typeof value === 'string') {
-    part = getPart(value);
+    const [id, mount] = value.split('@');
+    part = getPart(id);
+    if (mount !== undefined) {
+      part = { ...part, mount };
+    }
   } else {
     const { base, ...over } = value;
-    part = { ...getPart(base), ...over, id: `${base}+custom` };
+    const keys = Object.keys(over);
+    const mountOnly = keys.length === 1 && keys[0] === 'mount';
+    part = { ...getPart(base), ...over, id: mountOnly ? base : `${base}+custom` };
   }
   if (part.category !== category) {
     throw new Error(`零件 ${part.id} 的類別是 ${part.category}，不能裝在 ${category}`);
+  }
+  if (part.mountPoints && part.mount === undefined) {
+    part = { ...part, mount: part.defaultMount };
   }
   return part;
 };

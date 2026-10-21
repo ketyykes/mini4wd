@@ -3,13 +3,16 @@ import * as THREE from 'three';
 import { wedgeBody } from './wedge.js';
 import { skeletonBody } from './skeleton.js';
 import { aeroWingBody } from './aeroWing.js';
+import { beastBody } from './beast.js';
+import { forkBody } from './fork.js';
+import { pcBoxBody } from './pcBox.js';
 
 /** @typedef {import('./types').BodyDef} BodyDef */
 /** @typedef {import('./types').BodyMassProps} BodyMassProps */
 
-// 三款原創車殼（iter-33 起移除第一階段的過渡車殼，它的外型仿自市售車款，不放進成品）
+// 六款原創車殼（iter-46）：致敬《爆走兄弟》風格 3 款（wedge / beast / fork）＋常見比賽車殼型式 3 款（skeleton / aero-wing / pc-box）
 /** @type {BodyDef[]} */
-const bodies = [wedgeBody, skeletonBody, aeroWingBody];
+const bodies = [wedgeBody, beastBody, forkBody, skeletonBody, aeroWingBody, pcBoxBody];
 
 /** @type {() => BodyDef[]} */
 export const listBodies = () => bodies.slice();

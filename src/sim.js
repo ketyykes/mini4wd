@@ -78,7 +78,8 @@ export function createWorld(track) {
  */
 export function bodyColliderBox(asm) {
   const b = asm.body.bbox_mm;
-  const bottom = asm.groundClearance_mm;
+  // 底面 = 底盤 / 車殼 / 導輪的最低點（不含煞車海綿、配重等掛在下方的選配零件：海綿另有接觸模型，見 spongeForces）
+  const bottom = asm.structureClearance_mm ?? asm.groundClearance_mm;
   const top = b.max.y - 2;
   return {
     hx: (b.max.x - b.min.x) / 2,
@@ -108,15 +109,17 @@ export function createCar(env, opt = {}) {
   const lane = opt.lane ?? 0;
   const start = track.path.point(s0, track.laneOffset(lane));
   const massKg = asm.mass_g / 1000;
-  const com = { x: asm.com_mm.x * MM, y: asm.com_mm.y * MM, z: asm.com_mm.z * MM };
+  // 車體剛體 = 整車扣掉可上下滑動的制振器（制振器另建剛體，用 prismatic joint 連到車體）；沒有制振器時 rigid = 整車
+  const rigid = asm.rigid ?? { mass_g: asm.mass_g, com_mm: asm.com_mm, inertia_kgm2: asm.inertia_kgm2 };
+  const com = { x: rigid.com_mm.x * MM, y: rigid.com_mm.y * MM, z: rigid.com_mm.z * MM };
 
   // 慣性矩由零件組裝推導（assembly.js：零件質點＋底盤本體與車殼的外框方塊，iter-33）
-  const inertia = asm.inertia_kgm2;
+  const inertia = rigid.inertia_kgm2;
 
   const bodyDesc = RAPIER.RigidBodyDesc.dynamic()
     .setTranslation(start.x, 0.0005, start.z)
     .setRotation(yawQuat(-start.theta))
-    .setAdditionalMassProperties(massKg, com, inertia, { x: 0, y: 0, z: 0, w: 1 })
+    .setAdditionalMassProperties(rigid.mass_g / 1000, com, inertia, { x: 0, y: 0, z: 0, w: 1 })
     .setCcdEnabled(true)
     .setCanSleep(false);
   const chassis = world.createRigidBody(bodyDesc);
@@ -132,18 +135,74 @@ export function createCar(env, opt = {}) {
 
   const rollerPart = asm.partsBySlot.rollers;
   const rollers = asm.layout.rollers.map((r) => {
-    const col = world.createCollider(
-      // 導輪碰撞體用球：圓柱對 trimesh 的接觸在 Rapier 中會卡住（見 ITERATION_LOG iter-00）
-      RAPIER.ColliderDesc.ball(r.r * MM)
-        .setTranslation(r.x * MM, r.y * MM, r.z * MM)
-        .setDensity(0)
-        .setFriction(rollerPart.wallFriction)
-        .setFrictionCombineRule(RAPIER.CoefficientCombineRule.Min)
-        .setRestitution(rollerPart.restitution),
-      chassis,
+    // 導輪碰撞體用球：圓柱對 trimesh 的接觸在 Rapier 中會卡住（見 ITERATION_LOG iter-00）
+    // 雙層導輪每一片接觸面各一顆球（單層導輪 tiers 只有 1 片、y = 0，和第二階段相同）
+    const tiers = r.tiers ?? [{ y: 0, r: r.r, h: r.h }];
+    const colliders = tiers.map((t) =>
+      world.createCollider(
+        RAPIER.ColliderDesc.ball(t.r * MM)
+          .setTranslation(r.x * MM, (r.y + t.y) * MM, r.z * MM)
+          .setDensity(0)
+          .setFriction(rollerPart.wallFriction)
+          .setFrictionCombineRule(RAPIER.CoefficientCombineRule.Min)
+          .setRestitution(rollerPart.restitution),
+        chassis,
+      ),
     );
-    return { ...r, collider: col };
+    // collider：最大那片（與牆接觸的主要接觸面），給 P05 等量測用
+    const main = tiers.reduce((bi, t, i) => (t.r > tiers[bi].r ? i : bi), 0);
+    return { ...r, collider: colliders[main], colliders };
   });
+
+  // 制振器（第三階段）：獨立剛體＋prismatic joint（沿車體 y 軸上下滑動，行程上下限為硬止點），
+  // 下止點是有彈性的座墊（單邊接觸：只能往上推、不能往下拉，見 damperForces）
+  const dampers = (asm.movable ?? []).map((d) => {
+    const m = d.mass_g / 1000;
+    const g = spec.sim.gravity;
+    const seatK = (m * g) / (d.seatDeflection_mm * MM);
+    const seatC = 2 * d.seatDampingRatio * Math.sqrt(seatK * m);
+    const anchor = { x: d.pos.x * MM, y: d.pos.y * MM, z: d.pos.z * MM };
+    // 初始位置：座墊在自重下壓縮 δ 的平衡點
+    const local = { x: anchor.x, y: anchor.y - d.seatDeflection_mm * MM, z: anchor.z };
+    const rq = yawQuat(-start.theta);
+    const wp = rotate(rq, local);
+    const rb = world.createRigidBody(
+      RAPIER.RigidBodyDesc.dynamic()
+        .setTranslation(start.x + wp.x, 0.0005 + wp.y, start.z + wp.z)
+        .setRotation(rq)
+        // 自身慣性：小圓柱 / 方塊（數值很小；prismatic joint 鎖住轉動，不影響結果）
+        .setAdditionalMassProperties(m, { x: 0, y: 0, z: 0 }, { x: 1e-9, y: 1e-9, z: 1e-9 }, { x: 0, y: 0, z: 0, w: 1 })
+        .setCcdEnabled(true)
+        .setCanSleep(false),
+    );
+    const jd = RAPIER.JointData.prismatic(anchor, { x: 0, y: 0, z: 0 }, { x: 0, y: 1, z: 0 });
+    jd.limitsEnabled = true;
+    // 下限：座墊最多壓縮 1 mm（之後是硬止點）；上限：行程
+    jd.limits = [-1 * MM, d.stroke_mm * MM];
+    const joint = world.createImpulseJoint(jd, chassis, rb, true);
+    return { body: rb, joint, anchor, mass: m, seatK, seatC, slideC: d.slideFriction_Nspm, label: d.label };
+  });
+
+  // 煞車海綿（第三階段）：海綿底面的接觸點（車體座標，m）；接觸剛性 k = E·A / t，只在射線碰到地面 / 坡道時產生力
+  const sp = asm.optional?.sponge;
+  let sponge = null;
+  if (sp) {
+    const b = sp.solid;
+    const lift = asm.lift_mm;
+    const y = (b.min.y + lift) * MM;
+    /** @type {{ x: number, y: number, z: number }[]} 底面 4 角＋中心，各分擔 1/5 面積 */
+    const pts = [
+      { x: b.min.x, z: b.min.z },
+      { x: b.min.x, z: b.max.z },
+      { x: b.max.x, z: b.min.z },
+      { x: b.max.x, z: b.max.z },
+      { x: (b.min.x + b.max.x) / 2, z: 0 },
+    ].map((q) => ({ x: q.x * MM, y, z: q.z * MM }));
+    const part = sp.part;
+    const k = (part.compressiveModulus_Pa * sp.area_mm2 * MM * MM) / (part.thickness_mm * MM);
+    const c = 2 * part.contactDampingRatio * Math.sqrt(k * massKg);
+    sponge = { pts, k, c, mu: part.frictionCoeff, thickness: part.thickness_mm * MM, contact: false, normalForce: 0, frictionWork: 0 };
+  }
 
   // 自寫射線輪（raycast wheel）：Rapier 內建 DynamicRayCastVehicleController 的側向摩擦在
   // 小慣性矩（~1e-4 kg·m²）下幾乎失效（見 ITERATION_LOG iter-00），因此改為每步自行射線偵測地面，
@@ -166,6 +225,8 @@ export function createCar(env, opt = {}) {
     chassis,
     bodyCol,
     rollers,
+    dampers,
+    sponge,
     wheels,
     wheelParams: { wheelR, restLen, springK, damperC },
     massKg,
@@ -227,6 +288,9 @@ export function stepCar(env, car) {
   const body = car.chassis;
   body.resetForces(true);
   body.resetTorques(true);
+  for (const d of car.dampers ?? []) {
+    d.body.resetForces(true);
+  }
 
   // 空氣阻力施加在車體重心
   const vel = body.linvel();
@@ -299,6 +363,13 @@ export function stepCar(env, car) {
     w.spin += (vLong / wheelR) * dt;
   }
 
+  if (car.sponge) {
+    spongeForces(env, car, { up, fwd, side });
+  }
+  for (const d of car.dampers ?? []) {
+    damperForces(car, d, up);
+  }
+
   env.world.step();
   if (spec.sim.wallPositionProjection) {
     projectRollersOutOfWalls(env, car);
@@ -308,6 +379,92 @@ export function stepCar(env, car) {
     car.battery.drain(lf.current, dt);
   }
   car.last = { current: lf.current, terminalVoltage: lf.terminalVoltage, speed: v };
+}
+
+/**
+ * 煞車海綿接觸力（第三階段）：海綿底面每個接觸點沿車體 −up 打射線，射線起點在海綿底面上方 PROBE；
+ * 命中距離 < PROBE 代表海綿被地面 / 坡道壓縮 δ = PROBE − 距離（最多到海綿厚度）。
+ * 法向力 = k·δ − c·v_n（≥ 0，單邊接觸），摩擦力 = μ·N，方向與接觸點切向速度相反（低速以 0.05 m/s 正則化避免反向）。
+ * 沒碰到地面時完全沒有力（平地上海綿底面離地 > 0 時不影響極速）
+ * @type {(env: any, car: any, axes: { up: any, fwd: any, side: any }) => void}
+ */
+function spongeForces(env, car, { up }) {
+  const sp = car.sponge;
+  const body = car.chassis;
+  const PROBE = 0.004;
+  const n = sp.pts.length;
+  sp.contact = false;
+  sp.normalForce = 0;
+  for (const lp of sp.pts) {
+    const p = localToWorld(car, lp);
+    const origin = { x: p.x + up.x * PROBE, y: p.y + up.y * PROBE, z: p.z + up.z * PROBE };
+    const ray = new RAPIER.Ray(origin, { x: -up.x, y: -up.y, z: -up.z });
+    const hit = env.world.castRayAndGetNormal(ray, PROBE + sp.thickness, true, undefined, undefined, undefined, body);
+    if (!hit || hit.timeOfImpact >= PROBE) {
+      continue;
+    }
+    const delta = Math.min(PROBE - hit.timeOfImpact, sp.thickness);
+    const nrm = hit.normal;
+    const cp = { x: origin.x - up.x * hit.timeOfImpact, y: origin.y - up.y * hit.timeOfImpact, z: origin.z - up.z * hit.timeOfImpact };
+    const v = body.velocityAtPoint(cp);
+    const vn = v.x * nrm.x + v.y * nrm.y + v.z * nrm.z;
+    const fn = Math.max(0, (sp.k / n) * delta - (sp.c / n) * vn);
+    if (fn <= 0) {
+      continue;
+    }
+    const vt = { x: v.x - vn * nrm.x, y: v.y - vn * nrm.y, z: v.z - vn * nrm.z };
+    const vtLen = Math.hypot(vt.x, vt.y, vt.z);
+    const ft = (sp.mu * fn) / Math.max(vtLen, 0.05);
+    body.addForceAtPoint(
+      { x: nrm.x * fn - vt.x * ft, y: nrm.y * fn - vt.y * ft, z: nrm.z * fn - vt.z * ft },
+      cp,
+      true,
+    );
+    sp.contact = true;
+    sp.normalForce += fn;
+    sp.frictionWork += ft * vtLen * vtLen * spec.sim.dt_s;
+  }
+}
+
+/**
+ * 制振器座墊與滑動摩擦（第三階段）：rel = 制振器相對安裝點沿車體 up 的位移（0 = 座墊剛好接觸、未壓縮）。
+ * rel < 0 時座墊被壓縮：F = k·(−rel) − c·rel'（≥ 0，只能把制振器往上推）；另有沿螺絲軸的黏滯摩擦 −c_s·rel'。
+ * 反作用力施加在車體的安裝點（牛頓第三定律），行程上下限由 prismatic joint 的硬止點處理
+ * @type {(car: any, d: any, up: any) => void}
+ */
+function damperForces(car, d, up) {
+  const anchorW = localToWorld(car, d.anchor);
+  const t = d.body.translation();
+  const rel = (t.x - anchorW.x) * up.x + (t.y - anchorW.y) * up.y + (t.z - anchorW.z) * up.z;
+  const vd = d.body.linvel();
+  const va = car.chassis.velocityAtPoint(anchorW);
+  const relV = (vd.x - va.x) * up.x + (vd.y - va.y) * up.y + (vd.z - va.z) * up.z;
+  let f = -d.slideC * relV;
+  if (rel < 0) {
+    f += Math.max(0, d.seatK * -rel - d.seatC * relV);
+  }
+  d.body.addForce({ x: up.x * f, y: up.y * f, z: up.z * f }, true);
+  car.chassis.addForceAtPoint({ x: -up.x * f, y: -up.y * f, z: -up.z * f }, anchorW, true);
+}
+
+/**
+ * 整車動能（J）：車體剛體（平移＋轉動）＋制振器剛體。輪胎轉動慣量在本模型中忽略（射線輪）
+ * @type {(car: any) => number}
+ */
+export function carKineticEnergy(car) {
+  const b = car.chassis;
+  const v = b.linvel();
+  const w = b.angvel();
+  // 角速度轉到車體座標（慣性主軸與車體座標對齊，assembly.js 忽略慣性積）
+  const q = b.rotation();
+  const wl = rotate({ x: -q.x, y: -q.y, z: -q.z, w: q.w }, w);
+  const I = b.principalInertia();
+  let e = 0.5 * b.mass() * (v.x * v.x + v.y * v.y + v.z * v.z) + 0.5 * (I.x * wl.x * wl.x + I.y * wl.y * wl.y + I.z * wl.z * wl.z);
+  for (const d of car.dampers ?? []) {
+    const u = d.body.linvel();
+    e += 0.5 * d.body.mass() * (u.x * u.x + u.y * u.y + u.z * u.z);
+  }
+  return e;
 }
 
 /**

@@ -26,10 +26,64 @@ const bump = (x, az) =>
  * 本款放樣資料：D1 側導風孔改成有深度的凹腔（黑色腔體＋唇邊），其餘沿用設計資料
  * @type {any}
  */
+/**
+ * iter-46 站位表（推估）：細腰「可樂瓶」平面（兩輪之間半寬收到 28.5）、尾段收窄到 18，俯視輪廓和其他款明顯不同（P20）。
+ * 腰部半寬 28.5 仍在電池（|z| ≤ 26.4）外側。
+ * @type {any[]}
+ */
+const AERO_PARAMS = [
+  [70, 16, 12, 15.7, 18, 15.5, 15],
+  [64, 17.5, 18, 17.5, 27, 16.5, 15],
+  [56, 20.5, 24, 21, 33, 18, 15],
+  [50, 24, 27, 25, 36, 20, 13],
+  [40, 25.5, 30, 31, 38.5, 28.5, 11],
+  [30, 26.5, 28, 29.5, 35.5, 25, 9],
+  [15, 29, 23, 27.5, 29.5, 22, 9],
+  [0, 30.5, 22.5, 27.5, 28.5, 21.5, 9],
+  [-15, 30, 23, 28, 29.5, 22, 9],
+  [-30, 29, 28, 30, 36, 25, 9],
+  [-40, 29, 30, 31.5, 39, 29, 11],
+  [-50, 28, 25, 29, 33, 26, 17],
+  [-56, 26.5, 17, 26.5, 24, 24, 18],
+  [-60, 24.5, 12, 24, 18, 23, 22.5],
+].map(([x, yTop, zF, yF, halfW, yShoulder, yLow]) => ({ x, yTop, zF, yF, halfW, yShoulder, yLow }));
+
+/**
+ * 控制點 Chaikin 3 次（4 點 → 32 點，點數與拓樸固定，第 i 點在每站對應同一幾何位置）
+ * @type {(p: any) => number[][]}
+ */
+const chaikin = (p) => {
+  let pts = [
+    [0, p.yTop],
+    [p.zF, p.yF],
+    [p.halfW, p.yShoulder],
+    [p.halfW, p.yLow],
+  ];
+  for (let it = 0; it < 3; it++) {
+    const next = [pts[0]];
+    for (let i = 0; i < pts.length - 1; i++) {
+      const [ax, ay] = pts[i];
+      const [bx, by] = pts[i + 1];
+      next.push([0.75 * ax + 0.25 * bx, 0.75 * ay + 0.25 * by], [0.25 * ax + 0.75 * bx, 0.25 * ay + 0.75 * by]);
+    }
+    next.push(pts[pts.length - 1]);
+    pts = next;
+  }
+  return pts;
+};
+
+/**
+ * 本款放樣資料：iter-46 細腰站位表；D1 側導風孔改成有深度的凹腔（黑色腔體＋唇邊）；尾翼翼展 64 → 52（端板外緣 ±27）
+ * @type {any}
+ */
 const AERO_DATA = {
   ...data,
+  stationParams: AERO_PARAMS,
+  stations: AERO_PARAMS.map((p) => ({ x: p.x, halfProfile: chaikin(p) })),
   openings: [],
-  recesses: data.openings.map((o) => ({ ...o, depth: 2.5 })),
+  // D1 側導風孔往前移到 x −22 ~ −8（細腰後，原位置的凹腔底會太靠近後輪）
+  recesses: data.openings.map((o) => ({ ...o, x: [-22, -8], depth: 2.5 })),
+  wing: { ...data.wing, span: 52 },
 };
 
 
@@ -66,7 +120,7 @@ const makeMaterials = () => ({
 
 /** @type {() => BodyPart[]} */
 const compose = () => {
-  const kit = makeLoftKit(AERO_DATA, { mode: 'smooth', sideZMin: 28, bump, tuck: 2.2 });
+  const kit = makeLoftKit(AERO_DATA, { mode: 'smooth', sideZMin: 26, bump, tuck: 0.6 });
   /** @type {BodyPart[]} */
   const parts = [];
   /** @type {KeepFn} */
@@ -82,7 +136,7 @@ const compose = () => {
   // D1 側導風孔凹腔：黑色腔底與腔壁＋高出殼面 0.3 mm 的藏青唇邊
   st.recessFloor.forEach((g, i) => parts.push({ geometry: g, mat: 'vent', shell: true, name: `vent-floor-${i}` }));
   st.recessWall.forEach((g, i) => parts.push({ geometry: g, mat: 'vent', shell: true, name: `vent-wall-${i}` }));
-  const ventSd = featureSd(AERO_DATA.recesses[0], 28);
+  const ventSd = featureSd(AERO_DATA.recesses[0], 26);
   const lip = buildRegion(kit.surf, [...kit.holes, (x, y, z) => ventSd(x, y, z), (x, y, z) => 0.9 - ventSd(x, y, z)], { offset: 0.3, smoothOffset: true });
   parts.push({ geometry: lip.geometry, mat: 'navy', name: 'vent-lip' });
   parts.push({ geometry: buildRim(lip, 0, 0.3), mat: 'navy2', name: 'vent-lip-wall' });
@@ -96,7 +150,7 @@ const compose = () => {
   parts.push({ geometry: buildRegion(kit.canopy, [(x, y, z, s) => 0.86 - Math.abs(s)]).geometry, mat: 'glass', shell: true, renderOrder: 2, name: 'canopy-glass' });
 
   // 尾翼、端板、鵝頸支柱、splitter（實心件；質量以表面積 × 壁厚近似，標 shell）
-  const w = buildWingParts(data.wing);
+  const w = buildWingParts(AERO_DATA.wing);
   parts.push({ geometry: w.wing, mat: 'pearl', shell: true, name: 'wing' });
   parts.push({ geometry: w.endplates, mat: 'navy2', shell: true, name: 'wing-endplates' });
   parts.push({ geometry: w.stays, mat: 'navy2', shell: true, name: 'wing-stays' });
@@ -171,7 +225,7 @@ const compose = () => {
   parts.push({
     geometry: mergeGeos([
       kit.decal(topDecal(sdNumber('88', { h: 5.4, w: 3.1, gap: 0.8 }), { x0: 56.8, yMin: 18 })),
-      kit.decal(sideDecal(sdNumber('88', { h: 6.8, w: 3.9, gap: 1.0 }), { x0: 12.5, y0: 16.9, zMin: 30 })),
+      kit.decal(sideDecal(sdNumber('88', { h: 6.8, w: 3.9, gap: 1.0 }), { x0: 12.5, y0: 16.9, zMin: 26 })),
     ]),
     mat: 'number',
     name: 'decal-number',
@@ -204,6 +258,8 @@ const MOUNTS = getPart('chassis-midship').bodyMounts.map((m) => ({ ...m }));
 export const aeroWingBody = {
   id: 'body-aero-wing',
   category: 'body',
+  style: 'race',
+  theme: '大尾翼下壓力殼：水滴座艙、鵝頸支柱高位尾翼、前分流板',
   name: '流線大尾翼款',
   material: 'ABS',
   density_g_cm3: 1.05,

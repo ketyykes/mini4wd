@@ -134,6 +134,8 @@ const categoryFromName = (name, mat) => {
     [/^paint-/, 'paint_gloss'],
     [/inner|interior|dark-matte/, 'plastic_matte'],
     [/carbon/, 'carbon'],
+    [/^frp-/, 'frp'],
+    [/^sponge-/, 'sponge'],
     [/rubber|tire|tyre/, 'rubber'],
     [/(^|-)(abs|plastic|pom|nylon)(-|$)/, (mat && (mat.roughness ?? 1) < 0.5) ? 'plastic_gloss' : 'plastic_matte'],
     [/chrome|steel|(^|-)(metal|alu|aluminium|brass|copper)(-|$)/, 'metal'],

@@ -588,6 +588,8 @@ const MOUNTS = getPart('chassis-midship').bodyMounts.map((m) => ({ ...m }));
 export const wedgeBody = {
   id: 'body-wedge',
   category: 'body',
+  style: 'homage',
+  theme: '刃形鼻翼突擊型：刃鼻＋鼻下分層尖牙、左右翼艙與深溝、尾鰭',
   name: '楔形競速款',
   material: 'ABS',
   density_g_cm3: 1.05,

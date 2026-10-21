@@ -1,0 +1,21 @@
+{
+  "_readme": "示範（第三階段）：碳纖前板＋碳纖寬後板（單層）＋13-12 mm 雙層導輪、後制振器、低摩擦胎（技術賽道向）",
+  "chassis": "chassis-midship",
+  "motor": "motor-high-rev",
+  "gear": "gear-4.0",
+  "wheels": "wheel-26-lowfriction",
+  "bearings": "bearing-620",
+  "rollers": "roller-13-12-double",
+  "frontStay": "stay-front-carbon",
+  "rearStay": "stay-rear-carbon-wide",
+  "battery": "battery-aa-nimh-950",
+  "batteryCover": "battery-cover-standard",
+  "switch": "switch-standard",
+  "axles": "axle-hex-60",
+  "body": "body-skeleton",
+  "gearCover": "gear-cover-standard",
+  "hardware": "hardware-standard",
+  "massDamper": "damper-rear-cylinder",
+  "brakeSponge": null,
+  "ballast": null
+}

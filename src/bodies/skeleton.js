@@ -44,13 +44,13 @@ const TOP_HOLES = [
   { id: 'B-R', pts: [[-27, 19], [-22, 12.9], [3.5, 12.9], [24, 13.5], [26, 19], [22, 25.5], [-22, 25.5]] },
   // 後齒輪箱上方：中央大三角（尖端朝前）＋左右後甲板五角形（中央留肋給後卡座）
   { id: 'R-C', pts: [[-26.5, 0], [-43, 9.5], [-43, -9.5]] },
-  { id: 'R-L', pts: [[-46, -3.2], [-61, -3.2], [-61, -14], [-50, -18.5], [-41, -14]] },
-  { id: 'R-R', pts: [[-46, 3.2], [-61, 3.2], [-61, 14], [-50, 18.5], [-41, 14]] },
+  { id: 'R-L', pts: [[-45, -3.2], [-50.5, -3.2], [-50.5, -13], [-46, -16.5], [-40, -14]] },
+  { id: 'R-R', pts: [[-45, 3.2], [-50.5, 3.2], [-50.5, 13], [-46, 16.5], [-40, 14]] },
 ].map((h) => ({ ...h, sd: sdConvexPolygon(h.pts) }));
 
 /** @type {(x: number, y: number, z: number) => number} 頂面開口的距離（負值 = 挖空；只投影到頂面 / 肩部，不切側壁） */
 const topHolesSd = (x, y, z) => {
-  if (Math.abs(z) > 30) {
+  if (Math.abs(z) > 27) {
     return 10;
   }
   let d = Infinity;
@@ -87,7 +87,7 @@ const sideWindowSd = (() => {
     struts.push(sdBar(xs[i], ya, xs[i + 1], yb, 1.6));
   }
   return (x, y, z) => {
-    if (Math.abs(z) < 30) {
+    if (Math.abs(z) < 24) {
       return 10;
     }
     let ds = Infinity;
@@ -104,6 +104,22 @@ const sideWindowSd = (() => {
  */
 const SKELETON_DATA = {
   ...data,
+  // iter-46：改成真正的「低趴短尾窄殼」——長度 x −53 ~ 62（短尾，後導輪架外露）、半寬 30（輪胎頂部外露），
+  // 和其他款的俯視輪廓明顯不同（P20）。數值為推估，依底盤高度掃描：電池 |z| ≤ 26.4、後齒輪箱 y ≤ 21.4、x −52 處 |z| 21–24 有 y 19.6 的導輪架
+  stationParams: [
+    [62, 16.5, 10, 16.5, 16, 16, 15],
+    [56, 19.5, 16, 19.5, 25, 17.5, 15],
+    [50, 23, 20, 23.5, 28.5, 20, 13],
+    [40, 24.5, 22, 26, 30, 24.5, 12],
+    [30, 24.5, 22, 25.5, 30, 23, 10],
+    [15, 25, 23, 24.5, 30, 21, 9.5],
+    [0, 26, 23, 24.5, 30, 21, 9.5],
+    [-15, 26, 23, 24.5, 30, 21, 9.5],
+    [-30, 25.5, 22, 25, 30, 23, 10],
+    [-40, 26, 22, 26, 30, 24.5, 12],
+    [-48, 25, 20, 24.5, 28, 22.5, 18],
+    [-53, 23.5, 17, 23.3, 24, 22.6, 21.5],
+  ].map(([x, yTop, zF, yF, halfW, yShoulder, yLow]) => ({ x, yTop, zF, yF, halfW, yShoulder, yLow })),
   openings: [
     { id: 'T 頂面大型多邊形開口 ×8', view: 'top', shape: 'fn', sd: topHolesSd },
     { id: 'S1 側窗（三角分格）', view: 'side', shape: 'fn', sd: sideWindowSd },
@@ -130,7 +146,7 @@ const makeMaterials = () => ({
 
 /** @type {() => BodyPart[]} */
 const compose = () => {
-  const kit = makeLoftKit(SKELETON_DATA, { mode: 'linear', sideZMin: 30, bump, tuck: 2.0, xSmooth: true });
+  const kit = makeLoftKit(SKELETON_DATA, { mode: 'linear', sideZMin: 24, bump, tuck: 2.0, xSmooth: true });
   const { surf } = kit;
   /** @type {BodyPart[]} */
   const parts = [];
@@ -206,8 +222,8 @@ const compose = () => {
   ]);
   parts.push({
     geometry: mergeGeos([
-      kit.decal(sideDecal((u, v) => triSide(u, v) + 0.5, { x0: 0, y0: 0, zMin: 30, side: 1 }), { offset: 0.12 }),
-      kit.decal(sideDecal((u, v) => triSide(-u, v) + 0.5, { x0: 0, y0: 0, zMin: 30, side: -1 }), { offset: 0.12 }),
+      kit.decal(sideDecal((u, v) => triSide(u, v) + 0.5, { x0: 0, y0: 0, zMin: 24, side: 1 }), { offset: 0.12 }),
+      kit.decal(sideDecal((u, v) => triSide(-u, v) + 0.5, { x0: 0, y0: 0, zMin: 24, side: -1 }), { offset: 0.12 }),
     ]),
     mat: 'black',
     name: 'decal-triangles',
@@ -219,10 +235,10 @@ const compose = () => {
   parts.push({
     geometry: mergeGeos([
       kit.decal((x, y, z) => -sdRoundRect(x, z, 33.6, 42.4, -6.4, 6.4, 1.2)),
-      kit.decal(sideDecal(sidePlate, { x0: 15.25, y0: 16.2, zMin: 30 })),
+      kit.decal(sideDecal(sidePlate, { x0: 15.25, y0: 16.2, zMin: 24 })),
       // 側面三角的萊姆黃外框（黑三角內縮 0.5 mm 疊在上面）
-      kit.decal(sideDecal((u, v) => triSide(u, v), { x0: 0, y0: 0, zMin: 30, side: 1 })),
-      kit.decal(sideDecal((u, v) => triSide(-u, v), { x0: 0, y0: 0, zMin: 30, side: -1 })),
+      kit.decal(sideDecal((u, v) => triSide(u, v), { x0: 0, y0: 0, zMin: 24, side: 1 })),
+      kit.decal(sideDecal((u, v) => triSide(-u, v), { x0: 0, y0: 0, zMin: 24, side: -1 })),
     ]),
     mat: 'limeDecal',
     name: 'decal-number-plate',
@@ -230,7 +246,7 @@ const compose = () => {
   parts.push({
     geometry: mergeGeos([
       kit.decal(topDecal(sdNumber('24', { h: 6.2, w: 3.5, gap: 1.0 }), { x0: 38, yMin: 20 }), { offset: 0.12 }),
-      kit.decal(sideDecal(sdNumber('24', { h: 4.2, w: 2.6, gap: 0.8, slant: 0.12 }), { x0: 15.25, y0: 16.2, zMin: 30 }), { offset: 0.12 }),
+      kit.decal(sideDecal(sdNumber('24', { h: 4.2, w: 2.6, gap: 0.8, slant: 0.12 }), { x0: 15.25, y0: 16.2, zMin: 24 }), { offset: 0.12 }),
     ]),
     mat: 'black',
     name: 'decal-number',
@@ -247,6 +263,8 @@ const MOUNTS = getPart('chassis-midship').bodyMounts.map((m) => ({ ...m }));
 export const skeletonBody = {
   id: 'body-skeleton',
   category: 'body',
+  style: 'race',
+  theme: '低趴鏤空輕量殼：煙燻 PC、大型多邊形開口看得到馬達與電池',
   name: '鏤空輕量款',
   material: 'PC',
   density_g_cm3: 1.2,

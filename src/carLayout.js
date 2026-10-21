@@ -3,23 +3,37 @@
 // Three.js 模型與 Rapier 碰撞體都由這裡取得位置，確保兩者一致
 // s 為 assembly.js 組出的整車規格（asm.spec）
 
-/** @type {(s: any) => { id: string, x: number, y: number, z: number, r: number, h: number }[]} 導輪配置：前 2 顆＋後 2×2 顆（上下疊放） */
+/** 導輪架資料的導輪高度是以 5 mm 高的單層導輪為準；較高的導輪（例如雙層導輪）座面不變、往上長 */
+const ROLLER_REF_HEIGHT_MM = 5;
+
+/**
+ * 導輪配置：前 2 顆＋後每側 1–2 層（後導輪架 upperRollerHeight_mm 為 null 時只有下層）
+ * tiers：疊放的接觸片（相對導輪中心的 y、直徑、高度），單層導輪為 1 片
+ * @type {(s: any) => { id: string, x: number, y: number, z: number, r: number, h: number, tiers: { y: number, r: number, h: number }[] }[]}
+ */
 export function rollerLayout(s) {
   const c = s.chassis;
   const r = c.rollerDiameter_mm / 2;
   const h = c.rollerHeight_mm;
+  const dy = (h - ROLLER_REF_HEIGHT_MM) / 2;
+  const tiers = (c.rollerTiers ?? [{ diameter_mm: c.rollerDiameter_mm, height_mm: h, y_mm: 0 }]).map((t) => ({ y: t.y_mm, r: t.diameter_mm / 2, h: t.height_mm }));
   const fx = c.frontRollerX_mm;
   const fz = c.frontRollerZ_mm;
   const rx = c.rearRollerX_mm;
   const rz = c.rearRollerZ_mm;
-  return [
-    { id: 'FL', x: fx, y: c.rollerCenterHeight_mm, z: -fz, r, h },
-    { id: 'FR', x: fx, y: c.rollerCenterHeight_mm, z: fz, r, h },
-    { id: 'RL', x: -rx, y: c.rearLowerRollerHeight_mm, z: -rz, r, h },
-    { id: 'RR', x: -rx, y: c.rearLowerRollerHeight_mm, z: rz, r, h },
-    { id: 'RUL', x: -rx, y: c.rearUpperRollerHeight_mm, z: -rz, r, h },
-    { id: 'RUR', x: -rx, y: c.rearUpperRollerHeight_mm, z: rz, r, h },
+  const list = [
+    { id: 'FL', x: fx, y: c.rollerCenterHeight_mm + dy, z: -fz, r, h, tiers },
+    { id: 'FR', x: fx, y: c.rollerCenterHeight_mm + dy, z: fz, r, h, tiers },
+    { id: 'RL', x: -rx, y: c.rearLowerRollerHeight_mm + dy, z: -rz, r, h, tiers },
+    { id: 'RR', x: -rx, y: c.rearLowerRollerHeight_mm + dy, z: rz, r, h, tiers },
   ];
+  if (c.rearUpperRollerHeight_mm !== null && c.rearUpperRollerHeight_mm !== undefined) {
+    list.push(
+      { id: 'RUL', x: -rx, y: c.rearUpperRollerHeight_mm + dy, z: -rz, r, h, tiers },
+      { id: 'RUR', x: -rx, y: c.rearUpperRollerHeight_mm + dy, z: rz, r, h, tiers },
+    );
+  }
+  return list;
 }
 
 /** @type {(s: any) => { id: string, x: number, y: number, z: number }[]} 輪子配置（底盤座標：輪軸高度 = 參考輪半徑） */

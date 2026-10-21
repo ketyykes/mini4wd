@@ -4,13 +4,19 @@ import defaultConfig from '../configs/default.json';
 import speedConfig from '../configs/speed.json';
 import technicalConfig from '../configs/technical.json';
 import lightConfig from '../configs/light.json';
+import raceFrpConfig from '../configs/race-frp.json';
+import carbonDamperConfig from '../configs/carbon-damper.json';
 import { spec as globalSpec, deriveParams } from './spec.js';
-import { resolvePart } from './parts/index.js';
+import { resolvePart, listParts } from './parts/index.js';
 import { getBody, bodyMassProps, bodyClearance } from './bodies/index.js';
 import { rollerLayout, wheelLayout, componentLayout } from './carLayout.js';
+import { solidGap, solidBox, verticesGap } from './parts/clearance.js';
+import { polygonCentroid } from './parts/plateGeom.js';
 
 /** @typedef {import('./parts/types').PlacedPart} PlacedPart */
 /** @typedef {import('./parts/types').Vec3} Vec3 */
+/** @typedef {import('./parts/types').Solid} Solid */
+/** @typedef {import('./parts/types').PlacedSolid} PlacedSolid */
 
 /** 組裝設定的 slot → 零件類別 */
 export const SLOTS = {
@@ -28,10 +34,46 @@ export const SLOTS = {
   axles: 'axle',
   gearCover: 'gear-cover',
   hardware: 'hardware',
+  massDamper: 'mass-damper',
+  brakeSponge: 'brake-sponge',
+  ballast: 'ballast',
 };
 
+/** 選配 slot：值可為 null（不裝）；組裝設定沒寫這個 slot 時也視為 null */
+export const OPTIONAL_SLOTS = ['massDamper', 'brakeSponge', 'ballast'];
+
+/** 配重安裝點的中文名稱 */
+const MOUNT_LABELS = { front: '前', center: '中央', rear: '後' };
+
+/**
+ * 某個 slot 可選的值（給網頁選單）：零件 id；有 mountPoints 的零件（配重）展開成 `id@安裝點`；選配 slot 另有 null（不裝）
+ * 不相容的選項也列出（選了之後由 validateAssembly 擋下並說明原因）
+ * @type {(slot: string) => { value: string | null, label: string }[]}
+ */
+export function slotChoices(slot) {
+  const category = SLOTS[slot];
+  if (!category) {
+    throw new Error(`未知的 slot：${slot}`);
+  }
+  /** @type {{ value: string | null, label: string }[]} */
+  const out = [];
+  if (OPTIONAL_SLOTS.includes(slot)) {
+    out.push({ value: null, label: '不裝' });
+  }
+  for (const part of listParts(category)) {
+    if (Array.isArray(part.mountPoints)) {
+      for (const m of part.mountPoints) {
+        out.push({ value: `${part.id}@${m}`, label: `${part.name}＠${MOUNT_LABELS[m] ?? m}` });
+      }
+    } else {
+      out.push({ value: part.id, label: part.name });
+    }
+  }
+  return out;
+}
+
 /** @type {Record<string, any>} */
-const CONFIGS = { default: defaultConfig, speed: speedConfig, technical: technicalConfig, light: lightConfig };
+const CONFIGS = { default: defaultConfig, speed: speedConfig, technical: technicalConfig, light: lightConfig, 'race-frp': raceFrpConfig, 'carbon-damper': carbonDamperConfig };
 
 /** @type {() => string[]} 所有組裝設定名稱 */
 export const listConfigs = () => Object.keys(CONFIGS);
@@ -88,13 +130,14 @@ function buildSpec(p) {
       rollerDiameter_mm: ro.diameter_mm,
       rollerHeight_mm: ro.height_mm,
       rollerFinish: ro.finish,
+      rollerTiers: ro.tiers ?? null,
       rollerCenterHeight_mm: fs.rollerY_mm,
       frontRollerX_mm: fs.rollerX_mm,
       frontRollerZ_mm: fs.rollerZ_mm,
       rearRollerX_mm: rs.rollerX_mm,
       rearRollerZ_mm: rs.rollerZ_mm,
       rearLowerRollerHeight_mm: rs.lowerRollerHeight_mm,
-      rearUpperRollerHeight_mm: rs.upperRollerHeight_mm,
+      rearUpperRollerHeight_mm: rs.upperRollerHeight_mm ?? null,
     },
   };
 }
@@ -110,10 +153,15 @@ export function assemble(config) {
   /** @type {Record<string, any>} */
   const p = {};
   for (const [slot, category] of Object.entries(SLOTS)) {
-    if (config[slot] === undefined) {
+    const v = config[slot];
+    if (OPTIONAL_SLOTS.includes(slot) && (v === undefined || v === null || v === '')) {
+      p[slot] = null;
+      continue;
+    }
+    if (v === undefined || v === null) {
       throw new Error(`組裝設定缺少 slot：${slot}`);
     }
-    p[slot] = resolvePart(config[slot], category);
+    p[slot] = resolvePart(v, category);
   }
   const body = getBody(config.body);
   const bodyProps = bodyMassProps(body);
@@ -171,21 +219,147 @@ export function assemble(config) {
   for (const r of rollers) {
     place('rollers', `導輪 ${r.id}`, p.rollers.mass_g, { x: r.x, y: r.y, z: r.z });
   }
-  // 導輪架質心：導輪座與底盤端之間（推估：導輪軸往內 8 mm、導輪中心往下 3.5 mm）
-  place('frontStay', '前導輪架', p.frontStay.mass_g, { x: p.frontStay.rollerX_mm - 8, y: p.frontStay.rollerY_mm - 3.5, z: 0 });
-  place('rearStay', '後導輪架', p.rearStay.mass_g, {
-    x: -(p.rearStay.rollerX_mm - 8),
-    y: (p.rearStay.lowerRollerHeight_mm + p.rearStay.upperRollerHeight_mm) / 2 - 3.5,
-    z: 0,
-  });
+  // 導輪架質心：板件 = 俯視外形面積形心、板厚中央；塑膠標準件 = 導輪座與底盤端之間（推估：導輪軸往內 8 mm、導輪中心往下 3.5 mm）
+  for (const [slot, sx] of [['frontStay', 1], ['rearStay', -1]]) {
+    const st = p[slot];
+    const label = sx > 0 ? '前導輪架' : '後導輪架';
+    if (st.plate) {
+      const [cx, cz] = polygonCentroid(st.plate.outline);
+      place(slot, label, st.mass_g, { x: cx, y: st.plate.y_mm + st.plate.thickness_mm / 2, z: cz });
+    } else if (sx > 0) {
+      place(slot, label, st.mass_g, { x: st.rollerX_mm - 8, y: st.rollerY_mm - 3.5, z: 0 });
+    } else {
+      const upper = st.upperRollerHeight_mm ?? st.lowerRollerHeight_mm;
+      place(slot, label, st.mass_g, { x: -(st.rollerX_mm - 8), y: (st.lowerRollerHeight_mm + upper) / 2 - 3.5, z: 0 });
+    }
+  }
   place('batteryCover', '電池蓋', p.batteryCover.mass_g, { x: 0, y: ch.groundClearanceRef_mm + 0.5, z: 0 });
   place('switch', '開關＋端子', p.switch.mass_g, ch.switchPos_mm);
   // 齒輪蓋蓋住馬達與前後齒輪上方（質心推估：馬達頂面上方 2 mm）；小五金分散在底盤上，質心取底盤本體質心（推估）
   place('gearCover', '齒輪蓋', p.gearCover.mass_g, { x: 0, y: comp.motor.y + comp.motor.flat / 2 + 2, z: 0 });
   place('hardware', '小五金', p.hardware.mass_g, ch.com_mm);
+
+  // ---- 選配零件（第三階段）：制振器、煞車海綿、配重。實體形狀（底盤座標）同時給干涉檢查、外框、離地高度、3D 模型 ----
+  const opt = optionalLayout(p, comp);
+  for (const d of opt.dampers) {
+    place('massDamper', d.label, d.mass_g, d.pos);
+  }
+  if (opt.sponge) {
+    place('brakeSponge', '煞車海綿', opt.sponge.mass_g, opt.sponge.pos);
+  }
+  if (opt.ballast) {
+    place('ballast', `配重（${opt.ballast.mount}）`, opt.ballast.mass_g, opt.ballast.pos);
+  }
   parts.push({ slot: 'body', id: body.id, category: 'body', label: `車殼 ${body.id}`, mass_g: bodyProps.mass_g, pos: lifted(bodyProps.com_mm, lift) });
 
-  // ---- 質量、重心 ----
+  // ---- 質量、重心、慣性：整車（P14）與「剛體部分」（不含可上下滑動的制振器，物理引擎的車體剛體用）----
+  const total = massProps(parts, ch, bodyProps);
+  const { mass_g, com_mm } = total;
+  const inertia_kgm2 = total.inertia_kgm2;
+  // 制振器鎖死（locked = true，用螺帽鎖緊當固定配重）時視為剛體的一部分
+  const movableParts = p.massDamper && !p.massDamper.locked ? parts.filter((q) => q.slot === 'massDamper') : [];
+  const rigid = movableParts.length > 0 ? massProps(parts.filter((q) => !movableParts.includes(q)), ch, bodyProps) : total;
+  const movable = movableParts.map((q) => {
+    const d = p.massDamper;
+    return {
+      label: q.label,
+      mass_g: q.mass_g,
+      pos: q.pos,
+      stroke_mm: d.stroke_mm,
+      seatDeflection_mm: d.seatDeflection_mm,
+      seatDampingRatio: d.seatDampingRatio,
+      slideFriction_Nspm: d.slideFriction_Nspm,
+    };
+  });
+
+  // ---- 外框（車體座標）：底盤本體、輪胎、導輪、車殼的聯集 ----
+  const R = p.wheels.diameter_mm / 2;
+  const halfTire = p.wheels.width_mm / 2;
+  /** @type {{ min: Vec3, max: Vec3 }[]} */
+  const boxes = [
+    { min: lifted(ch.bbox_mm.min, lift), max: lifted(ch.bbox_mm.max, lift) },
+    { min: lifted(bodyProps.bbox_mm.min, lift), max: lifted(bodyProps.bbox_mm.max, lift) },
+  ];
+  for (const w of wheels) {
+    boxes.push({ min: { x: w.x - R, y: 0, z: w.z - halfTire }, max: { x: w.x + R, y: 2 * R, z: w.z + halfTire } });
+  }
+  for (const r of rollers) {
+    boxes.push({ min: { x: r.x - r.r, y: r.y - r.h / 2 + lift, z: r.z - r.r }, max: { x: r.x + r.r, y: r.y + r.h / 2 + lift, z: r.z + r.r } });
+  }
+  // 導輪板、選配零件（制振器取整個行程的範圍）
+  /** @type {{ min: Vec3, max: Vec3 }[]} */
+  const extraBoxes = opt.solids.filter((q) => q.group !== 'tire' && q.group !== 'roller').map((q) => {
+    const b = solidBox(q.solid);
+    return { min: lifted(b.min, lift), max: lifted(b.max, lift) };
+  });
+  boxes.push(...extraBoxes);
+  const min = { x: Infinity, y: Infinity, z: Infinity };
+  const max = { x: -Infinity, y: -Infinity, z: -Infinity };
+  for (const b of boxes) {
+    for (const k of ['x', 'y', 'z']) {
+      min[k] = Math.min(min[k], b.min[k]);
+      max[k] = Math.max(max[k], b.max[k]);
+    }
+  }
+  const bbox_mm = { min, max, size: { x: max.x - min.x, y: max.y - min.y, z: max.z - min.z } };
+  // 迎風面積（SPEC 1.11）：外框寬 × 高 × 填充比例
+  const frontalArea_mm2 = bbox_mm.size.z * bbox_mm.size.y * globalSpec.aero.frontalAreaFill;
+  // 離地高度：輪胎以外的最低點（底盤本體、車殼、導輪）
+  // structureClearance_mm：只看底盤本體、車殼、導輪（物理車體碰撞方塊的底面用這個）；groundClearance_mm 另含導輪板與選配零件（規則檢查用）
+  const structureClearance_mm = Math.min(...boxes.filter((_, i) => i < 2).map((b) => b.min.y), ...rollers.map((r) => r.y - r.h / 2 + lift));
+  const groundClearance_mm = Math.min(structureClearance_mm, ...extraBoxes.map((b) => b.min.y));
+
+  // 車殼與輪胎、導輪的間隙（底盤座標：輪軸相對底盤固定，換大徑輪時輪胎往外長）
+  const fit = bodyClearance(
+    body,
+    wheels.map((w) => ({ x: w.x, y: w.y, z: w.z, r: R, width: p.wheels.width_mm })),
+    rollers,
+  );
+  const interference = interferenceChecks(body, bodyProps, wheels.map((w) => ({ ...w, r: R, width: p.wheels.width_mm })), rollers, opt.solids);
+
+  return {
+    config: structuredClone(config),
+    partsBySlot: p,
+    parts,
+    mass_g,
+    com_mm,
+    bbox_mm,
+    groundClearance_mm,
+    structureClearance_mm,
+    frontalArea_mm2,
+    fit,
+    interference,
+    features: [...new Set([...(ch.features ?? []), ...(p.frontStay.features ?? []), ...(p.rearStay.features ?? [])])],
+    optional: { dampers: opt.dampers, sponge: opt.sponge, ballast: opt.ballast },
+    rigid: { mass_g: rigid.mass_g, com_mm: rigid.com_mm, inertia_kgm2: rigid.inertia_kgm2 },
+    movable,
+    lift_mm: lift,
+    gearRatio: p.gear.ratio,
+    driveType: ch.driveType,
+    spec: s,
+    inertia_kgm2,
+    P: deriveParams({ ...s, frontalArea_mm2 }, mass_g),
+    layout: {
+      wheels: wheels.map((w) => ({ ...lifted(w, lift), id: w.id, r: R, width: p.wheels.width_mm })),
+      rollers: rollers.map((r) => ({ ...r, y: r.y + lift })),
+    },
+    chassisMounts: ch.bodyMounts.map((m) => ({ ...lifted(m, lift), id: m.id })),
+    body: {
+      id: body.id,
+      def: body,
+      mounts: body.mounts.map((m) => ({ ...lifted(m, lift), id: m.id })),
+      mass_g: bodyProps.mass_g,
+      bbox_mm: { min: lifted(bodyProps.bbox_mm.min, lift), max: lifted(bodyProps.bbox_mm.max, lift) },
+    },
+  };
+}
+
+/**
+ * 質量、重心、慣性矩（主軸近似，忽略慣性積）：各零件以質點計（平行軸定理），
+ * 底盤本體與車殼另加自身外框的均質方塊慣性（推估：兩者是分佈最廣的零件）
+ * @type {(parts: PlacedPart[], ch: any, bodyProps: any) => { mass_g: number, com_mm: Vec3, inertia_kgm2: Vec3 }}
+ */
+function massProps(parts, ch, bodyProps) {
   let mass_g = 0;
   const mom = { x: 0, y: 0, z: 0 };
   for (const q of parts) {
@@ -195,9 +369,6 @@ export function assemble(config) {
     mom.z += q.mass_g * q.pos.z;
   }
   const com_mm = { x: mom.x / mass_g, y: mom.y / mass_g, z: mom.z / mass_g };
-
-  // ---- 慣性矩（主軸近似，忽略慣性積）：各零件以質點計（平行軸定理），
-  // 底盤本體與車殼另加自身外框的均質方塊慣性（推估：兩者是分佈最廣的零件）----
   /** @type {(m: number, b: { min: Vec3, max: Vec3 }) => Vec3} 均質方塊對自身中心的慣性（g·mm²） */
   const boxInertia = (m, b) => {
     const lx = b.max.x - b.min.x;
@@ -221,70 +392,163 @@ export function assemble(config) {
     inertia.z += bi.z;
   }
   // g·mm² → kg·m²
-  const inertia_kgm2 = { x: inertia.x * 1e-9, y: inertia.y * 1e-9, z: inertia.z * 1e-9 };
+  return { mass_g, com_mm, inertia_kgm2: { x: inertia.x * 1e-9, y: inertia.y * 1e-9, z: inertia.z * 1e-9 } };
+}
 
-  // ---- 外框（車體座標）：底盤本體、輪胎、導輪、車殼的聯集 ----
-  const R = p.wheels.diameter_mm / 2;
-  const halfTire = p.wheels.width_mm / 2;
-  /** @type {{ min: Vec3, max: Vec3 }[]} */
-  const boxes = [
-    { min: lifted(ch.bbox_mm.min, lift), max: lifted(ch.bbox_mm.max, lift) },
-    { min: lifted(bodyProps.bbox_mm.min, lift), max: lifted(bodyProps.bbox_mm.max, lift) },
-  ];
-  for (const w of wheels) {
-    boxes.push({ min: { x: w.x - R, y: 0, z: w.z - halfTire }, max: { x: w.x + R, y: 2 * R, z: w.z + halfTire } });
-  }
-  for (const r of rollers) {
-    boxes.push({ min: { x: r.x - r.r, y: r.y - r.h / 2 + lift, z: r.z - r.r }, max: { x: r.x + r.r, y: r.y + r.h / 2 + lift, z: r.z + r.r } });
-  }
-  const min = { x: Infinity, y: Infinity, z: Infinity };
-  const max = { x: -Infinity, y: -Infinity, z: -Infinity };
-  for (const b of boxes) {
-    for (const k of ['x', 'y', 'z']) {
-      min[k] = Math.min(min[k], b.min[k]);
-      max[k] = Math.max(max[k], b.max[k]);
+/** @type {(cx: number, cz: number, y0: number, lx: number, lz: number, ly: number) => Solid} 底面中心在 (cx, y0, cz) 的方塊 */
+const boxAt = (cx, cz, y0, lx, lz, ly) => ({
+  kind: 'box',
+  min: { x: cx - lx / 2, y: y0, z: cz - lz / 2 },
+  max: { x: cx + lx / 2, y: y0 + ly, z: cz + lz / 2 },
+});
+
+/**
+ * 選配零件與導輪板的擺放（底盤座標，未加 lift）
+ * 制振器：靜止在行程下止點；干涉檢查用「整個行程掃過的範圍」
+ * 煞車海綿：貼在後導輪架的煞車座下方；配重：依安裝點（前 / 後鎖在保桿或導輪板下方，中央貼在齒輪蓋頂面）
+ * @type {(p: Record<string, any>, comp: any) => { dampers: any[], sponge: any, ballast: any, solids: PlacedSolid[] }}
+ */
+function optionalLayout(p, comp) {
+  const ch = p.chassis;
+  /** @type {PlacedSolid[]} */
+  const solids = [];
+  for (const [slot, label] of [['frontStay', '前導輪板'], ['rearStay', '後導輪板']]) {
+    const pl = p[slot].plate;
+    if (pl) {
+      solids.push({ group: 'stay', slot, label, solid: { kind: 'plate', outline: pl.outline, y0: pl.y_mm, y1: pl.y_mm + pl.thickness_mm } });
     }
   }
-  const bbox_mm = { min, max, size: { x: max.x - min.x, y: max.y - min.y, z: max.z - min.z } };
-  // 迎風面積（SPEC 1.11）：外框寬 × 高 × 填充比例
-  const frontalArea_mm2 = bbox_mm.size.z * bbox_mm.size.y * globalSpec.aero.frontalAreaFill;
-  // 離地高度：輪胎以外的最低點（底盤本體、車殼、導輪）
-  const groundClearance_mm = Math.min(...boxes.filter((_, i) => i < 2).map((b) => b.min.y), ...rollers.map((r) => r.y - r.h / 2 + lift));
 
-  // 車殼與輪胎、導輪的間隙（底盤座標：輪軸相對底盤固定，換大徑輪時輪胎往外長）
-  const fit = bodyClearance(
-    body,
-    wheels.map((w) => ({ x: w.x, y: w.y, z: w.z, r: R, width: p.wheels.width_mm })),
-    rollers,
-  );
+  /** @type {any[]} */
+  const dampers = [];
+  const d = p.massDamper;
+  if (d) {
+    /** @type {{ x: number, y: number, z: number }[]} 制振器底面中心（下止點） */
+    let seats = [];
+    if (d.mount === 'side') {
+      const m = ch.sideDamperMount ?? { x_mm: 0, z_mm: 33, y_mm: 2 };
+      seats = [{ x: m.x_mm, y: m.y_mm, z: -m.z_mm }, { x: m.x_mm, y: m.y_mm, z: m.z_mm }].slice(0, d.count);
+    } else {
+      const m = p.rearStay.damperMount ?? { x_mm: -79, z_mm: 0, y_mm: ch.bumperBottomY_mm };
+      seats = [{ x: m.x_mm, y: m.y_mm, z: m.z_mm }];
+    }
+    seats.forEach((s, i) => {
+      const h = d.height_mm;
+      const swept = d.shape === 'box'
+        ? boxAt(s.x, s.z, s.y, d.length_mm, d.width_mm, h + d.stroke_mm)
+        : { kind: 'cyl', axis: 'y', c: { x: s.x, y: s.y + (h + d.stroke_mm) / 2, z: s.z }, r: d.diameter_mm / 2, halfLen: (h + d.stroke_mm) / 2 };
+      const label = seats.length > 1 ? `制振器 ${s.z < 0 ? '左' : '右'}` : '制振器';
+      dampers.push({ label, mass_g: d.mass_g, pos: { x: s.x, y: s.y + h / 2, z: s.z }, seat: s, part: d, swept, index: i });
+      solids.push({ group: 'damper', slot: 'massDamper', label, solid: /** @type {Solid} */ (swept) });
+    });
+  }
 
-  return {
-    config: structuredClone(config),
-    partsBySlot: p,
-    parts,
-    mass_g,
-    com_mm,
-    bbox_mm,
-    groundClearance_mm,
-    frontalArea_mm2,
-    fit,
-    lift_mm: lift,
-    gearRatio: p.gear.ratio,
-    driveType: ch.driveType,
-    spec: s,
-    inertia_kgm2,
-    P: deriveParams({ ...s, frontalArea_mm2 }, mass_g),
-    layout: {
-      wheels: wheels.map((w) => ({ ...lifted(w, lift), id: w.id, r: R, width: p.wheels.width_mm })),
-      rollers: rollers.map((r) => ({ ...r, y: r.y + lift })),
-    },
-    chassisMounts: ch.bodyMounts.map((m) => ({ ...lifted(m, lift), id: m.id })),
-    body: {
-      id: body.id,
-      def: body,
-      mounts: body.mounts.map((m) => ({ ...lifted(m, lift), id: m.id })),
-      mass_g: bodyProps.mass_g,
-      bbox_mm: { min: lifted(bodyProps.bbox_mm.min, lift), max: lifted(bodyProps.bbox_mm.max, lift) },
-    },
+  let sponge = null;
+  const sp = p.brakeSponge;
+  if (sp) {
+    const m = p.rearStay.brakeMount ?? { xMin_mm: 62, xMax_mm: 73, halfZ_mm: 8, y_mm: ch.bumperBottomY_mm };
+    const lx = m.xMax_mm - m.xMin_mm;
+    const lz = 2 * m.halfZ_mm;
+    const t = sp.thickness_mm;
+    const cx = -(m.xMin_mm + m.xMax_mm) / 2;
+    const solid = boxAt(cx, 0, m.y_mm - t, lx, lz, t);
+    const mass_g = (lx * lz * t * sp.density_g_cm3) / 1000;
+    sponge = { mass_g, pos: { x: cx, y: m.y_mm - t / 2, z: 0 }, solid, part: sp, area_mm2: lx * lz, length_mm: lx, width_mm: lz };
+    solids.push({ group: 'sponge', slot: 'brakeSponge', label: '煞車海綿', solid });
+  }
+
+  let ballast = null;
+  const b = p.ballast;
+  if (b) {
+    const mounts = ch.ballastMounts ?? {};
+    const mount = mounts[b.mount] ? b.mount : b.defaultMount;
+    const m = mounts[mount];
+    let y0;
+    if (mount === 'center') {
+      // 齒輪蓋頂面（推估：馬達頂面上方 3.5 mm，齒輪蓋質心在頂面上方 2 mm 處的板厚中央）
+      y0 = comp.motor.y + comp.motor.flat / 2 + 3.5;
+    } else {
+      const st = mount === 'front' ? p.frontStay : p.rearStay;
+      const top = st.plate ? st.plate.y_mm : ch.bumperBottomY_mm;
+      y0 = top - b.thickness_mm;
+    }
+    const solid = boxAt(m.x_mm, m.z_mm, y0, b.length_mm, b.width_mm, b.thickness_mm);
+    ballast = { mass_g: b.mass_g, mount, pos: { x: m.x_mm, y: y0 + b.thickness_mm / 2, z: m.z_mm }, solid, part: b };
+    solids.push({ group: 'ballast', slot: 'ballast', label: '配重', solid });
+  }
+  return { dampers, sponge, ballast, solids };
+}
+
+/** @type {Map<string, number>} 車殼頂點 → 實體間隙的快取（key：車殼 id＋實體） */
+const bodyGapCache = new Map();
+/** @type {Map<string, number>} 實體兩兩間隙快取 */
+const pairGapCache = new Map();
+
+/** @type {(a: Solid, b: Solid) => number} */
+const cachedGap = (a, b) => {
+  const key = JSON.stringify([a, b]);
+  let g = pairGapCache.get(key);
+  if (g === undefined) {
+    g = solidGap(a, b);
+    pairGapCache.set(key, g);
+  }
+  return g;
+};
+
+/** 干涉代碼的群組順序 */
+const GROUP_ORDER = ['ballast', 'damper', 'sponge', 'stay', 'roller', 'tire'];
+
+/** 不檢查的組合：鎖在導輪板上的零件本來就和板面接觸（安裝關係，不是干涉） */
+const MOUNTED_ON = new Set(['sponge|stay', 'ballast|stay', 'damper|stay']);
+
+/**
+ * 實體干涉檢查（第三階段）：零件兩兩之間、零件與車殼之間的最小間隙。間隙 < 1 mm 由規則檢查器判為違規
+ * 群組：tire（輪胎）、roller（導輪）、stay（導輪板）、damper（制振器行程範圍）、sponge（煞車海綿）、ballast（配重）
+ * 車殼與輪胎 / 導輪沿用 bodies/index.js 的 bodyClearance（BODY_TIRE_CLEARANCE / BODY_ROLLER_CLEARANCE）
+ * @type {(body: any, bodyProps: any, wheels: any[], rollers: any[], solids: PlacedSolid[]) => { code: string, a: string, b: string, gap_mm: number }[]}
+ */
+function interferenceChecks(body, bodyProps, wheels, rollers, solids) {
+  /** @type {PlacedSolid[]} */
+  const all = [
+    ...wheels.map((w) => ({ group: 'tire', slot: 'wheels', label: `輪胎 ${w.id}`, solid: /** @type {Solid} */ ({ kind: 'cyl', axis: 'z', c: { x: w.x, y: w.y, z: w.z }, r: w.r, halfLen: w.width / 2 }) })),
+    ...rollers.map((r) => ({ group: 'roller', slot: 'rollers', label: `導輪 ${r.id}`, solid: /** @type {Solid} */ ({ kind: 'cyl', axis: 'y', c: { x: r.x, y: r.y, z: r.z }, r: r.r, halfLen: r.h / 2 }) })),
+    ...solids,
+  ];
+  /** @type {Map<string, { code: string, a: string, b: string, gap_mm: number }>} 每種代碼只留最小間隙那一組 */
+  const worst = new Map();
+  /** @type {(code: string, a: string, b: string, gap: number) => void} */
+  const record = (code, a, b, gap) => {
+    const cur = worst.get(code);
+    if (!cur || gap < cur.gap_mm) {
+      worst.set(code, { code, a, b, gap_mm: gap });
+    }
   };
+  for (let i = 0; i < all.length; i++) {
+    for (let j = i + 1; j < all.length; j++) {
+      const A = all[i];
+      const B = all[j];
+      // 輪胎彼此、同一組制振器之間不檢查；導輪板之間（前 / 後）距離很遠
+      if (A.group === B.group && A.group !== 'roller') {
+        continue;
+      }
+      if (MOUNTED_ON.has(`${A.group}|${B.group}`) || MOUNTED_ON.has(`${B.group}|${A.group}`)) {
+        continue;
+      }
+      // 代碼依 GROUP_ORDER 排前後，例如 STAY_TIRE_CLEARANCE、ROLLER_TIRE_CLEARANCE、BALLAST_SPONGE_CLEARANCE
+      const [P, Q] = GROUP_ORDER.indexOf(A.group) <= GROUP_ORDER.indexOf(B.group) ? [A, B] : [B, A];
+      const code = `${P.group.toUpperCase()}_${Q.group.toUpperCase()}_CLEARANCE`;
+      record(code, P.label, Q.label, cachedGap(P.solid, Q.solid));
+    }
+  }
+  // 選配零件、導輪板與車殼（車殼頂點到零件實體的距離）
+  for (const s of solids) {
+    const key = JSON.stringify([body.id, s.solid]);
+    let g = bodyGapCache.get(key);
+    if (g === undefined) {
+      g = verticesGap(bodyProps.vertices, s.solid);
+      bodyGapCache.set(key, g);
+    }
+    record(`${s.group.toUpperCase()}_BODY_CLEARANCE`, s.label, `車殼 ${body.id}`, g);
+  }
+  return [...worst.values()];
 }

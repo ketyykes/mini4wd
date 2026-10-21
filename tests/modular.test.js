@@ -266,7 +266,7 @@ describe('第二階段：零件組裝 / 規則 / 車殼（P04、P08、P09、P11�
     }
   });
 
-  test('P11_regulation 預設組裝合法；8 種故意違規＋車殼干涉都被擋下且代碼正確', () => {
+  test('P11_regulation 預設組裝合法；8 種故意違規＋車殼干涉＋第三階段新零件的干涉 / 安裝相容性都被擋下且代碼正確', () => {
     const { assemble, validateAssembly } = api();
     const ok = validateAssembly(assemble(cfgWith()));
     console.log(`[P11] 預設組裝：ok=${ok.ok}, 違規 ${JSON.stringify(ok.violations.map((v) => v.code))}`);
@@ -286,6 +286,26 @@ describe('第二階段：零件組裝 / 規則 / 車殼（P04、P08、P09、P11�
       { code: 'GROUND_CLEARANCE', over: { wheels: { base: 'wheel-26-lowprofile', diameter_mm: 23 } } },
       { code: 'DRIVE_4WD', over: { chassis: { base: 'chassis-midship', driveType: '2WD' } } },
       { code: 'GEAR_RATIO', over: { gear: { base: 'gear-3.5', ratio: 3.0 } } },
+      // ---- 第三階段新零件（iter-46）：安裝相容性 ----
+      // 4.2:1 是合法齒輪比，但只有單軸底盤有對應零件（SPEC 1.5）
+      { code: 'GEAR_CHASSIS', over: { gear: 'gear-4.2' } },
+      // 單軸馬達不能裝中置雙軸底盤（SPEC 1.1 [REG] Sec.4）
+      { code: 'MOTOR_CLASS', over: { motor: 'motor-single-standard' } },
+      // 後制振器需要導輪板的制振器座，塑膠標準後導輪架沒有
+      { code: 'MOUNT_COMPAT', over: { massDamper: 'damper-rear-cylinder' } },
+      // 碳纖寬後板（導輪中心 ±44.5）＋19 mm 導輪 → 全寬 108 mm
+      { code: 'WIDTH', over: { rearStay: 'stay-rear-carbon-wide', rollers: 'roller-19' } },
+      // ---- 第三階段新零件：實體干涉 ----
+      // 雙層導輪（高 10 mm）裝在上下兩層的後導輪架 → 上下兩顆導輪互相穿透
+      { code: 'ROLLER_ROLLER_CLEARANCE', over: { rollers: 'roller-13-12-double' } },
+      // 後保桿下的配重與煞車海綿搶同一個位置
+      { code: 'BALLAST_SPONGE_CLEARANCE', over: { brakeSponge: 'sponge-1mm-strong', ballast: 'ballast-hex-1g@rear' } },
+      // 煞車座往前延伸到後輪下方（自訂導輪架）→ 海綿碰到輪胎
+      { code: 'SPONGE_TIRE_CLEARANCE', over: { brakeSponge: 'sponge-2mm-strong', rearStay: { base: 'stay-rear-standard', brakeMount: { xMin_mm: 45, xMax_mm: 60, halfZ_mm: 30, y_mm: 5.4 } } } },
+      // 中央配重疊到 40 mm 高 → 穿出車殼
+      { code: 'BALLAST_BODY_CLEARANCE', over: { ballast: { base: 'ballast-square-3.6g', mount: 'center', thickness_mm: 40 } } },
+      // 3 mm 海綿貼在 FRP 後導輪板（板底離地 3.9 mm）下 → 海綿底離地 0.9 mm
+      { code: 'GROUND_CLEARANCE', over: { rearStay: 'stay-rear-frp', brakeSponge: 'sponge-3mm-mild' } },
     ];
     for (const c of cases) {
       const res = validateAssembly(assemble(cfgWith(c.over)));
