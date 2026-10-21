@@ -19,9 +19,15 @@ const keySpec = (p) => {
     case 'roller':
       return `直徑 ${p.diameter_mm}、高 ${p.height_mm} mm（${p.finish === 'aluminum' ? '鋁合金' : '塑膠'}）`;
     case 'stay-front':
-      return `導輪軸 x ${p.rollerX_mm}、z ±${p.rollerZ_mm}、高 ${p.rollerY_mm} mm`;
+      return `${p.material ?? '塑膠'}；導輪軸 x ${p.rollerX_mm}、z ±${p.rollerZ_mm}、高 ${p.rollerY_mm} mm`;
     case 'stay-rear':
-      return `導輪軸 x −${p.rollerX_mm}、z ±${p.rollerZ_mm}、高 ${p.lowerRollerHeight_mm} / ${p.upperRollerHeight_mm} mm`;
+      return `${p.material ?? '塑膠'}；導輪軸 x −${p.rollerX_mm}、z ±${p.rollerZ_mm}、高 ${p.lowerRollerHeight_mm} / ${p.upperRollerHeight_mm ?? '—'} mm`;
+    case 'mass-damper':
+      return `${p.material}，${p.count} 顆，${p.shape === 'cylinder' ? `φ${p.diameter_mm}` : '方塊'} × ${p.height_mm} mm，行程 ${p.stroke_mm} mm（${p.mount}）`;
+    case 'brake-sponge':
+      return `厚 ${p.thickness_mm} mm，μ ${p.frictionCoeff}，壓縮模數 ${(p.compressiveModulus_Pa / 1e6).toFixed(1)} MPa（${p.color}）`;
+    case 'ballast':
+      return `${p.material} ${p.length_mm}×${p.width_mm}×${p.thickness_mm} mm，安裝點 ${(p.mountPoints ?? []).join(' / ')}`;
     case 'battery':
       return `${p.cells} × ${p.size} ${p.chemistry}，${p.capacity_mAh} mAh，內阻 ${p.cellInternalResistance_ohm * 1000} mΩ/顆`;
     case 'chassis':
@@ -47,23 +53,24 @@ for (const p of allParts) {
 lines.push('');
 lines.push('### 車殼');
 lines.push('');
-lines.push('| id | 名稱 | 材料 / 壁厚 | 殼面積 mm² | 質量 g | 外框（長 × 寬 × 高，車殼本體） |');
-lines.push('| --- | --- | --- | --- | --- | --- |');
+lines.push('| id | 名稱 | 分類 | 材料 / 壁厚 | 殼面積 mm² | 質量 g | 外框（長 × 寬 × 高，車殼本體） | 31 mm 輪 |');
+lines.push('| --- | --- | --- | --- | --- | --- | --- | --- |');
 for (const b of listBodies()) {
   const m = bodyMassProps(b);
   const bb = m.bbox_mm;
-  lines.push(`| \`${b.id}\` | ${b.name} | ${b.material} ${b.density_g_cm3} g/cm³ / ${b.wallThickness_mm} mm | ${m.shellArea_mm2.toFixed(0)} | ${m.mass_g.toFixed(2)} | ${(bb.max.x - bb.min.x).toFixed(1)} × ${(bb.max.z - bb.min.z).toFixed(1)} × ${bb.max.y.toFixed(1)} |`);
+  const big = validateAssembly(assemble({ ...loadConfig('default'), body: b.id, wheels: 'wheel-31-large' }));
+  lines.push(`| \`${b.id}\` | ${b.name} | ${b.style === 'homage' ? '致敬風格' : '比賽型'} | ${b.material} ${b.density_g_cm3} g/cm³ / ${b.wallThickness_mm} mm | ${m.shellArea_mm2.toFixed(0)} | ${m.mass_g.toFixed(2)} | ${(bb.max.x - bb.min.x).toFixed(1)} × ${(bb.max.z - bb.min.z).toFixed(1)} × ${bb.max.y.toFixed(1)} | ${big.ok ? '合法' : big.violations.map((x) => x.code).join(', ')} |`);
 }
 lines.push('');
 lines.push('### 組裝設定');
 lines.push('');
-lines.push('| 設定 | 車殼 | 馬達 / 齒輪 / 輪胎 / 導輪 / 軸承 | 總重 g | 重心 (x, y) mm | 外框 mm | 規則 | 警告 |');
+lines.push('| 設定 | 車殼 | 馬達 / 齒輪 / 輪胎 / 導輪 / 軸承 / 導輪架 / 選配 | 總重 g | 重心 (x, y) mm | 外框 mm | 規則 | 警告 |');
 lines.push('| --- | --- | --- | --- | --- | --- | --- | --- |');
 for (const name of listConfigs()) {
   const c = loadConfig(name);
   const a = assemble(c);
   const v = validateAssembly(a);
   const s = a.bbox_mm.size;
-  lines.push(`| \`${name}\` | ${c.body} | ${c.motor} / ${c.gear} / ${c.wheels} / ${c.rollers} / ${c.bearings} | ${a.mass_g.toFixed(1)} | (${a.com_mm.x.toFixed(1)}, ${a.com_mm.y.toFixed(1)}) | ${s.x.toFixed(1)} × ${s.z.toFixed(1)} × ${s.y.toFixed(1)} | ${v.ok ? '合法' : v.violations.map((x) => x.code).join(', ')} | ${v.warnings.map((x) => x.code).join(', ') || '—'} |`);
+  lines.push(`| \`${name}\` | ${c.body} | ${c.motor} / ${c.gear} / ${c.wheels} / ${c.rollers} / ${c.bearings} / ${c.frontStay}, ${c.rearStay} / ${[c.massDamper, c.brakeSponge, c.ballast].filter(Boolean).join(', ') || '—'} | ${a.mass_g.toFixed(1)} | (${a.com_mm.x.toFixed(1)}, ${a.com_mm.y.toFixed(1)}) | ${s.x.toFixed(1)} × ${s.z.toFixed(1)} × ${s.y.toFixed(1)} | ${v.ok ? '合法' : v.violations.map((x) => x.code).join(', ')} | ${v.warnings.map((x) => x.code).join(', ') || '—'} |`);
 }
 console.log(lines.join('\n'));
