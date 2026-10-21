@@ -1231,7 +1231,34 @@ function buildChassis(mats) {
     hood.position.y = 19.6;
     g.add(hood);
     for (const sz of [-1, 1]) {
-      g.add(screwHead(mats, sx * (Math.abs(gx0) + 2.6), 20.4, -2.7 + sz * 5.6, 0.9));
+      // iter-44：螺絲座凸台（螺絲頭下方的圓形座）
+      const bossY = new THREE.Mesh(new THREE.CylinderGeometry(1.5, 1.6, 0.5, 16), mats.chassisBlack);
+      bossY.position.set(sx * (Math.abs(gx0) + 2.6), 20.6, -2.7 + sz * 5.6);
+      g.add(bossY);
+      g.add(screwHead(mats, sx * (Math.abs(gx0) + 2.6), 20.85, -2.7 + sz * 5.6, 0.9));
+    }
+    // iter-44：外蓋補強肋與分件縫（reviewer iter-43：「齒輪箱外蓋只是平黑板，缺補強肋、螺絲座與分件縫」）
+    const hoodCx = sx * (Math.abs(gx0) + Math.abs(gx1)) / 2;
+    const hoodLen = Math.abs(gx1 - gx0);
+    // 槽窗兩側的縱向肋（沿 x）
+    for (const rz of [-9.9, 0.4]) {
+      const rib = new THREE.Mesh(new THREE.BoxGeometry(hoodLen - 6, 0.6, 0.8), mats.chassisBlack);
+      rib.position.set(hoodCx, 20.7, rz);
+      g.add(rib);
+    }
+    // 外端的橫向肋
+    const endRib = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.6, 14), mats.chassisBlack);
+    endRib.position.set(sx * (Math.abs(gx1) - 2.2), 20.7, -2.7);
+    g.add(endRib);
+    // 分件縫：外蓋與齒輪箱側壁交界的深色細縫
+    const seam = new THREE.Mesh(new THREE.BoxGeometry(hoodLen - 1, 0.25, 0.3), mats.chassisDark);
+    seam.position.set(hoodCx, 19.55, -10.75);
+    g.add(seam);
+    // 近側壁上的直向肋
+    for (const fx of [0.3, 0.7]) {
+      const vr = new THREE.Mesh(new THREE.BoxGeometry(0.8, 10, 0.5), mats.chassisBlack);
+      vr.position.set(sx * (Math.abs(gx0) + hoodLen * fx), 9.5, -10.85);
+      g.add(vr);
     }
   }
 
