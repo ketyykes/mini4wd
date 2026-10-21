@@ -332,11 +332,11 @@ const compose = () => {
   torso.rotateZ(Math.PI / 2 - 0.35);
   torso.scale(1, 0.7, 1.4);
   torso.translate(15, deck(15) + 0.5, 0);
-  parts.push({ geometry: mergeGeos([seatBack, shoulders, torso]), mat: 'driver', name: 'cockpit-driver' });
+  parts.push({ geometry: mergeGeos([seatBack, shoulders, torso]), mat: 'driver', solid: true, name: 'cockpit-driver' });
   const helmet = new THREE.SphereGeometry(1.55, 20, 14);
   helmet.scale(1.12, 1, 0.95);
   helmet.translate(13.6, deck(13.6) + 2.9, 0);
-  parts.push({ geometry: helmet, mat: 'helmet', name: 'cockpit-helmet' });
+  parts.push({ geometry: helmet, mat: 'helmet', solid: true, name: 'cockpit-helmet' });
 
   // ---- 貼紙 ----
   // iter-44：頂部霧黑三角拿掉（會被網格骨架切碎），只保留側面三角
@@ -380,9 +380,9 @@ const compose = () => {
 
   // 弧形鏤空葉子板框（iter-47b）：四輪上方的萊姆黃開放式籠框——內外兩條弧形側軌（半徑 16.3–17.5、輪胎頂上方 3.3 mm）＋ 5 根橫肋，
   // 內側軌落在殼面上、外側軌懸在輪胎外側，短窄殼也有包住車輪的葉子板輪廓
-  parts.push({ geometry: mergeGeos([40, -40].flatMap((ax) => [1, -1].map((sg) => buildFenderFrame(ax, sg)))), mat: 'limeEdge', shell: true, name: 'fender-frames' });
+  parts.push({ geometry: mergeGeos([40, -40].flatMap((ax) => [1, -1].map((sg) => buildFenderFrame(ax, sg)))), mat: 'limeEdge', solid: true, outline: true, name: 'fender-frames' });
 
-  parts.push({ geometry: buildMountTabs(MOUNTS, (x) => kit.innerYAt(x)), mat: 'mount', name: 'mount-tabs' });
+  parts.push({ geometry: buildMountTabs(MOUNTS, (x) => kit.innerYAt(x)), mat: 'mount', solid: true, name: 'mount-tabs' });
   return parts;
 };
 

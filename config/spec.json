@@ -78,9 +78,9 @@
     "dt_s_src": "iter-01：由 1 ms 改 0.25 ms。P06 診斷（tmp/diag06，見 ITERATION_LOG iter-01）：彎道中導輪對牆有反覆碰撞（chatter），峰值穿透隨步長縮小而下降但有離散；1 ms 約 0.94–1.17 mm、0.5 ms 約 0.48–0.81 mm、0.25 ms 約 0.47–0.81 mm（看其他參數）；增加求解迭代（8→16）、調高 contact_natural_frequency 都沒有穩定改善",
     "normalizedAllowedLinearError": 0.0002,
     "normalizedAllowedLinearError_src": "Rapier 允許不修正的穿透（×lengthUnit 0.1 m）：預設 0.005 → 0.5 mm，等於一半的 P06 上限；iter-01 改 0.0002 → 0.02 mm",
-    "wallPositionProjection": true,
+    "wallContactMode": "impulse",
     "wallProjectionSlop_mm": 0.05,
-    "wallPositionProjection_src": "iter-34：導輪不穿牆的位置投影（constraint stabilization），原因與測試紀錄見 ITERATION_LOG iter-34；slop 0.05 mm 為允許的接觸重疊（小於 Rapier 預設 0.5 mm 的十分之一）",
+    "wallContactMode_src": "iter-49：導輪–牆接觸在 Rapier 軟接觸之外加「接觸點法向的非彈性衝量」（J = −v_n / K，恢復係數 0，同時改線動量與角動量，不直接改位置），取代 iter-34 只改位置的投影（不守動量）。可選值 impulse / position（舊投影，保留作比較）/ none（只用 Rapier 軟接觸，穩態穿透約 0.6 mm）。slop 0.05 mm 為衝量的啟動門檻（允許的接觸重疊，小於 Rapier 預設 0.5 mm 的十分之一）",
     "wallProjectionFraction": 1.0
   },
   "bearingsGeometry": {

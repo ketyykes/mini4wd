@@ -112,7 +112,7 @@ export const forkBody = makePolyBody({
   extras: (kit) => {
     const parts = [];
     // 雙尾臂（實心管，以表面積 × 壁厚近似質量）
-    parts.push({ geometry: mergeGeos([buildArm(-1), buildArm(1)]), mat: 'silver2', shell: true, name: 'tail-arms' });
+    parts.push({ geometry: mergeGeos([buildArm(-1), buildArm(1)]), mat: 'silver2', solid: true, outline: true, name: 'tail-arms' });
     // 尾樑之間的橋板（後卡座吊在這裡）
     parts.push({
       geometry: flatPlate(
@@ -126,7 +126,8 @@ export const forkBody = makePolyBody({
         1.4,
       ),
       mat: 'black2',
-      shell: true,
+      solid: true,
+      outline: true,
       name: 'tail-bridge',
     });
     // 分叉尾鰭（iter-47）：尾臂上外傾 14° 的後掠薄翼型鰭（前緣圓、後緣尖）
@@ -146,9 +147,9 @@ export const forkBody = makePolyBody({
       finsCyan.push(piece(0.55, 0.66));
       finsBlack.push(piece(0.66, 1));
     }
-    parts.push({ geometry: mergeGeos(finsSilver), mat: 'silver2', outline: true, name: 'fork-fins-silver' });
-    parts.push({ geometry: mergeGeos(finsCyan), mat: 'cyan2', outline: true, name: 'fork-fins-cyan' });
-    parts.push({ geometry: mergeGeos(finsBlack), mat: 'black2', outline: true, name: 'fork-fins-black' });
+    parts.push({ geometry: mergeGeos(finsSilver), mat: 'silver2', outline: true, solid: true, name: 'fork-fins-silver' });
+    parts.push({ geometry: mergeGeos(finsCyan), mat: 'cyan2', outline: true, solid: true, name: 'fork-fins-cyan' });
+    parts.push({ geometry: mergeGeos(finsBlack), mat: 'black2', outline: true, solid: true, name: 'fork-fins-black' });
     // 刃鼻下方的黑色前翼（細長分流板，往前尖出）
     parts.push({
       geometry: flatPlate(
@@ -167,12 +168,12 @@ export const forkBody = makePolyBody({
       ),
       mat: 'black2',
       outline: true,
-      name: 'front-wing',
+      solid: true, name: 'front-wing',
     });
     // 座艙內裝
     const drv = buildDriver(12, kit.innerYAt(12) + kit.t, 0.95);
-    parts.push({ geometry: drv.body, mat: 'driver', name: 'cockpit-driver' });
-    parts.push({ geometry: drv.helmet, mat: 'helmet', name: 'cockpit-helmet' });
+    parts.push({ geometry: drv.body, mat: 'driver', solid: true, name: 'cockpit-driver' });
+    parts.push({ geometry: drv.helmet, mat: 'helmet', solid: true, name: 'cockpit-helmet' });
     // 閃電斜紋（側箱）與機身中線細線
     const bolt = [sdBar(20, 23.5, 8, 17, 1.4), sdBar(8, 17, 2, 22, 1.4), sdBar(2, 22, -16, 13.5, 1.4)];
     parts.push({

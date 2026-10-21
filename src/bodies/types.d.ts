@@ -30,6 +30,11 @@ export interface BodyDef {
 export interface BodyMassProps {
   shellArea_mm2: number;
   mass_g: number;
+  /** 殼面部分（面積 × 壁厚 × 密度） */
+  shellMass_g: number;
+  /** 實體件部分（封閉體積 × 密度，userData.solid） */
+  solidMass_g: number;
+  solidVolume_mm3: number;
   com_mm: Vec3;
   bbox_mm: { min: Vec3; max: Vec3 };
   /** 車殼所有頂點（底盤座標，xyz 交錯） */

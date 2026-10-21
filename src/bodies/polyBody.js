@@ -267,9 +267,10 @@ export function sweepEllipse(pts, n, radius, seg = 16) {
       pos.push(a.x, a.y, a.z, d.x, d.y, d.z, c.x, c.y, c.z, a.x, a.y, a.z, c.x, c.y, c.z, b.x, b.y, b.z);
     }
   }
+  // 端蓋繞向（iter-49 修正）：起點蓋朝後、終點蓋朝前，和側面一致（封閉網格才能用散度定理算體積）
   for (const [ring, flip] of [
-    [rings[0], true],
-    [rings[n], false],
+    [rings[0], false],
+    [rings[n], true],
   ]) {
     const cx = ring.reduce((acc, p) => acc.add(p), new THREE.Vector3()).multiplyScalar(1 / seg);
     for (let k = 0; k < seg; k++) {
@@ -294,6 +295,9 @@ export function sweepEllipse(pts, n, radius, seg = 16) {
  * opt.pivotY：外傾支點高度（預設鰭根高度；分段上色時各段要用同一支點）；opt.taper：[根部, 鰭頂] 厚度比例（預設 [1, 0.6]）
  * @type {(root: number[], tip: number[], thick: number, zc: number, tiltDeg: number, nc?: number, ns?: number, opt?: { pivotY?: number, taper?: number[] }) => THREE.BufferGeometry}
  */
+/** @type {number} 鰭面封蓋要反轉繞向的那一端（0 = 鰭根） */
+const CAP_FLIP_J = 0;
+
 export function airfoilFin(root, tip, thick, zc, tiltDeg, nc = 16, ns = 10, opt = {}) {
   const pos = [];
   /** @type {(u: number) => number} NACA 對稱厚度（0–1 弦長，回傳半厚比例，最大 1） */
@@ -321,7 +325,8 @@ export function airfoilFin(root, tip, thick, zc, tiltDeg, nc = 16, ns = 10, opt 
         const b = P(i + 1, j, side);
         const c = P(i + 1, j + 1, side);
         const d = P(i, j + 1, side);
-        if (side > 0) {
+        // iter-49 修正：側面繞向改為朝外（原本朝內，和封蓋不一致）
+        if (side < 0) {
           pos.push(...a, ...b, ...c, ...a, ...c, ...d);
         } else {
           pos.push(...a, ...c, ...b, ...a, ...d, ...c);
@@ -329,14 +334,18 @@ export function airfoilFin(root, tip, thick, zc, tiltDeg, nc = 16, ns = 10, opt 
       }
     }
   }
-  // 鰭頂與鰭根封面
+  // 鰭頂與鰭根封面（iter-49 修正：兩端繞向相反，封閉網格才能用散度定理算體積）
   for (const j of [0, ns]) {
     for (let i = 0; i < nc; i++) {
       const a = P(i, j, -1);
       const b = P(i + 1, j, -1);
       const c = P(i + 1, j, 1);
       const d = P(i, j, 1);
-      pos.push(...a, ...b, ...c, ...a, ...c, ...d);
+      if (j === CAP_FLIP_J) {
+        pos.push(...a, ...c, ...b, ...a, ...d, ...c);
+      } else {
+        pos.push(...a, ...b, ...c, ...a, ...c, ...d);
+      }
     }
   }
   const g = new THREE.BufferGeometry();
@@ -399,7 +408,7 @@ export function makePolyBody(cfg) {
       parts.push(...cfg.extras(kit));
     }
     const innerY = cfg.mountInnerY ? cfg.mountInnerY(kit) : (x) => kit.innerYAt(x);
-    parts.push({ geometry: buildMountTabs(MOUNTS, innerY), mat: cfg.mats.mount, name: 'mount-tabs' });
+    parts.push({ geometry: buildMountTabs(MOUNTS, innerY), mat: cfg.mats.mount, solid: true, name: 'mount-tabs' });
     return parts;
   };
   return {

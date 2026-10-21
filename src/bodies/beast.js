@@ -111,7 +111,7 @@ export const beastBody = makePolyBody({
       (t) => [lerp(2.9, 0.2, t ** 1.2), lerp(3.4, 0.2, t ** 1.05)],
       20,
     );
-    parts.push({ geometry: horn, mat: 'bronze', outline: true, name: 'horn' });
+    parts.push({ geometry: horn, mat: 'bronze', outline: true, solid: true, name: 'horn' });
     // 肩部翼艙上的短鰭（後翼艙上方，左右各一，往外傾 10°）
     const fins = [];
     for (const sg of [-1, 1]) {
@@ -129,7 +129,7 @@ export const beastBody = makePolyBody({
         ),
       );
     }
-    parts.push({ geometry: mergeGeos(fins), mat: 'gunmetal', outline: true, name: 'haunch-fins' });
+    parts.push({ geometry: mergeGeos(fins), mat: 'gunmetal', outline: true, solid: true, name: 'haunch-fins' });
     // 獸眼燈（iter-47）：琥珀燈片鋪滿菱形凹槽底；凹槽外圍 0.5 mm、凸出 0.25 mm 的槍灰眉骨唇邊
     const eyeSd = featureSd(EYE, 28);
     const lamp = buildRegion(kit.surf, [...kit.holes, (x, y, z) => -eyeSd(x, y, z)], { offset: -EYE.depth + 0.06 });
@@ -160,6 +160,7 @@ export const beastBody = makePolyBody({
     wallThickness_mm: '推估：射出 ABS 殼 0.8 mm（同 body-aero-wing）',
     geometry: '本檔 STATIONS（推估，依 DESIGN.md 外框限制與底盤高度掃描）；輪拱 R17.5 以容納 31 mm 大徑輪',
     mounts: '對齊 chassis-midship 的車殼安裝點（SPEC 1.14）',
+    horn: 'iter-49：古銅衝角視為 ABS 電鍍件（迷你四驅車殼的金屬色飾件多為塑膠電鍍，推估），質量 = 封閉體積 × ABS 1.05 g/cm³',
   },
 });
 

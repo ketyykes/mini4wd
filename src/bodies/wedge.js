@@ -18,6 +18,7 @@ import {
   featureSd,
   sdNumber,
   sdConvexPolygon,
+  sdBar,
   sideDecal,
   topDecal,
   mergeGeos,
@@ -310,6 +311,7 @@ const makeMaterials = () => ({
   recessWall: namedMaterial('trim-intake-wall', { color: 0x46494f, roughness: 0.7, side: THREE.DoubleSide }),
   cyan: decalMaterial('decal-cyan', { color: 0x22c3e6, roughness: 0.3, clearcoat: 0.6 }),
   black: decalMaterial('decal-black', { color: 0x111214, roughness: 0.55 }),
+  seam: decalMaterial('decal-panel-seam', { color: 0x0a0a0b, roughness: 0.8 }),
   lamp: decalMaterial('lamp-clear', { color: 0xe8f4ff, emissive: 0x9fc8ff, emissiveIntensity: 0.35, roughness: 0.05, clearcoat: 1.0 }),
   tail: decalMaterial('lamp-red', { color: 0xc4121c, emissive: 0x7a0008, emissiveIntensity: 0.4, roughness: 0.1, clearcoat: 1.0 }),
   mount: namedMaterial('abs-mount-black', { color: 0x222326, roughness: 0.6 }),
@@ -370,11 +372,11 @@ const compose = () => {
   parts.push({ geometry: mergeGeos(lipWalls), mat: 'lower2', name: 'intake-lip-wall' });
 
   // 多面折角座艙罩
-  parts.push({ geometry: canopy.frame, mat: 'canopyFrame', name: 'canopy-frame' });
+  parts.push({ geometry: canopy.frame, mat: 'canopyFrame', solid: true, name: 'canopy-frame' });
   parts.push({ geometry: canopy.glass, mat: 'glass', shell: true, renderOrder: 2, name: 'canopy-glass' });
   const cockpit = buildCockpit(surf);
-  parts.push({ geometry: cockpit.tub, mat: 'tub', name: 'cockpit-tub' });
-  parts.push({ geometry: cockpit.driver, mat: 'seat', name: 'cockpit-driver' });
+  // iter-49：拿掉實心的內襯桶（質量要照實計入，0.85 g 會讓整車超過 P08 上限 135 g）；座艙內只留駕駛人剪影
+  parts.push({ geometry: cockpit.driver, mat: 'seat', solid: true, name: 'cockpit-driver' });
 
   // 鼻部進氣口格柵（iter-43）：凹陷內 4 片往前傾的橫向百葉（每片沿 z 分段貼著殼面下方），百葉之間留陰影縫
   const louvers = [];
@@ -401,7 +403,7 @@ const compose = () => {
       }
     }
   }
-  parts.push({ geometry: mergeGeos(louvers), mat: 'lower2', name: 'nose-intake-louvers' });
+  parts.push({ geometry: mergeGeos(louvers), mat: 'lower2', solid: true, name: 'nose-intake-louvers' });
 
   // 溝槽前方的三層階梯式梯形牙板（iter-43）：從翼艙前端下方往前下方一層層伸出，層間 0.5 mm 陰影縫
   const steps = [];
@@ -426,7 +428,48 @@ const compose = () => {
       );
     }
   }
-  parts.push({ geometry: mergeGeos(steps), mat: 'lower2', name: 'nose-steps' });
+  parts.push({ geometry: mergeGeos(steps), mat: 'lower2', solid: true, name: 'nose-steps' });
+
+  // iter-49：鼻下前緣的三層鋸齒牙板（概念圖的「前下層狀牙板」）——每層前緣是 5 顆往前尖出的三角齒，
+  // 一層比一層低、比一層往前（y 13.6 / 12.3 / 11.0，前緣 x 70.5 / 71.6 / 72.6），厚 0.8 mm，層間 0.2 mm 陰影縫
+  // 底盤前保桿最高約 y 9.6、前導輪 |z| ≥ 35.5：牙板 |z| ≤ 24、底面 ≥ 11
+  const teeth = [];
+  const tiers = [
+    { y: 13.6, xb: 63, xf: 70.5, hw: 24, n: 5 },
+    { y: 12.3, xb: 64.5, xf: 71.6, hw: 21, n: 5 },
+    { y: 11.0, xb: 66, xf: 72.6, hw: 17.5, n: 4 },
+  ];
+  for (const T of tiers) {
+    const pts = [[T.xb, -T.hw]];
+    const toothW = (2 * T.hw) / T.n;
+    for (let i = 0; i < T.n; i++) {
+      const z0 = -T.hw + i * toothW;
+      pts.push([T.xf - 2.4, z0], [T.xf, z0 + toothW / 2]);
+    }
+    pts.push([T.xf - 2.4, T.hw], [T.xb, T.hw]);
+    teeth.push(flatPlate(pts, T.y, 0.8));
+  }
+  // 和既有的鼻下薄板一致：不計質量、不計輪廓（薄板）
+  parts.push({ geometry: mergeGeos(teeth), mat: 'lower2', solid: true, name: 'nose-teeth' });
+
+  // iter-49：銳利的分件線（0.35 mm 黑色縫線）——翼艙斜切、引擎蓋橫切、後甲板斜切、側面斜切，讓殼面看起來是多片拼成
+  const seams = [
+    sdBar(61, 21.5, 46, 33.5, 0.35),
+    sdBar(37, 22, 28, 32.5, 0.35),
+    sdBar(34, 0, 34, 9.2, 0.35),
+    sdBar(-22, 9, -46, 21, 0.35),
+    sdBar(-30, 22.3, -50, 30.5, 0.35),
+  ];
+  const sideSeams = [sdBar(26, 26.5, 19, 11, 0.35), sdBar(-24, 27.5, -30, 12, 0.35)];
+  parts.push({
+    geometry: mergeGeos([
+      kit.decal((x, y, z) => (y < 20 ? -1 : -Math.min(...seams.map((f) => f(x, Math.abs(z)))))),
+      kit.decal(sideDecal((u, v) => Math.min(...sideSeams.map((f) => f(u, v))), { x0: 0, y0: 0, zMin: 30, side: 1 })),
+      kit.decal(sideDecal((u, v) => Math.min(...sideSeams.map((f) => f(-u, v))), { x0: 0, y0: 0, zMin: 30, side: -1 })),
+    ]),
+    mat: 'seam',
+    name: 'decal-panel-seams',
+  });
 
   // ---- 貼紙（不標 shell） ----
   // 青藍細線：翼艙內稜（溝槽外緣）＋側面分色線上方
@@ -518,7 +561,7 @@ const compose = () => {
       ),
     );
   }
-  parts.push({ geometry: mergeGeos(fangs), mat: 'lower2', name: 'nose-splitters' });
+  parts.push({ geometry: mergeGeos(fangs), mat: 'lower2', solid: true, name: 'nose-splitters' });
 
   // 尾部：兩片翹起的尾鰭＋鴨尾翼片（橘色薄板，標 shell）
   const tailFins = [];
@@ -537,7 +580,7 @@ const compose = () => {
       ),
     );
   }
-  parts.push({ geometry: mergeGeos(tailFins), mat: 'paint2', shell: true, name: 'tail-fins' });
+  parts.push({ geometry: mergeGeos(tailFins), mat: 'paint2', solid: true, outline: true, name: 'tail-fins' });
   const spoiler = buildFin(
     [
       [-57.5, 37.0],
@@ -548,7 +591,7 @@ const compose = () => {
     0,
     52,
   );
-  parts.push({ geometry: spoiler, mat: 'lower2', name: 'tail-spoiler' });
+  parts.push({ geometry: spoiler, mat: 'lower2', solid: true, name: 'tail-spoiler' });
 
   // 尾板：黑色燈殼＋紅色細長燈條、中央號碼牌槽、擴散器鰭片
   const xr = surf.xMin;
@@ -559,8 +602,8 @@ const compose = () => {
     lamps.push(buildBox(xr - 0.75, xr - 0.5, 29.0, 30.4, sgn > 0 ? 14.3 : -26.7, sgn > 0 ? 26.7 : -14.3));
   }
   housings.push(buildBox(xr - 0.3, xr + 0.2, 25.0, 28.4, -6.5, 6.5));
-  parts.push({ geometry: mergeGeos(housings), mat: 'lower2', name: 'tail-housing' });
-  parts.push({ geometry: mergeGeos(lamps), mat: 'tail', name: 'lamp-tail' });
+  parts.push({ geometry: mergeGeos(housings), mat: 'lower2', solid: true, name: 'tail-housing' });
+  parts.push({ geometry: mergeGeos(lamps), mat: 'tail', solid: true, name: 'lamp-tail' });
   const diff = [-19, -12, -5, 5, 12, 19].map((zc) =>
     buildFin(
       [
@@ -574,10 +617,10 @@ const compose = () => {
     ),
   );
   diff.push(buildBox(xr - 0.4, xr + 6.5, 18.2, 18.8, -21, 21));
-  parts.push({ geometry: mergeGeos(diff), mat: 'lower2', name: 'rear-diffuser' });
+  parts.push({ geometry: mergeGeos(diff), mat: 'lower2', solid: true, name: 'rear-diffuser' });
 
   // 卡座吊耳
-  parts.push({ geometry: buildMountTabs(MOUNTS, (x) => kit.innerYAt(x)), mat: 'mount', name: 'mount-tabs' });
+  parts.push({ geometry: buildMountTabs(MOUNTS, (x) => kit.innerYAt(x)), mat: 'mount', solid: true, name: 'mount-tabs' });
   return parts;
 };
 

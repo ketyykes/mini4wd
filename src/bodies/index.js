@@ -40,11 +40,100 @@ const isShell = (obj) => {
   return false;
 };
 
+/** @type {(obj: THREE.Object3D) => any} 物件自己或祖先標的實體件資訊（userData.solid） */
+const solidOf = (obj) => {
+  for (let o = obj; o; o = o.parent) {
+    if (o.userData?.solid) {
+      return o.userData.solid;
+    }
+  }
+  return null;
+};
+
+/**
+ * 封閉網格的體積與體積重心（iter-49）：先依共用頂點把三角形分成連通塊，每塊用散度定理算有號體積後取絕對值
+ * （合併幾何裡個別零件的繞向不一定一致，分塊取絕對值可避免互相抵銷）
+ * @type {(pts: Float64Array) => { vol: number, mx: number, my: number, mz: number }} pts：每 9 個數一個三角形（世界座標）
+ */
+const closedVolume = (pts) => {
+  const nTri = pts.length / 9;
+  /** @type {Map<string, number>} */
+  const keyId = new Map();
+  /** @type {number[]} 並查集 */
+  const parent = [];
+  /** @type {(i: number) => number} */
+  const find = (i) => {
+    while (parent[i] !== i) {
+      parent[i] = parent[parent[i]];
+      i = parent[i];
+    }
+    return i;
+  };
+  const triV = new Int32Array(nTri * 3);
+  for (let i = 0; i < nTri * 3; i++) {
+    const k = `${Math.round(pts[3 * i] * 1e4)},${Math.round(pts[3 * i + 1] * 1e4)},${Math.round(pts[3 * i + 2] * 1e4)}`;
+    let id = keyId.get(k);
+    if (id === undefined) {
+      id = parent.length;
+      parent.push(id);
+      keyId.set(k, id);
+    }
+    triV[i] = id;
+  }
+  for (let t = 0; t < nTri; t++) {
+    const r0 = find(triV[3 * t]);
+    for (let e = 1; e < 3; e++) {
+      const r = find(triV[3 * t + e]);
+      if (r !== r0) {
+        parent[r] = r0;
+      }
+    }
+  }
+  /** @type {Map<number, number[]>} 連通塊 → [有號體積, mx, my, mz]（有號） */
+  const comp = new Map();
+  for (let t = 0; t < nTri; t++) {
+    const o = 9 * t;
+    const ax = pts[o];
+    const ay = pts[o + 1];
+    const az = pts[o + 2];
+    const bx = pts[o + 3];
+    const by = pts[o + 4];
+    const bz = pts[o + 5];
+    const cx = pts[o + 6];
+    const cy = pts[o + 7];
+    const cz = pts[o + 8];
+    const v = (ax * (by * cz - bz * cy) - ay * (bx * cz - bz * cx) + az * (bx * cy - by * cx)) / 6;
+    const r = find(triV[3 * t]);
+    let acc = comp.get(r);
+    if (!acc) {
+      acc = [0, 0, 0, 0];
+      comp.set(r, acc);
+    }
+    // 四面體（原點, a, b, c）的重心 = (a + b + c) / 4
+    acc[0] += v;
+    acc[1] += (v * (ax + bx + cx)) / 4;
+    acc[2] += (v * (ay + by + cy)) / 4;
+    acc[3] += (v * (az + bz + cz)) / 4;
+  }
+  let vol = 0;
+  let mx = 0;
+  let my = 0;
+  let mz = 0;
+  for (const [v, x, y, z] of comp.values()) {
+    const sg = v < 0 ? -1 : 1;
+    vol += sg * v;
+    mx += sg * x;
+    my += sg * y;
+    mz += sg * z;
+  }
+  return { vol, mx, my, mz };
+};
+
 /** @type {Map<string, BodyMassProps>} */
 const cache = new Map();
 
 /**
- * 車殼質量性質：結構殼三角形面積總和 × 壁厚 × 密度；重心 = 面積加權三角形中心；外框 = 整個車殼群組
+ * 車殼質量性質：結構殼三角形面積總和 × 壁厚 × 密度＋實體件（userData.solid）封閉體積 × 密度；重心 = 兩者質量加權；外框 = 整個車殼群組
  * @type {(body: BodyDef) => BodyMassProps}
  */
 export const bodyMassProps = (body) => {
@@ -94,13 +183,55 @@ export const bodyMassProps = (body) => {
     }
   });
   const box = new THREE.Box3().setFromObject(g);
-  // mm² × mm = mm³；1 cm³ = 1000 mm³
-  const mass_g = (area * body.wallThickness_mm * body.density_g_cm3) / 1000;
-  const com = area > 0 ? mom.divideScalar(area) : new THREE.Vector3();
+  // 殼：mm² × mm = mm³；1 cm³ = 1000 mm³
+  const shellMass = (area * body.wallThickness_mm * body.density_g_cm3) / 1000;
+  const shellCom = area > 0 ? mom.clone().divideScalar(area) : new THREE.Vector3();
+  // 實體件（iter-49，userData.solid）：封閉網格體積 × 密度（預設同車殼材料，可由 solid.density_g_cm3 指定）
+  /** @type {Map<number, number[]>} 密度 → 該密度實體件的世界座標三角形 */
+  const solidTris = new Map();
+  g.traverse((o) => {
+    if (!o.isMesh || isShell(o)) {
+      return;
+    }
+    const sd = solidOf(o);
+    if (!sd) {
+      return;
+    }
+    const rho = sd.density_g_cm3 ?? body.density_g_cm3;
+    let arr = solidTris.get(rho);
+    if (!arr) {
+      arr = [];
+      solidTris.set(rho, arr);
+    }
+    const pos = o.geometry.attributes.position;
+    const idx = o.geometry.index;
+    const n = idx ? idx.count : pos.count;
+    for (let i = 0; i < n; i++) {
+      a.fromBufferAttribute(pos, idx ? idx.getX(i) : i).applyMatrix4(o.matrixWorld);
+      arr.push(a.x, a.y, a.z);
+    }
+  });
+  let solidMass = 0;
+  let solidVol = 0;
+  const solidMom = new THREE.Vector3();
+  for (const [rho, arr] of solidTris) {
+    const r = closedVolume(Float64Array.from(arr));
+    const m = (r.vol * rho) / 1000;
+    solidMass += m;
+    solidVol += r.vol;
+    if (r.vol > 0) {
+      solidMom.add(new THREE.Vector3(r.mx, r.my, r.mz).multiplyScalar(m / r.vol));
+    }
+  }
+  const mass_g = shellMass + solidMass;
+  const com = mass_g > 0 ? shellCom.multiplyScalar(shellMass).add(solidMom).divideScalar(mass_g) : new THREE.Vector3();
   /** @type {BodyMassProps} */
   const props = {
     shellArea_mm2: area,
     mass_g,
+    shellMass_g: shellMass,
+    solidMass_g: solidMass,
+    solidVolume_mm3: solidVol,
     com_mm: { x: com.x, y: com.y, z: com.z },
     bbox_mm: { min: { x: box.min.x, y: box.min.y, z: box.min.z }, max: { x: box.max.x, y: box.max.y, z: box.max.z } },
     vertices: new Float32Array(verts),

@@ -99,6 +99,55 @@ const gradient = (x) => {
   return [c.r, c.g, c.b];
 };
 
+/**
+ * 把 z 方向跨距過大的三角形沿最長邊對半細分，直到每個三角形的 z 跨距 ≤ maxDz（法線一起內插）
+ * @type {(g: THREE.BufferGeometry, maxDz: number) => THREE.BufferGeometry}
+ */
+const splitAlongZ = (g, maxDz) => {
+  const P = g.attributes.position.array;
+  const N = g.attributes.normal.array;
+  /** @type {number[]} */
+  const pos = [];
+  /** @type {number[]} */
+  const nrm = [];
+  /** @type {(t: number[][]) => void} t = [[px,py,pz,nx,ny,nz] × 3] */
+  const rec = (t) => {
+    const zs = t.map((v) => v[2]);
+    if (Math.max(...zs) - Math.min(...zs) <= maxDz) {
+      for (const v of t) {
+        pos.push(v[0], v[1], v[2]);
+        nrm.push(v[3], v[4], v[5]);
+      }
+      return;
+    }
+    let best = 0;
+    let bl = -1;
+    for (let e = 0; e < 3; e++) {
+      const a = t[e];
+      const b = t[(e + 1) % 3];
+      const l = Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2]);
+      if (l > bl) {
+        bl = l;
+        best = e;
+      }
+    }
+    const a = t[best];
+    const b = t[(best + 1) % 3];
+    const c = t[(best + 2) % 3];
+    const m = a.map((v, i) => (v + b[i]) / 2);
+    rec([a, m, c]);
+    rec([m, b, c]);
+  };
+  for (let i = 0; i < P.length; i += 9) {
+    const t = [0, 1, 2].map((k) => [P[i + 3 * k], P[i + 3 * k + 1], P[i + 3 * k + 2], N[i + 3 * k], N[i + 3 * k + 1], N[i + 3 * k + 2]]);
+    rec(t);
+  }
+  const out = new THREE.BufferGeometry();
+  out.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  out.setAttribute('normal', new THREE.Float32BufferAttribute(nrm, 3));
+  return out;
+};
+
 /** @type {() => Record<string, THREE.Material>} */
 const makeMaterials = () => ({
   pearl: namedMaterial('paint-pearl-white', { color: 0xf2f0ec, roughness: 0.2, metalness: 0.0, clearcoat: 1.0, clearcoatRoughness: 0.05, sheen: 0.3, sheenColor: 0xd8d0ff, sheenRoughness: 0.4 }),
@@ -110,6 +159,7 @@ const makeMaterials = () => ({
   glass: namedMaterial('pc-smoke-navy', { color: 0x101828, roughness: 0.04, clearcoat: 1.0, transparent: true, opacity: 0.8, depthWrite: false, side: THREE.DoubleSide }),
   grad: decalMaterial('decal-gradient-magenta-purple', { vertexColors: true, roughness: 0.3, clearcoat: 0.8 }),
   purple: decalMaterial('decal-purple', { color: 0x6a2bd9, roughness: 0.35, clearcoat: 0.6 }),
+  wingGrad: namedMaterial('paint-gradient-wing', { vertexColors: true, roughness: 0.22, clearcoat: 1.0, clearcoatRoughness: 0.05 }),
   magenta: decalMaterial('decal-magenta', { color: 0xe6007e, roughness: 0.35, clearcoat: 0.6 }),
   number: decalMaterial('decal-navy', { color: 0x1b2a5c, roughness: 0.5 }),
   lamp: decalMaterial('lamp-clear', { color: 0xe8f4ff, emissive: 0x9fc8ff, emissiveIntensity: 0.35, roughness: 0.05, clearcoat: 1.0 }),
@@ -151,11 +201,67 @@ const compose = () => {
 
   // 尾翼、端板、鵝頸支柱、splitter（實心件；質量以表面積 × 壁厚近似，標 shell）
   const w = buildWingParts(AERO_DATA.wing);
-  parts.push({ geometry: w.wing, mat: 'pearl', shell: true, name: 'wing' });
-  parts.push({ geometry: w.endplates, mat: 'navy2', shell: true, name: 'wing-endplates' });
+  // iter-49：尾翼漸層塗裝——中央珍珠白，往兩端漸變成紫、翼端洋紅（頂點色）
+  // 翼面側面三角形只在兩端有頂點，先沿 z 細分（每段 ≤ 2 mm）才能畫出漸層
+  const wingGeo = splitAlongZ(w.wing.index ? w.wing.toNonIndexed() : w.wing, 2);
+  {
+    const half = AERO_DATA.wing.span / 2;
+    const pos = wingGeo.attributes.position;
+    const col = [];
+    const pearl = new THREE.Color(0xf2f0ec);
+    const c = new THREE.Color();
+    for (let i = 0; i < pos.count; i++) {
+      const t = Math.min(1, Math.abs(pos.getZ(i)) / half);
+      if (t < 0.3) {
+        c.copy(pearl);
+      } else if (t < 0.68) {
+        c.copy(pearl).lerp(PURPLE, smoothstep(0.3, 0.68, t));
+      } else {
+        c.copy(PURPLE).lerp(MAGENTA, smoothstep(0.68, 1, t));
+      }
+      col.push(c.r, c.g, c.b);
+    }
+    wingGeo.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
+  }
+  parts.push({ geometry: wingGeo, mat: 'wingGrad', solid: true, outline: true, name: 'wing' });
+  parts.push({ geometry: w.endplates, mat: 'navy2', solid: true, outline: true, name: 'wing-endplates' });
+  // 端板細節（iter-49）：外側面兩道斜切色條（洋紅上、紫下）＋端板下緣的小翼刀
+  {
+    const zOut = AERO_DATA.wing.span / 2 + 1.0 + 0.08;
+    const stripes = [];
+    const stripes2 = [];
+    for (const sg of [-1, 1]) {
+      const a = new THREE.BoxGeometry(10.5, 0.9, 0.12);
+      a.rotateZ(0.12);
+      a.translate(-59.5, 46.6, sg * zOut);
+      stripes.push(a);
+      const b = new THREE.BoxGeometry(8.5, 0.7, 0.12);
+      b.rotateZ(0.12);
+      b.translate(-60.5, 44.9, sg * zOut);
+      stripes2.push(b);
+    }
+    parts.push({ geometry: mergeGeos(stripes), mat: 'magenta', name: 'endplate-stripe-magenta' });
+    parts.push({ geometry: mergeGeos(stripes2), mat: 'purple', name: 'endplate-stripe-purple' });
+  }
+  // 鵝頸支柱的掃掠網格（loft.js sweepRect）繞向不一致、不能算封閉體積，維持殼面積近似
   parts.push({ geometry: w.stays, mat: 'navy2', shell: true, name: 'wing-stays' });
   // iter-35：splitter 往前伸到 x 74.5、加厚到 1.4 mm、半寬 27，前 3/4 看得到（仍在導輪 x 78 / 規則外框內）
-  parts.push({ geometry: buildSplitter({ ...data.splitter, x: [58, 74.5], halfW: 27, thickness: 1.4, yBottom: 14.6 }), mat: 'navy', shell: true, name: 'splitter' });
+  // iter-49：寬大 splitter（概念圖）——半寬 27 → 33.5（比 wedge 鼻下板更寬，俯視輪廓和 wedge 拉開），前緣仍在 x 74.5；外緣離前導輪（中心 (71.5, ±42)、半徑 6.5）≥ 2.8 mm
+  parts.push({ geometry: buildSplitter({ ...data.splitter, x: [56, 74.5], halfW: 33.5, thickness: 1.4, yBottom: 14.6 }), mat: 'navy', solid: true, outline: true, name: 'splitter' });
+  // splitter 兩端的直立擋板（端板）與前緣洋紅色線
+  {
+    const fences = [];
+    for (const sg of [-1, 1]) {
+      const shape = new THREE.Shape([new THREE.Vector2(58, 16), new THREE.Vector2(72.5, 16), new THREE.Vector2(71, 18.6), new THREE.Vector2(58, 19.6)]);
+      const g = new THREE.ExtrudeGeometry(shape, { depth: 0.8, bevelEnabled: false });
+      g.translate(0, 0, sg * 32.8 - 0.4);
+      fences.push(g);
+    }
+    parts.push({ geometry: mergeGeos(fences), mat: 'navy2', outline: true, solid: true, name: 'splitter-fences' });
+    const edge = new THREE.BoxGeometry(0.5, 0.5, 46);
+    edge.translate(73.6, 15.9, 0);
+    parts.push({ geometry: edge, mat: 'magenta', name: 'splitter-edge' });
+  }
   // 尾部裙板（iter-34）：尾段下緣往下延伸到 y 17.6（後導輪架最高約 16.8），封住從後方看進去的底盤
   parts.push({ geometry: buildTailValance(kit.surf, { xFrom: -55.5, yBottom: 17.6 }), mat: 'navy2', shell: true, name: 'tail-valance' });
 
@@ -247,7 +353,7 @@ const compose = () => {
   ]);
   parts.push({ geometry: kit.decal((x, y, z) => (y < 20 ? -1 : -tail(x, Math.abs(z))), { offset: 0.08 }), mat: 'tail', name: 'lamp-tail' });
 
-  parts.push({ geometry: buildMountTabs(MOUNTS, (x) => kit.innerYAt(x)), mat: 'mount', name: 'mount-tabs' });
+  parts.push({ geometry: buildMountTabs(MOUNTS, (x) => kit.innerYAt(x)), mat: 'mount', solid: true, name: 'mount-tabs' });
   return parts;
 };
 

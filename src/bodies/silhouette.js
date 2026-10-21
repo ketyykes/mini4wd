@@ -1,7 +1,8 @@
 // 車殼輪廓（silhouette）與輪廓 IoU：量測兩款車殼造型差異（SPEC 第 2 部分 P20）
 // 量法：把車殼外形三角形投影到側視（x–y 平面）與俯視（x–z 平面），以 0.5 mm 格點光柵化，
 // 再從邊界往內填滿（開口、鏤空不算挖空 → 量的是「外輪廓」），IoU = 交集格數 / 聯集格數。
-// 外形三角形 = 標 userData.shell 的 mesh（結構殼）＋標 userData.outline 的 mesh（不計質量但屬外形的薄板件：鰭片、尾翼支柱、分流板等）。
+// 外形三角形 = 標 userData.shell 的 mesh（結構殼）＋標 userData.outline 的 mesh（不計殼面質量但屬外形的件：鰭片、尾翼、尾臂、分流板等）。
+// 「計入質量」（shell / solid）和「計入輪廓」（shell / outline）分開標記：改質量算法不會改變 IoU 量法（SPEC P20）。
 // 座標用車殼自身座標（底盤座標，所有車殼對齊同一組安裝點），不各自置中。
 import * as THREE from 'three';
 

@@ -19,7 +19,7 @@ import * as THREE from 'three';
  * @property {Panel[]} panels
  * @property {(x: number, s: number, out: number[]) => void} eval 寫入 out[0] = y、out[1] = z
  */
-/** @typedef {{ geometry: THREE.BufferGeometry, mat: string, shell?: boolean, outline?: boolean, renderOrder?: number, name?: string }} BodyPart */
+/** @typedef {{ geometry: THREE.BufferGeometry, mat: string, shell?: boolean, solid?: boolean | { density_g_cm3?: number }, outline?: boolean, renderOrder?: number, name?: string }} BodyPart */
 
 // ---------------------------------------------------------------------------
 // 小工具
@@ -1790,6 +1790,10 @@ export function cachedBuild(compose, makeMaterials) {
       mesh.name = p.name ?? p.mat;
       if (p.shell) {
         mesh.userData.shell = true;
+      }
+      if (p.solid) {
+        // 實體件（鰭片、牙板、衝角、尾臂、卡座等封閉網格）：bodyMassProps 以封閉體積 × 密度計算質量
+        mesh.userData.solid = p.solid === true ? {} : p.solid;
       }
       if (p.outline) {
         // 不計質量但屬外形的薄板件（鰭片、尾翼支柱、分流板）：輪廓 IoU 要算進去（silhouette.js）

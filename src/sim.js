@@ -442,7 +442,14 @@ export function stepCar(env, car) {
   }
 
   env.world.step();
-  if (spec.sim.wallPositionProjection) {
+  // 導輪–牆接觸的補強（iter-49）：預設 'impulse' = 速度層級的非彈性碰撞衝量（wallContactImpulses，動量一致）；
+  // 'position' = iter-34 的位置投影（只改位置、不改動量，保留作比較）；'none' = 只用 Rapier 的軟接觸。
+  // config 的 wallPositionProjection 已由 wallContactMode 取代（iter-49）
+  const mode = spec.sim.wallContactMode ?? 'impulse';
+  if (mode === 'impulse' || mode === 'impulse+position') {
+    wallContactImpulses(env, car);
+  }
+  if (mode === 'position' || mode === 'impulse+position') {
     projectRollersOutOfWalls(env, car);
   }
 
@@ -539,7 +546,7 @@ export function carKineticEnergy(car) {
 }
 
 /**
- * 導輪不穿牆的位置投影（iter-34）：Rapier 的軟接觸在導輪高頻抖動（前後導輪交替貼牆、約 500 Hz）時
+ * 導輪不穿牆的位置投影（iter-34；iter-49 起預設改用 wallContactImpulses，這個只在 wallContactMode = 'position' 時使用）：Rapier 的軟接觸在導輪高頻抖動（前後導輪交替貼牆、約 500 Hz）時
  * 會累積約 0.6–1.1 mm 的穩態穿透，而且對質量的極小變化很敏感（0.0002 g 就能讓峰值從 0.75 跳到 1.1 mm，見 ITERATION_LOG iter-34）。
  * 提高接觸剛度（contact_natural_frequency 30–10000 Hz）、求解迭代、縮小步長、關 CCD、恢復係數 0 都沒有改善。
  * 這裡在每步積分後做標準的位置投影（constraint stabilization）：導輪中心沿賽道橫向超過牆面 slop 時，
@@ -590,6 +597,94 @@ function projectRollersOutOfWalls(env, car) {
   const uz = (dir * nz) / nl;
   const frac = spec.sim.wallProjectionFraction;
   car.chassis.setTranslation({ x: t.x + ux * worst * frac, y: t.y, z: t.z + uz * worst * frac }, true);
+}
+
+/**
+ * 導輪與牆的接觸點（世界座標）：牆面法向 n（水平、由牆指向車道）、接觸點 p（導輪球面最深入牆的點）、垂直牆面的穿透深度 pen
+ * @type {(env: ReturnType<typeof createWorld>, car: ReturnType<typeof createCar>) => { n: { x: number, y: number, z: number }, p: { x: number, y: number, z: number }, pen: number }[]}
+ */
+function rollerWallContacts(env, car) {
+  const { track } = env;
+  const t = car.chassis.translation();
+  const center = track.path.project(t.x, t.z);
+  const level = carLevel(env, car);
+  const out = [];
+  for (const r of car.rollers) {
+    const w = localToWorld(car, { x: r.x * MM, y: r.y * MM, z: r.z * MM });
+    const pp = track.path.project(w.x, w.z);
+    const ch = channelAt(track, pp.s, center.d, level);
+    const pose = track.path.pose(pp.s);
+    const T = { x: Math.cos(pose.theta), z: Math.sin(pose.theta) };
+    const N = { x: -Math.sin(pose.theta), z: Math.cos(pose.theta) };
+    const rr = r.r * MM;
+    for (const side of [1, -1]) {
+      const k = side > 0 ? ch.slopeU : ch.slopeL;
+      const face = side > 0 ? ch.faceU : ch.faceL;
+      if (!Number.isFinite(face)) {
+        continue;
+      }
+      const cos = 1 / Math.sqrt(1 + k * k);
+      // 上側牆（d 較大）：法向 = (k·T − N)·cos；下側牆：(N − k·T)·cos
+      const nx = side * (k * T.x - N.x) * cos;
+      const nz = side * (k * T.z - N.z) * cos;
+      const pen = rr - side * (face - pp.d) * cos;
+      if (pen <= 0) {
+        continue;
+      }
+      out.push({ n: { x: nx, y: 0, z: nz }, p: { x: w.x - nx * rr, y: w.y, z: w.z - nz * rr }, pen });
+    }
+  }
+  return out;
+}
+
+/**
+ * 導輪撞牆的速度層級約束（非彈性碰撞衝量，iter-49 取代 iter-34 的位置投影）：
+ * 問題：Rapier 的軟接觸（soft constraint）在彎道持續側向力下，導輪會被壓進牆 0.6–1.1 mm 的穩態穿透（見 projectRollersOutOfWalls 說明）。
+ * 做法：導輪穿入牆面超過 slop、且接觸點朝牆移動時，
+ * 在接觸點沿牆面法向施加衝量 J = −v_n / K（K = 1/m + (r×n)·I⁻¹(r×n)），使接觸點法向速度變 0。
+ * 衝量同時改變車體的線動量與角動量（牆的反作用力，牛頓第三定律），恢復係數 0、不增加動能。
+ * 多個導輪同時接觸時用循序衝量（Gauss–Seidel，累積衝量 ≥ 0）。只改速度、不直接改位置：穿透由 Rapier 自身的接觸偏壓逐步修回。
+ * 結果（iter-49）：預設車一圈最大穿透 0.06 mm（幾何）/ 0.13 mm（接觸），6 款車殼 3 圈 ≤ 0.15 mm，彎道貼牆比例 ≈ 99%（未出現 iter-34 「整車移除朝牆速度」時的彈離）。
+ * @type {(env: ReturnType<typeof createWorld>, car: ReturnType<typeof createCar>) => void}
+ */
+function wallContactImpulses(env, car) {
+  const slop = spec.sim.wallProjectionSlop_mm * MM;
+  const contacts = rollerWallContacts(env, car).filter((c) => c.pen > slop);
+  if (contacts.length === 0) {
+    return;
+  }
+  const body = car.chassis;
+  const invM = body.invMass();
+  const Iinv = body.effectiveWorldInvInertia();
+  const com = body.worldCom();
+  /** @type {(v: { x: number, y: number, z: number }) => { x: number, y: number, z: number }} */
+  const mulI = (v) => ({
+    x: Iinv.m11 * v.x + Iinv.m12 * v.y + Iinv.m13 * v.z,
+    y: Iinv.m12 * v.x + Iinv.m22 * v.y + Iinv.m23 * v.z,
+    z: Iinv.m13 * v.x + Iinv.m23 * v.y + Iinv.m33 * v.z,
+  });
+  /** @type {(a: any, b: any) => { x: number, y: number, z: number }} */
+  const cross = (a, b) => ({ x: a.y * b.z - a.z * b.y, y: a.z * b.x - a.x * b.z, z: a.x * b.y - a.y * b.x });
+  for (const c of contacts) {
+    const rc = { x: c.p.x - com.x, y: c.p.y - com.y, z: c.p.z - com.z };
+    const rn = cross(rc, c.n);
+    const irn = mulI(rn);
+    c.K = invM + rn.x * irn.x + rn.y * irn.y + rn.z * irn.z;
+    c.acc = 0;
+  }
+  const iters = spec.sim.wallImpulseIterations ?? 4;
+  for (let it = 0; it < iters; it++) {
+    for (const c of contacts) {
+      const v = body.velocityAtPoint(c.p);
+      const vn = v.x * c.n.x + v.y * c.n.y + v.z * c.n.z;
+      const next = Math.max(0, c.acc - vn / c.K);
+      const dj = next - c.acc;
+      c.acc = next;
+      if (dj !== 0) {
+        body.applyImpulseAtPoint({ x: c.n.x * dj, y: c.n.y * dj, z: c.n.z * dj }, c.p, true);
+      }
+    }
+  }
 }
 
 /**

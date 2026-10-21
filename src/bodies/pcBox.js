@@ -145,8 +145,8 @@ export const pcBoxBody = makePolyBody({
     parts.push({ geometry: buildRegion(cs, [notFrame, (x, y, z, s) => -glass(x, y, z, s), (x, y, z) => Math.abs(z) - 3.2]).geometry, mat: 'clear', shell: true, renderOrder: 2, name: 'cabin-roof' });
     // 透明殼裡看得到的座艙與駕駛人
     const drv = buildDriver(6, kit.innerYAt(6) - 5.8, 1.1);
-    parts.push({ geometry: drv.body, mat: 'driver', name: 'cockpit-driver' });
-    parts.push({ geometry: drv.helmet, mat: 'helmet', name: 'cockpit-helmet' });
+    parts.push({ geometry: drv.body, mat: 'driver', solid: true, name: 'cockpit-driver' });
+    parts.push({ geometry: drv.helmet, mat: 'helmet', solid: true, name: 'cockpit-helmet' });
     // 內傾透明尾板（iter-47）：從尾端下緣 (x −58, y 24.6) 往下、略往前收到 (x −57.4, y 19.5)；
     // x ≤ −57.4 離後輪軸 ≥ 17.4 mm，31 mm 輪胎（半徑 15.5）仍留 ≥ 1 mm
     const tail = [];
@@ -164,7 +164,7 @@ export const pcBoxBody = makePolyBody({
       g.translate(-58.2, 23.2, (z0 + z1) / 2);
       return g;
     };
-    parts.push({ geometry: mergeGeos([lampBar(-33, -14), lampBar(14, 33)]), mat: 'tailLamp', name: 'lamp-tail' });
+    parts.push({ geometry: mergeGeos([lampBar(-33, -14), lampBar(14, 33)]), mat: 'tailLamp', solid: true, name: 'lamp-tail' });
     const band = new THREE.BoxGeometry(0.4, 0.9, 70);
     band.translate(-58.1, 21.2, 0);
     parts.push({ geometry: band, mat: 'pink', name: 'tail-band' });
