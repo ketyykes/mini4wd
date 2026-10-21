@@ -6,13 +6,16 @@ import { aeroWingBody } from './aeroWing.js';
 import { beastBody } from './beast.js';
 import { forkBody } from './fork.js';
 import { pcBoxBody } from './pcBox.js';
+import { homageBodiesA } from './homageA.js';
+import { homageBodiesB } from './homageB.js';
 
 /** @typedef {import('./types').BodyDef} BodyDef */
 /** @typedef {import('./types').BodyMassProps} BodyMassProps */
 
 // 六款原創車殼（iter-46）：致敬《爆走兄弟》風格 3 款（wedge / beast / fork）＋常見比賽車殼型式 3 款（skeleton / aero-wing / pc-box）
 /** @type {BodyDef[]} */
-const bodies = [wedgeBody, beastBody, forkBody, skeletonBody, aeroWingBody, pcBoxBody];
+// 第四階段（iter-54 起）：新致敬款分 A / B 兩組註冊（homageA.js / homageB.js）；舊致敬款 wedge / beast / fork 待新款通過 P20 後退役
+const bodies = [...homageBodiesA, ...homageBodiesB, wedgeBody, beastBody, forkBody, skeletonBody, aeroWingBody, pcBoxBody];
 
 /** @type {() => BodyDef[]} */
 export const listBodies = () => bodies.slice();

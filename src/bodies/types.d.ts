@@ -13,6 +13,12 @@ export interface BodyDef {
   style: 'homage' | 'race';
   /** 一句話主題 */
   theme: string;
+  /** 上線的階段（第四階段新致敬款為 4；P20 只把 phase 4 的 homage 算成新致敬款） */
+  phase?: number;
+  /** 車頂型態（P20 第四階段：新致敬款兩兩比較用） */
+  roof?: 'closed' | 'canopy' | 'open-cockpit' | 'clear' | 'skeleton';
+  /** 尾翼型式（P20 第四階段：新致敬款兩兩比較用，例如 'none'、'twin-fin'、'forked'、'grille'、'high-wing'、'duck-tail'） */
+  wing?: string;
   name: string;
   /** 'ABS' | 'PC' 等，決定密度 */
   material: string;

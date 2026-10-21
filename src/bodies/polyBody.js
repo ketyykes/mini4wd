@@ -14,6 +14,9 @@ import { makeLoftKit, createPolySurface, cachedBuild, buildRegion, buildMountTab
  * @property {string} name
  * @property {'homage' | 'race'} style 致敬《爆走兄弟》風格 / 常見比賽車殼型式
  * @property {string} theme 一句話主題
+ * @property {number} [phase] 上線階段（第四階段新致敬款 = 4）
+ * @property {import('./types').BodyDef['roof']} [roof] 車頂型態
+ * @property {string} [wing] 尾翼型式
  * @property {'ABS' | 'PC'} material
  * @property {number} density_g_cm3
  * @property {number} wallThickness_mm
@@ -419,6 +422,9 @@ export function makePolyBody(cfg) {
     category: 'body',
     style: cfg.style,
     theme: cfg.theme,
+    phase: cfg.phase,
+    roof: cfg.roof,
+    wing: cfg.wing,
     name: cfg.name,
     material: cfg.material,
     density_g_cm3: cfg.density_g_cm3,
