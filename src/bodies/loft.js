@@ -1097,10 +1097,6 @@ export const archKeep = (arch) => (x, y, z) => Math.max(Math.hypot(x - arch.x, y
  * @type {(o: any, sideZMin?: number) => (x: number, y: number, z: number) => number}
  */
 export function featureSd(o, sideZMin = 20) {
-  if (o.shape === 'fn') {
-    // 自訂距離函式（iter-44，skeleton 網格骨架用）：o.sd(x, y, z)，負值 = 開口內
-    return o.sd;
-  }
   if (o.shape === 'poly') {
     // 任意凸多邊形（iter-38）：view 'side' 為 (x, y)、'top' 為 (x, |z|)
     const poly = sdConvexPolygon(o.pts);
