@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "vite",
+    "dev": "vite --port 47321 --strictPort --open /web/index.html",
     "test": "vitest run",
     "render": "node scripts/render.mjs"
   },
