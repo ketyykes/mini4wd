@@ -119,6 +119,19 @@ function tireSidewallMaterial() {
   return new THREE.MeshStandardMaterial({ map: tex, bumpMap: bump, bumpScale: 1.2, roughness: 0.9, metalness: 0.0, envMapIntensity: 0.6, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -1 });
 }
 
+/** @type {Map<string, THREE.Texture>} 程序化貼圖快取（每次換件重建模型時不重算） */
+const textureCache = new Map();
+
+/** @type {(key: string, make: () => THREE.Texture) => THREE.Texture} */
+function cachedTexture(key, make) {
+  let t = textureCache.get(key);
+  if (!t) {
+    t = make();
+    textureCache.set(key, t);
+  }
+  return t;
+}
+
 /**
  * 碳纖斜紋（2/2 twill）貼圖（DataTexture，Node 測試環境也能建立）：每格是一束纖維，橫束 / 直束交錯，
  * 束內依纖維方向做亮度起伏（模擬清漆下纖維束的反光）。一張貼圖 8 × 8 格
@@ -276,15 +289,16 @@ function makeMaterials() {
     screw: new THREE.MeshStandardMaterial({ color: 0xd8d8d8, roughness: 0.25, metalness: 1.0 }),
     // 第三階段改裝零件（material.name 給 Blender 管線分類：frp-*、carbon-*、alu-*、sponge-*、*-weight）
     // iter-47：FRP 板加短玻纖紋（frpFiberTexture）、碳纖板加斜紋貼圖（carbonWeaveTexture）；reviewer iter-46「只是平塗的灰色、黑色」
-    frpPlate: new THREE.MeshPhysicalMaterial({ name: 'frp-gray', color: 0x7c8488, map: frpFiberTexture(), roughness: 0.62, metalness: 0.0, clearcoat: 0.25, clearcoatRoughness: 0.45 }),
-    carbonPlate: new THREE.MeshPhysicalMaterial({ name: 'carbon-plate', color: 0xffffff, map: carbonWeaveTexture(), roughness: 0.3, metalness: 0.15, clearcoat: 1.0, clearcoatRoughness: 0.08 }),
+    frpPlate: new THREE.MeshPhysicalMaterial({ name: 'frp-gray', color: 0x7c8488, map: cachedTexture('frp', frpFiberTexture), roughness: 0.62, metalness: 0.0, clearcoat: 0.25, clearcoatRoughness: 0.45 }),
+    carbonPlate: new THREE.MeshPhysicalMaterial({ name: 'carbon-plate', color: 0xffffff, map: cachedTexture('carbon', carbonWeaveTexture), roughness: 0.3, metalness: 0.15, clearcoat: 1.0, clearcoatRoughness: 0.08 }),
     aluSpacer: new THREE.MeshStandardMaterial({ name: 'alu-spacer', color: 0xb9bec6, roughness: 0.3, metalness: 0.9 }),
     // iter-47：黃銅再亮一點（app 沒有環境貼圖時金屬會偏暗，reviewer iter-46「很小的金色圓柱，不容易認出來」）
     brassWeight: new THREE.MeshStandardMaterial({ name: 'brass-weight', color: 0xe0b45a, roughness: 0.26, metalness: 0.8, emissive: 0x2a1c05 }),
-    nylonCap: new THREE.MeshStandardMaterial({ name: 'plastic-nylon-cap', color: 0xe9e6dc, roughness: 0.55, metalness: 0.0 }),
-    steelWeight: new THREE.MeshStandardMaterial({ name: 'steel-weight', color: 0x9da2a8, roughness: 0.35, metalness: 0.9 }),
-    spongeWhite: new THREE.MeshStandardMaterial({ name: 'sponge-white', color: 0xf4f2ea, map: spongePoreTexture(), bumpMap: spongePoreTexture(), bumpScale: 0.4, roughness: 1.0, metalness: 0.0, emissive: 0x1c1c1a }),
-    spongeBlue: new THREE.MeshStandardMaterial({ name: 'sponge-blue', color: 0x3c86f0, map: spongePoreTexture(), bumpMap: spongePoreTexture(), bumpScale: 0.4, roughness: 1.0, metalness: 0.0, emissive: 0x06142a }),
+    nylonCap: new THREE.MeshStandardMaterial({ name: 'plastic-nylon-cap', color: 0x34373c, roughness: 0.55, metalness: 0.0 }),
+    aluNut: new THREE.MeshStandardMaterial({ name: 'alu-nut-blue', color: 0x3f6fb8, roughness: 0.3, metalness: 0.85 }),
+    steelWeight: new THREE.MeshStandardMaterial({ name: 'steel-weight', color: 0xc3c8ce, roughness: 0.3, metalness: 0.85, emissive: 0x15171a }),
+    spongeWhite: new THREE.MeshStandardMaterial({ name: 'sponge-white', color: 0xf8f6ee, map: cachedTexture('sponge', spongePoreTexture), bumpMap: cachedTexture('sponge', spongePoreTexture), bumpScale: 0.4, roughness: 1.0, metalness: 0.0, emissive: 0x3a3a36 }),
+    spongeBlue: new THREE.MeshStandardMaterial({ name: 'sponge-blue', color: 0x3c86f0, map: cachedTexture('sponge', spongePoreTexture), bumpMap: cachedTexture('sponge', spongePoreTexture), bumpScale: 0.4, roughness: 1.0, metalness: 0.0, emissive: 0x06142a }),
     light: new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: 0x99aabb, emissiveIntensity: 0.3, roughness: 0.2 }),
   };
 }
@@ -831,14 +845,14 @@ const buildStayPlates = (mats) => {
         tube(bottom - 0.3, bottom, 2.4, mats.steel);
         y = r.y + r.h / 2;
       }
-      // 頂部：螺絲桿露出 4 mm，套一小段鋁墊管＋尼龍蓋（實車導輪柱頂端常見的防脫蓋，推估尺寸）
+      // 頂部（iter-48，reviewer：白色大圓頭像球頭）：墊片＋鋁合金尼龍防鬆螺帽（六角對邊約 4 mm、高 1.8 mm，頂部深灰尼龍環 0.9 mm，推估尺寸），螺絲尾露出 0.4 mm
       tube(y + 0.9, y + 1.3, 2.2, mats.steel);
-      tube(y + 1.3, y + 3.3, 1.6, mats.aluSpacer);
-      const cap = new THREE.Mesh(new THREE.SphereGeometry(1.9, 18, 10, 0, Math.PI * 2, 0, Math.PI / 2), mats.nylonCap);
-      cap.position.set(x, y + 3.3, z);
-      grp.add(cap);
+      const nut = new THREE.Mesh(new THREE.CylinderGeometry(2.3, 2.3, 1.8, 6), mats.aluNut);
+      nut.position.set(x, y + 2.2, z);
+      grp.add(nut);
+      tube(y + 3.1, y + 4.0, 1.8, mats.nylonCap);
       // 螺絲桿（板底 → 頂端）
-      tube(pl.y_mm, y + 3.6, 0.95, mats.screw);
+      tube(pl.y_mm, y + 4.4, 0.95, mats.screw);
     }
     g.add(grp);
   }
@@ -898,14 +912,15 @@ const buildOptionalParts = (mats) => {
     for (const dx of screwXs) {
       const sxp = d.seat.x + dx;
       // 後制振器：螺絲由導輪板底面（板厚 1.5 mm）往上鎖，板底露出螺絲頭；側制振器：托架很低（離地 1 mm），用平頭螺絲埋在托架內，不畫頭
-      const below = part.mount === 'side' ? d.seat.y - 1.0 : d.seat.y - 1.5;
+      const below = part.mount === 'side' ? d.seat.y - 1.0 : d.seat.y - 1.5 + 0.01;
       const shaftTop = top + 3.2;
       const shaft = new THREE.Mesh(new THREE.CylinderGeometry(0.95, 0.95, shaftTop - below, 12), mats.screw);
       shaft.position.set(sxp, (below + shaftTop) / 2, d.seat.z);
       grp.add(shaft);
       if (part.mount !== 'side') {
-        const head = new THREE.Mesh(new THREE.CylinderGeometry(1.9, 2.0, 1.0, 20), mats.screw);
-        head.position.set(sxp, below - 0.5, d.seat.z);
+        // 皿頭螺絲：頭部埋進板底、與板底齊平（不凸出，板尾下方可貼煞車海綿；iter-48）
+        const head = new THREE.Mesh(new THREE.CylinderGeometry(1.9, 1.0, 0.9, 20), mats.screw);
+        head.position.set(sxp, below + 0.45, d.seat.z);
         grp.add(head);
       }
       const washer = new THREE.Mesh(new THREE.CylinderGeometry(2.6, 2.6, 0.4, 20), mats.steel);
@@ -964,9 +979,29 @@ const buildOptionalParts = (mats) => {
       m = new THREE.Mesh(new THREE.BoxGeometry(b.max.x - b.min.x, b.max.y - b.min.y, b.max.z - b.min.z), mat);
     }
     m.position.set((b.min.x + b.max.x) / 2, (b.min.y + b.max.y) / 2, (b.min.z + b.max.z) / 2);
-    m.name = 'ballast';
-    m.userData.part = 'ballast';
-    g.add(m);
+    const grp = new THREE.Group();
+    grp.name = 'ballast';
+    grp.userData.part = 'ballast';
+    grp.add(m);
+    // 固定螺絲（iter-48）：M2 皿頭螺絲，頭部埋在配重露出的那一面（前 / 後吊在保桿或導輪板下 → 底面；中央 → 頂面），
+    // 方塊配重 2 支、六角配重 1 支；頭部只比表面高 0.02 mm，不改變外框與離地高度
+    const faceY = o.ballast.mount === 'center' ? b.max.y : b.min.y;
+    const dir = o.ballast.mount === 'center' ? 1 : -1;
+    const cx = (b.min.x + b.max.x) / 2;
+    const cz = (b.min.z + b.max.z) / 2;
+    const xs = part.id.startsWith('ballast-hex') ? [0] : [-part.length_mm / 4, part.length_mm / 4];
+    for (const dx of xs) {
+      const head = new THREE.Mesh(new THREE.CylinderGeometry(1.7, 1.7, 0.3, 20), mats.screw);
+      head.position.set(cx + dx, faceY - dir * 0.13, cz);
+      grp.add(head);
+      for (const rot of [0, Math.PI / 2]) {
+        const slot = new THREE.Mesh(new THREE.BoxGeometry(2.4, 0.32, 0.4), mats.chassisDark);
+        slot.position.set(cx + dx, faceY - dir * 0.15, cz);
+        slot.rotation.y = rot;
+        grp.add(slot);
+      }
+    }
+    g.add(grp);
   }
   return g;
 };

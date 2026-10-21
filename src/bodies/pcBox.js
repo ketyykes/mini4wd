@@ -4,7 +4,9 @@
 // 塗裝全為自創：螢光粉＋白條紋、號碼「17」；不含任何廠商名稱、商標。
 import * as THREE from 'three';
 import { makePolyBody, buildDriver } from './polyBody.js';
-import { namedMaterial, decalMaterial, sdNumber, sdRoundRect, sideDecal, topDecal, mergeGeos } from './loft.js';
+import { namedMaterial, decalMaterial, buildRegion, sdNumber, sdRoundRect, sideDecal, topDecal, mergeGeos } from './loft.js';
+
+/** @typedef {import('./loft.js').KeepFn} KeepFn */
 
 /** @type {(yRoof: number, halfW: number, yLow: number) => number[][]} 平頂箱形半剖面（8 點）：平頂 → 圓角肩 → 直立側面（下緣高時各點不低於下緣，剖面保持單調） */
 const box = (yRoof, halfW, yLow) =>
@@ -45,13 +47,45 @@ const STATIONS = [
   { x: -58, pts: box(25.4, 36.2, 24.6) },
 ];
 
+/**
+ * 座艙段站位（梯形剖面）：前擋風斜面 x 26 → 20、平頂段、後窗斜面 x −22 → −30
+ * @type {{ x: number, yBase: number, yTop: number, halfW: number }[]}
+ */
+const CABIN = [
+  { x: 26, yBase: 0, yTop: 0, halfW: 21 },
+  { x: 20, yBase: 0, yTop: 3.6, halfW: 25.5 },
+  { x: -22, yBase: 0, yTop: 3.6, halfW: 25.5 },
+  { x: -30, yBase: 0, yTop: 0, halfW: 21 },
+];
+
+/** @type {(x: number) => number} 座艙罩底部半寬（站間線性，同 createCanopySurface 的 trapezoid） */
+const cabinHalfW = (x) => {
+  if (x > CABIN[0].x || x < CABIN[CABIN.length - 1].x) {
+    return 0;
+  }
+  let i = 0;
+  while (x < CABIN[i + 1].x) {
+    i++;
+  }
+  const a = CABIN[i];
+  const b = CABIN[i + 1];
+  return a.halfW + ((b.halfW - a.halfW) * (a.x - x)) / (a.x - b.x);
+};
+
+/** @type {(x: number, y: number, z: number) => number} 座艙底開口（負值 = 挖掉）：座艙罩下緣往內 0.8 mm，且只在平頂（y ≥ 22） */
+const cabinHoleSd = (x, y, z) => (y < 22 ? 10 : Math.max(Math.abs(z) - (cabinHalfW(x) - 0.8), CABIN[CABIN.length - 1].x + 1.5 - x, x - (CABIN[0].x - 1.5)));
+
 /** @type {() => Record<string, THREE.Material>} */
 const materials = () => ({
   // 淡煙燻透明 PC（Blender 依名稱對應透明聚碳酸酯）
-  clear: namedMaterial('pc-clear-shell', { color: 0x9fb4c8, roughness: 0.05, specularIntensity: 0.6, transparent: true, opacity: 0.28, envMapIntensity: 0.5, depthWrite: false }),
-  clearIn: namedMaterial('pc-clear-shell-inner', { color: 0x8aa0b4, roughness: 0.08, transparent: true, opacity: 0.12, depthWrite: false, side: THREE.BackSide }),
+  // iter-48：更通透（顏色更淡、不透明度與環境反射降低，減少灰霧）
+  clear: namedMaterial('pc-clear-shell', { color: 0xdbe6ef, roughness: 0.04, specularIntensity: 0.5, transparent: true, opacity: 0.18, envMapIntensity: 0.35, depthWrite: false }),
+  clearIn: namedMaterial('pc-clear-shell-inner', { color: 0xc8d6e2, roughness: 0.06, transparent: true, opacity: 0.07, depthWrite: false, side: THREE.BackSide }),
+  // 座艙段：煙燻車窗、內噴黑色窗框
+  window: namedMaterial('pc-smoke-window', { color: 0x262c34, roughness: 0.05, specularIntensity: 0.6, transparent: true, opacity: 0.55, envMapIntensity: 0.5, depthWrite: false }),
+  frame: namedMaterial('pc-paint-black', { color: 0x111214, roughness: 0.2, clearcoat: 1.0, clearcoatRoughness: 0.05 }),
   edge: namedMaterial('pc-clear-edge', { color: 0xb8c8d8, roughness: 0.1, transparent: true, opacity: 0.6, depthWrite: false, side: THREE.DoubleSide }),
-  clearDouble: namedMaterial('pc-clear-shell', { color: 0x9fb4c8, roughness: 0.05, specularIntensity: 0.6, transparent: true, opacity: 0.28, envMapIntensity: 0.5, depthWrite: false, side: THREE.DoubleSide }),
+  clearDouble: namedMaterial('pc-clear-shell', { color: 0xdbe6ef, roughness: 0.04, specularIntensity: 0.5, transparent: true, opacity: 0.18, envMapIntensity: 0.35, depthWrite: false, side: THREE.DoubleSide }),
   tailLamp: namedMaterial('lamp-red', { color: 0xd0142a, emissive: 0x900010, emissiveIntensity: 0.6, roughness: 0.1, clearcoat: 1.0 }),
   // 內噴不透明漆
   pink: namedMaterial('pc-paint-fluo-pink', { color: 0xff2e88, roughness: 0.15, clearcoat: 1.0, clearcoatRoughness: 0.03 }),
@@ -79,7 +113,11 @@ export const pcBoxBody = makePolyBody({
     { x: 40, y: 13, radius: 17.6, cutZFrom: 23.3 },
     { x: -40, y: 13, radius: 17.6, cutZFrom: 23.3 },
   ],
-  canopy: null,
+  // iter-48 座艙段：平頂中段再隆起 3.6 mm 的梯形座艙（前擋風斜面 x 26 → 20、側窗、後窗斜面 x −22 → −30），
+  // 側視有「車頭 → 座艙 → 車尾」的層次；座艙下方的殼面維持透明
+  canopy: { section: 'trapezoid', stations: CABIN },
+  // 座艙罩取代那片平頂：真空成形 PC 殼只有一層，座艙底下的平頂在幾何上挖掉（留 0.8 mm 和座艙罩下緣重疊）
+  openings: [{ id: '座艙底開口', view: 'top', shape: 'fn', sd: cabinHoleSd }],
   zones: () => [
     // 內噴粉紅下裙（前低後高）＋白色中線寬條紋，其餘透明
     { mat: 'pink', keep: (x, y) => 15.5 + 0.03 * x - y },
@@ -87,10 +125,24 @@ export const pcBoxBody = makePolyBody({
     { mat: 'pink', keep: (x, y, z) => Math.min(Math.abs(z) - 5, 7 - Math.abs(z), y - 26) },
     { mat: 'clear', keep: () => 1 },
   ],
-  mats: { inner: 'clearIn', edge: 'edge', cap: 'pink', mount: 'mount' },
+  mats: { inner: 'clearIn', edge: 'edge', cap: 'pink', cockpit: 'clear', mount: 'mount' },
   materials,
   extras: (kit) => {
     const parts = [];
+    // 座艙段分區：內噴黑框（下緣、平頂邊、A / B / C 柱）、煙燻車窗（側窗、前擋、後窗）、平頂透明＋白色中線
+    const cs = kit.canopy;
+    /** @type {KeepFn} */
+    const frame = (x, y, z, s) => {
+      const u = Math.abs(s);
+      return Math.max(u - 0.93, 0.035 - Math.abs(u - 0.41), 0.6 - Math.abs(x - 20.4), 0.6 - Math.abs(x + 0.8), 0.6 - Math.abs(x + 22.3));
+    };
+    /** @type {KeepFn} */
+    const glass = (x, y, z, s) => Math.max(Math.abs(s) - 0.445, x - 21, -23 - x);
+    const notFrame = (x, y, z, s) => -frame(x, y, z, s);
+    parts.push({ geometry: buildRegion(cs, [frame]).geometry, mat: 'frame', shell: true, name: 'cabin-frame' });
+    parts.push({ geometry: buildRegion(cs, [notFrame, glass]).geometry, mat: 'window', shell: true, renderOrder: 3, name: 'cabin-windows' });
+    parts.push({ geometry: buildRegion(cs, [notFrame, (x, y, z, s) => -glass(x, y, z, s), (x, y, z) => 3.2 - Math.abs(z)]).geometry, mat: 'white', shell: true, name: 'cabin-roof-stripe' });
+    parts.push({ geometry: buildRegion(cs, [notFrame, (x, y, z, s) => -glass(x, y, z, s), (x, y, z) => Math.abs(z) - 3.2]).geometry, mat: 'clear', shell: true, renderOrder: 2, name: 'cabin-roof' });
     // 透明殼裡看得到的座艙與駕駛人
     const drv = buildDriver(6, kit.innerYAt(6) - 5.8, 1.1);
     parts.push({ geometry: drv.body, mat: 'driver', name: 'cockpit-driver' });
@@ -143,7 +195,7 @@ export const pcBoxBody = makePolyBody({
     parts.push({
       geometry: mergeGeos([
         kit.decal(sideDecal(sdNumber('17', { h: 4.6, w: 2.8, gap: 0.8 }), { x0: -8, y0: 17.5, zMin: 30 }), { offset: 0.12 }),
-        kit.decal(topDecal(sdNumber('17', { h: 6, w: 3.4, gap: 0.9 }), { x0: -30, yMin: 27 }), { offset: 0.12 }),
+        kit.decal(topDecal(sdNumber('17', { h: 5.4, w: 3.1, gap: 0.8 }), { x0: 45, z0: 11, yMin: 22 }), { offset: 0.12 }),
       ]),
       mat: 'black',
       name: 'decal-number',

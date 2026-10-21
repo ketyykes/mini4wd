@@ -127,17 +127,59 @@ const SKELETON_DATA = {
 };
 
 /**
- * 單一葉子板框：輪軸 (ax, 13)、sg = ±1 為左右
+ * 細長方條：從 p 到 q，斷面寬 w（沿弧面切向的寬）× 厚 h
+ * @type {(p: THREE.Vector3, q: THREE.Vector3, w: number, h: number, up: THREE.Vector3) => THREE.BufferGeometry}
+ */
+const strut = (p, q, w, h, up) => {
+  const dir = q.clone().sub(p);
+  const len = dir.length();
+  dir.normalize();
+  // 方條局部座標：x = 沿長度、y = 厚度方向（弧面法向）、z = 寬度方向
+  const yAxis = up.clone().sub(dir.clone().multiplyScalar(up.dot(dir))).normalize();
+  const zAxis = new THREE.Vector3().crossVectors(dir, yAxis);
+  const g = new THREE.BoxGeometry(len + w * 0.8, h, w);
+  g.applyMatrix4(new THREE.Matrix4().makeBasis(dir, yAxis, zAxis));
+  g.translate((p.x + q.x) / 2, (p.y + q.y) / 2, (p.z + q.z) / 2);
+  return g;
+};
+
+/**
+ * 鏡射到另一側（z → −z）並把三角形繞向翻回來（iter-48：原本只 scale(−1) 再重算法線，
+ * 繞向反了、法線朝內，Blender 匯入後出現黑色斷點）
+ * @type {(g: THREE.BufferGeometry) => THREE.BufferGeometry}
+ */
+const mirrorZ = (g) => {
+  const m = g.index ? g.toNonIndexed() : g.clone();
+  m.scale(1, 1, -1);
+  const pos = m.attributes.position.array;
+  for (let i = 0; i < pos.length; i += 9) {
+    for (let k = 0; k < 3; k++) {
+      const t = pos[i + 3 + k];
+      pos[i + 3 + k] = pos[i + 6 + k];
+      pos[i + 6 + k] = t;
+    }
+  }
+  m.attributes.position.needsUpdate = true;
+  m.computeVertexNormals();
+  return m;
+};
+
+/**
+ * 單一葉子板框（iter-48）：輪軸 (ax, 13)、sg = ±1 為左右。和車身一致的多邊形肋格語彙——
+ * 內外兩條弧形側軌（半徑 16.3–17.5、輪胎頂上方 3.3 mm）之間用斜撐交錯連接，形成三角 / 梯形開口（不是梯子狀的平行橫檔）
  * @type {(ax: number, sg: number) => THREE.BufferGeometry}
  */
 const buildFenderFrame = (ax, sg) => {
   const r0 = 16.3;
   const r1 = 17.5;
+  const rm = (r0 + r1) / 2;
   const a0 = (22 * Math.PI) / 180;
   const a1 = (158 * Math.PI) / 180;
+  const zIn = 25.3;
+  const zOut = 34.7;
   const geos = [];
-  /** @type {(zIn: number, zOut: number) => THREE.BufferGeometry} 弧形側軌（側視環扇形，沿 z 擠出） */
-  const rail = (zIn, zOut) => {
+  /** @type {(zA: number, zB: number) => THREE.BufferGeometry} 弧形側軌（側視環扇形，沿 z 擠出） */
+  const rail = (zA, zB) => {
     const shape = new THREE.Shape();
     const n = 28;
     for (let i = 0; i <= n; i++) {
@@ -153,26 +195,33 @@ const buildFenderFrame = (ax, sg) => {
       const a = a0 + ((a1 - a0) * i) / n;
       shape.lineTo(ax + r0 * Math.cos(a), 13 + r0 * Math.sin(a));
     }
-    const g = new THREE.ExtrudeGeometry(shape, { depth: zOut - zIn, bevelEnabled: false, curveSegments: 1 });
-    g.translate(0, 0, zIn);
+    const g = new THREE.ExtrudeGeometry(shape, { depth: zB - zA, bevelEnabled: false, curveSegments: 1 });
+    g.translate(0, 0, zA);
     return g;
   };
-  geos.push(rail(24.6, 26), rail(34, 35.4));
-  for (const deg of [30, 55, 90, 125, 150]) {
+  geos.push(rail(zIn - 0.7, zIn + 0.7), rail(zOut - 0.7, zOut + 0.7));
+  /** @type {(deg: number, z: number) => THREE.Vector3} 弧面上的點 */
+  const pt = (deg, z) => {
     const a = (deg * Math.PI) / 180;
-    const rib = new THREE.BoxGeometry(1.4, r1 - r0, 35.4 - 24.6);
-    rib.rotateZ(a - Math.PI / 2);
-    const rm = (r0 + r1) / 2;
-    rib.translate(ax + rm * Math.cos(a), 13 + rm * Math.sin(a), 30);
-    geos.push(rib);
+    return new THREE.Vector3(ax + rm * Math.cos(a), 13 + rm * Math.sin(a), z);
+  };
+  // 斜撐：內軌與外軌之間 Z 字交錯 → 一排三角形開口；兩端各一根橫撐收邊（梯形）
+  const angles = [24, 47, 70, 90, 110, 133, 156];
+  for (let i = 0; i < angles.length - 1; i++) {
+    const zA = i % 2 === 0 ? zIn : zOut;
+    const zB = i % 2 === 0 ? zOut : zIn;
+    const p = pt(angles[i], zA);
+    const q = pt(angles[i + 1], zB);
+    const mid = (angles[i] + angles[i + 1]) / 2;
+    const up = new THREE.Vector3(Math.cos((mid * Math.PI) / 180), Math.sin((mid * Math.PI) / 180), 0);
+    geos.push(strut(p, q, 1.3, r1 - r0, up));
+  }
+  for (const deg of [24, 156]) {
+    const up = new THREE.Vector3(Math.cos((deg * Math.PI) / 180), Math.sin((deg * Math.PI) / 180), 0);
+    geos.push(strut(pt(deg, zIn), pt(deg, zOut), 1.3, r1 - r0, up));
   }
   const g = mergeGeos(geos);
-  if (sg < 0) {
-    g.scale(1, 1, -1);
-    // 鏡射後繞向反轉：重新計算法線（材質雙面）
-    g.computeVertexNormals();
-  }
-  return g;
+  return sg < 0 ? mirrorZ(g) : g;
 };
 
 /** @type {() => Record<string, THREE.Material>} */

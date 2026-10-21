@@ -291,13 +291,15 @@ export function sweepEllipse(pts, n, radius, seg = 16) {
 /**
  * 薄翼型立板（側視以弦線與厚度分布畫出，沿 z 為厚度方向）：前緣圓、後緣尖的尾鰭
  * 以兩個側面（±thick/2 × 厚度分布）組成；root / tip 為 [x前緣, x後緣, y]
- * @type {(root: number[], tip: number[], thick: number, zc: number, tiltDeg: number, nc?: number, ns?: number) => THREE.BufferGeometry}
+ * opt.pivotY：外傾支點高度（預設鰭根高度；分段上色時各段要用同一支點）；opt.taper：[根部, 鰭頂] 厚度比例（預設 [1, 0.6]）
+ * @type {(root: number[], tip: number[], thick: number, zc: number, tiltDeg: number, nc?: number, ns?: number, opt?: { pivotY?: number, taper?: number[] }) => THREE.BufferGeometry}
  */
-export function airfoilFin(root, tip, thick, zc, tiltDeg, nc = 16, ns = 10) {
+export function airfoilFin(root, tip, thick, zc, tiltDeg, nc = 16, ns = 10, opt = {}) {
   const pos = [];
   /** @type {(u: number) => number} NACA 對稱厚度（0–1 弦長，回傳半厚比例，最大 1） */
   const tdist = (u) => (0.2969 * Math.sqrt(u) - 0.126 * u - 0.3516 * u * u + 0.2843 * u ** 3 - 0.1036 * u ** 4) / 0.1;
-  const yBase = root[2];
+  const yBase = opt.pivotY ?? root[2];
+  const [tp0, tp1] = opt.taper ?? [1, 0.6];
   const tilt = (tiltDeg * Math.PI) / 180;
   /** @type {(i: number, j: number, side: number) => number[]} */
   const P = (i, j, side) => {
@@ -307,7 +309,7 @@ export function airfoilFin(root, tip, thick, zc, tiltDeg, nc = 16, ns = 10) {
     const y = lerp(root[2], tip[2], s);
     const u = (1 - Math.cos((Math.PI * i) / nc)) / 2;
     const x = lerp(xl, xt, u);
-    const zLocal = side * (thick / 2) * tdist(u) * lerp(1, 0.6, s);
+    const zLocal = side * (thick / 2) * tdist(u) * lerp(tp0, tp1, s);
     // 外傾：以鰭根高度為支點繞 x 軸旋轉
     const dy = y - yBase;
     return [x, yBase + dy * Math.cos(tilt) - zLocal * Math.sin(tilt), zc + dy * Math.sin(tilt) + zLocal * Math.cos(tilt)];

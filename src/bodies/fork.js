@@ -62,10 +62,16 @@ const buildArm = (sg) =>
       [-72, 26.8, sg * 17],
     ],
     56,
-    // 前段從側箱裡長出來（半徑由小漸大，前端埋在殼內），後段漸細
+    // iter-48：前段從側箱裡長出來（埋在殼內），根部最粗（4.4 × 3.2），往後收細；
+    // 末段斷面轉成「窄而高」（0.9 × 2.4），收成尾鰭的翼根
     (t) => {
       const grow = Math.min(1, t / 0.22);
-      return [lerp(1.6, 4.2, grow) - 1.0 * Math.max(0, t - 0.22), lerp(0.8, 3, grow) - 0.7 * Math.max(0, t - 0.22)];
+      if (t <= 0.22) {
+        return [lerp(1.6, 4.4, grow), lerp(0.8, 3.2, grow)];
+      }
+      const k = (t - 0.22) / 0.78;
+      const e = k * k * (3 - 2 * k);
+      return [lerp(4.4, 0.9, e), lerp(3.2, 2.4, e ** 0.7)];
     },
   );
 
@@ -124,11 +130,25 @@ export const forkBody = makePolyBody({
       name: 'tail-bridge',
     });
     // 分叉尾鰭（iter-47）：尾臂上外傾 14° 的後掠薄翼型鰭（前緣圓、後緣尖）
-    const fins = [];
+    // iter-48：尾鰭從尾臂順順長出——鰭根沿尾臂中心線（y 27.4），弦長從尾臂中段一路到末端；
+    // 分三段上色：銀底（下 55%）、青色細帶、黑色鰭頂（共用同一個外傾支點，接縫對齊）
+    const finsSilver = [];
+    const finsCyan = [];
+    const finsBlack = [];
+    const root = [-44, -72.5, 27.4];
+    const tip = [-65, -75, 47];
+    /** @type {(f: number) => number[]} 弦線在展向比例 f 的 [前緣 x, 後緣 x, y] */
+    const at = (f) => [lerp(root[0], tip[0], f), lerp(root[1], tip[1], f), lerp(root[2], tip[2], f)];
+    const tp = (f) => lerp(1, 0.55, f);
     for (const sg of [-1, 1]) {
-      fins.push(airfoilFin([-49, -70, 29.2], [-66, -74.5, 47], 1.5, sg * 17, sg * 14));
+      const piece = (f0, f1) => airfoilFin(at(f0), at(f1), 1.6, sg * 17, sg * 14, 16, 8, { pivotY: root[2], taper: [tp(f0), tp(f1)] });
+      finsSilver.push(piece(0, 0.55));
+      finsCyan.push(piece(0.55, 0.66));
+      finsBlack.push(piece(0.66, 1));
     }
-    parts.push({ geometry: mergeGeos(fins), mat: 'cyan2', outline: true, name: 'fork-fins' });
+    parts.push({ geometry: mergeGeos(finsSilver), mat: 'silver2', outline: true, name: 'fork-fins-silver' });
+    parts.push({ geometry: mergeGeos(finsCyan), mat: 'cyan2', outline: true, name: 'fork-fins-cyan' });
+    parts.push({ geometry: mergeGeos(finsBlack), mat: 'black2', outline: true, name: 'fork-fins-black' });
     // 刃鼻下方的黑色前翼（細長分流板，往前尖出）
     parts.push({
       geometry: flatPlate(

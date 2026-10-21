@@ -178,7 +178,7 @@ export const stayParts = [
     /** 裝這塊板時把底盤保桿這一端的兩側導輪臂剪掉（質量由 parts/bumperGeom.js 的切除幾何 × 底盤密度推導，assemble() 從底盤扣除） */
     chassisTrim: { kind: 'bumper-wings', src: '推估：實車裝 FRP / 碳纖導輪板時常把原廠保桿的導輪臂剪掉；切除範圍＝寬保桿板在中央橋接板以外的部分＋導輪座凸台＋三角斜撐＋補強片（與 3D 模型同一份幾何）' },
     features: ['rear-brake-mount', 'rear-damper-mount'],
-    brakeMount: { xMin_mm: 58, xMax_mm: 72, halfZ_mm: 9, y_mm: BUMPER_BOTTOM_Y - REAR_FRP_T },
+    brakeMount: { xMin_mm: 70, xMax_mm: 83, halfZ_mm: 7, y_mm: BUMPER_BOTTOM_Y - REAR_FRP_T },
     damperMount: { x_mm: -79, z_mm: 0, y_mm: BUMPER_BOTTOM_Y },
     src: {
       rollerZ_mm: '推估：19 mm 導輪時外緣跨距 104 mm（< 105）',
@@ -187,7 +187,8 @@ export const stayParts = [
       mass_g: '由外形面積扣開孔 × 厚度 × 密度推導；對照 [MYF2] 碳纖後導輪架實測 2.46 g × 密度比',
       outline: '推估（原創外形，參考 ref_chevalier-ma_gradeup 後板的「中央舌片＋斜臂」結構）：根部較寬（±21 mm），臂靠近後輪；31 mm 大徑輪會碰到臂（規則檢查 STAY_TIRE_CLEARANCE）',
       holes: '推估：φ2 mm 成排小孔、間距 4 mm（照片目視），質量扣除孔面積',
-      damperMount: '推估：板尾延伸的制振器座（車尾中央）',
+      damperMount: '推估：板尾延伸的制振器座（車尾中央）；制振器螺絲用皿頭螺絲由板底鎖上、與板底齊平（不凸出，所以板尾下方仍可貼煞車海綿）',
+      brakeMount: '推估：煞車座在板尾下方（實車常見位置，海綿後緣略超出板尾，從車尾看得到），x 70–83 mm、寬 14 mm',
     },
   },
   {
@@ -204,7 +205,7 @@ export const stayParts = [
     /** 裝這塊板時把底盤保桿這一端的兩側導輪臂剪掉（質量由 parts/bumperGeom.js 的切除幾何 × 底盤密度推導，assemble() 從底盤扣除） */
     chassisTrim: { kind: 'bumper-wings', src: '推估：實車裝 FRP / 碳纖導輪板時常把原廠保桿的導輪臂剪掉；切除範圍＝寬保桿板在中央橋接板以外的部分＋導輪座凸台＋三角斜撐＋補強片（與 3D 模型同一份幾何）' },
     features: ['rear-brake-mount', 'rear-damper-mount'],
-    brakeMount: { xMin_mm: 58, xMax_mm: 72, halfZ_mm: 9, y_mm: BUMPER_BOTTOM_Y - REAR_CARBON_T },
+    brakeMount: { xMin_mm: 70, xMax_mm: 83, halfZ_mm: 7, y_mm: BUMPER_BOTTOM_Y - REAR_CARBON_T },
     damperMount: { x_mm: -79, z_mm: 0, y_mm: BUMPER_BOTTOM_Y },
     src: {
       rollerZ_mm: '推估：寬板；13 mm 導輪外緣跨距 102 mm，19 mm 導輪 108 mm 超過規則（由 WIDTH 擋下）',
