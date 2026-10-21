@@ -264,6 +264,9 @@ export function assemble(config) {
     place('massDamper', d.label, d.mass_g, d.pos);
   }
   if (opt.sponge) {
+    if (opt.sponge.plate) {
+      place('brakeSponge', '煞車板', opt.sponge.plate.mass_g, opt.sponge.plate.pos);
+    }
     place('brakeSponge', '煞車海綿', opt.sponge.mass_g, opt.sponge.pos);
   }
   if (opt.ballast) {
@@ -490,9 +493,26 @@ function optionalLayout(p, comp) {
     const lz = 2 * m.halfZ_mm;
     const t = sp.thickness_mm;
     const cx = -(m.xMin_mm + m.xMax_mm) / 2;
-    const solid = boxAt(cx, 0, m.y_mm - t, lx, lz, t);
-    const mass_g = (lx * lz * t * sp.density_g_cm3) / 1000;
-    sponge = { mass_g, pos: { x: cx, y: m.y_mm - t / 2, z: 0 }, solid, part: sp, area_mm2: lx * lz, length_mm: lx, width_mm: lz };
+    // 煞車板（iter-50）：海綿貼在煞車板下，煞車板鎖在導輪架煞車座下方（零件資料 brakePlate；沒有時厚度 0）
+    const bp = sp.brakePlate ?? { thickness_mm: 0, density_g_cm3: 0, margin_mm: 0 };
+    const tp = bp.thickness_mm;
+    const plateBox = boxAt(cx, 0, m.y_mm - tp, lx + 2 * bp.margin_mm, lz + 2 * bp.margin_mm, tp);
+    const spongeBox = boxAt(cx, 0, m.y_mm - tp - t, lx, lz, t);
+    // 干涉 / 離地用的實體：煞車板＋海綿合成一個方塊（外框取煞車板）
+    const solid = boxAt(cx, 0, m.y_mm - tp - t, lx + 2 * bp.margin_mm, lz + 2 * bp.margin_mm, tp + t);
+    const spongeMass = (lx * lz * t * sp.density_g_cm3) / 1000;
+    const plateMass_g = ((lx + 2 * bp.margin_mm) * (lz + 2 * bp.margin_mm) * tp * bp.density_g_cm3) / 1000;
+    sponge = {
+      mass_g: spongeMass,
+      pos: { x: cx, y: m.y_mm - tp - t / 2, z: 0 },
+      plate: tp > 0 ? { mass_g: plateMass_g, pos: { x: cx, y: m.y_mm - tp / 2, z: 0 }, box: plateBox, material: bp.material } : null,
+      spongeBox,
+      solid,
+      part: sp,
+      area_mm2: lx * lz,
+      length_mm: lx,
+      width_mm: lz,
+    };
     solids.push({ group: 'sponge', slot: 'brakeSponge', label: '煞車海綿', solid });
   }
 
@@ -501,18 +521,22 @@ function optionalLayout(p, comp) {
   if (b) {
     const mounts = ch.ballastMounts ?? {};
     const mount = mounts[b.mount] ? b.mount : b.defaultMount;
-    const m = mounts[mount];
+    let m = mounts[mount];
     let y0;
+    const endStay = mount === 'front' ? p.frontStay : mount === 'rear' ? p.rearStay : null;
     if (mount === 'center') {
       // 齒輪蓋頂面（推估：馬達頂面上方 3.5 mm，齒輪蓋質心在頂面上方 2 mm 處的板厚中央）
       y0 = comp.motor.y + comp.motor.flat / 2 + 3.5;
+    } else if (endStay?.ballastMount) {
+      // 導輪板自帶的配重座（iter-50）：鎖在板面上（例如後板尾端的舌片上方）
+      m = endStay.ballastMount;
+      y0 = endStay.ballastMount.y_mm;
     } else {
-      const st = mount === 'front' ? p.frontStay : p.rearStay;
-      const top = st.plate ? st.plate.y_mm : ch.bumperBottomY_mm;
+      const top = endStay.plate ? endStay.plate.y_mm : ch.bumperBottomY_mm;
       y0 = top - b.thickness_mm;
     }
     const solid = boxAt(m.x_mm, m.z_mm, y0, b.length_mm, b.width_mm, b.thickness_mm);
-    ballast = { mass_g: b.mass_g, mount, pos: { x: m.x_mm, y: y0 + b.thickness_mm / 2, z: m.z_mm }, solid, part: b };
+    ballast = { mass_g: b.mass_g, mount, onTop: mount === 'center' || !!endStay?.ballastMount, pos: { x: m.x_mm, y: y0 + b.thickness_mm / 2, z: m.z_mm }, solid, part: b };
     solids.push({ group: 'ballast', slot: 'ballast', label: '配重', solid });
   }
   return { dampers, sponge, ballast, solids };

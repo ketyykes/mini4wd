@@ -33,7 +33,7 @@ const STATIONS = [
 ].map(([x, pts]) => ({ x, pts }));
 
 /** @type {any} 獸眼凹槽（俯視菱形，見 recesses） */
-const EYE = { view: 'top', shape: 'poly', pts: [[63.0, 2.6], [60.26, 8.97], [54.32, 14.04], [57.34, 6.79]], depth: 1.0 };
+const EYE = { view: 'top', shape: 'poly', pts: [[63.85, 1.5], [60.57, 9.14], [53.44, 15.23], [57.06, 6.53]], depth: 1.0 };
 
 /** @type {(x: number) => number} 槍灰下半車身分色線（前低後高的斜線，和獸頭的反楔形相呼應） */
 const lowerLine = (x) => 17 - 0.06 * x;
@@ -71,8 +71,8 @@ export const beastBody = makePolyBody({
   ],
   recesses: [
     // 獸眼：頭部前斜面上兩道往外上斜的凹槽（之後貼琥珀色燈）
-    // iter-47：細長菱形、往外上斜（iter-47b 放大 1.4 倍：長約 14、寬 3.6），淺凹 1 mm，槽底整面琥珀燈
-    { id: '獸眼 ×2', view: 'top', shape: 'poly', pts: [[63.0, 2.6], [60.26, 8.97], [54.32, 14.04], [57.34, 6.79]], depth: 1.0 },
+    // iter-47：細長菱形、往外上斜（iter-47b 放大 1.4 倍、iter-50 再放大 1.2 倍：長約 17、寬 4.3），淺凹 1 mm，槽底整面琥珀燈
+    { id: '獸眼 ×2', view: 'top', shape: 'poly', pts: [[63.85, 1.5], [60.57, 9.14], [53.44, 15.23], [57.06, 6.53]], depth: 1.0 },
     // 側面層疊鰓狀進氣口（側視三道斜槽）
     { id: '鰓 1', view: 'side', shape: 'poly', pts: [[20, 14], [22.5, 14], [16, 25], [13.5, 25]], depth: 2.2 },
     { id: '鰓 2', view: 'side', shape: 'poly', pts: [[14, 14], [16.5, 14], [10, 25], [7.5, 25]], depth: 2.2 },

@@ -31,8 +31,8 @@ slot 值的寫法：
 | 前導輪架 | `stay-front-standard`、`stay-front-frp`、`stay-front-carbon` | 板件 `plate`（俯視外形、開孔、板底高度、厚度、密度）→ 質量 = 面積 × 厚度 × 密度；`chassisTrim` = 裝這塊板時剪掉底盤保桿導輪臂，切除幾何在 `src/parts/bumperGeom.js`（模型與質量共用），`assemble()` 從底盤本體扣除質量與重心 |
 | 後導輪架 | `stay-rear-standard`、`stay-rear-frp`、`stay-rear-carbon-wide` | `upperRollerHeight_mm: null` 為單層（可裝雙層導輪）；`brakeMount`（煞車座）、`damperMount`（後制振器座） |
 | 制振器 | `damper-rear-cylinder`、`damper-side-square` | 獨立 Rapier 剛體＋prismatic joint（行程 `stroke_mm` 為硬止點），下止點是單邊彈性座墊（`seatDeflection_mm`、`seatDampingRatio`） |
-| 煞車海綿 | `sponge-1mm-strong`、`sponge-2mm-strong`、`sponge-3mm-mild` | 貼在後導輪架 `brakeMount` 下方；接觸剛性 k = E·A/t、摩擦 μ，只在射線碰到地面 / 坡道時有力 |
-| 配重 | `ballast-hex-1g`、`ballast-square-3.6g` | `mountPoints` + `@安裝點`；前 / 後鎖在保桿或導輪板下方、中央貼在齒輪蓋頂面 |
+| 煞車海綿 | `sponge-1mm-strong`、`sponge-2mm-strong`、`sponge-3mm-mild` | 貼在 1.5 mm FRP 煞車板（`brakePlate`，質量另列一項）下，煞車板鎖在後導輪架 `brakeMount` 下方；接觸剛性 k = E·A/t、摩擦 μ，只在射線碰到地面 / 坡道時有力 |
+| 配重 | `ballast-hex-1g`、`ballast-square-3.6g` | `mountPoints` + `@安裝點`；前 / 後鎖在保桿或導輪板下方（導輪板有 `ballastMount` 時改鎖在板面上，例如後板尾端）、中央貼在齒輪蓋頂面 |
 
 ### 相容性欄位
 - 零件 `compat.chassisLayouts`：適用的底盤配置（`chassis.motorLayout`，例如 `dual-shaft`）。不符 → `GEAR_CHASSIS`。

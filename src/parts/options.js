@@ -60,6 +60,12 @@ export const massDamperParts = [
   },
 ];
 
+/**
+ * 煞車板（iter-50）：海綿貼在 1.5 mm FRP 小板上，小板鎖在導輪架的煞車座下方（[T15518] 官方 FRP 煞車架「1.5mm厚FRP製ステー」附 2 mm 海綿）。
+ * 板的平面尺寸 = 海綿貼片外擴 margin_mm（推估：板緣比海綿各多 0.6 mm 方便貼齊），質量 = 面積 × 厚度 × FRP 密度 1.85（SPEC 1.14），組裝時計算
+ */
+const BRAKE_PLATE = { material: 'frp', thickness_mm: 1.5, density_g_cm3: 1.85, margin_mm: 0.6, src: 'PARTS_RESEARCH 第三階段 A 節 [T15518]：1.5 mm FRP 煞車架；外擴 0.6 mm 為推估' };
+
 /** @type {import('./types').PartBase[]} */
 export const brakeSpongeParts = [
   {
@@ -75,7 +81,8 @@ export const brakeSpongeParts = [
     contactDampingRatio: 0.3,
     density_g_cm3: 0.12,
     compat: { requires: ['rear-brake-mount'] },
-    /** 實際質量依導輪架的煞車座面積在組裝時計算（面積 × 厚度 × 密度） */
+    brakePlate: BRAKE_PLATE,
+    /** 實際質量依導輪架的煞車座面積在組裝時計算（面積 × 厚度 × 密度；煞車板另計） */
     mass_g: 0,
     src: {
       thickness_mm: 'PARTS_RESEARCH 第三階段 G 節 [T15492] 官方：1 / 2 / 3 mm 三種厚度',
@@ -96,6 +103,7 @@ export const brakeSpongeParts = [
     contactDampingRatio: 0.3,
     density_g_cm3: 0.12,
     compat: { requires: ['rear-brake-mount'] },
+    brakePlate: BRAKE_PLATE,
     mass_g: 0,
     src: {
       thickness_mm: 'PARTS_RESEARCH 第三階段 G 節 [T15492]',
@@ -114,6 +122,7 @@ export const brakeSpongeParts = [
     contactDampingRatio: 0.3,
     density_g_cm3: 0.12,
     compat: { requires: ['rear-brake-mount'] },
+    brakePlate: BRAKE_PLATE,
     mass_g: 0,
     src: {
       thickness_mm: 'PARTS_RESEARCH 第三階段 G 節 [T15492]（3 mm）',
@@ -129,7 +138,7 @@ export const ballastParts = [
     id: 'ballast-hex-1g',
     category: 'ballast',
     name: '六角配重 1 g（可裝前 / 中 / 後）',
-    material: 'steel',
+    material: 'brass',
     length_mm: 6,
     width_mm: 5.2,
     thickness_mm: 4,
@@ -139,7 +148,7 @@ export const ballastParts = [
     compat: {},
     src: {
       mass_g: 'PARTS_RESEARCH 第三階段 H 節 [T95557] 官方「重さ約1gの六角ウエイト」',
-      dims: '推估：對邊 5.2 mm 六角柱、高 4 mm（鋼 7.85 g/cm³ 時約 0.74 g；官方約 1 g，可能是黃銅或較高）；外框用 6 × 5.2 × 4 mm',
+      dims: '推估：對邊 5.2 mm 六角柱、高 4 mm（體積 93.7 mm³：鋼 7.85 g/cm³ 約 0.74 g、黃銅 8.5 g/cm³ 約 0.80 g；官方約 1 g，黃銅較接近，材質取黃銅）；外框用 6 × 5.2 × 4 mm',
     },
   },
   {

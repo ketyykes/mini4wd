@@ -1,5 +1,5 @@
 {
-  "_readme": "示範（第三階段）：FRP 前後導輪板＋13 mm 鋁導輪＋3.7:1＋扭力型馬達，後導輪板下貼 2 mm 強力煞車海綿、中央 1 g 配重",
+  "_readme": "示範（第三階段）：FRP 前後導輪板＋13 mm 鋁導輪＋3.7:1＋扭力型馬達，後導輪板下鎖 1.5 mm FRP 煞車板＋1 mm 強力煞車海綿、後板尾端 1 g 配重",
   "chassis": "chassis-midship",
   "motor": "motor-torque",
   "gear": "gear-3.7",
@@ -16,6 +16,6 @@
   "gearCover": "gear-cover-standard",
   "hardware": "hardware-standard",
   "massDamper": null,
-  "brakeSponge": "sponge-2mm-strong",
-  "ballast": "ballast-hex-1g@center"
+  "brakeSponge": "sponge-1mm-strong",
+  "ballast": "ballast-hex-1g@rear"
 }

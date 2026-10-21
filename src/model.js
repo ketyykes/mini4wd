@@ -295,6 +295,9 @@ function makeMaterials() {
     // iter-47：黃銅再亮一點（app 沒有環境貼圖時金屬會偏暗，reviewer iter-46「很小的金色圓柱，不容易認出來」）
     brassWeight: new THREE.MeshStandardMaterial({ name: 'brass-weight', color: 0xe0b45a, roughness: 0.26, metalness: 0.8, emissive: 0x2a1c05 }),
     nylonCap: new THREE.MeshStandardMaterial({ name: 'plastic-nylon-cap', color: 0x34373c, roughness: 0.55, metalness: 0.0 }),
+    // iter-50：板件切口（側面與孔壁）另用一個材質，讓 1.5 mm 板厚與孔緣看得出來：FRP 切口偏白（玻纖斷面）、碳纖切口霧灰
+    frpEdge: new THREE.MeshStandardMaterial({ name: 'frp-edge', color: 0xc4c9c6, roughness: 0.8, metalness: 0.0 }),
+    carbonEdge: new THREE.MeshStandardMaterial({ name: 'carbon-plate-edge', color: 0x5d6166, roughness: 0.75, metalness: 0.05 }),
     aluNut: new THREE.MeshStandardMaterial({ name: 'alu-nut-blue', color: 0x3f6fb8, roughness: 0.3, metalness: 0.85 }),
     steelWeight: new THREE.MeshStandardMaterial({ name: 'steel-weight', color: 0xc3c8ce, roughness: 0.3, metalness: 0.85, emissive: 0x15171a }),
     spongeWhite: new THREE.MeshStandardMaterial({ name: 'sponge-white', color: 0xf8f6ee, map: cachedTexture('sponge', spongePoreTexture), bumpMap: cachedTexture('sponge', spongePoreTexture), bumpScale: 0.4, roughness: 1.0, metalness: 0.0, emissive: 0x3a3a36 }),
@@ -805,9 +808,10 @@ const buildStayPlates = (mats) => {
     const grp = new THREE.Group();
     grp.name = slot;
     grp.userData.part = slot === 'frontStay' ? 'stay-front' : 'stay-rear';
-    const mat = st.material === 'carbon' ? mats.carbonPlate : mats.frpPlate;
+    // 上下面用板材貼圖、側面與孔壁用切口材質（ExtrudeGeometry 群組 0 = 上下面、1 = 側面）；0.25 mm 小倒角，總厚維持 1.5 mm
+    const mat = st.material === 'carbon' ? [mats.carbonPlate, mats.carbonEdge] : [mats.frpPlate, mats.frpEdge];
     const holes = pl.holes.map((h) => circlePts(h.x, h.z, h.r, 16));
-    const plate = extrudeXZ(pl.outline, pl.thickness_mm, mat, holes);
+    const plate = extrudeXZ(pl.outline, pl.thickness_mm, mat, holes, 0.25);
     plate.position.y = pl.y_mm;
     grp.add(plate);
     const plateTop = pl.y_mm + pl.thickness_mm;
@@ -944,7 +948,16 @@ const buildOptionalParts = (mats) => {
   }
   if (o.sponge) {
     // 煞車海綿（iter-47）：圓角方塊（海綿裁切邊），表面氣孔貼圖；白 = 強力、藍 = 溫和（G 節 [T15492]、[T15512]）
-    const b = o.sponge.solid;
+    // iter-50：煞車板（1.5 mm FRP 小板，鎖在導輪架煞車座下）＋貼在板下的海綿；尺寸取組裝結果（與質量、干涉同一份）
+    if (o.sponge.plate) {
+      const pb = o.sponge.plate.box;
+      const plateMesh = new THREE.Mesh(new THREE.BoxGeometry(pb.max.x - pb.min.x, pb.max.y - pb.min.y, pb.max.z - pb.min.z), [mats.frpEdge, mats.frpEdge, mats.frpPlate, mats.frpPlate, mats.frpEdge, mats.frpEdge]);
+      plateMesh.position.set((pb.min.x + pb.max.x) / 2, (pb.min.y + pb.max.y) / 2, (pb.min.z + pb.max.z) / 2);
+      plateMesh.name = 'brake-plate';
+      plateMesh.userData.part = 'brake-sponge';
+      g.add(plateMesh);
+    }
+    const b = o.sponge.spongeBox ?? o.sponge.solid;
     const lx = b.max.x - b.min.x;
     const lz = b.max.z - b.min.z;
     const ly = b.max.y - b.min.y;
@@ -983,10 +996,10 @@ const buildOptionalParts = (mats) => {
     grp.name = 'ballast';
     grp.userData.part = 'ballast';
     grp.add(m);
-    // 固定螺絲（iter-48）：M2 皿頭螺絲，頭部埋在配重露出的那一面（前 / 後吊在保桿或導輪板下 → 底面；中央 → 頂面），
+    // 固定螺絲（iter-48）：M2 皿頭螺絲，頭部埋在配重露出的那一面（吊在保桿或導輪板下 → 底面；中央或導輪板的配重座上 → 頂面），
     // 方塊配重 2 支、六角配重 1 支；頭部只比表面高 0.02 mm，不改變外框與離地高度
-    const faceY = o.ballast.mount === 'center' ? b.max.y : b.min.y;
-    const dir = o.ballast.mount === 'center' ? 1 : -1;
+    const faceY = o.ballast.onTop ? b.max.y : b.min.y;
+    const dir = o.ballast.onTop ? 1 : -1;
     const cx = (b.min.x + b.max.x) / 2;
     const cz = (b.min.z + b.max.z) / 2;
     const xs = part.id.startsWith('ballast-hex') ? [0] : [-part.length_mm / 4, part.length_mm / 4];

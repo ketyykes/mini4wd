@@ -217,10 +217,9 @@ export function sdNumber(text, { h, w, gap, slant = 0.18 }) {
       boxes.push([x0, x0 + w, h / 2 - 0.19 * h, h / 2]);
       extra.push(sdBar(x0 + w - 0.2 * w, h / 2 - 0.1 * h, x0 + 0.3 * w, -h / 2 - 0.05 * h, 0.34 * w));
     } else if (ch === '1') {
-      // 1（iter-47）：置中直筆＋左上斜旗＋底座，避免被看成 J 或 I
-      boxes.push([x0 + 0.36 * w, x0 + 0.66 * w, -h / 2, h / 2]);
-      boxes.push([x0 + 0.08 * w, x0 + 0.94 * w, -h / 2, -h / 2 + 0.15 * h]);
-      extra.push(sdBar(x0 + 0.5 * w, h / 2 - 0.08 * h, x0 + 0.08 * w, h / 2 - 0.36 * h, 0.26 * w));
+      // 1（iter-50）：標準字形——偏右的直筆＋左上小斜旗，不加底座（iter-47 的底座版被看成字型錯誤）
+      boxes.push([x0 + 0.45 * w, x0 + 0.75 * w, -h / 2, h / 2]);
+      extra.push(sdBar(x0 + 0.6 * w, h / 2 - 0.07 * h, x0 + 0.15 * w, h / 2 - 0.3 * h, 0.24 * w));
     } else if (ch === '5') {
       // 5（iter-47）：直角外框（不倒圓角，和圓滑的 S 區隔）、頂橫加長外伸、左上直筆和頂橫成直角、下半是開口朝左的方鉤
       boxes.push([x0, x0 + 1.08 * w, h / 2 - 0.17 * h, h / 2]);

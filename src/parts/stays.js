@@ -180,6 +180,8 @@ export const stayParts = [
     features: ['rear-brake-mount', 'rear-damper-mount'],
     brakeMount: { xMin_mm: 70, xMax_mm: 83, halfZ_mm: 7, y_mm: BUMPER_BOTTOM_Y - REAR_FRP_T },
     damperMount: { x_mm: -79, z_mm: 0, y_mm: BUMPER_BOTTOM_Y },
+    /** 後配重座：板尾舌片上方（配重 @rear 時鎖在板面上，iter-50；推估位置，與後制振器座同一處，兩者擇一） */
+    ballastMount: { x_mm: -78, z_mm: 0, y_mm: BUMPER_BOTTOM_Y },
     src: {
       rollerZ_mm: '推估：19 mm 導輪時外緣跨距 104 mm（< 105）',
       thickness_mm: 'PARTS_RESEARCH 第三階段 E 節 [T15524]、[T15518] 官方：FRP 板 1.5 mm',
@@ -207,6 +209,8 @@ export const stayParts = [
     features: ['rear-brake-mount', 'rear-damper-mount'],
     brakeMount: { xMin_mm: 70, xMax_mm: 83, halfZ_mm: 7, y_mm: BUMPER_BOTTOM_Y - REAR_CARBON_T },
     damperMount: { x_mm: -79, z_mm: 0, y_mm: BUMPER_BOTTOM_Y },
+    /** 後配重座：板尾舌片上方（配重 @rear 時鎖在板面上，iter-50；推估位置，與後制振器座同一處，兩者擇一） */
+    ballastMount: { x_mm: -78, z_mm: 0, y_mm: BUMPER_BOTTOM_Y },
     src: {
       rollerZ_mm: '推估：寬板；13 mm 導輪外緣跨距 102 mm，19 mm 導輪 108 mm 超過規則（由 WIDTH 擋下）',
       lowerRollerHeight_mm: '推估：單層導輪座，導輪中心離地 12 mm（墊高讓雙層導輪的下層離地）',

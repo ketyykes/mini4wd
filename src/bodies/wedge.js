@@ -225,24 +225,16 @@ const buildCockpit = (surf) => {
   const tub = [];
   /** @type {THREE.BufferGeometry[]} 駕駛人剪影 */
   const driver = [];
-  // 內襯桶：沿座艙底的低矮圓角槽（用壓扁的膠囊，避免方塊感）
-  const liner = new THREE.CapsuleGeometry(4.2, 22, 6, 16);
-  liner.rotateZ(Math.PI / 2);
-  liner.scale(1, 0.32, 1.6);
-  liner.translate(4, deck(4) - 0.6, 0);
-  tub.push(liner);
-  // 座椅：往後傾的椅背（扁膠囊）＋椅面
-  const back = new THREE.CapsuleGeometry(2.6, 2.2, 4, 12);
-  back.scale(0.35, 1, 1.1);
-  back.rotateZ(0.55);
-  back.translate(-8.2, deck(-8) + 1.6, 0);
+  // 座椅：往後傾的薄椅背（iter-50：0.8 mm 薄板，取代實心膠囊；淺灰色，俯視透過罩子看得到）
+  const back = new THREE.BoxGeometry(0.8, 5.2, 6.4);
+  back.rotateZ(0.5);
+  back.translate(-7.8, deck(-8) + 2.0, 0);
   tub.push(back);
   // 駕駛人：頭盔（球＋深色護目鏡帶由材質區分不了，改用略扁的球）、肩部（橫向膠囊）、軀幹
   const d = deck(-4);
   const helmet = new THREE.SphereGeometry(1.75, 20, 14);
   helmet.scale(1.12, 1, 0.95);
   helmet.translate(-4.6, d + 3.0, 0);
-  driver.push(helmet);
   const shoulders = new THREE.CapsuleGeometry(1.0, 4.2, 4, 12);
   shoulders.rotateX(Math.PI / 2);
   shoulders.translate(-6.2, d + 1.3, 0);
@@ -252,7 +244,7 @@ const buildCockpit = (surf) => {
   torso.scale(1, 0.7, 1.4);
   torso.translate(-2.5, d + 0.6, 0);
   driver.push(torso);
-  return { tub: mergeGeos(tub), driver: mergeGeos(driver) };
+  return { tub: mergeGeos(tub), driver: mergeGeos(driver), helmet };
 };
 
 /** @type {(a: number, b: number, t: number) => number} */
@@ -300,18 +292,21 @@ const makeMaterials = () => ({
   lower2: namedMaterial('paint-graphite-black', { color: 0x2b2d30, roughness: 0.55, side: THREE.DoubleSide }),
   edge: namedMaterial('shell-edge-orange', { color: 0xd9530a, roughness: 0.5, side: THREE.DoubleSide }),
   inner: namedMaterial('shell-inner-dark', { color: 0x2a201c, roughness: 0.85, side: THREE.BackSide }),
-  recess: namedMaterial('trim-intake-black', { color: 0x0b0b0c, roughness: 0.9, side: THREE.DoubleSide }),
+  // iter-50：進氣口內面純黑消光（名稱含 plastic → Blender 匯出分類為 plastic_matte）
+  recess: namedMaterial('plastic-intake-black', { color: 0x050505, roughness: 0.9, side: THREE.DoubleSide }),
   frame: namedMaterial('cockpit-dark', { color: 0x16181b, roughness: 0.5, side: THREE.DoubleSide }),
   // iter-40：茶色煙燻透明 PC（看得到座艙內裝），窗框條黑色
   // iter-43：加深成茶黑煙燻、透光降低；環境反射減弱，平頂折面不再反成一塊亮矩形
-  glass: namedMaterial('pc-smoke-tint', { color: 0x120c08, roughness: 0.1, metalness: 0.0, specularIntensity: 0.45, transparent: true, opacity: 0.58, envMapIntensity: 0.35, depthWrite: false }),
+  glass: namedMaterial('pc-smoke-tint', { color: 0x120c08, roughness: 0.1, metalness: 0.0, specularIntensity: 0.45, transparent: true, opacity: 0.48, envMapIntensity: 0.35, depthWrite: false }),
   canopyFrame: namedMaterial('trim-smoke-gray', { color: 0x2e3238, roughness: 0.35, clearcoat: 0.5 }),
   seat: namedMaterial('cockpit-driver', { color: 0x3a3d44, roughness: 0.45, clearcoat: 0.4 }),
   tub: namedMaterial('cockpit-tub', { color: 0x141518, roughness: 0.8 }),
-  recessWall: namedMaterial('trim-intake-wall', { color: 0x46494f, roughness: 0.7, side: THREE.DoubleSide }),
+  seatBack: namedMaterial('cockpit-seat', { color: 0x8a8f96, roughness: 0.6 }),
+  helmet: namedMaterial('cockpit-helmet-cyan', { color: 0x22c3e6, roughness: 0.3, clearcoat: 0.8 }),
+  recessWall: namedMaterial('plastic-intake-black', { color: 0x0b0b0c, roughness: 0.85, side: THREE.DoubleSide }),
   cyan: decalMaterial('decal-cyan', { color: 0x22c3e6, roughness: 0.3, clearcoat: 0.6 }),
   black: decalMaterial('decal-black', { color: 0x111214, roughness: 0.55 }),
-  seam: decalMaterial('decal-panel-seam', { color: 0x0a0a0b, roughness: 0.8 }),
+  seam: decalMaterial('decal-panel-seam', { color: 0x0a0a0b, roughness: 0.8, side: THREE.DoubleSide }),
   lamp: decalMaterial('lamp-clear', { color: 0xe8f4ff, emissive: 0x9fc8ff, emissiveIntensity: 0.35, roughness: 0.05, clearcoat: 1.0 }),
   tail: decalMaterial('lamp-red', { color: 0xc4121c, emissive: 0x7a0008, emissiveIntensity: 0.4, roughness: 0.1, clearcoat: 1.0 }),
   mount: namedMaterial('abs-mount-black', { color: 0x222326, roughness: 0.6 }),
@@ -350,7 +345,8 @@ const compose = () => {
 
   // 內面、厚度面、封口、凹陷
   const st = kit.structure();
-  parts.push({ geometry: st.inner, mat: 'inner', name: 'shell-inner' });
+  // iter-50：內面避開凹陷進氣口（原本內面橫跨在進氣口凹腔前方 0.9 mm，Blender 雙面算圖時棕色內面蓋住黑色腔底，看起來像髒污）
+  parts.push({ geometry: buildRegion(surf, [...kit.holes, kit.notRecess], { offset: -kit.t }).geometry, mat: 'inner', name: 'shell-inner' });
   parts.push({ geometry: st.rim, mat: 'edge', name: 'shell-edge' });
   parts.push({ geometry: st.capFront, mat: 'lower', shell: true, name: 'cap-front' });
   parts.push({ geometry: st.capRear, mat: 'lower', shell: true, name: 'cap-rear' });
@@ -377,6 +373,9 @@ const compose = () => {
   const cockpit = buildCockpit(surf);
   // iter-49：拿掉實心的內襯桶（質量要照實計入，0.85 g 會讓整車超過 P08 上限 135 g）；座艙內只留駕駛人剪影
   parts.push({ geometry: cockpit.driver, mat: 'seat', solid: true, name: 'cockpit-driver' });
+  // iter-50：座艙細節——淺灰薄椅背、青藍頭盔（俯視透過煙燻罩看得到；質量照實計入）
+  parts.push({ geometry: cockpit.tub, mat: 'seatBack', solid: true, name: 'cockpit-seat' });
+  parts.push({ geometry: cockpit.helmet, mat: 'helmet', solid: true, name: 'cockpit-helmet' });
 
   // 鼻部進氣口格柵（iter-43）：凹陷內 4 片往前傾的橫向百葉（每片沿 z 分段貼著殼面下方），百葉之間留陰影縫
   const louvers = [];
@@ -452,23 +451,42 @@ const compose = () => {
   // 和既有的鼻下薄板一致：不計質量、不計輪廓（薄板）
   parts.push({ geometry: mergeGeos(teeth), mat: 'lower2', solid: true, name: 'nose-teeth' });
 
-  // iter-49：銳利的分件線（0.35 mm 黑色縫線）——翼艙斜切、引擎蓋橫切、後甲板斜切、側面斜切，讓殼面看起來是多片拼成
-  const seams = [
-    sdBar(61, 21.5, 46, 33.5, 0.35),
-    sdBar(37, 22, 28, 32.5, 0.35),
-    sdBar(34, 0, 34, 9.2, 0.35),
-    sdBar(-22, 9, -46, 21, 0.35),
-    sdBar(-30, 22.3, -50, 30.5, 0.35),
-  ];
-  const sideSeams = [sdBar(26, 26.5, 19, 11, 0.35), sdBar(-24, 27.5, -30, 12, 0.35)];
+  // iter-50：分件線改成貼著殼面的連續細條（0.4 mm 寬，往殼面外 0.04 mm），只沿翼艙與後甲板的分件邊界，
+  // 不穿過黑色溝槽 / 引擎蓋條紋與座艙罩（iter-49 的貼紙法因線寬小於網格，裁切後斷成虛線）
+  /** @type {(ax: number, az: number, bx: number, bz: number) => THREE.BufferGeometry} 俯視線段投影到殼面的細條（左右各一） */
+  const seamRibbon = (ax, az, bx, bz) => {
+    const pos = [];
+    const len = Math.hypot(bx - ax, bz - az);
+    const n = Math.max(2, Math.ceil(len / 0.3));
+    const nx = -(bz - az) / len;
+    const nz = (bx - ax) / len;
+    const w = 0.2;
+    for (const sg of [-1, 1]) {
+      for (let i = 0; i < n; i++) {
+        const p = [i / n, (i + 1) / n].map((t) => [ax + (bx - ax) * t, az + (bz - az) * t]);
+        const q = p.flatMap(([x, z]) =>
+          [-1, 1].map((k) => {
+            const xx = x + k * w * nx;
+            const zz = z + k * w * nz;
+            return [xx, surf.topY(xx, zz) + 0.04, sg * zz];
+          }),
+        );
+        const [a0, a1, b0, b1] = q;
+        const tri = sg > 0 ? [a0, b0, b1, a0, b1, a1] : [a0, b1, b0, a0, a1, b1];
+        for (const v of tri) {
+          pos.push(...v);
+        }
+      }
+    }
+    const g = new THREE.BufferGeometry();
+    g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+    g.computeVertexNormals();
+    return g;
+  };
   parts.push({
-    geometry: mergeGeos([
-      kit.decal((x, y, z) => (y < 20 ? -1 : -Math.min(...seams.map((f) => f(x, Math.abs(z)))))),
-      kit.decal(sideDecal((u, v) => Math.min(...sideSeams.map((f) => f(u, v))), { x0: 0, y0: 0, zMin: 30, side: 1 })),
-      kit.decal(sideDecal((u, v) => Math.min(...sideSeams.map((f) => f(-u, v))), { x0: 0, y0: 0, zMin: 30, side: -1 })),
-    ]),
+    geometry: mergeGeos([seamRibbon(61, 21.5, 46, 33.5), seamRibbon(37, 22.4, 28, 32.5), seamRibbon(-22, 9, -41.5, 18.7), seamRibbon(-30, 22.3, -50, 30.5)]),
     mat: 'seam',
-    name: 'decal-panel-seams',
+    name: 'panel-seams',
   });
 
   // ---- 貼紙（不標 shell） ----

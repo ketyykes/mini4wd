@@ -48,14 +48,15 @@ const STATIONS = [
 ];
 
 /**
- * 座艙段站位（梯形剖面）：前擋風斜面 x 26 → 20、平頂段、後窗斜面 x −22 → −30
+ * 座艙段站位（梯形剖面）：前擋風斜面 x 24 → 18、平頂段到 x −2、斜背後窗 x −2 → −14（往後收窄）
  * @type {{ x: number, yBase: number, yTop: number, halfW: number }[]}
  */
 const CABIN = [
-  { x: 26, yBase: 0, yTop: 0, halfW: 21 },
-  { x: 20, yBase: 0, yTop: 3.6, halfW: 25.5 },
-  { x: -22, yBase: 0, yTop: 3.6, halfW: 25.5 },
-  { x: -30, yBase: 0, yTop: 0, halfW: 21 },
+  // iter-50：座艙縮短到約 2/3（56 → 38 mm）、後段改成往後收窄的斜背，不再像小廂型車
+  { x: 24, yBase: 0, yTop: 0, halfW: 21 },
+  { x: 18, yBase: 0, yTop: 3.6, halfW: 25 },
+  { x: -2, yBase: 0, yTop: 3.6, halfW: 24 },
+  { x: -14, yBase: 0, yTop: 0, halfW: 17 },
 ];
 
 /** @type {(x: number) => number} 座艙罩底部半寬（站間線性，同 createCanopySurface 的 trapezoid） */
@@ -134,10 +135,10 @@ export const pcBoxBody = makePolyBody({
     /** @type {KeepFn} */
     const frame = (x, y, z, s) => {
       const u = Math.abs(s);
-      return Math.max(u - 0.93, 0.035 - Math.abs(u - 0.41), 0.6 - Math.abs(x - 20.4), 0.6 - Math.abs(x + 0.8), 0.6 - Math.abs(x + 22.3));
+      return Math.max(u - 0.93, 0.035 - Math.abs(u - 0.41), 0.6 - Math.abs(x - 18.4), 0.6 - Math.abs(x - 8), 0.6 - Math.abs(x + 2.4));
     };
     /** @type {KeepFn} */
-    const glass = (x, y, z, s) => Math.max(Math.abs(s) - 0.445, x - 21, -23 - x);
+    const glass = (x, y, z, s) => Math.max(Math.abs(s) - 0.445, x - 19, -3 - x);
     const notFrame = (x, y, z, s) => -frame(x, y, z, s);
     parts.push({ geometry: buildRegion(cs, [frame]).geometry, mat: 'frame', shell: true, name: 'cabin-frame' });
     parts.push({ geometry: buildRegion(cs, [notFrame, glass]).geometry, mat: 'window', shell: true, renderOrder: 3, name: 'cabin-windows' });
