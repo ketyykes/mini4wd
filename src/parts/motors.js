@@ -1,6 +1,16 @@
 // 馬達（130 尺寸碳刷馬達；本底盤為中置雙軸）
 // 線性 DC 馬達模型參數都以 3 V 為基準（SPEC 1.4 / 1.12），程式依電池端電壓縮放
 
+/**
+ * 130 馬達電樞（轉子）：傳動系轉動慣量用（parts/inertia.js；電樞慣量 × 齒輪比² 換算到輪軸）
+ * @type {{ mass_g: number, diameter_mm: number }}
+ */
+const ARMATURE_130 = { mass_g: 5.0, diameter_mm: 12.5 };
+/** @type {string} */
+const ARMATURE_130_SRC =
+  '推估（第四階段，查無官方或玩家實測的 130 馬達轉子慣量，PARTS_RESEARCH 第四階段 R 節末「未查證」）：外殼扁面 15.1 mm 扣鐵殼 2 × 0.45 mm → 內徑約 14.2 mm，轉子鐵芯外徑取 12.5 mm（留氣隙）；' +
+  '轉子質量 = 整顆 17.5 g 扣鐵殼約 4 g、2 片肥粒鐵磁鐵約 4 g、端蓋＋電刷約 2 g、軸 0.6 g、餘量 1.9 g → 取 5 g（矽鋼片＋漆包線＋整流子）；視為均質實心圓柱 I = ½·m·r² ≈ 98 g·mm²（0.98 g·cm²，與同級小型碳刷馬達常見的 0.5–1.5 g·cm² 同量級）';
+
 /** @type {import('./types').PartBase[]} */
 export const motorParts = [
   {
@@ -17,8 +27,10 @@ export const motorParts = [
     coastMotorDrag: true,
     frictionCoulombFraction: 0.5,
     mass_g: 17.5,
+    armature: ARMATURE_130,
     body_mm: { diameter: 20.1, flat: 15.1, length: 25.0, shaftDiameter: 2.0 },
     src: {
+      armature: ARMATURE_130_SRC,
       noLoadRpm_atRated: 'SPEC 1.4：Pololu #77 / Mabuchi 規格表，無載 12,300 rpm @3 V',
       stallTorque_atRated_Nm: 'SPEC 1.4：堵轉 3.53 mN·m（36 g·cm）',
       stallCurrent_atRated_A: 'SPEC 1.4：堵轉 2.10 A',
@@ -43,8 +55,10 @@ export const motorParts = [
     coastMotorDrag: true,
     frictionCoulombFraction: 0.5,
     mass_g: 17.5,
+    armature: ARMATURE_130,
     body_mm: { diameter: 20.1, flat: 15.1, length: 25.0, shaftDiameter: 2.0 },
     src: {
+      armature: ARMATURE_130_SRC,
       grade: 'Light-Dash PRO（15402）等級：官方建議負載下 2.4–3.0 V、1.3–1.9 mN·m、14,600–17,800 rpm、1.5–2.2 A（https://tamiya.com/japan/products/15402/index.html）',
       noLoadRpm_atRated: '推估（PARTS_RESEARCH 第 2 節）：以官方扭力與電流兩端點解線性模型，範圍兩端對應 2.4 / 3.0 V → ω0 ≈ 27,500 rpm @3 V；I0 取 0.15–0.35 A 時 ω0 在 26,300–30,000 rpm',
       stallTorque_atRated_Nm: '推估（PARTS_RESEARCH 第 2 節）：τ_stall ≈ 5.3 mN·m @3 V',
@@ -68,8 +82,10 @@ export const motorParts = [
     coastMotorDrag: true,
     frictionCoulombFraction: 0.5,
     mass_g: 17.5,
+    armature: ARMATURE_130,
     body_mm: { diameter: 20.1, flat: 15.1, length: 25.0, shaftDiameter: 2.0 },
     src: {
+      armature: ARMATURE_130_SRC,
       grade: 'Torque-Tuned 2 PRO（15487）等級：官方建議負載下 2.4–3.0 V、1.7–2.1 mN·m、12,200–14,400 rpm、1.7–2.0 A（https://tamiya.com/japan/products/15487/index.html ，SPEC 1.4）',
       noLoadRpm_atRated: '推估（PARTS_RESEARCH 第三階段 M 節）：同 motor-high-rev 方法，2.4 / 3.0 V 兩端 4 條方程最小平方解 k = 1.186×10⁻³、R = 0.561 Ω（I0 = 0.25 A）→ ω0 ≈ 23,000 rpm @3 V；回代誤差 ≤ 4.4%',
       stallTorque_atRated_Nm: '推估：τ_stall = k·(V/R − I0) ≈ 6.05 mN·m @3 V',
@@ -86,21 +102,79 @@ export const motorParts = [
     sizeClass: '130',
     shaft: 'dual',
     ratedVoltage_V: 3.0,
-    noLoadRpm_atRated: 49700,
-    stallTorque_atRated_Nm: 0.00345,
-    stallCurrent_atRated_A: 6.48,
+    noLoadRpm_atRated: 31000,
+    stallTorque_atRated_Nm: 0.00802,
+    stallCurrent_atRated_A: 9.17,
     noLoadCurrent_A: 0.25,
     coastMotorDrag: true,
     frictionCoulombFraction: 0.5,
     mass_g: 17.5,
+    armature: ARMATURE_130,
     body_mm: { diameter: 20.1, flat: 15.1, length: 25.0, shaftDiameter: 2.0 },
     src: {
+      armature: ARMATURE_130_SRC,
       grade: 'Mach-Dash PRO（15433）等級：官方建議負載下 2.4–3.0 V、1.3–1.8 mN·m、20,000–24,500 rpm、2.6–3.5 A（https://tamiya.com/japan/products/15433/index.html ，SPEC 1.4）',
-      noLoadRpm_atRated: '推估（PARTS_RESEARCH 第三階段 M 節）：同方法解 k = 0.554×10⁻³、R = 0.463 Ω（I0 = 0.25 A）→ ω0 ≈ 49,700 rpm @3 V；回代誤差 ≤ 3.2%',
-      stallTorque_atRated_Nm: '推估：τ_stall ≈ 3.45 mN·m @3 V',
-      stallCurrent_atRated_A: '推估：I_stall ≈ 6.48 A',
-      noLoadCurrent_A: '推估：0.25 A（I0 ±0.1 A 時 ω0 約 ±5%）',
-      mass_g: '推估：同一 130 尺寸外殼，與 motor-standard 相同',
+      noLoadRpm_atRated:
+        '第四階段修正（iter-54）：第三階段 M 節只用官方兩端點解出 ω0 ≈ 49,700 rpm，但玩家實測 3.0 V 穩壓無載 30,442 → 31,492 rpm（PARTS_RESEARCH [TOYZ2]）、另兩顆 28,900／30,000 rpm（[AMEBA]），模型高估約 60%（PARTS_RESEARCH 第四階段 O 節、X-2）。' +
+        '改以實測 ω0 = 31,000 rpm @3 V 為約束（[TOYZ2] 磨合前後平均），再對官方兩端點（2.4 V／3.0 V）做相對誤差最小平方解 R（k = (V − I0·R)/ω0）→ R = 0.327 Ω、k = 0.899×10⁻³ N·m/A；回代轉速誤差 −2.0%／−1.9%，電流誤差 −35%（官方電流與實測轉速在 k_t = k_e 的線性模型下互相矛盾，取轉速＝實測可交叉驗證的那一邊；Hyper-Dash PRO 同樣有官方電流不一致的現象，見 O 節）',
+      stallTorque_atRated_Nm: '推估（iter-54 重解）：τ_stall = k·(V/R − I0) ≈ 8.02 mN·m @3 V（舊值 3.45 mN·m 是 49,700 rpm 那組解）',
+      stallCurrent_atRated_A: '推估（iter-54 重解）：I_stall = V/R ≈ 9.17 A',
+      noLoadCurrent_A: '推估：0.25 A（同其他 PRO 馬達）',
+      mass_g: '推估：同一 130 尺寸外殼；[TEA] Mach-Dash PRO 17.8 g（部落格整理，未寫是否含小齒輪），與 17.5 g 一致',
+      body_mm: '同 motor-standard（130 尺寸外殼）',
+    },
+  },
+  {
+    id: 'motor-atomic',
+    category: 'motor',
+    name: '原子型雙軸馬達（130 尺寸，PRO 原子等級）',
+    sizeClass: '130',
+    shaft: 'dual',
+    ratedVoltage_V: 3.0,
+    noLoadRpm_atRated: 21500,
+    stallTorque_atRated_Nm: 0.00637,
+    stallCurrent_atRated_A: 5.27,
+    noLoadCurrent_A: 0.25,
+    coastMotorDrag: true,
+    frictionCoulombFraction: 0.5,
+    mass_g: 17.5,
+    armature: ARMATURE_130,
+    body_mm: { diameter: 20.1, flat: 15.1, length: 25.0, shaftDiameter: 2.0 },
+    src: {
+      armature: ARMATURE_130_SRC,
+      grade: 'Atomic-Tuned 2 PRO（15489）等級：官方建議負載下 2.4–3.0 V、1.6–1.8 mN·m、12,300–14,500 rpm、1.5–1.7 A（https://tamiya.com/japan/products/15489/index.html ，PARTS_RESEARCH [T15489]）',
+      noLoadRpm_atRated: '推估（PARTS_RESEARCH 第四階段 O 節）：兩端點 4 條方程相對誤差最小平方解 k = 1.270×10⁻³、R = 0.570 Ω（I0 = 0.25 A）→ ω0 ≈ 21,500 rpm @3 V；回代誤差 ≤ 6.3%（官方轉速範圍與 Torque-Tuned 2 PRO 幾乎相同，所以無載轉速略低於扭力型，這是官方數據的結果）',
+      stallTorque_atRated_Nm: '推估（O 節）：τ_stall ≈ 6.37 mN·m @3 V',
+      stallCurrent_atRated_A: '推估（O 節）：I_stall = V/R ≈ 5.27 A',
+      noLoadCurrent_A: '推估：0.25 A（I0 0.15／0.35 A 時 ω0 23,450／19,700 rpm）',
+      mass_g: '推估：同一 130 尺寸外殼（[TEA] PRO 馬達 17.8 g）',
+      body_mm: '同 motor-standard（130 尺寸外殼）',
+    },
+  },
+  {
+    id: 'motor-hyper',
+    category: 'motor',
+    name: '高衝刺型雙軸馬達（130 尺寸，PRO 高衝刺等級）',
+    sizeClass: '130',
+    shaft: 'dual',
+    ratedVoltage_V: 3.0,
+    noLoadRpm_atRated: 31200,
+    stallTorque_atRated_Nm: 0.00587,
+    stallCurrent_atRated_A: 6.89,
+    noLoadCurrent_A: 0.25,
+    coastMotorDrag: true,
+    frictionCoulombFraction: 0.5,
+    mass_g: 17.5,
+    armature: ARMATURE_130,
+    body_mm: { diameter: 20.1, flat: 15.1, length: 25.0, shaftDiameter: 2.0 },
+    src: {
+      armature: ARMATURE_130_SRC,
+      grade: 'Hyper-Dash PRO（15375）等級：官方建議負載下 2.4–3.0 V、1.4–1.9 mN·m、17,200–21,200 rpm、1.6–3.0 A（https://tamiya.com/japan/products/15375/index.html ，PARTS_RESEARCH [T15375]）',
+      noLoadRpm_atRated: '推估（PARTS_RESEARCH 第四階段 O 節）：最小平方解 k = 0.885×10⁻³、R = 0.436 Ω（I0 = 0.25 A）→ ω0 ≈ 31,200 rpm @3 V；轉速回代 ±0.5%、電流 ±20%；與玩家實測無載 24,306–30,604 rpm（[TOYZ2]、[ENGI1]、[ENGI2]、[AMEBA]）差 ≤ 15%',
+      stallTorque_atRated_Nm: '推估（O 節）：τ_stall ≈ 5.87 mN·m @3 V；玩家實測停動扭力 5.56–6.08 mN·m（[ENGI2]）',
+      stallCurrent_atRated_A: '推估（O 節）：I_stall ≈ 6.89 A（電流回代誤差 ±20%）',
+      noLoadCurrent_A: '推估：0.25 A',
+      mass_g: '推估：同一 130 尺寸外殼；[TEA] Hyper-Dash PRO 17.8 g',
       body_mm: '同 motor-standard（130 尺寸外殼）',
     },
   },
@@ -118,8 +192,10 @@ export const motorParts = [
     coastMotorDrag: true,
     frictionCoulombFraction: 0.5,
     mass_g: 17.5,
+    armature: ARMATURE_130,
     body_mm: { diameter: 20.1, flat: 15.1, length: 25.0, shaftDiameter: 2.0 },
     src: {
+      armature: ARMATURE_130_SRC,
       noLoadRpm_atRated: '同 motor-standard（FA-130RA-18100，SPEC 1.4）',
       shaft: 'SPEC 1.1 [REG] Sec.4：ME/MA/MS（PRO）底盤只能用普通馬達或 PRO 專用（雙軸）馬達 → 單軸馬達不相容（MOTOR_CLASS）',
       mass_g: '同 motor-standard（推估）',

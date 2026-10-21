@@ -29,7 +29,7 @@ export type Solid =
 
 /** 組裝後一個零件實例的實體（干涉檢查的對象） */
 export interface PlacedSolid {
-  /** 干涉群組：tire、roller、stay、damper、sponge、ballast */
+  /** 干涉群組：tire、roller、stay、damper、sponge、ballast、stabilizer（第四階段） */
   group: string;
   slot: string;
   label: string;
@@ -54,6 +54,7 @@ export type PartCategory =
   | 'mass-damper'
   | 'brake-sponge'
   | 'ballast'
+  | 'stabilizer'
   | 'body';
 
 /** 組裝設定的 slot 值：零件 id，或以某零件為底、覆寫部分欄位 */
@@ -73,4 +74,17 @@ export interface PlacedPart {
   label: string;
   mass_g: number;
   pos: Vec3;
+}
+
+/** 傳動系轉動慣量（parts/inertia.js drivetrainInertia；第四階段） */
+export interface SpinInertia {
+  /** 單件繞自身軸的慣量（g·mm²）：輪子（胎＋框）、輪軸、輪軸齒輪、中間齒輪、小齒輪、電樞 */
+  perItem_gmm2: { wheel: number; axle: number; spur: number; counter: number; pinion: number; armature: number };
+  /** 各項換算到輪軸後（×轉速比²、×件數）的值（g·mm²） */
+  reflected_gmm2: { wheels: number; axles: number; spurGears: number; counterGears: number; motor: number };
+  total_gmm2: number;
+  /** J_eq（kg·m²） */
+  total_kgm2: number;
+  /** J_eq / r²（g）：縱向運動多出來的等效質量 */
+  equivalentMass_g: number;
 }

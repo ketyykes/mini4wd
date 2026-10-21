@@ -4,20 +4,21 @@ import { allParts } from '../src/parts/index.js';
 import { listBodies, bodyMassProps } from '../src/bodies/index.js';
 import { assemble, loadConfig, listConfigs } from '../src/assembly.js';
 import { validateAssembly } from '../src/regulation.js';
+import { wheelInertia, axleInertia, armatureInertia } from '../src/parts/inertia.js';
 
 /** @type {(p: any) => string} 每類零件的關鍵規格摘要 */
 const keySpec = (p) => {
   switch (p.category) {
     case 'motor':
-      return `${p.sizeClass} 尺寸 ${p.shaft === 'dual' ? '雙軸' : '單軸'}；${p.noLoadRpm_atRated} rpm / ${(p.stallTorque_atRated_Nm * 1000).toFixed(2)} mN·m / I0 ${p.noLoadCurrent_A} A / I_stall ${p.stallCurrent_atRated_A} A @${p.ratedVoltage_V} V`;
+      return `${p.sizeClass} 尺寸 ${p.shaft === 'dual' ? '雙軸' : '單軸'}；${p.noLoadRpm_atRated} rpm / ${(p.stallTorque_atRated_Nm * 1000).toFixed(2)} mN·m / I0 ${p.noLoadCurrent_A} A / I_stall ${p.stallCurrent_atRated_A} A @${p.ratedVoltage_V} V；電樞 I ${armatureInertia(p).toFixed(0)} g·mm²`;
     case 'gear':
       return `${p.ratio}:1，η ${p.efficiency}`;
     case 'wheel':
-      return `直徑 ${p.diameter_mm}、寬 ${p.width_mm}、輪框 ${p.rimDiameter_mm} mm；μ ${p.frictionCoeff}、C_rr ${p.rollingResistanceCoeff}`;
+      return `直徑 ${p.diameter_mm}、寬 ${p.width_mm}、輪框 ${p.rimDiameter_mm} mm${p.rimWebCutout ? `（腹板鏤空 ${p.rimWebCutout * 100}%）` : ''}；μ ${p.frictionCoeff}、C_rr ${p.rollingResistanceCoeff}；I ${wheelInertia(p).total.toFixed(1)} g·mm²`;
     case 'bearing':
       return `${p.kind === 'ball' ? '滾珠培林' : '塑膠軸承'} ${p.outerDiameter_mm}×${p.innerDiameter_mm}×${p.width_mm} mm；μ ${p.frictionCoeff}`;
     case 'roller':
-      return `直徑 ${p.diameter_mm}、高 ${p.height_mm} mm（${p.finish === 'aluminum' ? '鋁合金' : '塑膠'}）`;
+      return `直徑 ${p.diameter_mm}、高 ${p.height_mm} mm（${p.finish === 'aluminum' ? '鋁合金' : '塑膠'}）${p.taper ? `；錐形 圓柱 ${p.taper.cylinderHeight_mm}＋錐 ${p.taper.coneHeight_mm} mm → φ${p.taper.bottomDiameter_mm}` : ''}`;
     case 'stay-front':
       return `${p.material ?? '塑膠'}；導輪軸 x ${p.rollerX_mm}、z ±${p.rollerZ_mm}、高 ${p.rollerY_mm} mm`;
     case 'stay-rear':
@@ -29,11 +30,15 @@ const keySpec = (p) => {
     case 'ballast':
       return `${p.material} ${p.length_mm}×${p.width_mm}×${p.thickness_mm} mm，安裝點 ${(p.mountPoints ?? []).join(' / ')}`;
     case 'battery':
-      return `${p.cells} × ${p.size} ${p.chemistry}，${p.capacity_mAh} mAh，內阻 ${p.cellInternalResistance_ohm * 1000} mΩ/顆`;
+      return `${p.cells} × ${p.size} ${p.chemistry}，${p.capacity_mAh} mAh，內阻 ${p.cellInternalResistance_ohm * 1000} mΩ/顆${p.cellResistanceCurve ? '（隨放電上升）' : ''}，滿電開路 ${p.cellOcvCurve[p.cellOcvCurve.length - 1][1]} V/顆`;
     case 'chassis':
       return `軸距 ${p.wheelbase_mm}、輪距 ${p.trackWidth_mm}、離地 ${p.groundClearanceRef_mm} mm（${p.refWheelDiameter_mm} mm 輪）、${p.driveType}`;
     case 'axle':
-      return `${p.diameter_mm} mm 六角 × ${p.length_mm} mm`;
+      return `${p.diameter_mm} mm 六角 × ${p.length_mm} mm${p.boreDiameter_mm ? `，中孔 φ${p.boreDiameter_mm.toFixed(2)}` : ''}；I ${axleInertia(p).toFixed(2)} g·mm²`;
+    case 'switch':
+      return `${p.terminal === 'gold' ? '鍍金' : '銅'}端子 × ${p.terminalLayers} 層；迴路電阻 ${(p.circuitResistance_ohm * 1000).toFixed(1)} mΩ`;
+    case 'stabilizer':
+      return `${p.material} φ${p.diameter_mm} × ${p.height_mm} mm，前導輪上方（墊片 ${p.spacer_mm} mm），μ ${p.wallFriction}${p.requiresRollerDiameter_mm ? `，限 ${p.requiresRollerDiameter_mm} mm 導輪` : ''}`;
     default:
       return '—';
   }
@@ -48,7 +53,7 @@ lines.push('');
 lines.push('| 類別 | id | 名稱 | 關鍵規格 | 質量 g | 質量來源 / 推估 |');
 lines.push('| --- | --- | --- | --- | --- | --- |');
 for (const p of allParts) {
-  lines.push(`| ${p.category} | \`${p.id}\` | ${p.name} | ${keySpec(p)} | ${p.mass_g} | ${massSrc(p)} |`);
+  lines.push(`| ${p.category} | \`${p.id}\` | ${p.name} | ${keySpec(p)} | ${Number(p.mass_g.toFixed(3))} | ${massSrc(p)} |`);
 }
 lines.push('');
 lines.push('### 車殼');

@@ -70,6 +70,9 @@ const CODE_SLOTS = {
   MOTOR_CLASS: ['motor', 'chassis'],
   BATTERY: ['battery'],
   DRIVE_4WD: ['chassis'],
+  TERMINAL_MOD: ['switch'],
+  STABILIZER_ROLLER_SIZE: ['stabilizer', 'rollers'],
+  ROLLER_TAPER_MOUNT: ['rollers', 'frontStay', 'rearStay'],
 };
 
 /** @type {Record<string, string[]>} 干涉代碼（X_Y_CLEARANCE）的零件群組 → slot */
@@ -81,6 +84,7 @@ const GROUP_SLOTS = {
   SPONGE: ['brakeSponge'],
   BALLAST: ['ballast'],
   BODY: ['body'],
+  STABILIZER: ['stabilizer'],
 };
 
 /** @type {(code: string) => string[]} 違規代碼相關的 slot（干涉代碼依群組名稱推得） */
@@ -146,6 +150,9 @@ const keySpec = (part) => {
   if (part.category === 'battery' && isNum(p.capacity_mAh)) {
     return `${p.capacity_mAh} mAh`;
   }
+  if (part.category === 'switch' && isNum(p.circuitResistance_ohm)) {
+    return `迴路 ${(p.circuitResistance_ohm * 1000).toFixed(1)} mΩ`;
+  }
   return '';
 };
 
@@ -183,7 +190,7 @@ const SLOT_KEYS = [...Object.keys(SLOTS), 'body'];
  * @property {boolean} warmed 所有車殼的幾何已預先計算（之後換車殼不會卡頓）
  * @property {string} preset 目前的預設組裝設定名稱
  * @property {AssemblyConfig} config 目前組裝設定（body 為 null 表示不裝車殼）
- * @property {{ mass_g: number, com_mm: { x: number, y: number, z: number }, bbox: { x: number, y: number, z: number }, groundClearance_mm: number, topSpeed_ms: number, bodyMass_g: number } | null} asm 組裝摘要
+ * @property {{ mass_g: number, com_mm: { x: number, y: number, z: number }, bbox: { x: number, y: number, z: number }, groundClearance_mm: number, topSpeed_ms: number, bodyMass_g: number, spinInertia_gmm2: number, circuitResistance_ohm: number } | null} asm 組裝摘要
  * @property {{ ok: boolean, codes: string[], messages: string[] }} validation 規則檢查
  * @property {boolean} raceEnabled 「上賽道」按鈕可按
  * @property {boolean} running 正在賽道上模擬
@@ -515,6 +522,9 @@ const renderStats = (asm, codes, topSpeed) => {
     ['車殼與導輪間隙', clearanceText(asm.fit, 'roller_mm'), '須 ≥ 1 mm', codes.has('BODY_ROLLER_CLEARANCE')],
     ['齒輪比', `${asm.gearRatio}:1`, '', codes.has('GEAR_RATIO')],
     ['理論極速', `${fx(topSpeed, 2)} m/s（${fx(topSpeed * 3.6)} km/h）`, '滿電、平直路面的力平衡解', false, 'em'],
+    // 第四階段：傳動系轉動慣量（換算到輪軸）與迴路電阻，都由零件資料推導（與模擬同一份 asm.P）
+    ['傳動系轉動慣量', `${fx(asm.spec.spin.total_gmm2, 0)} g·mm²（等效 +${fx(asm.spec.spin.equivalentMass_g, 2)} g）`, '輪子＋輪軸＋齒輪＋馬達電樞 × 齒輪比²', false],
+    ['迴路電阻', `${fx(asm.P.circuitResistance * 1000)} mΩ（電池內阻 ${fx(asm.P.batteryResistance * 1000)} mΩ）`, '端子本體＋接點，串聯在馬達迴路', false],
   ];
   statsEl.replaceChildren();
   for (const [name, value, limit, bad, cls] of rows) {
@@ -624,6 +634,8 @@ const update = () => {
       groundClearance_mm: asm.groundClearance_mm,
       topSpeed_ms: top,
       bodyMass_g: asm.body ? asm.body.mass_g : 0,
+      spinInertia_gmm2: asm.spec.spin.total_gmm2,
+      circuitResistance_ohm: asm.P.circuitResistance,
     };
     garage.validation = {
       ok: validation.ok,

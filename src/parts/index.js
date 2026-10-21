@@ -9,6 +9,7 @@ import { stayParts } from './stays.js';
 import { batteryParts } from './batteries.js';
 import { miscParts } from './misc.js';
 import { massDamperParts, brakeSpongeParts, ballastParts } from './options.js';
+import { stabilizerParts } from './stabilizers.js';
 
 /** @typedef {import('./types').PartBase} PartBase */
 /** @typedef {import('./types').SlotValue} SlotValue */
@@ -27,6 +28,7 @@ export const allParts = [
   ...massDamperParts,
   ...brakeSpongeParts,
   ...ballastParts,
+  ...stabilizerParts,
 ];
 
 /** @type {Map<string, PartBase>} */

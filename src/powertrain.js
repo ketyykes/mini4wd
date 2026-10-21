@@ -53,25 +53,49 @@ export function motorFrictionTorque(P, omegaMotor) {
 }
 
 /**
- * 在給定開路電壓與馬達轉速下，求電流、端電壓與馬達輸出扭力
- * 電路：Voc − I·(Rb + Rm) − Ke·ω = 0；輸出扭力 τ = Kt·I − τ_f(ω)
- * @type {(P: any, voc: number, omegaMotor: number) => { current: number, torque: number, terminalVoltage: number }}
+ * 電池組內阻（Ω，2 顆串聯）：電池零件有 cellResistanceCurve（內阻隨 SOC 變化，例如鹼性電池放電後內阻上升）時依 SOC 內插，否則為定值
+ * @type {(P: any, soc: number) => number}
  */
-export function motorOperatingPoint(P, voc, omegaMotor) {
-  const rTotal = P.batteryResistance + P.motorResistance;
+export function batteryResistanceAt(P, soc) {
+  const curve = P.cellResistanceCurve;
+  if (!curve) {
+    return P.batteryResistance;
+  }
+  const x = Math.min(1, Math.max(0, soc));
+  for (let i = 1; i < curve.length; i++) {
+    const [s1, r1] = curve[i];
+    const [s0, r0] = curve[i - 1];
+    if (x <= s1) {
+      return P.cells * (r0 + ((x - s0) / (s1 - s0)) * (r1 - r0));
+    }
+  }
+  return P.cells * curve[curve.length - 1][1];
+}
+
+/**
+ * 在給定開路電壓與馬達轉速下，求電流、端電壓與馬達輸出扭力
+ * 電路（第四階段加入迴路電阻 Rc：電池端子、開關、馬達端子的本體＋接點電阻，見 switch 零件）：
+ *   Voc − I·(Rb + Rc + Rm) − Ke·ω = 0；輸出扭力 τ = Kt·I − τ_f(ω)
+ * terminalVoltage = 電池端電壓 Voc − I·Rb；motorVoltage = 馬達端子電壓 Voc − I·(Rb + Rc)
+ * @type {(P: any, voc: number, omegaMotor: number, rb?: number) => { current: number, torque: number, terminalVoltage: number, motorVoltage: number }}
+ */
+export function motorOperatingPoint(P, voc, omegaMotor, rb = P.batteryResistance) {
+  const rc = P.circuitResistance ?? 0;
+  const rTotal = rb + rc + P.motorResistance;
   const current = (voc - P.ke * omegaMotor) / rTotal;
   const torque = P.kt * current - motorFrictionTorque(P, omegaMotor);
-  const terminalVoltage = voc - current * P.batteryResistance;
-  return { current, torque, terminalVoltage };
+  const terminalVoltage = voc - current * rb;
+  const motorVoltage = voc - current * (rb + rc);
+  return { current, torque, terminalVoltage, motorVoltage };
 }
 
 /**
  * 等效線性馬達參數（含電池內阻與 I0 摩擦）：τ_out = τ_stall · (1 − ω/ω0)
  * τ_out(ω) = Kt·(V − Ke·ω)/R − Kt·I0·[c + (1−c)·ω/ω0r] 對 ω 為線性，故仍是 SPEC P01 的線性馬達模型
- * @type {(P: any, voc: number) => { omega0: number, tauStall: number }}
+ * @type {(P: any, voc: number, rb?: number) => { omega0: number, tauStall: number }}
  */
-export function linearMotorParams(P, voc) {
-  const rTotal = P.batteryResistance + P.motorResistance;
+export function linearMotorParams(P, voc, rb = P.batteryResistance) {
+  const rTotal = rb + (P.circuitResistance ?? 0) + P.motorResistance;
   const c = P.motorFrictionCoulombFraction;
   const tauStall = (P.kt * voc) / rTotal - P.motorFrictionTorque * c;
   const slope = (P.kt * P.ke) / rTotal + (P.motorFrictionTorque * (1 - c)) / P.omega0Rated;
@@ -124,7 +148,8 @@ export function driveEfficiency(P) {
 /**
  * 計算某速度下的縱向力（全部 4 輪合計，N），正值為推進
  * 不含空氣阻力（空氣阻力由物理模擬直接施加在車體上）
- * @type {(P: any, opt: { speed: number, powered: boolean, battery: Battery }) => { drive: number, resist: number, current: number, terminalVoltage: number }}
+ * speed：輪胎接地面的線速度（第四階段起 = 傳動系轉速 ω_w × r，見 sim.js stepCar；純滾動時等於車速）
+ * @type {(P: any, opt: { speed: number, powered: boolean, battery: Battery }) => { drive: number, resist: number, current: number, terminalVoltage: number, motorVoltage: number }}
  */
 export function longitudinalForce(P, { speed, powered, battery }) {
   const r = P.wheelRadius;
@@ -133,16 +158,18 @@ export function longitudinalForce(P, { speed, powered, battery }) {
   let drive = 0;
   let current = 0;
   let terminalVoltage = battery.ocv();
+  let motorVoltage = 0;
   let resist = P.crr * P.massTotal * P.gravity + axleFrictionForce(P);
   if (powered) {
-    const op = motorOperatingPoint(P, battery.ocv(), omegaMotor);
+    const op = motorOperatingPoint(P, battery.ocv(), omegaMotor, batteryResistanceAt(P, battery.soc));
     current = op.current;
     terminalVoltage = op.terminalVoltage;
+    motorVoltage = op.motorVoltage;
     drive = (op.torque * gearRatio * driveEfficiency(P)) / r;
   } else {
     resist += motorCoastDragForce(P, speed);
   }
-  return { drive, resist, current, terminalVoltage };
+  return { drive, resist, current, terminalVoltage, motorVoltage };
 }
 
 /**
@@ -155,7 +182,7 @@ export function theoreticalTopSpeed({ assembly, soc = 1, voc }) {
   const vocUsed = voc ?? new Battery(P, soc).ocv();
   const gearRatio = P.gearRatio;
   const r = P.wheelRadius;
-  const { omega0, tauStall } = linearMotorParams(P, vocUsed);
+  const { omega0, tauStall } = linearMotorParams(P, vocUsed, batteryResistanceAt(P, soc));
   const v0 = (omega0 / gearRatio) * r;
   const eta = driveEfficiency(P);
   const netForce = (v) => {

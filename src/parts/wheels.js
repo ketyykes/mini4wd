@@ -1,4 +1,11 @@
 // 輪胎＋輪框（單顆）
+// 第四階段：rimBaseMass_g = 輪框（未鏤空）質量，rimWebCutout = 輪框腹板鏤空比例；輪胎質量 = mass_g − 輪框質量。
+// 轉動慣量由 parts/inertia.js wheelInertia 從這些幾何與質量推導（輪胎厚壁圓環＋輪框外圈 / 腹板 / 轂）
+// tread：胎面種類（外觀用：rubber 橡膠、sponge 海綿、barrel 拱形）；rimStyle：輪框外觀（standard / lightweight 鏤空）
+import { rimMass } from './inertia.js';
+
+/** @type {string} 輪框分段（轉動慣量）的共同依據 */
+const RIM_SRC = 'PARTS_RESEARCH 第四階段 R 節（推估）：輪框拆成外圈 52.1%／腹板 30.9%／轂 17.0%，各段以厚壁圓環計轉動慣量';
 
 /** @type {import('./types').PartBase[]} */
 export const wheelParts = [
@@ -12,8 +19,12 @@ export const wheelParts = [
     frictionCoeff: 0.7,
     rollingResistanceCoeff: 0.02,
     slipAngleSaturation_rad: 0.1,
+    tread: 'rubber',
+    rimStyle: 'standard',
+    rimBaseMass_g: 1.1,
     mass_g: 3.0,
     src: {
+      rimBaseMass_g: `PARTS_RESEARCH [NAO] 玩家實測輪框 1.1 g；${RIM_SRC}`,
       diameter_mm: 'SPEC 1.7：Tamiya 15542 小徑 low profile 26 mm',
       width_mm: 'SPEC 1.7：約 9 mm（推估）',
       rimDiameter_mm: 'PARTS_RESEARCH 推估：31 mm 胎配 24.8 mm 輪框（胎厚約 3.1 mm），套到 26 mm → 約 19.8 mm',
@@ -33,6 +44,9 @@ export const wheelParts = [
     frictionCoeff: 0.7,
     rollingResistanceCoeff: 0.02,
     slipAngleSaturation_rad: 0.1,
+    tread: 'rubber',
+    rimStyle: 'standard',
+    rimBaseMass_g: 1.3,
     mass_g: 4.0,
     src: {
       diameter_mm: 'SPEC 1.7：Tamiya 15544 大徑 31 mm',
@@ -41,6 +55,7 @@ export const wheelParts = [
       frictionCoeff: '同 wheel-26（推估）',
       rollingResistanceCoeff: '同 wheel-26（推估）',
       mass_g: 'PARTS_RESEARCH [ROU] 玩家實測：輪框 1.3 g＋胎 2.7 g = 4.0 g/顆',
+      rimBaseMass_g: `PARTS_RESEARCH [ROU] 玩家實測輪框 1.3 g；${RIM_SRC}`,
     },
   },
   {
@@ -53,6 +68,9 @@ export const wheelParts = [
     frictionCoeff: 0.4,
     rollingResistanceCoeff: 0.02,
     slipAngleSaturation_rad: 0.1,
+    tread: 'rubber',
+    rimStyle: 'standard',
+    rimBaseMass_g: 0.9,
     mass_g: 2.5,
     src: {
       diameter_mm: 'PARTS_RESEARCH 第三階段 C 節 [T15541] 官方：低摩擦小徑窄胎 24 mm（硬胎）',
@@ -61,6 +79,7 @@ export const wheelParts = [
       frictionCoeff: 'SPEC 1.7：低摩擦 / 硬胎 μ = 0.4（推估；[T15541] 官方說明為低摩擦硬胎）',
       rollingResistanceCoeff: '同 wheel-26（推估）',
       mass_g: 'PARTS_RESEARCH 第三階段 C 節：推估 2.5 g（[NAO] 26 mm 超硬胎 1.9 g × 體積比 0.84 ＋ 小徑輪框 0.9 g）',
+      rimBaseMass_g: `PARTS_RESEARCH [NAO] 小徑輪框 0.9 g；${RIM_SRC}`,
     },
   },
   {
@@ -73,13 +92,118 @@ export const wheelParts = [
     frictionCoeff: 0.4,
     rollingResistanceCoeff: 0.02,
     slipAngleSaturation_rad: 0.1,
+    tread: 'rubber',
+    rimStyle: 'standard',
+    rimBaseMass_g: 1.1,
     mass_g: 3.0,
     src: {
+      rimBaseMass_g: `同 wheel-26-lowprofile；${RIM_SRC}`,
       diameter_mm: 'PARTS_RESEARCH 第三階段 C 節 [T15534] 官方：低摩擦 26 mm「スーパーハードタイヤよりもさらにグリップを落とした」',
       width_mm: '同 wheel-26-lowprofile（推估 9 mm）',
       frictionCoeff: 'SPEC 1.7：低摩擦 / 硬胎 μ = 0.4（推估）',
       rollingResistanceCoeff: '推估：同 wheel-26（硬胎變形較小，滾阻可能略低，保守取相同值）',
       mass_g: 'PARTS_RESEARCH 第三階段 C 節：推估與超硬胎同（[NAO] 玩家實測 3.0 g/顆，同模具尺寸）',
+    },
+  },
+  // ---- 第四階段（iter-54）新增：海綿胎、超硬胎、拱形低摩擦胎、輕量鏤空輪框 ----
+  {
+    id: 'wheel-24-sponge',
+    category: 'wheel',
+    name: '小徑窄海綿胎＋小徑輪框（24 mm）',
+    diameter_mm: 24.0,
+    width_mm: 8.5,
+    rimDiameter_mm: 18.0,
+    frictionCoeff: 1.0,
+    rollingResistanceCoeff: 0.04,
+    slipAngleSaturation_rad: 0.1,
+    tread: 'sponge',
+    rimStyle: 'standard',
+    rimBaseMass_g: 0.9,
+    // 海綿胎質量 = π/4·(24² − 18²)·8.5 mm³ × 0.25 g/cm³ ≈ 0.42 g，加小徑輪框 0.9 g
+    mass_g: 0.9 + ((Math.PI / 4) * (24 * 24 - 18 * 18) * 8.5 * 0.25) / 1000,
+    src: {
+      grade: 'PARTS_RESEARCH 第四階段 Q 節 [T15388] 官方：ナローレストンスポンジタイヤ（窄レストン海綿胎，配小徑輪框，雙面膠黏貼，可用於 MS／MA）',
+      diameter_mm: '推估（Q 節）：官方未寫外徑；小徑胎類別 22–24 mm、規則下限 22 mm，取 24',
+      width_mm: '推估（Q 節）：「ナロー」窄胎 8.5 mm',
+      rimDiameter_mm: '推估：小徑輪框外徑約 18 mm（同 wheel-24-narrow）',
+      frictionCoeff: '推估（Q 節）：軟質發泡材料 COF 高（[GALL]），取比標準橡膠胎 0.7 高的 1.0',
+      rollingResistanceCoeff: '推估（Q 節）：[MASTERS] 定性「転がり抵抗が非常に大きい」，取橡膠胎 0.02 的 2 倍',
+      mass_g: '推估（Q 節）：胎體積 1,682 mm³ × 密度 0.25 g/cm³（細孔海綿，範圍 0.15–0.40）= 0.42 g ＋ 小徑輪框 0.9 g（[NAO]）',
+      rimBaseMass_g: `PARTS_RESEARCH [NAO] 小徑輪框 0.9 g；${RIM_SRC}`,
+    },
+  },
+  {
+    id: 'wheel-26-superhard',
+    category: 'wheel',
+    name: '小徑 low profile 超硬胎＋輪框（26 mm）',
+    diameter_mm: 26.0,
+    width_mm: 9.0,
+    rimDiameter_mm: 19.8,
+    frictionCoeff: 0.5,
+    rollingResistanceCoeff: 0.02,
+    slipAngleSaturation_rad: 0.1,
+    tread: 'hard',
+    rimStyle: 'standard',
+    rimBaseMass_g: 1.1,
+    mass_g: 3.0,
+    src: {
+      grade: 'PARTS_RESEARCH 第四階段 Q 節 [T15542] 官方：スーパーハード「キット標準タイプに比べて硬く、ローグリップ」',
+      diameter_mm: '同 wheel-26-lowprofile（SPEC 1.7）',
+      frictionCoeff: '推估（第三階段 C 節）：μ = 0.5（介於標準 0.7 與低摩擦 0.4 之間）',
+      rollingResistanceCoeff: '推估：同 wheel-26（0.02）',
+      mass_g: 'PARTS_RESEARCH [NAO] 玩家實測「中径ホイール+スーパーハードタイヤで12g」→ 3.0 g/顆',
+      rimBaseMass_g: `同 wheel-26-lowprofile；${RIM_SRC}`,
+    },
+  },
+  {
+    id: 'wheel-31-arched',
+    category: 'wheel',
+    name: '大徑低摩擦拱形（バレル）胎＋碳強化輪框（31 mm）',
+    diameter_mm: 31.0,
+    width_mm: 10.0,
+    contactWidth_mm: 3.0,
+    crownRadius_mm: 6.0,
+    rimDiameter_mm: 24.8,
+    frictionCoeff: 0.4,
+    rollingResistanceCoeff: 0.015,
+    slipAngleSaturation_rad: 0.1,
+    tread: 'barrel',
+    rimStyle: 'standard',
+    rimBaseMass_g: 1.3,
+    mass_g: 4.0,
+    src: {
+      grade: 'PARTS_RESEARCH 第四階段 Q 節 [T15546] 官方：「路面との接触面積が小さいタル(バレル)型」「硬く、ローグリップ」',
+      width_mm: '推估：胎體寬沿用 31 mm 胎約 10 mm（干涉 / 外框用）',
+      contactWidth_mm: '推估（Q 節）：拱形斷面接地寬約 3 mm（目前射線輪模型不使用接地寬，只記錄）',
+      crownRadius_mm: '推估（Q 節）：斷面圓弧半徑約 6 mm（外觀用）',
+      frictionCoeff: '推估（Q 節）：同低摩擦胎 0.4',
+      rollingResistanceCoeff: '推估（Q 節）：硬膠遲滯損失小，取 0.015（比標準 0.02 小）',
+      mass_g: '推估（Q 節）：同 wheel-31-large 4.0 g（[ROU] 輪框 1.3＋胎 2.7）',
+      rimBaseMass_g: `PARTS_RESEARCH [ROU] 大徑輪框 1.3 g；${RIM_SRC}`,
+    },
+  },
+  {
+    id: 'wheel-26-lightweight',
+    category: 'wheel',
+    name: '小徑 low profile 輪胎＋輕量鏤空輪框（26 mm）',
+    diameter_mm: 26.0,
+    width_mm: 9.0,
+    rimDiameter_mm: 19.8,
+    frictionCoeff: 0.7,
+    rollingResistanceCoeff: 0.02,
+    slipAngleSaturation_rad: 0.1,
+    tread: 'rubber',
+    rimStyle: 'lightweight',
+    rimBaseMass_g: 1.1,
+    rimWebCutout: 0.6,
+    // 輪胎 1.9 g（同 wheel-26-lowprofile）＋鏤空後的輪框（1.1 g 扣腹板 30.9% × 60%）
+    mass_g: 1.9 + rimMass(1.1, 0.6),
+    src: {
+      grade: 'PARTS_RESEARCH 第四階段 R 節（推估）：標準 low profile 輪框腹板鏤空 60%；[REG6] Sec.6-3 允許塑膠零件「cutting away the material or making holes」。官方輕量輪框（[FLW] 大徑ライトウェイト）offset 較窄、官方註明不相容 MS／MA，所以中置雙軸底盤只能用鏤空的標準輪框',
+      rimWebCutout: '推估（R 節）：腹板鏤空 60%',
+      mass_g: '由輪框分段質量推導：1.9 g 胎 ＋ 1.1 × (1 − 0.309 × 0.6) ≈ 0.90 g 輪框 = 2.80 g',
+      rimBaseMass_g: `同 wheel-26-lowprofile；${RIM_SRC}`,
+      frictionCoeff: '同 wheel-26-lowprofile（輪胎相同）',
     },
   },
 ];

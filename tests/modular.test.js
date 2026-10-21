@@ -324,6 +324,16 @@ describe('第二階段：零件組裝 / 規則 / 車殼（P04、P08、P09、P11�
       { code: 'BALLAST_BODY_CLEARANCE', over: { ballast: { base: 'ballast-square-3.6g', mount: 'center', thickness_mm: 40 } } },
       // 3 mm 海綿貼在 FRP 後導輪板（板底離地 3.9 mm）下 → 海綿底離地 0.9 mm
       { code: 'GROUND_CLEARANCE', over: { rearStay: 'stay-rear-frp', brakeSponge: 'sponge-3mm-mild' } },
+      // ---- 第四階段新零件（iter-54）----
+      // 疊兩片的加厚端子：規則禁止（Tamiya 規則 Sec.6-5 double-plated terminals）
+      { code: 'TERMINAL_MOD', over: { switch: 'switch-double-terminal' } },
+      // 31 mm 拱形胎與 31 mm 大徑胎同尺寸 → 穿進 body-aero-wing 的輪拱（車殼固定，預設車殼由主線調整）
+      { code: 'BODY_TIRE_CLEARANCE', over: { wheels: 'wheel-31-arched', body: 'body-aero-wing' } },
+      // 17 mm 穩定頭只能配 19 mm 前導輪；錐形導輪要鎖在 FRP / 碳纖導輪板
+      { code: 'STABILIZER_ROLLER_SIZE', over: { stabilizer: 'stabilizer-head-17', body: null } },
+      { code: 'ROLLER_TAPER_MOUNT', over: { rollers: 'roller-13-tapered', body: null } },
+      // 17 mm 穩定頭（高 3 mm，在 19 mm 前導輪上方）碰到 body-aero-wing 的車頭
+      { code: 'STABILIZER_BODY_CLEARANCE', over: { stabilizer: 'stabilizer-head-17', rollers: 'roller-19', body: 'body-aero-wing' } },
     ];
     for (const c of cases) {
       const res = validateAssembly(assemble(cfgWith(c.over)));
@@ -391,6 +401,33 @@ describe('第二階段：零件組裝 / 規則 / 車殼（P04、P08、P09、P11�
     console.log(`[P14] 換 31 mm 輪胎：質量 ${f3(asm.mass_g)} → ${f3(asm31.mass_g)} g（預期差 ${f3(dExpect)} g），重心高 ${f3(asm.com_mm.y)} → ${f3(asm31.com_mm.y)} mm`);
     expect(Math.abs(asm31.mass_g - asm.mass_g - dExpect)).toBeLessThan(0.1);
     expect(asm31.com_mm.y).toBeGreaterThan(asm.com_mm.y);
+
+    // 第四階段新零件：電池（2 顆）、中空輪軸（2 支）、輕量輪框（4 顆）的質量差 = 件數 × 單件差；重心依零件位置移動
+    for (const [slot, id, base, n] of [
+      ['battery', 'battery-aa-nimh-2500', 'battery-aa-nimh-950', 1],
+      ['axles', 'axle-hex-60-hollow', 'axle-hex-60', 2],
+      ['wheels', 'wheel-26-lightweight', 'wheel-26-lowprofile', 4],
+      ['switch', 'switch-double-terminal', 'switch-standard', 1],
+    ]) {
+      const a = assemble(cfgWith({ [slot]: id }));
+      const d = n * (getPart(id).mass_g - getPart(base).mass_g);
+      let sumA = 0;
+      const momA = { x: 0, y: 0, z: 0 };
+      for (const q of a.parts) {
+        sumA += q.mass_g;
+        for (const k of ['x', 'y', 'z']) {
+          momA[k] += q.mass_g * q.pos[k];
+        }
+      }
+      console.log(`[P14] ${slot}=${id}：質量 ${f3(asm.mass_g)} → ${f3(a.mass_g)} g（預期差 ${f3(d)} g）、重心 (${f3(a.com_mm.x)}, ${f3(a.com_mm.y)}, ${f3(a.com_mm.z)}) mm`);
+      expect(Math.abs(a.mass_g - asm.mass_g - d)).toBeLessThan(0.1);
+      expect(Math.abs(sumA - a.mass_g)).toBeLessThan(0.1);
+      for (const k of ['x', 'y', 'z']) {
+        expect(Math.abs(momA[k] / sumA - a.com_mm[k])).toBeLessThan(0.1);
+      }
+    }
+    // 電池較重（在底盤低處兩側）→ 重心降低
+    expect(assemble(cfgWith({ battery: 'battery-aa-nimh-2500' })).com_mm.y).toBeLessThan(asm.com_mm.y);
 
     // 物理引擎實際使用的值
     for (const a of [asm, asm31]) {

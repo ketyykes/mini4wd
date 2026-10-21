@@ -262,6 +262,11 @@ function makeMaterials() {
     // iter-03：輪胎橡膠粗糙感（程序化雜訊 bump＋roughness 貼圖），顏色由死黑提亮到深炭灰
     tire: new THREE.MeshStandardMaterial({ color: 0x232325, roughness: 0.96, metalness: 0.0, bumpMap: rubberNoiseTexture(), bumpScale: 0.6, roughnessMap: rubberNoiseTexture(), envMapIntensity: 0.6 }),
     tireTread: new THREE.MeshStandardMaterial({ color: 0x161617, roughness: 0.97, metalness: 0.0 }),
+    // 第四階段：海綿胎（細孔發泡、全霧）、超硬 / 拱形硬胎（硬膠，表面略亮）
+    tireSponge: new THREE.MeshStandardMaterial({ name: 'sponge-tire', color: 0x2b2b2e, map: cachedTexture('sponge', spongePoreTexture), bumpMap: cachedTexture('sponge', spongePoreTexture), bumpScale: 0.5, roughness: 1.0, metalness: 0.0 }),
+    tireHard: new THREE.MeshStandardMaterial({ name: 'tire-hard', color: 0x2a2a2d, roughness: 0.62, metalness: 0.0, envMapIntensity: 0.8 }),
+    // 穩定零件（POM 樹脂，白色半霧）
+    stabPom: new THREE.MeshPhysicalMaterial({ name: 'pom-stabilizer', color: 0xe9e7e0, roughness: 0.45, metalness: 0.0, clearcoat: 0.2, clearcoatRoughness: 0.5 }),
     // 輪框：ref_chevalier-ma_wheel-detail 為淺灰緞面塑膠（帶些許金屬粉），不是鍍鉻
     rim: new THREE.MeshPhysicalMaterial({ color: 0xa4a9b0, roughness: 0.42, metalness: 0.45, clearcoat: 0.35, clearcoatRoughness: 0.3 }),
     // iter-07：輪輻金屬灰漸層——頂點色依半徑由輪轂（深槍灰）→ 輪框（亮銀灰），金屬度提高（ref_chevalier-ma_wheel-detail 輪輻內側較暗）
@@ -355,14 +360,28 @@ function buildWheel(mats, side) {
   // 輪胎截面（繞 y 軸旋轉後再轉到 z 軸）
   const prof = [];
   const n = 72;
+  // 第四階段：胎面種類（零件 tread）——rubber 橡膠（溝槽）、hard 超硬（溝槽、較亮）、sponge 海綿（平胎面、方肩、無溝槽）、
+  // barrel 拱形（斷面圓弧，半徑 crownRadius_mm，中央接地）
+  const tread = spec.tire.tread ?? 'rubber';
+  const crownR = spec.tire.crownRadius_mm ?? 6;
   for (let i = 0; i <= n; i++) {
     const t = i / n;
     const y = -w / 2 + t * w;
-    // 胎面略帶圓角（胎肩）＋三條圓周溝槽（橡膠胎紋，深 0.3 mm）
     const edge = Math.min(t, 1 - t);
-    let r = rr + (R - rr) * Math.min(1, 0.55 + edge * 4.5);
-    for (const tc of [0.3, 0.5, 0.7]) {
-      r -= 0.3 * Math.exp(-(((t - tc) / 0.022) ** 2));
+    let r;
+    if (tread === 'sponge') {
+      // 海綿：幾乎方形的斷面（只有 0.3 mm 小圓角）
+      r = rr + (R - rr) * Math.min(1, 0.85 + edge * 6);
+    } else if (tread === 'barrel') {
+      // 拱形：圓弧 r = R − (crownR − √(crownR² − y²))，胎肩處不低於輪框外 0.4 mm
+      const yy = Math.min(Math.abs(y), crownR * 0.98);
+      r = Math.max(rr + 0.4, R - (crownR - Math.sqrt(crownR * crownR - yy * yy)));
+    } else {
+      // 胎面略帶圓角（胎肩）＋三條圓周溝槽（橡膠胎紋，深 0.3 mm）
+      r = rr + (R - rr) * Math.min(1, 0.55 + edge * 4.5);
+      for (const tc of [0.3, 0.5, 0.7]) {
+        r -= 0.3 * Math.exp(-(((t - tc) / 0.022) ** 2));
+      }
     }
     prof.push(new THREE.Vector2(r, y));
   }
@@ -370,7 +389,9 @@ function buildWheel(mats, side) {
   prof.unshift(new THREE.Vector2(rr, -w / 2));
   const tireGeo = new THREE.LatheGeometry(prof, 64);
   tireGeo.rotateX(Math.PI / 2);
-  g.add(new THREE.Mesh(tireGeo, mats.tire));
+  /** @type {Record<string, THREE.Material>} */
+  const treadMats = { sponge: mats.tireSponge, hard: mats.tireHard, barrel: mats.tireHard };
+  g.add(new THREE.Mesh(tireGeo, treadMats[tread] ?? mats.tire));
 
   // 輪框：外圈＋5 組 Y 字幅條
   const rimRing = new THREE.Mesh(new THREE.CylinderGeometry(rr, rr, w * 0.9, 40, 1, true), mats.rimBarrel);
@@ -421,15 +442,17 @@ function buildWheel(mats, side) {
     return new THREE.Mesh(geo, mats.rimSpoke);
   };
   const rimIn = rr - 0.5;
+  // 第四階段：輕量鏤空輪框（rimStyle = lightweight，腹板挖掉 rimWebCutout）→ 輻條寬度依剩餘比例縮小（與 inertia.js 的腹板質量同一個比例）
+  const spokeScale = spec.tire.rimStyle === 'lightweight' ? Math.max(0.35, 1 - (spec.tire.rimWebCutout ?? 0)) : 1;
   for (let k = 0; k < 5; k++) {
     const a = (k / 5) * Math.PI * 2;
     const spoke = new THREE.Group();
     // 主幹（輪轂 → 分岔點）
-    spoke.add(curvedArm([2.2, 0], [3.6, 0.15 * side], [4.9, 0.35 * side], 2.3, 1.9));
+    spoke.add(curvedArm([2.2, 0], [3.6, 0.15 * side], [4.9, 0.35 * side], 2.3 * Math.sqrt(spokeScale), 1.9 * Math.sqrt(spokeScale)));
     // 兩支分岔臂：同向彎曲（twist），外端在輪框內緣
     for (const sgn of [-1, 1]) {
       const ang = sgn * 0.36 + 0.16 * side;
-      spoke.add(curvedArm([4.7, 0.35 * side], [6.9, sgn * 1.0 + 0.9 * side], [Math.cos(ang) * rimIn, Math.sin(ang) * rimIn], 1.25, 1.0));
+      spoke.add(curvedArm([4.7, 0.35 * side], [6.9, sgn * 1.0 + 0.9 * side], [Math.cos(ang) * rimIn, Math.sin(ang) * rimIn], 1.25 * spokeScale, 1.0 * spokeScale));
     }
     spoke.rotation.z = a;
     face.add(spoke);
@@ -708,7 +731,7 @@ const buildRoller = (mats, r, opt = {}) => {
   const recessDepth = 0.7;
   // 截面由頂面內緣 → 外緣 → 底面內緣（r, y）
   /** @type {number[][]} */
-  const prof = [
+  let prof = [
     [brgR, H - recessDepth],
     [recessR, H - recessDepth],
     [recessR, H],
@@ -724,6 +747,26 @@ const buildRoller = (mats, r, opt = {}) => {
     [recessR, -H + recessDepth],
     [brgR, -H + recessDepth],
   ];
+  // 第四階段：錐形導輪（零件 taper）：上段圓柱 h_c、下段截錐縮到底面半徑 R_b（錐面朝下，與 sim.js rollerWallContacts 同一份幾何）
+  const tp = spec.chassis.rollerTaper;
+  if (tp) {
+    const Rb = tp.bottomDiameter_mm / 2;
+    const yc = H - tp.cylinderHeight_mm;
+    const recB = Math.min(recessR, Rb - 0.5);
+    prof = [
+      [brgR, H - recessDepth],
+      [recessR, H - recessDepth],
+      [recessR, H],
+      [R - 0.3, H],
+      [R, H - 0.3],
+      [R, yc],
+      [Rb, -H + 0.25],
+      [Rb - 0.25, -H],
+      [recB, -H],
+      [recB, -H + recessDepth],
+      [brgR, -H + recessDepth],
+    ];
+  }
   const bodyGeo = new THREE.LatheGeometry(prof.map(([a, b]) => new THREE.Vector2(a, b)).reverse(), 48);
   // 導輪本體材質依零件：塑膠（黑）或鋁合金（亮銀）
   const body = new THREE.Mesh(bodyGeo, spec.chassis.rollerFinish === 'aluminum' ? mats.rollerAlu : mats.rollerBody);
@@ -1034,6 +1077,39 @@ const buildOptionalParts = (mats) => {
         slot.rotation.y = rot;
         grp.add(slot);
       }
+    }
+    g.add(grp);
+  }
+  // 第四階段：穩定零件（前導輪上方同軸；位置與尺寸取自 asm.optional.stabilizers，與干涉檢查、sim.js 碰撞同一份）
+  for (const st of o.stabilizers ?? []) {
+    const grp = new THREE.Group();
+    grp.name = `stabilizer-${st.pos.z < 0 ? 'L' : 'R'}`;
+    grp.userData.part = 'stabilizer';
+    const c = st.solid.c;
+    const h = st.h;
+    const isTube = h > st.r;
+    // 外形：圓筒（中孔 φ2.6 從頂面看得到）或扁平的穩定頭（上緣倒角）
+    /** @type {number[][]} */
+    const prof = isTube
+      ? [[1.3, -h / 2], [st.r - 0.3, -h / 2], [st.r, -h / 2 + 0.3], [st.r, h / 2 - 0.3], [st.r - 0.3, h / 2], [1.3, h / 2]]
+      : [[1.3, -h / 2], [st.r, -h / 2], [st.r, h / 2 - 0.8], [st.r - 0.8, h / 2], [1.3, h / 2]];
+    const body = new THREE.Mesh(new THREE.LatheGeometry(prof.map(([a, b]) => new THREE.Vector2(a, b)), 40), mats.stabPom);
+    body.position.set(c.x, c.y, c.z);
+    grp.add(body);
+    // 下方墊片（導輪頂面到穩定零件之間 spacer_mm）＋頂部十字螺絲頭
+    const sp = st.part.spacer_mm;
+    const spacer = new THREE.Mesh(new THREE.CylinderGeometry(1.8, 1.8, sp, 16), mats.steel);
+    spacer.position.set(c.x, c.y - h / 2 - sp / 2, c.z);
+    grp.add(spacer);
+    const head = new THREE.Mesh(new THREE.SphereGeometry(1.9, 18, 8, 0, Math.PI * 2, 0, Math.PI / 2), mats.screw);
+    head.scale.y = 0.5;
+    head.position.set(c.x, c.y + h / 2, c.z);
+    grp.add(head);
+    for (const rot of [0, Math.PI / 2]) {
+      const slot = new THREE.Mesh(new THREE.BoxGeometry(2.3, 0.45, 0.4), mats.chassisDark);
+      slot.position.set(c.x, c.y + h / 2 + 0.85, c.z);
+      slot.rotation.y = rot;
+      grp.add(slot);
     }
     g.add(grp);
   }

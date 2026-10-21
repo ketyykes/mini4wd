@@ -222,7 +222,27 @@ export function createCar(env, opt = {}) {
     );
     // collider：最大那片（與牆接觸的主要接觸面），給 P05 等量測用
     const main = tiers.reduce((bi, t, i) => (t.r > tiers[bi].r ? i : bi), 0);
-    return { ...r, collider: colliders[main], colliders };
+    // 錐形導輪（第四階段）：接觸幾何（上段圓柱＋下段截錐）給 rollerWallContacts 用；一般導輪 taper = null（整顆是圓柱）
+    return { ...r, collider: colliders[main], colliders, taper: rollerPart.taper ?? null };
+  });
+
+  // 穩定零件（第四階段）：前導輪上方的 POM 圓柱（不轉動），用 Rapier 圓柱碰撞體掛在車體上。
+  // 接觸力完全由碰撞偵測決定：只有圓柱實際碰到牆面 / 牆頂（或任何其他碰撞體）時才有力；直立行駛時它在導輪外緣內側、離牆有間隙，沒有任何力
+  const stabilizers = (asm.optional?.stabilizers ?? []).map((st) => {
+    const lift = asm.lift_mm;
+    const collider = world.createCollider(
+      RAPIER.ColliderDesc.cylinder((st.h / 2) * MM, st.r * MM)
+        .setTranslation(st.pos.x * MM, (st.pos.y + lift) * MM, st.pos.z * MM)
+        .setDensity(0)
+        .setFriction(st.part.wallFriction)
+        .setFrictionCombineRule(RAPIER.CoefficientCombineRule.Min)
+        .setRestitution(st.part.restitution),
+      chassis,
+    );
+    // 局部座標（m）：圓柱軸的上下端點與半徑，給 stabilizerWallContacts 用；mu = 對牆滑動摩擦（不轉動）
+    const c = { x: st.pos.x * MM, y: (st.pos.y + lift) * MM, z: st.pos.z * MM };
+    const axisPts = [-1, 1].map((k) => ({ x: c.x, y: c.y + k * (st.h / 2) * MM, z: c.z }));
+    return { label: st.label, collider, axisPts, r: st.r * MM, mu: st.part.wallFriction, contact: false, normalForce: 0, contactSteps: 0 };
   });
 
   // 制振器（第三階段）：獨立剛體＋prismatic joint（沿車體 y 軸上下滑動，行程上下限為硬止點），
@@ -298,12 +318,15 @@ export function createCar(env, opt = {}) {
     rollers,
     dampers,
     sponge,
+    stabilizers,
     wheels,
     wheelParams: { wheelR, restLen, springK, damperC },
     massKg,
     asm,
     P,
     box,
+    // 傳動系轉動狀態（第四階段）：omega = 輪子角速度（rad/s，4 輪與齒輪、馬達機械連結成一個自由度），J = 換算到輪軸的等效轉動慣量
+    spin: { omega: 0, J: P.spinInertia },
     battery: new Battery(P, opt.soc ?? 1),
     drain: opt.drain ?? true,
     powered: opt.powered ?? true,
@@ -344,16 +367,25 @@ export function stepCar(env, car) {
   const dt = spec.sim.dt_s;
   const v = forwardSpeed(car);
   const P = car.P;
-  const lf = longitudinalForce(P, { speed: v, powered: car.powered, battery: car.battery });
+  // 傳動系轉動慣量（第四階段 iter-54）：馬達、齒輪、輪子是一個轉動自由度 ω（輪子角速度），等效轉動慣量 J（parts/inertia.js）。
+  // 動力鏈的扭力先作用在這個轉動件上：J·dω/dt = (F_q − F_x)·r，F_q = 準靜態的輪上淨推力（馬達扭力 × 齒輪比 × 效率 − 損失）/ r，
+  // F_x = 輪胎實際傳給車體的縱向力（受摩擦圓限制）。純滾動時 v = ω·r，消去 F_x 得 (m + J/r²)·dv/dt = F_q + F_外力，
+  // 也就是縱向運動的等效質量多了 J/r²（輕量輪框 / 中空軸 → J 變小 → 起步加速變快；穩態極速 F_q = 阻力時不受 J 影響）。
+  // 實作：每步先把 F_q 當作 F_x 施加在接地點（摩擦圓限制內），積分後再用「純滾動約束衝量」把車速與 ω·r 拉齊（見 rollingConstraintImpulse），
+  // 約束衝量是完全非彈性的（只會讓動能減少或不變），所以斷電滑行時「車體平移＋車體轉動＋傳動系轉動」的總動能單調不增
+  const spin = car.spin;
+  const wheelSpeed = spin.omega * P.wheelRadius;
+  // 馬達轉速由傳動系轉速決定（不是車體速度）：騰空時輪子可以空轉到無載轉速，落地時再由約束衝量和車速拉齊
+  const lf = longitudinalForce(P, { speed: wheelSpeed, powered: car.powered, battery: car.battery });
 
   let net;
   if (car.powered) {
-    net = lf.drive - Math.sign(v) * lf.resist;
-  } else if (Math.abs(v) < 0.002) {
+    net = lf.drive - Math.sign(wheelSpeed) * lf.resist;
+  } else if (Math.abs(wheelSpeed) < 0.002) {
     // 滑行停止：不施加阻力，避免數值上反向加速
     net = 0;
   } else {
-    net = -Math.sign(v) * lf.resist;
+    net = -Math.sign(wheelSpeed) * lf.resist;
   }
 
   const body = car.chassis;
@@ -382,6 +414,10 @@ export function stepCar(env, car) {
 
   // 先求各輪法向力，縱向力依法向力比例分配（4WD 前後軸機械連結）
   let normalSum = 0;
+  // 實際傳到車體的縱向力合計（F_x）與縱向摩擦的剩餘容量（往前 / 往後，給純滾動約束衝量用）
+  let appliedLong = 0;
+  let spareFwd = 0;
+  let spareBack = 0;
   for (const w of car.wheels) {
     const hp = localToWorld(car, w.hardpoint);
     const ray = new RAPIER.Ray(hp, { x: -up.x, y: -up.y, z: -up.z });
@@ -421,6 +457,11 @@ export function stepCar(env, car) {
       fx *= limit / total;
       fy *= limit / total;
     }
+    appliedLong += fx;
+    // 摩擦圓扣掉側向力後的縱向上限 L；本步縱向總摩擦力 fx + Π/dt 必須在 [−L, L] 內
+    const longLimit = Math.sqrt(Math.max(0, limit * limit - fy * fy));
+    spareFwd += Math.max(0, longLimit - fx);
+    spareBack += Math.max(0, longLimit + fx);
     const fn = w.normalForce;
     body.addForceAtPoint(
       {
@@ -432,6 +473,11 @@ export function stepCar(env, car) {
       true,
     );
     w.spin += (vLong / wheelR) * dt;
+  }
+
+  // 傳動系：沒傳到車體的那部分扭力（摩擦圓限制、騰空）讓 ω 改變；F_q 全部傳到車體時 ω 在這裡不變，由約束衝量處理
+  if (spin.J > 0) {
+    spin.omega += ((net - appliedLong) * P.wheelRadius * dt) / spin.J;
   }
 
   if (car.sponge) {
@@ -453,10 +499,42 @@ export function stepCar(env, car) {
     projectRollersOutOfWalls(env, car);
   }
 
+  rollingConstraintImpulse(car, spareFwd * dt, spareBack * dt);
+
   if (car.powered && car.drain) {
     car.battery.drain(lf.current, dt);
   }
-  car.last = { current: lf.current, terminalVoltage: lf.terminalVoltage, speed: v };
+  car.last = { current: lf.current, terminalVoltage: lf.terminalVoltage, motorVoltage: lf.motorVoltage, speed: v, wheelSpeed };
+}
+
+/**
+ * 純滾動約束衝量（第四階段）：車體前進速度 v 與傳動系輪面速度 ω·r 之間的完全非彈性耦合。
+ * 兩者只透過輪胎接地點的摩擦力互相作用：沿車體前進方向對車體施加衝量 Π、對傳動系施加反向扭力衝量 −Π·r，
+ * 使 v + Π/m = (ω − Π·r/J)·r → Π = (ω·r − v) / (1/m + r²/J)。
+ * 摩擦限制：本步接地點的縱向摩擦衝量合計（每步輪胎力 F_x·dt ＋ Π）不得超過 ±μ·N·dt（扣掉側向力的摩擦圓），
+ * 所以 Π 夾在 [−spareBack, spareFwd]；超過時輪胎打滑、v ≠ ω·r（例如高扭力馬達起步：F_q > μN，車體以 μN 加速、傳動系空轉加速，
+ * 打滑方向反過來時摩擦力也反向）。
+ * 這是兩物體的完全非彈性碰撞（夾限後仍是同號、較小的衝量），動能變化 ≤ 0。沒有輪子接地時（容量 0）不耦合
+ * @type {(car: any, spareFwd: number, spareBack: number) => void}
+ */
+function rollingConstraintImpulse(car, spareFwd, spareBack) {
+  const spin = car.spin;
+  if (!(spin.J > 0) || (spareFwd <= 0 && spareBack <= 0)) {
+    return;
+  }
+  const body = car.chassis;
+  const r = car.P.wheelRadius;
+  const fwd = forwardAxis(car);
+  const v = forwardSpeed(car);
+  const k = body.invMass() + (r * r) / spin.J;
+  let impulse = (spin.omega * r - v) / k;
+  impulse = Math.max(-spareBack, Math.min(spareFwd, impulse));
+  if (impulse === 0) {
+    return;
+  }
+  // 衝量作用在車體質心（只改前進速度，不另外產生俯仰；接地點力造成的俯仰已由每步的輪胎力處理）
+  body.applyImpulse({ x: fwd.x * impulse, y: fwd.y * impulse, z: fwd.z * impulse }, true);
+  spin.omega -= (impulse * r) / spin.J;
 }
 
 /**
@@ -526,7 +604,7 @@ function damperForces(car, d, up) {
 }
 
 /**
- * 整車動能（J）：車體剛體（平移＋轉動）＋制振器剛體。輪胎轉動慣量在本模型中忽略（射線輪）
+ * 整車動能（J）：車體剛體（平移＋轉動）＋制振器剛體＋傳動系轉動動能 ½·J·ω²（第四階段：輪子、輪軸、齒輪、馬達電樞，換算到輪軸）
  * @type {(car: any) => number}
  */
 export function carKineticEnergy(car) {
@@ -541,6 +619,9 @@ export function carKineticEnergy(car) {
   for (const d of car.dampers ?? []) {
     const u = d.body.linvel();
     e += 0.5 * d.body.mass() * (u.x * u.x + u.y * u.y + u.z * u.z);
+  }
+  if (car.spin) {
+    e += 0.5 * car.spin.J * car.spin.omega * car.spin.omega;
   }
   return e;
 }
@@ -600,14 +681,23 @@ function projectRollersOutOfWalls(env, car) {
 }
 
 /**
- * 導輪與牆的接觸點（世界座標）：牆面法向 n（水平、由牆指向車道）、接觸點 p（導輪球面最深入牆的點）、垂直牆面的穿透深度 pen
- * @type {(env: ReturnType<typeof createWorld>, car: ReturnType<typeof createCar>) => { n: { x: number, y: number, z: number }, p: { x: number, y: number, z: number }, pen: number }[]}
+ * 導輪與牆的接觸點（世界座標）：接觸法向 n（由牆指向車道）、接觸點 p、沿法向的穿透深度 pen
+ * 第四階段起由導輪的「縱斷面輪廓」推導（導輪軸視為鉛直）：
+ *   輪廓 = 上段圓柱（半徑 R、高 h_c）＋下段截錐（半徑 R → R_b、高 h_k）；一般導輪 h_k = 0（整顆圓柱）。
+ *   牆是「鉛直牆面＋水平牆頂」，牆頂高 Y_w = 路面高 + 牆高。
+ *   (1) 牆頂高於圓柱段底緣：圓柱段碰牆面，法向水平（與第三階段相同）
+ *   (2) 牆頂落在錐形段高度內：碰到的是牆頂邊緣（一條水平線）對錐面，該高度的錐面半徑 r(Y_w) 與牆面重疊 δ；
+ *       最小分離方向是錐面法向：與水平夾 β = atan((R − R_b)/h_k)，法向 = cosβ·(水平推回車道) + sinβ·(向上)，穿透 = δ·cosβ
+ *       → 錐形導輪騎上牆頂時產生「推回車道＋上抬」分力（[T95436]「コース内へ復帰しやすい」）
+ *   (3) 整顆導輪在牆頂之上：沒有接觸
+ * @type {(env: ReturnType<typeof createWorld>, car: ReturnType<typeof createCar>) => { n: { x: number, y: number, z: number }, p: { x: number, y: number, z: number }, pen: number, roller: string }[]}
  */
-function rollerWallContacts(env, car) {
+export function rollerWallContacts(env, car) {
   const { track } = env;
   const t = car.chassis.translation();
   const center = track.path.project(t.x, t.z);
   const level = carLevel(env, car);
+  const wallH = track.dims.wallH ?? spec.track.wallHeight_mm * MM;
   const out = [];
   for (const r of car.rollers) {
     const w = localToWorld(car, { x: r.x * MM, y: r.y * MM, z: r.z * MM });
@@ -617,6 +707,17 @@ function rollerWallContacts(env, car) {
     const T = { x: Math.cos(pose.theta), z: Math.sin(pose.theta) };
     const N = { x: -Math.sin(pose.theta), z: Math.cos(pose.theta) };
     const rr = r.r * MM;
+    // 導輪輪廓（世界 y）：頂面、圓柱段底緣、錐形段底面半徑
+    const top = w.y + (r.h / 2) * MM;
+    const hc = (r.taper ? r.taper.cylinderHeight_mm : r.h) * MM;
+    const hk = r.taper ? r.taper.coneHeight_mm * MM : 0;
+    const rb = r.taper ? (r.taper.bottomDiameter_mm / 2) * MM : rr;
+    const yCyl = top - hc;
+    const yBot = yCyl - hk;
+    const wallTop = (track.roadHeight ? track.roadHeight(pp.s, level) : 0) + wallH;
+    if (wallTop <= yBot) {
+      continue;
+    }
     for (const side of [1, -1]) {
       const k = side > 0 ? ch.slopeU : ch.slopeL;
       const face = side > 0 ? ch.faceU : ch.faceL;
@@ -627,11 +728,83 @@ function rollerWallContacts(env, car) {
       // 上側牆（d 較大）：法向 = (k·T − N)·cos；下側牆：(N − k·T)·cos
       const nx = side * (k * T.x - N.x) * cos;
       const nz = side * (k * T.z - N.z) * cos;
-      const pen = rr - side * (face - pp.d) * cos;
-      if (pen <= 0) {
+      // 導輪軸到牆面的水平距離
+      const gap = side * (face - pp.d) * cos;
+      if (wallTop >= yCyl || hk <= 0) {
+        const pen = rr - gap;
+        if (pen <= 0) {
+          continue;
+        }
+        out.push({ n: { x: nx, y: 0, z: nz }, p: { x: w.x - nx * rr, y: w.y, z: w.z - nz * rr }, pen, roller: r.id });
         continue;
       }
-      out.push({ n: { x: nx, y: 0, z: nz }, p: { x: w.x - nx * rr, y: w.y, z: w.z - nz * rr }, pen });
+      // 牆頂邊緣碰錐面
+      const re = rb + ((rr - rb) * (wallTop - yBot)) / hk;
+      const overlap = re - gap;
+      if (overlap <= 0) {
+        continue;
+      }
+      const beta = Math.atan2(rr - rb, hk);
+      const cb = Math.cos(beta);
+      const sb = Math.sin(beta);
+      out.push({
+        n: { x: nx * cb, y: sb, z: nz * cb },
+        p: { x: w.x - nx * re, y: wallTop, z: w.z - nz * re },
+        pen: overlap * cb,
+        roller: r.id,
+      });
+    }
+  }
+  return out;
+}
+
+/**
+ * 穩定零件與牆的接觸（第四階段）：穩定零件是不轉動的 POM 圓柱（軸 = 車體上方向）。
+ * 取圓柱軸的上下兩個端點（世界座標），各視為半徑 r 的水平圓盤：
+ *   - 端點低於牆頂、圓盤越過牆面（r − 到牆面的水平距離 > 0）→ 牆面接觸，法向水平（由牆指向車道）
+ *   - 端點高於牆頂、但下端點低於牆頂且水平位置已在牆頂上方 → 牆頂接觸，法向向上（穿透 = 牆頂 − 下端點，取水平 / 垂直中較小者）
+ * 直立行駛時穩定零件外緣在導輪外緣內側，這裡不會產生任何接觸（P17_stabilizer 驗證）
+ * @type {(env: ReturnType<typeof createWorld>, car: ReturnType<typeof createCar>) => { n: { x: number, y: number, z: number }, p: { x: number, y: number, z: number }, pen: number, mu: number, stab: any }[]}
+ */
+export function stabilizerWallContacts(env, car) {
+  const { track } = env;
+  const t = car.chassis.translation();
+  const center = track.path.project(t.x, t.z);
+  const level = carLevel(env, car);
+  const wallH = track.dims.wallH ?? spec.track.wallHeight_mm * MM;
+  const out = [];
+  for (const st of car.stabilizers ?? []) {
+    const [bot, top] = st.axisPts.map((q) => localToWorld(car, q));
+    for (const w of [bot, top]) {
+      const pp = track.path.project(w.x, w.z);
+      const ch = channelAt(track, pp.s, center.d, level);
+      const pose = track.path.pose(pp.s);
+      const T = { x: Math.cos(pose.theta), z: Math.sin(pose.theta) };
+      const N = { x: -Math.sin(pose.theta), z: Math.cos(pose.theta) };
+      const wallTop = (track.roadHeight ? track.roadHeight(pp.s, level) : 0) + wallH;
+      for (const side of [1, -1]) {
+        const k = side > 0 ? ch.slopeU : ch.slopeL;
+        const face = side > 0 ? ch.faceU : ch.faceL;
+        if (!Number.isFinite(face)) {
+          continue;
+        }
+        const cos = 1 / Math.sqrt(1 + k * k);
+        const nx = side * (k * T.x - N.x) * cos;
+        const nz = side * (k * T.z - N.z) * cos;
+        const penH = st.r - side * (face - pp.d) * cos;
+        if (penH <= 0) {
+          continue;
+        }
+        if (w.y < wallTop) {
+          // 端點在牆頂以下：碰牆面；若同時在牆頂附近（下端點），取較小的分離方向（水平 or 往上離開牆頂）
+          const penV = w === bot ? wallTop - bot.y : Infinity;
+          if (penV < penH && top.y >= wallTop) {
+            out.push({ n: { x: 0, y: 1, z: 0 }, p: { x: w.x - nx * st.r, y: w.y, z: w.z - nz * st.r }, pen: penV, mu: st.mu, stab: st });
+          } else {
+            out.push({ n: { x: nx, y: 0, z: nz }, p: { x: w.x - nx * st.r, y: w.y, z: w.z - nz * st.r }, pen: penH, mu: st.mu, stab: st });
+          }
+        }
+      }
     }
   }
   return out;
@@ -647,9 +820,18 @@ function rollerWallContacts(env, car) {
  * 結果（iter-49）：預設車一圈最大穿透 0.06 mm（幾何）/ 0.13 mm（接觸），6 款車殼 3 圈 ≤ 0.15 mm，彎道貼牆比例 ≈ 99%（未出現 iter-34 「整車移除朝牆速度」時的彈離）。
  * @type {(env: ReturnType<typeof createWorld>, car: ReturnType<typeof createCar>) => void}
  */
-function wallContactImpulses(env, car) {
+export function wallContactImpulses(env, car) {
   const slop = spec.sim.wallProjectionSlop_mm * MM;
-  const contacts = rollerWallContacts(env, car).filter((c) => c.pen > slop);
+  // 第四階段：穩定零件的牆面 / 牆頂接觸也在這裡處理（法向非彈性衝量＋滑動摩擦；導輪會轉動，切向不加摩擦，同第三階段）
+  const stabContacts = car.stabilizers?.length ? stabilizerWallContacts(env, car) : [];
+  for (const st of car.stabilizers ?? []) {
+    st.contact = stabContacts.some((c) => c.stab === st);
+    st.normalForce = 0;
+    if (st.contact) {
+      st.contactSteps++;
+    }
+  }
+  const contacts = [...rollerWallContacts(env, car).filter((c) => c.pen > slop), ...stabContacts];
   if (contacts.length === 0) {
     return;
   }
@@ -684,6 +866,31 @@ function wallContactImpulses(env, car) {
         body.applyImpulseAtPoint({ x: c.n.x * dj, y: c.n.y * dj, z: c.n.z * dj }, c.p, true);
       }
     }
+  }
+  // 穩定零件的滑動摩擦（庫侖）：切向衝量 ≤ μ·J_n，且不超過讓接觸點切向速度歸零所需的量（不會反向加速，只消耗動能）
+  const dt = spec.sim.dt_s;
+  for (const c of contacts) {
+    if (!c.stab) {
+      continue;
+    }
+    c.stab.normalForce += c.acc / dt;
+    if (!(c.acc > 0) || !(c.mu > 0)) {
+      continue;
+    }
+    const v = body.velocityAtPoint(c.p);
+    const vn = v.x * c.n.x + v.y * c.n.y + v.z * c.n.z;
+    const vt = { x: v.x - vn * c.n.x, y: v.y - vn * c.n.y, z: v.z - vn * c.n.z };
+    const vtLen = Math.hypot(vt.x, vt.y, vt.z);
+    if (vtLen < 1e-9) {
+      continue;
+    }
+    const td = { x: vt.x / vtLen, y: vt.y / vtLen, z: vt.z / vtLen };
+    const rc = { x: c.p.x - com.x, y: c.p.y - com.y, z: c.p.z - com.z };
+    const rt = cross(rc, td);
+    const irt = mulI(rt);
+    const Kt = invM + rt.x * irt.x + rt.y * irt.y + rt.z * irt.z;
+    const jt = Math.min(c.mu * c.acc, vtLen / Kt);
+    body.applyImpulseAtPoint({ x: -td.x * jt, y: -td.y * jt, z: -td.z * jt }, c.p, true);
   }
 }
 

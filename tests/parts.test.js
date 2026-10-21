@@ -7,7 +7,8 @@ import { assemble, loadConfig, listConfigs, SLOTS, OPTIONAL_SLOTS } from '../src
 import { validateAssembly } from '../src/regulation.js';
 import { listParts } from '../src/parts/index.js';
 import { listBodies, bodyMassProps } from '../src/bodies/index.js';
-import { theoreticalTopSpeed } from '../src/powertrain.js';
+import { theoreticalTopSpeed, longitudinalForce, motorOperatingPoint, batteryResistanceAt, Battery } from '../src/powertrain.js';
+import { spec } from '../src/spec.js';
 import { buildStraight } from '../src/track.js';
 import * as sim from '../src/sim.js';
 
@@ -317,6 +318,353 @@ describe('P17 新零件的物理效果（只透過組裝設定替換）', () => 
 });
 
 // ---------------------------------------------------------------------------
+// P17（第四階段 iter-54）：傳動系轉動慣量、新馬達、電池、輪胎 / 輪框、低電阻端子、中空輪軸
+// ---------------------------------------------------------------------------
+
+/**
+ * 解析對照：沿直線的一維縱向運動 (m + J/r²)·dv/dt = F_q(v) − 空氣阻力，F_q 用與模擬相同的 longitudinalForce（同一套動力鏈程式），
+ * 以 RK4 積分到 t 秒（電池不放電，同 launch()）。J = 0 時就是第三階段的準靜態模型
+ * @type {(asm: any, seconds: number, J: number) => number}
+ */
+function launchTheory(asm, seconds, J) {
+  const P = asm.P;
+  const battery = new Battery(P, 1);
+  const mEff = P.massTotal + J / (P.wheelRadius * P.wheelRadius);
+  /** @type {(v: number) => number} */
+  const acc = (v) => {
+    const lf = longitudinalForce(P, { speed: v, powered: true, battery });
+    return (lf.drive - (v > 0 ? lf.resist : 0) - P.airDragK * v * v) / mEff;
+  };
+  const h = 0.0005;
+  let v = 0;
+  for (let t = 0; t < seconds - 1e-12; t += h) {
+    const k1 = acc(v);
+    const k2 = acc(v + (h / 2) * k1);
+    const k3 = acc(v + (h / 2) * k2);
+    const k4 = acc(v + h * k3);
+    v += (h / 6) * (k1 + 2 * k2 + 2 * k3 + k4);
+  }
+  return v;
+}
+
+describe('P17 第四階段零件的物理效果（只透過組裝設定替換）', () => {
+  test('P17_spin_inertia 傳動系轉動慣量：J_eq = Σ I·n²（電樞 × 齒輪比²），起步速度符合 (m + J/r²) 的解析解；滑行中傳動系的轉動動能 = ½Jω²、ω·r ≈ v', () => {
+    const asm = assemble(cfg());
+    const sp = asm.spec.spin;
+    const r = asm.P.wheelRadius;
+    const sum = Object.values(sp.reflected_gmm2).reduce((a, b) => a + b, 0);
+    console.log(`[P17] J_eq 組成（g·mm²，換算到輪軸）：${JSON.stringify(Object.fromEntries(Object.entries(sp.reflected_gmm2).map(([k, v]) => [k, Number(v.toFixed(1))])))}；合計 ${sp.total_gmm2.toFixed(1)} g·mm² → 等效質量 J/r² = ${f3(sp.equivalentMass_g)} g（整車 ${f3(asm.mass_g)} g）`);
+    expect(sp.total_gmm2).toBeCloseTo(sum, 9);
+    expect(asm.P.spinInertia).toBeCloseTo(sp.total_gmm2 * 1e-9, 15);
+    expect(sp.equivalentMass_g).toBeCloseTo(sp.total_gmm2 / (r * 1000) ** 2, 9);
+    // 電樞慣量經齒輪比放大 G²：4.0:1 的馬達項 / 3.5:1 的馬達項 = (4.0 / 3.5)²
+    const a40 = assemble(cfg({ gear: 'gear-4.0' }));
+    expect(a40.spec.spin.reflected_gmm2.motor / sp.reflected_gmm2.motor).toBeCloseTo((4.0 / 3.5) ** 2, 9);
+
+    // 起步 0.3 s：模擬速度與 (m + J/r²) 的解析解比較（容許 3%：射線輪的接地彈簧與前後輪載重轉移造成的差異，第三階段 P01 量到 < 1%）；
+    // 並且要比 J = 0 的解析解更接近模擬（確認轉動慣量確實進入模擬，不是只算了數字）
+    const T = 0.3;
+    const simV = launch(asm, T).vEnd;
+    const thJ = launchTheory(asm, T, asm.P.spinInertia);
+    const th0 = launchTheory(asm, T, 0);
+    const errJ = Math.abs(simV - thJ) / thJ;
+    console.log(`[P17] 起步 ${T} s：模擬 ${f3(simV)} m/s；解析（含 J）${f3(thJ)}（誤差 ${(errJ * 100).toFixed(2)}%），解析（J = 0）${f3(th0)} m/s`);
+    expect(errJ).toBeLessThan(0.03);
+    expect(Math.abs(simV - thJ)).toBeLessThan(Math.abs(simV - th0));
+    expect(th0).toBeGreaterThan(thJ);
+
+    // 滑行：傳動系角速度跟著車速（純滾動），轉動動能 = ½·J·ω² > 0
+    const env = sim.createWorld(buildStraight(30));
+    const car = sim.createCar(env, { assembly: asm, s: 0.2, lane: 0, drain: false });
+    for (let i = 0; i < 0.5 / env.world.timestep; i++) {
+      sim.stepCar(env, car);
+    }
+    car.powered = false;
+    for (let i = 0; i < 0.1 / env.world.timestep; i++) {
+      sim.stepCar(env, car);
+    }
+    const v = sim.forwardSpeed(car);
+    const wr = car.spin.omega * r;
+    const eRot = 0.5 * car.spin.J * car.spin.omega ** 2;
+    console.log(`[P17] 斷電 0.1 s 後：車速 ${f3(v)} m/s、傳動系輪面速度 ω·r ${f3(wr)} m/s、轉動動能 ${(eRot * 1000).toFixed(3)} mJ（總動能 ${(sim.carKineticEnergy(car) * 1000).toFixed(3)} mJ）`);
+    expect(Math.abs(wr - v) / v).toBeLessThan(0.01);
+    expect(eRot).toBeGreaterThan(0);
+  }, 120000);
+
+  test('P17_traction_limit 驅動力超過輪胎摩擦（極速型馬達）時：起步打滑（傳動系輪面速度 > 車速），車速不會超過理論極速（傳動慣量模型不得產生多餘的推力）', () => {
+    const asm = assemble(cfg({ motor: 'motor-sprint', body: null }));
+    const th = theoreticalTopSpeed({ assembly: asm, soc: 1 }).vTheory;
+    const env = sim.createWorld(buildStraight(100));
+    const car = sim.createCar(env, { assembly: asm, s: 0.2, lane: 0, drain: false });
+    const dt = env.world.timestep;
+    let vMax = 0;
+    let slipMax = 0;
+    for (let i = 0; i < 5 / dt; i++) {
+      sim.stepCar(env, car);
+      const v = sim.forwardSpeed(car);
+      vMax = Math.max(vMax, v);
+      if (i < 0.2 / dt) {
+        slipMax = Math.max(slipMax, car.spin.omega * asm.P.wheelRadius - v);
+      }
+    }
+    const vEnd = sim.forwardSpeed(car);
+    console.log(`[P17] 極速型馬達（無車殼）：理論極速 ${f3(th)} m/s，5 s 內最高車速 ${f3(vMax)}、5 s 時 ${f3(vEnd)} m/s；起步 0.2 s 內最大打滑 ω·r − v = ${f3(slipMax)} m/s`);
+    expect(slipMax).toBeGreaterThan(0.05);
+    // 容許 2%：與 P01 同樣的射線輪 / 載重轉移差異（P01 量到 < 1%）
+    expect(vMax).toBeLessThan(th * 1.02);
+  }, 120000);
+
+  test('P17_light_rotating 輕量鏤空輪框 / 中空輪軸 → J_eq 與質量變小、起步加速度變大、極速基本不變；海綿胎 → μ 高、輪子慣量小、滾阻大', () => {
+    const base = assemble(cfg());
+    const vBase = launch(base, 0.3).vEnd;
+    const thBase = theoreticalTopSpeed({ assembly: base, soc: 1 }).vTheory;
+    for (const over of [{ wheels: 'wheel-26-lightweight' }, { axles: 'axle-hex-60-hollow' }]) {
+      const asm = assemble(cfg(over));
+      expect(validateAssembly(asm).ok).toBe(true);
+      const v = launch(asm, 0.3).vEnd;
+      const th = theoreticalTopSpeed({ assembly: asm, soc: 1 }).vTheory;
+      const dTop = Math.abs(th - thBase) / thBase;
+      console.log(`[P17] ${JSON.stringify(over)}：質量 ${f3(base.mass_g)} → ${f3(asm.mass_g)} g，J_eq ${base.spec.spin.total_gmm2.toFixed(1)} → ${asm.spec.spin.total_gmm2.toFixed(1)} g·mm²；0.3 s 平均加速度 ${f3(vBase / 0.3)} → ${f3(v / 0.3)} m/s²（+${(((v - vBase) / vBase) * 100).toFixed(2)}%）；理論極速 ${f3(thBase)} → ${f3(th)} m/s（差 ${(dTop * 100).toFixed(3)}%）`);
+      expect(asm.mass_g).toBeLessThan(base.mass_g);
+      expect(asm.spec.spin.total_gmm2).toBeLessThanOrEqual(base.spec.spin.total_gmm2);
+      expect(v).toBeGreaterThan(vBase);
+      // 極速只因質量變輕使滾動 / 軸承阻力略降（< 0.5%），轉動慣量不影響穩態極速
+      expect(dTop).toBeLessThan(0.005);
+    }
+    // 輕量輪框：同一顆輪胎，只有輪框腹板鏤空 → 單顆輪子慣量變小
+    const lw = assemble(cfg({ wheels: 'wheel-26-lightweight' }));
+    expect(lw.spec.spin.perItem_gmm2.wheel).toBeLessThan(base.spec.spin.perItem_gmm2.wheel);
+    // 海綿胎：μ 高、滾阻大、輪子慣量小（輕）
+    const sp = assemble(cfg({ wheels: 'wheel-24-sponge' }));
+    expect(validateAssembly(sp).ok).toBe(true);
+    console.log(`[P17] 海綿胎：μ ${base.P.tireMu} → ${sp.P.tireMu}、C_rr ${base.P.crr} → ${sp.P.crr}、單顆輪子慣量 ${base.spec.spin.perItem_gmm2.wheel.toFixed(1)} → ${sp.spec.spin.perItem_gmm2.wheel.toFixed(1)} g·mm²`);
+    expect(sp.P.tireMu).toBeGreaterThan(base.P.tireMu);
+    expect(sp.P.crr).toBeGreaterThan(base.P.crr);
+    expect(sp.spec.spin.perItem_gmm2.wheel).toBeLessThan(base.spec.spin.perItem_gmm2.wheel);
+    // 超硬胎 / 拱形胎：μ 低於標準胎；拱形胎滾阻小
+    expect(assemble(cfg({ wheels: 'wheel-26-superhard' })).P.tireMu).toBeLessThan(base.P.tireMu);
+    expect(assemble(cfg({ wheels: 'wheel-31-arched' })).P.crr).toBeLessThan(base.P.crr);
+  }, 120000);
+
+  test('P17_new_motors 原子型 / 高衝刺型 / 極速型（iter-54 依玩家實測修正）的特性與方向', () => {
+    const th = (id) => theoreticalTopSpeed({ assembly: assemble(cfg({ motor: id })), soc: 1 });
+    const rpm = (id) => (assemble(cfg({ motor: id })).P.omega0Rated * 60) / (2 * Math.PI);
+    const ids = ['motor-standard', 'motor-atomic', 'motor-torque', 'motor-high-rev', 'motor-hyper', 'motor-sprint'];
+    const res = Object.fromEntries(ids.map((id) => [id, th(id).vTheory]));
+    console.log(`[P17] 馬達 6 級：無載 rpm ${ids.map((id) => `${id} ${Math.round(rpm(id))}`).join('、')}；理論極速 ${ids.map((id) => `${id} ${f3(res[id])}`).join('、')} m/s`);
+    for (const id of ids) {
+      expect(validateAssembly(assemble(cfg({ motor: id }))).ok).toBe(true);
+    }
+    // 極速型無載轉速 = 玩家實測約 31,000 rpm（[TOYZ2] 3.0 V 穩壓 30,442–31,492）
+    expect(Math.abs(rpm('motor-sprint') - 31000)).toBeLessThan(500);
+    expect(res['motor-hyper']).toBeGreaterThan(res['motor-high-rev']);
+    expect(res['motor-sprint']).toBeGreaterThan(res['motor-hyper']);
+    expect(res['motor-atomic']).toBeGreaterThan(res['motor-standard']);
+    // 原子型堵轉扭力（6.37 mN·m）> 普通馬達 → 起步較快
+    const s = launch(assemble(cfg()), 0.15).vEnd;
+    const a = launch(assemble(cfg({ motor: 'motor-atomic' })), 0.15).vEnd;
+    console.log(`[P17] 起步 0.15 s：普通 ${f3(s)}、原子型 ${f3(a)} m/s`);
+    expect(a).toBeGreaterThan(s);
+  }, 120000);
+
+  test('P17_battery 鹼性 vs NiMH：開路電壓高但內阻大 → 小電流端電壓較高、大電流較低；鹼性內阻隨放電上升；高容量 NiMH 較重 → 起步較慢', () => {
+    const ni = assemble(cfg());
+    const al = assemble(cfg({ battery: 'battery-aa-alkaline' }));
+    const hi = assemble(cfg({ battery: 'battery-aa-nimh-2500' }));
+    for (const a of [al, hi]) {
+      expect(validateAssembly(a).violations.map((v) => v.code)).not.toContain('BATTERY');
+    }
+    const bNi = new Battery(ni.P, 1);
+    const bAl = new Battery(al.P, 1);
+    /** 端電壓 = OCV − I·R_b（同一個電流下比較） */
+    const vt = (asm, b, I) => b.ocv() - I * batteryResistanceAt(asm.P, b.soc);
+    console.log(`[P17] 開路：NiMH ${f3(bNi.ocv())} V、鹼性 ${f3(bAl.ocv())} V；內阻（2 顆）NiMH ${f3(batteryResistanceAt(ni.P, 1))} Ω、鹼性 滿 ${f3(batteryResistanceAt(al.P, 1))} / SOC 20% ${f3(batteryResistanceAt(al.P, 0.2))} Ω；0.3 A 端電壓 NiMH ${f3(vt(ni, bNi, 0.3))} / 鹼性 ${f3(vt(al, bAl, 0.3))} V；2.5 A 端電壓 NiMH ${f3(vt(ni, bNi, 2.5))} / 鹼性 ${f3(vt(al, bAl, 2.5))} V`);
+    expect(bAl.ocv()).toBeGreaterThan(bNi.ocv());
+    expect(batteryResistanceAt(al.P, 1)).toBeGreaterThan(batteryResistanceAt(ni.P, 1));
+    expect(vt(al, bAl, 0.3)).toBeGreaterThan(vt(ni, bNi, 0.3));
+    expect(vt(al, bAl, 2.5)).toBeLessThan(vt(ni, bNi, 2.5));
+    expect(batteryResistanceAt(al.P, 0.2)).toBeGreaterThan(batteryResistanceAt(al.P, 1));
+    // 馬達堵轉（ω = 0，電流最大）時，鹼性的電池端電壓掉得比 NiMH 多
+    const opNi = motorOperatingPoint(ni.P, bNi.ocv(), 0, batteryResistanceAt(ni.P, 1));
+    const opAl = motorOperatingPoint(al.P, bAl.ocv(), 0, batteryResistanceAt(al.P, 1));
+    expect(bAl.ocv() - opAl.terminalVoltage).toBeGreaterThan(bNi.ocv() - opNi.terminalVoltage);
+    // 高容量 NiMH：容量大，但每顆 30 g（+22 g）、內阻 50 mΩ → 起步較慢
+    expect(hi.P.capacity_C).toBeGreaterThan(ni.P.capacity_C);
+    expect(hi.mass_g - ni.mass_g).toBeCloseTo(22, 6);
+    const vNi = launch(ni, 0.3).vEnd;
+    const vHi = launch(hi, 0.3).vEnd;
+    console.log(`[P17] 起步 0.3 s：NiMH 950 ${f3(vNi)}、NiMH 2500 ${f3(vHi)} m/s`);
+    expect(vHi).toBeLessThan(vNi);
+  }, 120000);
+
+  test('P17_terminal 低電阻（鍍金）端子 → 迴路電阻降低、馬達端電壓與極速提高；疊加端子違規', () => {
+    const std = assemble(cfg());
+    const gold = assemble(cfg({ switch: 'switch-gold-terminal' }));
+    expect(validateAssembly(gold).ok).toBe(true);
+    expect(gold.P.circuitResistance).toBeLessThan(std.P.circuitResistance);
+    // 同一轉速（同車速）下比較：迴路電阻較低 → 電流較大、馬達端電壓較高
+    const omega = 1000;
+    const opS = motorOperatingPoint(std.P, 2.8, omega);
+    const opG = motorOperatingPoint(gold.P, 2.8, omega);
+    const thS = theoreticalTopSpeed({ assembly: std, soc: 1 }).vTheory;
+    const thG = theoreticalTopSpeed({ assembly: gold, soc: 1 }).vTheory;
+    const simS = flatTopSpeed(std, 5).vSteady;
+    const simG = flatTopSpeed(gold, 5).vSteady;
+    console.log(`[P17] 迴路電阻 ${(std.P.circuitResistance * 1000).toFixed(1)} → ${(gold.P.circuitResistance * 1000).toFixed(1)} mΩ；ω = ${omega} rad/s 馬達端電壓 ${f3(opS.motorVoltage)} → ${f3(opG.motorVoltage)} V；理論極速 ${f3(thS)} → ${f3(thG)}、模擬 ${f3(simS)} → ${f3(simG)} m/s`);
+    expect(opG.motorVoltage).toBeGreaterThan(opS.motorVoltage);
+    expect(opG.current).toBeGreaterThan(opS.current);
+    expect(thG).toBeGreaterThan(thS);
+    expect(simG).toBeGreaterThan(simS);
+    const dbl = validateAssembly(assemble(cfg({ switch: 'switch-double-terminal' })));
+    expect(dbl.violations.map((v) => v.code)).toEqual(['TERMINAL_MOD']);
+  }, 120000);
+});
+
+/**
+ * 側傾貼牆測試（第四階段穩定零件）：直線賽道上把車體繞前進軸（x）往右牆（+z）側傾 rollDeg、車頭往牆偏 5°（像彎道中前導輪先貼牆，後導輪離牆約 12 mm），
+ * 抬高到右側車輪剛好不陷入地面，橫向擺到「導輪 / 穩定零件最外緣」離牆面 0.3 mm，再給 0.3 m/s 的朝牆速度，跑 30 ms（斷電）。
+ * 回傳穩定零件的接觸步數與最大法向力、導輪是否碰牆
+ * @type {(asm: any, rollDeg: number) => { stabSteps: number, stabMaxN: number, rollerHit: boolean }}
+ */
+function rollIntoWall(asm, rollDeg) {
+  const track = buildStraight(4);
+  const env = sim.createWorld(track);
+  const car = sim.createCar(env, { assembly: asm, s: 0.5, lane: 0, powered: false });
+  const a = (rollDeg * Math.PI) / 180;
+  // 先側傾（繞車體 x）再偏航（繞世界 y，−5° = 車頭朝 +z）：q = q_yaw ⊗ q_roll
+  const psi = (-5 * Math.PI) / 180;
+  const [sx, cx, sy, cy] = [Math.sin(a / 2), Math.cos(a / 2), Math.sin(psi / 2), Math.cos(psi / 2)];
+  const q = { x: cy * sx, y: cx * sy, z: -sy * sx, w: cy * cx };
+  car.chassis.setRotation(q, true);
+  const halfTrack = asm.spec.chassis.trackWidth_mm / 2 + asm.partsBySlot.wheels.width_mm / 2;
+  const t0 = car.chassis.translation();
+  car.chassis.setTranslation({ x: t0.x, y: (halfTrack * Math.sin(a) + 0.5) / 1000, z: 0 }, true);
+  // 最外緣（世界 z）：導輪圓盤與穩定零件圓柱（側傾後外緣 = 中心 z + r·cos + (h/2)·sin）
+  /** @type {(c: { x: number, y: number, z: number }, r: number, h: number) => number} */
+  const outer = (c, r, h) => sim.localToWorld(car, { x: c.x / 1000, y: c.y / 1000, z: c.z / 1000 }).z + ((r * Math.cos(a) + (h / 2) * Math.sin(a)) / 1000);
+  const rollerOuter = Math.max(...car.rollers.map((r) => outer(r, r.r, r.h)));
+  const lift = asm.lift_mm;
+  const stabOuter = Math.max(-Infinity, ...(asm.optional.stabilizers ?? []).map((st) => outer({ ...st.pos, y: st.pos.y + lift }, st.r, st.h)));
+  const face = track.wallsAt(0)[0].d - track.dims.wallT / 2;
+  const shift = face - 0.0003 - Math.max(rollerOuter, stabOuter);
+  const t1 = car.chassis.translation();
+  car.chassis.setTranslation({ x: t1.x, y: t1.y, z: t1.z + shift }, true);
+  car.chassis.setLinvel({ x: 0, y: 0, z: 0.3 }, true);
+  let stabSteps = 0;
+  let stabMaxN = 0;
+  let rollerHit = false;
+  for (let i = 0; i < 0.03 / env.world.timestep; i++) {
+    sim.stepCar(env, car);
+    for (const st of car.stabilizers) {
+      if (st.contact) {
+        stabSteps++;
+        stabMaxN = Math.max(stabMaxN, st.normalForce);
+      }
+    }
+    if (car.rollers.some((r) => sim.minWallContactDist(env, r.collider) <= 0.0005)) {
+      rollerHit = true;
+    }
+  }
+  return { stabSteps, stabMaxN, rollerHit };
+}
+
+describe('P17 第四階段接觸零件（穩定零件、錐形導輪）', () => {
+  test('P17_stabilizer 穩定柱 / 穩定頭：平地直線沒有接觸力、極速不變；車身側傾碰牆時才有接觸力', () => {
+    for (const [name, over] of [
+      // 不裝車殼（body: null）：只驗證穩定零件本身的接觸（車殼清單 / 預設車殼由主線調整；穩定頭與車殼的干涉見 P18_known_cases）
+      ['穩定柱 φ8', { stabilizer: 'stabilizer-tube-8', body: null }],
+      ['17 mm 穩定頭＋19 mm 導輪', { stabilizer: 'stabilizer-head-17', rollers: 'roller-19', body: null }],
+    ]) {
+      const withS = assemble(cfg(over));
+      const noS = assemble(cfg({ ...over, stabilizer: null }));
+      expect(validateAssembly(withS).ok, JSON.stringify(validateAssembly(withS).violations)).toBe(true);
+      // (1) 平地全速 5 s：穩定零件整段沒有接觸；極速差只來自穩定零件質量（≈ 2 g，阻力 ∝ 質量 → < 0.5%）
+      const env = sim.createWorld(buildStraight(100));
+      const car = sim.createCar(env, { assembly: withS, s: 0.2, lane: 0, drain: false });
+      const dt = env.world.timestep;
+      const n = Math.round(5 / dt);
+      const tail = Math.round(0.5 / dt);
+      let sum = 0;
+      let contacts = 0;
+      for (let i = 0; i < n; i++) {
+        sim.stepCar(env, car);
+        contacts += car.stabilizers.filter((st) => st.contact).length;
+        if (i >= n - tail) {
+          sum += sim.forwardSpeed(car);
+        }
+      }
+      const vS = sum / tail;
+      const vN = flatTopSpeed(noS, 5).vSteady;
+      const rel = Math.abs(vS - vN) / vN;
+      // (2) 側傾 20° 貼牆：穩定零件外緣越過導輪外緣 → 碰牆、有法向力；(3) 不側傾：只有導輪碰牆，穩定零件沒有力
+      const tilted = rollIntoWall(withS, 20);
+      const upright = rollIntoWall(withS, 0);
+      console.log(`[P17] ${name}：平地 5 s 接觸 ${contacts} 步，極速 有 ${f3(vS)} / 無 ${f3(vN)} m/s（差 ${(rel * 100).toFixed(3)}%）；側傾 20° 貼牆 接觸 ${tilted.stabSteps} 步、最大法向力 ${f3(tilted.stabMaxN)} N；直立貼牆 接觸 ${upright.stabSteps} 步（導輪碰牆 ${upright.rollerHit}）`);
+      expect(contacts).toBe(0);
+      expect(rel).toBeLessThan(0.005);
+      expect(tilted.stabSteps).toBeGreaterThan(0);
+      expect(tilted.stabMaxN).toBeGreaterThan(0);
+      expect(upright.stabSteps).toBe(0);
+      expect(upright.rollerHit).toBe(true);
+    }
+  }, 180000);
+
+  test('P17_tapered_roller 錐形導輪：牆面接觸法向水平；騎上牆頂時接觸法向帶向上分量（≈ sin 34°），撞擊衝量讓車體向上；同姿勢的圓柱導輪沒有垂直分量', () => {
+    const tapered = assemble(cfg({ rollers: 'roller-13-tapered', body: null }, 'race-frp'));
+    const plain = assemble(cfg({ rollers: 'roller-13-alu', body: null }, 'race-frp'));
+    expect(validateAssembly(tapered).ok, JSON.stringify(validateAssembly(tapered).violations)).toBe(true);
+    const taper = tapered.partsBySlot.rollers.taper;
+    const betaExpect = Math.atan2((13 - taper.bottomDiameter_mm) / 2, taper.coneHeight_mm);
+    /**
+     * 擺姿勢：直立、右前導輪（FR）中心橫向離牆面 = 錐形段在牆頂高度的半徑 − 0.3 mm；高度讓牆頂落在 FR 錐形段中間；朝牆速度 0.2 m/s
+     * @type {(asm: any, onTop: boolean) => { contacts: any[], dvy: number }}
+     */
+    const pose = (asm, onTop) => {
+      const track = buildStraight(4);
+      const env = sim.createWorld(track);
+      const car = sim.createCar(env, { assembly: asm, s: 0.5, lane: 0, powered: false });
+      // 先走一步讓 Rapier 套用組裝的質量與慣性（createCar 的 additional mass properties 在第一次 step 才生效）
+      env.world.step();
+      car.chassis.setLinvel({ x: 0, y: 0, z: 0 }, true);
+      car.chassis.setAngvel({ x: 0, y: 0, z: 0 }, true);
+      const fr = car.rollers.find((r) => r.id === 'FR');
+      const wallTop = track.dims.wallH;
+      const face = track.wallsAt(0)[0].d - track.dims.wallT / 2;
+      // 錐形段中間的高度（相對導輪中心）：頂面往下 h_c + h_k/2；圓柱導輪用同一個高度比較
+      const yMidCone = (fr.h / 2 - taper.cylinderHeight_mm - taper.coneHeight_mm / 2) / 1000;
+      const rAtMid = (taper.bottomDiameter_mm / 2 + (13 / 2 - taper.bottomDiameter_mm / 2) / 2) / 1000;
+      const t = car.chassis.translation();
+      // onTop：牆頂在錐形段中間；否則（對照）：車在地面、碰牆面（牆頂遠高於導輪）
+      const y = onTop ? wallTop - (fr.y / 1000 + yMidCone) : t.y;
+      const reach = onTop ? rAtMid : fr.r / 1000;
+      car.chassis.setTranslation({ x: t.x, y, z: face - fr.z / 1000 - reach + 0.0003 }, true);
+      car.chassis.setLinvel({ x: 0, y: 0, z: 0.2 }, true);
+      const contacts = sim.rollerWallContacts(env, car).filter((c) => c.roller === 'FR');
+      const vy0 = car.chassis.linvel().y;
+      sim.wallContactImpulses(env, car);
+      return { contacts, dvy: car.chassis.linvel().y - vy0 };
+    };
+    const tTop = pose(tapered, true);
+    const tFace = pose(tapered, false);
+    const pTop = pose(plain, true);
+    const n = tTop.contacts[0]?.n;
+    console.log(`[P17] 錐形導輪騎牆頂：接觸 ${tTop.contacts.length} 個，法向 (${f3(n?.x ?? NaN)}, ${f3(n?.y ?? NaN)}, ${f3(n?.z ?? NaN)})，向上分量 ${f3(n?.y ?? NaN)}（幾何 sin β = ${f3(Math.sin(betaExpect))}，β = ${((betaExpect * 180) / Math.PI).toFixed(1)}°），撞擊後車體 Δv_y ${(tTop.dvy * 1000).toFixed(2)} mm/s；碰牆面 法向 y ${f3(tFace.contacts[0]?.n.y ?? NaN)}、Δv_y ${(tFace.dvy * 1000).toFixed(3)} mm/s；圓柱導輪同姿勢 法向 y ${f3(pTop.contacts[0]?.n.y ?? NaN)}、Δv_y ${(pTop.dvy * 1000).toFixed(3)} mm/s`);
+    expect(tTop.contacts.length).toBeGreaterThan(0);
+    expect(n.y).toBeCloseTo(Math.sin(betaExpect), 6);
+    // 水平分量把導輪推回車道（−z，離開右牆）
+    expect(n.z).toBeLessThan(0);
+    expect(tTop.dvy).toBeGreaterThan(0);
+    // 牆面接觸（一般行駛）：法向水平，不產生垂直分力
+    expect(tFace.contacts.length).toBeGreaterThan(0);
+    expect(tFace.contacts[0].n.y).toBe(0);
+    // 圓柱導輪在同樣高度：牆頂邊緣碰的是圓柱面 → 法向水平
+    expect(pTop.contacts.length).toBeGreaterThan(0);
+    expect(pTop.contacts[0].n.y).toBe(0);
+    expect(Math.abs(pTop.dvy)).toBeLessThan(Math.abs(tTop.dvy) * 0.05);
+  }, 120000);
+});
+
+// ---------------------------------------------------------------------------
 // P18：干涉與安裝相容性
 // ---------------------------------------------------------------------------
 
@@ -443,7 +791,7 @@ function oracle(A, B) {
 }
 
 /** 測試端的群組順序與不檢查的安裝關係（照 SPEC / EXTENDING 的定義重寫一份，不 import 實作） */
-const ORDER = ['ballast', 'damper', 'sponge', 'stay', 'roller', 'tire'];
+const ORDER = ['ballast', 'damper', 'sponge', 'stabilizer', 'stay', 'roller', 'tire'];
 const MOUNTED = new Set(['sponge|stay', 'ballast|stay', 'damper|stay']);
 
 /**
@@ -474,6 +822,10 @@ function expectedClearanceCodes(asm) {
   }
   if (asm.optional.ballast) {
     items.push({ group: 'ballast', solid: asm.optional.ballast.solid });
+  }
+  // 第四階段：穩定零件（前導輪上方的圓柱）
+  for (const st of asm.optional.stabilizers ?? []) {
+    items.push({ group: 'stabilizer', solid: st.solid });
   }
   const expected = new Set();
   const ambiguous = new Set();
@@ -611,6 +963,12 @@ describe('P18 干涉與安裝相容性', () => {
       { over: { rearStay: 'stay-rear-frp', frontStay: 'stay-front-frp', rollers: 'roller-19', massDamper: 'damper-rear-cylinder' }, codes: ['LENGTH'] },
       // FRP 後導輪板的臂靠近後輪：換 31 mm 大徑輪會碰到（車殼是否也干涉依車殼輪拱而定，只要求包含 STAY_TIRE_CLEARANCE）
       { over: { rearStay: 'stay-rear-frp', wheels: 'wheel-31-large' }, contains: 'STAY_TIRE_CLEARANCE' },
+      // ---- 第四階段（iter-54）----
+      { over: { switch: 'switch-double-terminal' }, codes: ['TERMINAL_MOD'] },
+      { over: { rearStay: 'stay-rear-frp', wheels: 'wheel-31-arched' }, contains: 'STAY_TIRE_CLEARANCE' },
+      { over: { stabilizer: 'stabilizer-head-17', body: null }, codes: ['STABILIZER_ROLLER_SIZE'] },
+      { over: { rollers: 'roller-13-tapered', body: null }, codes: ['ROLLER_TAPER_MOUNT'] },
+      { over: { stabilizer: 'stabilizer-head-17', rollers: 'roller-19', body: 'body-aero-wing' }, codes: ['STABILIZER_BODY_CLEARANCE'] },
     ];
     for (const c of cases) {
       const res = validateAssembly(assemble(cfg(c.over)));
@@ -624,7 +982,7 @@ describe('P18 干涉與安裝相容性', () => {
       }
     }
     // 合法的對照：雙層導輪＋單層的碳纖寬後板、FRP 後板＋後制振器
-    for (const over of [{ rollers: 'roller-13-12-double', rearStay: 'stay-rear-carbon-wide' }, { rearStay: 'stay-rear-frp', massDamper: 'damper-rear-cylinder' }]) {
+    for (const over of [{ rollers: 'roller-13-12-double', rearStay: 'stay-rear-carbon-wide' }, { rearStay: 'stay-rear-frp', massDamper: 'damper-rear-cylinder' }, { stabilizer: 'stabilizer-head-17', rollers: 'roller-19', body: null }, { rollers: 'roller-13-tapered', frontStay: 'stay-front-frp', rearStay: 'stay-rear-frp', body: null }]) {
       const res = validateAssembly(assemble(cfg(over)));
       expect(res.ok, JSON.stringify(res.violations)).toBe(true);
     }

@@ -244,6 +244,47 @@ describe('P19 網頁換件', () => {
     await changeSlot('body', 'body-skeleton');
   }, 90000);
 
+  test('P19_第四階段新零件（輕量輪框、鍍金端子、鹼性電池、原子馬達）網頁切換後數值與 assemble() 一致、URL 可還原', async () => {
+    /** @type {[string, string][]} */
+    const changes = [
+      ['wheels', 'wheel-26-lightweight'],
+      ['switch', 'switch-gold-terminal'],
+      ['battery', 'battery-aa-alkaline'],
+      ['motor', 'motor-atomic'],
+      ['switch', 'switch-double-terminal'],
+    ];
+    for (const [slot, value] of changes) {
+      const ms = await changeSlot(slot, value);
+      const g = await garageState();
+      const asm = assemble(g.config);
+      console.log(`[P19] ${slot}=${value}：${ms} ms，總重 ${g.asm.mass_g.toFixed(2)} g，J_eq ${g.asm.spinInertia_gmm2.toFixed(1)} g·mm²，迴路 ${(g.asm.circuitResistance_ohm * 1000).toFixed(1)} mΩ，規則 ${g.validation.ok ? '合法' : g.validation.codes.join(',')}`);
+      expect(ms, `${slot}=${value} 更新時間`).toBeLessThan(UPDATE_LIMIT_MS);
+      expect(g.config[slot]).toBe(value);
+      expectMatchesNode(g);
+      // 第四階段的物理量（轉動慣量、迴路電阻、理論極速）也和 Node 端同一份組裝一致
+      expect(Math.abs(g.asm.spinInertia_gmm2 - asm.spec.spin.total_gmm2)).toBeLessThan(1e-6);
+      expect(Math.abs(g.asm.circuitResistance_ohm - asm.P.circuitResistance)).toBeLessThan(1e-9);
+    }
+    // 疊加端子違規：顯示 TERMINAL_MOD 並停用上賽道
+    const g = await garageState();
+    expect(g.validation.codes).toContain('TERMINAL_MOD');
+    expect(g.raceEnabled).toBe(false);
+    await changeSlot('switch', 'switch-standard');
+    // URL 還原（新零件 id）
+    const p2 = await browser.newPage({ viewport: { width: 1600, height: 900 } });
+    await p2.goto(`${baseUrl}/web/garage.html?wheels=wheel-24-sponge&switch=switch-gold-terminal&axles=axle-hex-60-hollow&battery=battery-aa-nimh-2500`);
+    await p2.waitForFunction(() => window.__garage?.ready === true, null, { timeout: 90000 });
+    const g2 = await p2.evaluate(() => JSON.parse(JSON.stringify(window.__garage)));
+    expect(g2.config.wheels).toBe('wheel-24-sponge');
+    expect(g2.config.switch).toBe('switch-gold-terminal');
+    expect(g2.config.axles).toBe('axle-hex-60-hollow');
+    expect(g2.config.battery).toBe('battery-aa-nimh-2500');
+    expect(await p2.locator('select[data-slot="wheels"]').inputValue()).toBe('wheel-24-sponge');
+    expectMatchesNode(g2);
+    expect(Math.abs(g2.asm.spinInertia_gmm2 - assemble(g2.config).spec.spin.total_gmm2)).toBeLessThan(1e-6);
+    await p2.close();
+  }, 180000);
+
   test('P19_URL 參數可還原組裝', async () => {
     const p2 = await browser.newPage({ viewport: { width: 1600, height: 900 } });
     await p2.goto(`${baseUrl}/web/garage.html?motor=motor-high-rev&body=body-skeleton`);

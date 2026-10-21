@@ -22,6 +22,7 @@ const GROUP_NAMES = {
   SPONGE: '煞車海綿',
   BALLAST: '配重',
   BODY: '車殼',
+  STABILIZER: '穩定零件',
 };
 
 /**
@@ -62,6 +63,16 @@ export const VIOLATION_CODES = {
   BALLAST_SPONGE_CLEARANCE: '配重與煞車海綿干涉',
   BALLAST_BODY_CLEARANCE: '配重與車殼干涉',
   STAY_BODY_CLEARANCE: '導輪板與車殼干涉',
+  TERMINAL_MOD: '電池 / 馬達端子改裝（疊加、焊接）違規',
+  STABILIZER_ROLLER_SIZE: '穩定零件與前導輪尺寸不搭配（例如 17 mm 穩定頭只能配 19 mm 導輪）',
+  ROLLER_TAPER_MOUNT: '錐形導輪必須用螺絲＋墊片鎖在 FRP / 碳纖導輪板上（錐面朝下）',
+  STABILIZER_ROLLER_CLEARANCE: '穩定零件與導輪干涉',
+  STABILIZER_TIRE_CLEARANCE: '穩定零件與輪胎干涉',
+  STABILIZER_STAY_CLEARANCE: '穩定零件與導輪板干涉',
+  STABILIZER_BODY_CLEARANCE: '穩定零件與車殼干涉',
+  BALLAST_STABILIZER_CLEARANCE: '配重與穩定零件干涉',
+  DAMPER_STABILIZER_CLEARANCE: '制振器與穩定零件干涉',
+  SPONGE_STABILIZER_CLEARANCE: '煞車海綿與穩定零件干涉',
 };
 
 /**
@@ -115,6 +126,28 @@ export function validateAssembly(asm) {
   const b = p.battery;
   if (b.size !== r.batterySize || b.cells !== r.batteryCells) {
     fail('BATTERY', `電池須為 ${r.batteryCells} 顆 ${r.batterySize}；目前 ${b.cells} 顆 ${b.size}`);
+  }
+  // 第四階段：端子只能用套件或 Grade-Up 端子，疊加（double-plated）或焊接禁止（PARTS_RESEARCH [REG6] Sec.6-5）
+  const sw = p.switch;
+  if ((sw.terminalLayers ?? 1) > 1 || sw.terminalSoldered) {
+    fail('TERMINAL_MOD', `${sw.name}：端子疊了 ${sw.terminalLayers ?? 1} 片${sw.terminalSoldered ? '且有焊接' : ''}；規則只允許套件或 Grade-Up 端子，疊加或焊接端子禁止（Tamiya 規則 Sec.6-5）`);
+  }
+  // 第四階段：穩定零件只能配指定直徑的前導輪（17 mm 穩定頭 ↔ 19 mm 導輪）；穩定零件外徑不得 ≥ 導輪外徑（否則它變成主要接觸面，等於換了導輪）
+  const stab = p.stabilizer;
+  if (stab) {
+    const rd = p.rollers.diameter_mm;
+    if (stab.requiresRollerDiameter_mm !== undefined && Math.abs(stab.requiresRollerDiameter_mm - rd) > EPS) {
+      fail('STABILIZER_ROLLER_SIZE', `${stab.name} 只能配 ${stab.requiresRollerDiameter_mm} mm 前導輪，目前導輪 ${rd} mm`);
+    } else if (stab.diameter_mm >= rd - EPS) {
+      fail('STABILIZER_ROLLER_SIZE', `${stab.name} 外徑 ${stab.diameter_mm} mm ≥ 導輪 ${rd} mm，會取代導輪成為碰牆面`);
+    }
+  }
+  // 第四階段：錐形導輪要鎖在 FRP / 碳纖導輪板（有 plate 的導輪架）上；塑膠一體保桿 / 標準後導輪架擋下（PARTS_RESEARCH T 節，推估規則）
+  if (p.rollers.taper) {
+    const bad = [['frontStay', '前'], ['rearStay', '後']].filter(([slot]) => !p[slot].plate).map(([slot, label]) => `${label}（${p[slot].name}）`);
+    if (bad.length > 0) {
+      fail('ROLLER_TAPER_MOUNT', `${p.rollers.name} 必須用螺絲＋墊片鎖在 FRP / 碳纖導輪板、錐面朝下才有作用；${bad.join('、')}不是導輪板`);
+    }
   }
   // SPEC 1.14：車殼與輪胎 / 導輪間隙必須 ≥ 1 mm。兩個實體零件不能重疊（< 0 mm 是互相穿透，0–1 mm 是會摩擦的干涉），
   // 這種組合實際上裝不起來或輪胎會磨車殼 → 判為違規（2026-10-21 使用者要求：零件替換要符合物理，原本只是警告）

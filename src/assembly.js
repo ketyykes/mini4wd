@@ -13,6 +13,7 @@ import { rollerLayout, wheelLayout, componentLayout } from './carLayout.js';
 import { solidGap, solidBox, verticesGap } from './parts/clearance.js';
 import { polygonCentroid } from './parts/plateGeom.js';
 import { bumperTrim } from './parts/bumperGeom.js';
+import { drivetrainInertia } from './parts/inertia.js';
 
 /** @typedef {import('./parts/types').PlacedPart} PlacedPart */
 /** @typedef {import('./parts/types').Vec3} Vec3 */
@@ -38,10 +39,11 @@ export const SLOTS = {
   massDamper: 'mass-damper',
   brakeSponge: 'brake-sponge',
   ballast: 'ballast',
+  stabilizer: 'stabilizer',
 };
 
 /** 選配 slot：值可為 null（不裝）；組裝設定沒寫這個 slot 時也視為 null */
-export const OPTIONAL_SLOTS = ['massDamper', 'brakeSponge', 'ballast'];
+export const OPTIONAL_SLOTS = ['massDamper', 'brakeSponge', 'ballast', 'stabilizer'];
 
 /** 配重安裝點的中文名稱 */
 const MOUNT_LABELS = { front: '前', center: '中央', rear: '後' };
@@ -107,6 +109,9 @@ function buildSpec(p) {
     battery: p.battery,
     motor: p.motor,
     tire: p.wheels,
+    // 第四階段：迴路電阻（開關＋端子零件）與傳動系轉動慣量（輪子、輪軸、齒輪、馬達電樞，換算到輪軸）
+    circuit: { resistance_ohm: p.switch.circuitResistance_ohm ?? 0 },
+    spin: drivetrainInertia(p),
     drivetrain: {
       gearRatio: g.ratio,
       gearEfficiency: g.efficiency,
@@ -132,6 +137,8 @@ function buildSpec(p) {
       rollerHeight_mm: ro.height_mm,
       rollerFinish: ro.finish,
       rollerTiers: ro.tiers ?? null,
+      // 第四階段：錐形導輪的輪廓（上段圓柱＋下段截錐），3D 模型與 sim.js 接觸幾何用同一份
+      rollerTaper: ro.taper ?? null,
       rollerCenterHeight_mm: fs.rollerY_mm,
       frontRollerX_mm: fs.rollerX_mm,
       frontRollerZ_mm: fs.rollerZ_mm,
@@ -259,7 +266,7 @@ export function assemble(config) {
   place('hardware', '小五金', p.hardware.mass_g, ch.com_mm);
 
   // ---- 選配零件（第三階段）：制振器、煞車海綿、配重。實體形狀（底盤座標）同時給干涉檢查、外框、離地高度、3D 模型 ----
-  const opt = optionalLayout(p, comp);
+  const opt = optionalLayout(p, comp, rollers);
   for (const d of opt.dampers) {
     place('massDamper', d.label, d.mass_g, d.pos);
   }
@@ -271,6 +278,9 @@ export function assemble(config) {
   }
   if (opt.ballast) {
     place('ballast', `配重（${opt.ballast.mount}）`, opt.ballast.mass_g, opt.ballast.pos);
+  }
+  for (const st of opt.stabilizers) {
+    place('stabilizer', st.label, st.mass_g, st.pos);
   }
   if (body) {
     parts.push({ slot: 'body', id: body.id, category: 'body', label: `車殼 ${body.id}`, mass_g: bodyProps.mass_g, pos: lifted(bodyProps.com_mm, lift) });
@@ -360,7 +370,7 @@ export function assemble(config) {
     interference,
     chassisTrim,
     features: [...new Set([...(ch.features ?? []), ...(p.frontStay.features ?? []), ...(p.rearStay.features ?? [])])],
-    optional: { dampers: opt.dampers, sponge: opt.sponge, ballast: opt.ballast },
+    optional: { dampers: opt.dampers, sponge: opt.sponge, ballast: opt.ballast, stabilizers: opt.stabilizers },
     rigid: { mass_g: rigid.mass_g, com_mm: rigid.com_mm, inertia_kgm2: rigid.inertia_kgm2 },
     movable,
     lift_mm: lift,
@@ -448,9 +458,10 @@ const boxAt = (cx, cz, y0, lx, lz, ly) => ({
  * 選配零件與導輪板的擺放（底盤座標，未加 lift）
  * 制振器：靜止在行程下止點；干涉檢查用「整個行程掃過的範圍」
  * 煞車海綿：貼在後導輪架的煞車座下方；配重：依安裝點（前 / 後鎖在保桿或導輪板下方，中央貼在齒輪蓋頂面）
- * @type {(p: Record<string, any>, comp: any) => { dampers: any[], sponge: any, ballast: any, solids: PlacedSolid[] }}
+ * 穩定零件（第四階段）：前導輪（FL / FR）正上方，底面 = 導輪頂面 + spacer_mm，與導輪同軸（同一支螺絲）
+ * @type {(p: Record<string, any>, comp: any, rollers: any[]) => { dampers: any[], sponge: any, ballast: any, stabilizers: any[], solids: PlacedSolid[] }}
  */
-function optionalLayout(p, comp) {
+function optionalLayout(p, comp, rollers) {
   const ch = p.chassis;
   /** @type {PlacedSolid[]} */
   const solids = [];
@@ -539,7 +550,22 @@ function optionalLayout(p, comp) {
     ballast = { mass_g: b.mass_g, mount, onTop: mount === 'center' || !!endStay?.ballastMount, pos: { x: m.x_mm, y: y0 + b.thickness_mm / 2, z: m.z_mm }, solid, part: b };
     solids.push({ group: 'ballast', slot: 'ballast', label: '配重', solid });
   }
-  return { dampers, sponge, ballast, solids };
+
+  /** @type {any[]} */
+  const stabilizers = [];
+  const st = p.stabilizer;
+  if (st) {
+    for (const r of rollers.filter((q) => q.id === 'FL' || q.id === 'FR')) {
+      const y0 = r.y + r.h / 2 + st.spacer_mm;
+      const c = { x: r.x, y: y0 + st.height_mm / 2, z: r.z };
+      const label = `穩定零件 ${r.z < 0 ? '左' : '右'}`;
+      /** @type {Solid} */
+      const solid = { kind: 'cyl', axis: 'y', c, r: st.diameter_mm / 2, halfLen: st.height_mm / 2 };
+      stabilizers.push({ label, mass_g: st.mass_g, pos: c, solid, r: st.diameter_mm / 2, h: st.height_mm, part: st });
+      solids.push({ group: 'stabilizer', slot: 'stabilizer', label, solid });
+    }
+  }
+  return { dampers, sponge, ballast, stabilizers, solids };
 }
 
 /** @type {Map<string, number>} 車殼頂點 → 實體間隙的快取（key：車殼 id＋實體） */
@@ -559,14 +585,14 @@ const cachedGap = (a, b) => {
 };
 
 /** 干涉代碼的群組順序 */
-const GROUP_ORDER = ['ballast', 'damper', 'sponge', 'stay', 'roller', 'tire'];
+const GROUP_ORDER = ['ballast', 'damper', 'sponge', 'stabilizer', 'stay', 'roller', 'tire'];
 
 /** 不檢查的組合：鎖在導輪板上的零件本來就和板面接觸（安裝關係，不是干涉） */
 const MOUNTED_ON = new Set(['sponge|stay', 'ballast|stay', 'damper|stay']);
 
 /**
  * 實體干涉檢查（第三階段）：零件兩兩之間、零件與車殼之間的最小間隙。間隙 < 1 mm 由規則檢查器判為違規
- * 群組：tire（輪胎）、roller（導輪）、stay（導輪板）、damper（制振器行程範圍）、sponge（煞車海綿）、ballast（配重）
+ * 群組：tire（輪胎）、roller（導輪）、stay（導輪板）、damper（制振器行程範圍）、sponge（煞車海綿）、ballast（配重）、stabilizer（穩定零件，第四階段）
  * 車殼與輪胎 / 導輪沿用 bodies/index.js 的 bodyClearance（BODY_TIRE_CLEARANCE / BODY_ROLLER_CLEARANCE）
  * @type {(body: any, bodyProps: any, wheels: any[], rollers: any[], solids: PlacedSolid[]) => { code: string, a: string, b: string, gap_mm: number }[]}
  */

@@ -39,6 +39,12 @@ export function deriveParams(s, massTotal_g) {
     ocvCurve: s.battery.cellOcvCurve,
     cutoffCellVoltage: s.battery.cutoffCellVoltage_V,
     batteryResistance: s.battery.cells * s.battery.cellInternalResistance_ohm,
+    // 內阻隨 SOC 變化的電池（鹼性）：每顆內阻 vs SOC 分段線性；沒有時為 null（定值內阻）
+    cellResistanceCurve: s.battery.cellResistanceCurve ?? null,
+    // 迴路電阻（端子本體＋接點，第四階段）：由開關 / 端子零件提供，和電池內阻、馬達線圈電阻串聯
+    circuitResistance: s.circuit?.resistance_ohm ?? 0,
+    // 傳動系換算到輪軸的等效轉動慣量 J_eq（kg·m²，parts/inertia.js）
+    spinInertia: s.spin?.total_kgm2 ?? 0,
     capacity_C: s.battery.capacity_mAh * 3.6,
     gearRatio: s.drivetrain.gearRatio,
     gearEfficiency: s.drivetrain.gearEfficiency,
