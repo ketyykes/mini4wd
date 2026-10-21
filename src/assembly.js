@@ -6,6 +6,7 @@ import technicalConfig from '../configs/technical.json';
 import lightConfig from '../configs/light.json';
 import raceFrpConfig from '../configs/race-frp.json';
 import carbonDamperConfig from '../configs/carbon-damper.json';
+import p4TechConfig from '../configs/p4-tech.json';
 import { spec as globalSpec, deriveParams } from './spec.js';
 import { resolvePart, listParts } from './parts/index.js';
 import { getBody, bodyMassProps, bodyClearance } from './bodies/index.js';
@@ -76,7 +77,7 @@ export function slotChoices(slot) {
 }
 
 /** @type {Record<string, any>} */
-const CONFIGS = { default: defaultConfig, speed: speedConfig, technical: technicalConfig, light: lightConfig, 'race-frp': raceFrpConfig, 'carbon-damper': carbonDamperConfig };
+const CONFIGS = { default: defaultConfig, speed: speedConfig, technical: technicalConfig, light: lightConfig, 'race-frp': raceFrpConfig, 'carbon-damper': carbonDamperConfig, 'p4-tech': p4TechConfig };
 
 /** @type {() => string[]} 所有組裝設定名稱 */
 export const listConfigs = () => Object.keys(CONFIGS);
