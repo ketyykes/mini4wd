@@ -34,6 +34,10 @@ export const chassisParts = [
     /** 前後保桿（底盤一體）上的導輪座位置：保桿外形以此為準；FRP / 碳纖導輪板另外決定導輪位置 */
     bumperRollerX_mm: 71.5,
     bumperRollerZ_mm: 42,
+    /** 一體寬保桿板厚（與 model.js 保桿相同）；保桿切除的質量 = 切除體積 × 底盤材料密度（parts/bumperGeom.js） */
+    bumperThickness_mm: 2.4,
+    /** 底盤材料密度（ABS，SPEC 1.14） */
+    density_g_cm3: 1.05,
     /** 配重安裝點：front / rear 鎖在前後保桿（或導輪板）下方；center 貼在齒輪蓋頂面（y 由組裝計算） */
     ballastMounts: { front: { x_mm: 67, z_mm: 0 }, center: { x_mm: 0, z_mm: 0 }, rear: { x_mm: -67, z_mm: 0 } },
     /** 開關位置（底盤座標，開關零件質心） */
@@ -49,6 +53,8 @@ export const chassisParts = [
       bbox_mm: '由 iter-31 模型量測（不含導輪架上的導輪座）',
       bodyMounts: '本專案定義（SPEC 1.14，第 0 輪決定）',
       sideDamperMount: '推估：MA 底盤側面有側護板鎖孔，側制振器托架鎖在前後輪之間（x = 0），制振器（寬 6 mm）中心 z = ±33，內緣離底盤側壁（±29）1 mm，底面離地 2.0 mm',
+      density_g_cm3: 'SPEC 1.14 / PARTS_RESEARCH 3.1：ABS 1.05 g/cm³（MA 底盤材質以 ABS 推估）',
+      bumperThickness_mm: '推估：模型保桿板厚 2.4 mm（iter-35 外形）',
       ballastMounts: '推估：配重常見貼在前後保桿下方或底盤上方；本專案提供前、中、後三處',
     },
   },

@@ -126,6 +126,55 @@ const SKELETON_DATA = {
   ],
 };
 
+/**
+ * 單一葉子板框：輪軸 (ax, 13)、sg = ±1 為左右
+ * @type {(ax: number, sg: number) => THREE.BufferGeometry}
+ */
+const buildFenderFrame = (ax, sg) => {
+  const r0 = 16.3;
+  const r1 = 17.5;
+  const a0 = (22 * Math.PI) / 180;
+  const a1 = (158 * Math.PI) / 180;
+  const geos = [];
+  /** @type {(zIn: number, zOut: number) => THREE.BufferGeometry} 弧形側軌（側視環扇形，沿 z 擠出） */
+  const rail = (zIn, zOut) => {
+    const shape = new THREE.Shape();
+    const n = 28;
+    for (let i = 0; i <= n; i++) {
+      const a = a0 + ((a1 - a0) * i) / n;
+      const p = [ax + r1 * Math.cos(a), 13 + r1 * Math.sin(a)];
+      if (i === 0) {
+        shape.moveTo(p[0], p[1]);
+      } else {
+        shape.lineTo(p[0], p[1]);
+      }
+    }
+    for (let i = n; i >= 0; i--) {
+      const a = a0 + ((a1 - a0) * i) / n;
+      shape.lineTo(ax + r0 * Math.cos(a), 13 + r0 * Math.sin(a));
+    }
+    const g = new THREE.ExtrudeGeometry(shape, { depth: zOut - zIn, bevelEnabled: false, curveSegments: 1 });
+    g.translate(0, 0, zIn);
+    return g;
+  };
+  geos.push(rail(24.6, 26), rail(34, 35.4));
+  for (const deg of [30, 55, 90, 125, 150]) {
+    const a = (deg * Math.PI) / 180;
+    const rib = new THREE.BoxGeometry(1.4, r1 - r0, 35.4 - 24.6);
+    rib.rotateZ(a - Math.PI / 2);
+    const rm = (r0 + r1) / 2;
+    rib.translate(ax + rm * Math.cos(a), 13 + rm * Math.sin(a), 30);
+    geos.push(rib);
+  }
+  const g = mergeGeos(geos);
+  if (sg < 0) {
+    g.scale(1, 1, -1);
+    // 鏡射後繞向反轉：重新計算法線（材質雙面）
+    g.computeVertexNormals();
+  }
+  return g;
+};
+
 /** @type {() => Record<string, THREE.Material>} */
 const makeMaterials = () => ({
   smoke: namedMaterial('pc-smoke', { color: 0x3a3f44, roughness: 0.1, metalness: 0.0, clearcoat: 1.0, clearcoatRoughness: 0.05, transparent: true, opacity: 0.5, depthWrite: false }),
@@ -152,20 +201,48 @@ const compose = () => {
   const parts = [];
 
   /** @type {(x: number, y: number, z: number) => number} 到開口、輪拱、下緣的距離（近似） */
-  const edgeDist = (x, y, z) => {
-    let d = kit.openingDist(x, y, z);
-    // 輪拱用「到實際切口邊界的 3D 距離」：葉子板頂面幾乎貼著切割圓柱，用圓柱距離會變成星形色塊（iter-33 reviewer）
-    d = Math.min(d, kit.archEdgeDist(x, y, z));
-    d = Math.min(d, kit.sideRail(x, y, z, 0));
-    return Math.min(d, y - surf.ctrl(x).yLow);
+  /** @type {number} 側壁面板起點（|s| ≥ sideS 為側壁） */
+  const sideS = surf.breaks[1];
+  /**
+   * 到下緣的距離（iter-47b）：沿側壁量弧長（|s| 換算），不是用高度差；
+   * 鼻部側壁只有約 1 mm 高、上面接近水平，用高度差會讓補強邊溢到頂面、變成鋸齒狀的寬色塊
+   * @type {(x: number, s: number) => number}
+   */
+  const lowerEdgeDist = (x, s) => {
+    const c = surf.ctrl(x);
+    const u = Math.abs(s);
+    const wall = Math.max(0.3, c.yShoulder - c.yLow);
+    return u >= sideS ? ((1 - u) / (1 - sideS)) * wall : wall + 5;
   };
-  /** @type {KeepFn} 萊姆黃區：開口補強邊 ∪ 肩稜細線 */
-  const lime = (x, y, z) => {
+  const edgeDist = (x, y, z, s) => {
+    let d = kit.openingDist(x, y, z);
+    d = Math.min(d, kit.sideRail(x, y, z, 0));
+    d = Math.min(d, lowerEdgeDist(x, s));
+    // 效能（iter-47）：已經深在萊姆黃帶內（d ≤ BAND − 1）時，輪拱距離只會讓數值更大、不改變正負號，略過最耗時的輪拱邊界搜尋
+    if (d <= BAND - 1) {
+      return d;
+    }
+    // 輪拱用「到實際切口邊界的 3D 距離」：葉子板頂面幾乎貼著切割圓柱，用圓柱距離會變成星形色塊（iter-33 reviewer）
+    return Math.min(d, kit.archEdgeDist(x, y, z));
+  };
+  /** @type {(x: number, y: number, z: number) => number} 萊姆黃區的實際計算 */
+  const limeRaw = (x, y, z, s) => {
     const c = surf.ctrl(x);
     const az = Math.abs(z);
     const crease = Math.min(az - (c.zF - 1.9), c.zF - 0.7 - az, x + 58, 64 - x);
-    return Math.max(BAND - edgeDist(x, y, z), crease);
+    if (crease >= 1) {
+      // 肩稜細線內側深處：不論開口距離多少都是萊姆黃（正號），略過距離計算
+      return crease;
+    }
+    return Math.max(BAND - edgeDist(x, y, z, s), crease);
   };
+  /** @type {KeepFn} 萊姆黃區：開口補強邊 ∪ 肩稜細線 */
+  const lime = (x, y, z, s) => limeRaw(x, y, z, s);
+  /**
+   * 效能（iter-47）：萊姆黃分區的邊界只需要視覺精度，裁切二分 8 次（格點 0.5 mm → 邊界誤差 < 0.002 mm）而不是預設 14 次
+   * @type {{ bisect: number }}
+   */
+  const FAST = { bisect: 8 };
   /** @type {KeepFn} */
   const cab = (x, y, z) => kit.underCanopy(x, z);
 
@@ -173,18 +250,18 @@ const compose = () => {
   // iter-45：凸緣高 RIB = 0.8 mm、頂部外圈一階 CHAMFER 倒角（外圈 0.3 mm 寬的環低 0.3 mm）
   /** @type {KeepFn} */
   const limeTop = (x, y, z, s) => lime(x, y, z, s) - CHAMFER;
-  const limeStep = buildRegion(surf, [...kit.holes, lime, (x, y, z, s) => -limeTop(x, y, z, s)], { offset: RIB - CHAMFER, smoothOffset: true });
-  const limeRib = buildRegion(surf, [...kit.holes, limeTop], { offset: RIB, smoothOffset: true });
+  const limeStep = buildRegion(surf, [...kit.holes, lime, (x, y, z, s) => -limeTop(x, y, z, s)], { offset: RIB - CHAMFER, smoothOffset: true, ...FAST });
+  const limeRib = buildRegion(surf, [...kit.holes, limeTop], { offset: RIB, smoothOffset: true, ...FAST });
   parts.push({ geometry: limeRib.geometry, mat: 'lime', shell: true, name: 'shell-lime-frame' });
   parts.push({ geometry: limeStep.geometry, mat: 'limeEdge', name: 'shell-lime-chamfer' });
   parts.push({ geometry: mergeGeos([buildRim(limeStep, 0, RIB - CHAMFER), buildRim(limeRib, RIB - CHAMFER, RIB)]), mat: 'limeEdge', name: 'shell-lime-rib-wall' });
-  parts.push({ geometry: kit.outer([(x, y, z, s) => -lime(x, y, z, s), (x, y, z, s) => -cab(x, y, z, s)]), mat: 'smoke', shell: true, renderOrder: 2, name: 'shell-smoke' });
-  parts.push({ geometry: kit.outer([(x, y, z, s) => -lime(x, y, z, s), cab]), mat: 'seat', shell: true, name: 'shell-cockpit' });
+  parts.push({ geometry: kit.outer([(x, y, z, s) => -lime(x, y, z, s), (x, y, z, s) => -cab(x, y, z, s)], FAST), mat: 'smoke', shell: true, renderOrder: 2, name: 'shell-smoke' });
+  parts.push({ geometry: kit.outer([(x, y, z, s) => -lime(x, y, z, s), cab], FAST), mat: 'seat', shell: true, name: 'shell-cockpit' });
 
   const st = kit.structure();
   // 內面：萊姆黃補強邊在內面也塗（真空成形 PC 從內側塗裝），其餘煙燻
-  const innerLime = buildRegion(surf, [...kit.holes, lime], { offset: -kit.t }).geometry;
-  const innerSmoke = buildRegion(surf, [...kit.holes, (x, y, z, s) => -lime(x, y, z, s)], { offset: -kit.t }).geometry;
+  const innerLime = buildRegion(surf, [...kit.holes, lime], { offset: -kit.t, ...FAST }).geometry;
+  const innerSmoke = buildRegion(surf, [...kit.holes, (x, y, z, s) => -lime(x, y, z, s)], { offset: -kit.t, ...FAST }).geometry;
   parts.push({ geometry: innerLime, mat: 'limeInner', name: 'shell-inner-lime' });
   parts.push({ geometry: innerSmoke, mat: 'smokeInner', renderOrder: 1, name: 'shell-inner' });
   parts.push({ geometry: st.rim, mat: 'limeEdge', name: 'shell-edge' });
@@ -251,6 +328,10 @@ const compose = () => {
     mat: 'black',
     name: 'decal-number',
   });
+
+  // 弧形鏤空葉子板框（iter-47b）：四輪上方的萊姆黃開放式籠框——內外兩條弧形側軌（半徑 16.3–17.5、輪胎頂上方 3.3 mm）＋ 5 根橫肋，
+  // 內側軌落在殼面上、外側軌懸在輪胎外側，短窄殼也有包住車輪的葉子板輪廓
+  parts.push({ geometry: mergeGeos([40, -40].flatMap((ax) => [1, -1].map((sg) => buildFenderFrame(ax, sg)))), mat: 'limeEdge', shell: true, name: 'fender-frames' });
 
   parts.push({ geometry: buildMountTabs(MOUNTS, (x) => kit.innerYAt(x)), mat: 'mount', name: 'mount-tabs' });
   return parts;

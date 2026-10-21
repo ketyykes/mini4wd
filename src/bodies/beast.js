@@ -2,8 +2,8 @@
 // 設計：shared/design/body-beast/DESIGN.md（致敬元素、和原作車的差異）。剖面為本檔站位表（推估，依 DESIGN.md 外框限制與底盤高度掃描）。
 // 塗裝全為自創：暗紅＋槍灰＋古銅、號碼「55」、爪痕斜紋；不含任何廠商 / 作品名稱、商標或角色圖像。
 import * as THREE from 'three';
-import { makePolyBody, finPlate } from './polyBody.js';
-import { namedMaterial, decalMaterial, sdNumber, sdConvexPolygon, sdBar, sideDecal, topDecal, mergeGeos } from './loft.js';
+import { makePolyBody, finPlate, sweepEllipse } from './polyBody.js';
+import { namedMaterial, decalMaterial, buildRegion, buildRim, featureSd, sdNumber, sdBar, sideDecal, topDecal, mergeGeos, lerp } from './loft.js';
 
 /** @typedef {import('./loft.js').KeepFn} KeepFn */
 
@@ -32,6 +32,9 @@ const STATIONS = [
   [-58, [[0, 28.5], [3, 28.3], [7, 28], [10, 28], [13, 28.8], [20, 28.6], [26, 27.5], [26, 22]]],
 ].map(([x, pts]) => ({ x, pts }));
 
+/** @type {any} 獸眼凹槽（俯視菱形，見 recesses） */
+const EYE = { view: 'top', shape: 'poly', pts: [[63.0, 2.6], [60.26, 8.97], [54.32, 14.04], [57.34, 6.79]], depth: 1.0 };
+
 /** @type {(x: number) => number} 槍灰下半車身分色線（前低後高的斜線，和獸頭的反楔形相呼應） */
 const lowerLine = (x) => 17 - 0.06 * x;
 
@@ -39,12 +42,14 @@ const lowerLine = (x) => 17 - 0.06 * x;
 const materials = () => ({
   crimson: namedMaterial('paint-crimson', { color: 0x8e1a22, roughness: 0.22, clearcoat: 1.0, clearcoatRoughness: 0.06 }),
   gunmetal: namedMaterial('paint-gunmetal', { color: 0x3a3d42, roughness: 0.35, metalness: 0.45, clearcoat: 0.6 }),
-  bronze: namedMaterial('trim-bronze', { color: 0xb08d57, roughness: 0.3, metalness: 0.8, side: THREE.DoubleSide }),
+  gunmetal2: namedMaterial('paint-gunmetal', { color: 0x3a3d42, roughness: 0.35, metalness: 0.45, side: THREE.DoubleSide }),
+  // 金屬古銅（名稱含 brass → Blender 匯出分類為 metal）
+  bronze: namedMaterial('brass-horn-bronze', { color: 0xb08d57, roughness: 0.28, metalness: 0.9, clearcoat: 0.3 }),
   inner: namedMaterial('shell-inner-dark', { color: 0x221a1a, roughness: 0.85, side: THREE.BackSide }),
   edge: namedMaterial('shell-edge-crimson', { color: 0x6e141a, roughness: 0.5, side: THREE.DoubleSide }),
   recess: namedMaterial('trim-intake-black', { color: 0x0b0b0c, roughness: 0.9, side: THREE.DoubleSide }),
   recessWall: namedMaterial('trim-intake-wall', { color: 0x46494f, roughness: 0.7, side: THREE.DoubleSide }),
-  eye: decalMaterial('lamp-amber', { color: 0xffb020, emissive: 0xff8a00, emissiveIntensity: 0.6, roughness: 0.1 }),
+  eye: namedMaterial('lamp-amber', { color: 0xffb020, emissive: 0xff8a00, emissiveIntensity: 0.9, roughness: 0.1, clearcoat: 1.0 }),
   black: decalMaterial('decal-black', { color: 0x111214, roughness: 0.55 }),
   gold: decalMaterial('decal-bronze', { color: 0xc49a5a, roughness: 0.35, metalness: 0.5 }),
   mount: namedMaterial('abs-mount-black', { color: 0x222326, roughness: 0.6 }),
@@ -66,7 +71,8 @@ export const beastBody = makePolyBody({
   ],
   recesses: [
     // 獸眼：頭部前斜面上兩道往外上斜的凹槽（之後貼琥珀色燈）
-    { id: '獸眼 ×2', view: 'top', shape: 'poly', pts: [[60, 4], [61.5, 9.5], [57.5, 12], [55.5, 6]], depth: 1.6 },
+    // iter-47：細長菱形、往外上斜（iter-47b 放大 1.4 倍：長約 14、寬 3.6），淺凹 1 mm，槽底整面琥珀燈
+    { id: '獸眼 ×2', view: 'top', shape: 'poly', pts: [[63.0, 2.6], [60.26, 8.97], [54.32, 14.04], [57.34, 6.79]], depth: 1.0 },
     // 側面層疊鰓狀進氣口（側視三道斜槽）
     { id: '鰓 1', view: 'side', shape: 'poly', pts: [[20, 14], [22.5, 14], [16, 25], [13.5, 25]], depth: 2.2 },
     { id: '鰓 2', view: 'side', shape: 'poly', pts: [[14, 14], [16.5, 14], [10, 25], [7.5, 25]], depth: 2.2 },
@@ -91,16 +97,19 @@ export const beastBody = makePolyBody({
     const parts = [];
     // 中央衝角（獸角）：鼻部中線上往前上方伸出的古銅色刃片
     const top = (x) => kit.surf.topY(x, 0);
-    const horn = finPlate(
+    // iter-47b：衝角做成有厚度的立體角——沿往前上翹的弧線掃掠橢圓斷面，根部 5.6 × 6.4 mm 埋在殼裡，尖端收到 0.4 mm
+    const horn = sweepEllipse(
       [
-        [42, top(42) - 0.4],
-        [64, top(64) - 0.4],
-        [67, top(64) + 3.5],
-        [52, top(52) + 6.5],
-        [44, top(44) + 3],
+        [39, top(39) - 2.2, 0],
+        [46, top(46) - 0.2, 0],
+        [53, 38.6, 0],
+        [60, 40, 0],
+        [66, 42.2, 0],
+        [71, 45.4, 0],
       ],
-      0,
-      1.6,
+      56,
+      (t) => [lerp(2.9, 0.2, t ** 1.2), lerp(3.4, 0.2, t ** 1.05)],
+      20,
     );
     parts.push({ geometry: horn, mat: 'bronze', outline: true, name: 'horn' });
     // 肩部翼艙上的短鰭（後翼艙上方，左右各一，往外傾 10°）
@@ -121,14 +130,13 @@ export const beastBody = makePolyBody({
       );
     }
     parts.push({ geometry: mergeGeos(fins), mat: 'gunmetal', outline: true, name: 'haunch-fins' });
-    // 獸眼燈
-    const eye = sdConvexPolygon([
-      [60.1, 4.6],
-      [61.1, 9.1],
-      [57.9, 11.2],
-      [56.3, 6.3],
-    ]);
-    parts.push({ geometry: kit.decal((x, y, z) => -eye(x, Math.abs(z)), { offset: 0.1 }), mat: 'eye', name: 'lamp-eyes' });
+    // 獸眼燈（iter-47）：琥珀燈片鋪滿菱形凹槽底；凹槽外圍 0.5 mm、凸出 0.25 mm 的槍灰眉骨唇邊
+    const eyeSd = featureSd(EYE, 28);
+    const lamp = buildRegion(kit.surf, [...kit.holes, (x, y, z) => -eyeSd(x, y, z)], { offset: -EYE.depth + 0.06 });
+    parts.push({ geometry: lamp.geometry, mat: 'eye', name: 'lamp-eyes' });
+    const brow = buildRegion(kit.surf, [...kit.holes, (x, y, z) => eyeSd(x, y, z), (x, y, z) => 0.5 - eyeSd(x, y, z)], { offset: 0.25 });
+    parts.push({ geometry: brow.geometry, mat: 'gunmetal', name: 'eye-brow' });
+    parts.push({ geometry: buildRim(brow, 0, 0.25), mat: 'gunmetal2', name: 'eye-brow-wall' });
     // 爪痕：前翼艙上三道斜條（古銅）
     const claws = [0, 1, 2].map((i) => sdBar(30 + i * 5, 24, 36 + i * 5, 38, 1.4));
     parts.push({

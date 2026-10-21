@@ -2,10 +2,10 @@
 // 單位 mm；車體座標 x 向前、y 向上、z 向右，原點在前後軸中點的地面上
 // 第二階段：所有尺寸來自組裝結果（assembly.js 的 asm.spec，由零件資料組成）與 carLayout.js（與物理共用）
 import * as THREE from 'three';
-import { spec as globalSpec } from './spec.js';
 import { rollerLayout, wheelLayout, componentLayout } from './carLayout.js';
 import { assemble, loadConfig } from './assembly.js';
 import { getPart } from './parts/index.js';
+import { bumperGeometry } from './parts/bumperGeom.js';
 
 /** 車殼卡榫與開關位置（底盤座標，取自底盤零件資料） */
 const BODY_MOUNTS = getPart('chassis-midship').bodyMounts;
@@ -119,6 +119,121 @@ function tireSidewallMaterial() {
   return new THREE.MeshStandardMaterial({ map: tex, bumpMap: bump, bumpScale: 1.2, roughness: 0.9, metalness: 0.0, envMapIntensity: 0.6, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -1 });
 }
 
+/**
+ * 碳纖斜紋（2/2 twill）貼圖（DataTexture，Node 測試環境也能建立）：每格是一束纖維，橫束 / 直束交錯，
+ * 束內依纖維方向做亮度起伏（模擬清漆下纖維束的反光）。一張貼圖 8 × 8 格
+ * @type {() => THREE.DataTexture}
+ */
+function carbonWeaveTexture() {
+  const cell = 8;
+  const n = 8;
+  const w = cell * n;
+  const data = new Uint8Array(w * w * 4);
+  for (let j = 0; j < w; j++) {
+    for (let i = 0; i < w; i++) {
+      const cx = Math.floor(i / cell);
+      const cy = Math.floor(j / cell);
+      const horizontal = (((cx - cy) % 4) + 4) % 4 < 2;
+      // 束內位置 0..1：橫束看 y、直束看 x（束寬方向的圓弧亮度）＋沿纖維方向的細紋
+      const across = horizontal ? (j % cell) / (cell - 1) : (i % cell) / (cell - 1);
+      const along = horizontal ? i : j;
+      const bulge = Math.sin(Math.PI * across);
+      const fine = 0.5 + 0.5 * Math.sin(along * 2.1 + (horizontal ? cy : cx) * 1.7);
+      const v = Math.round(18 + 52 * bulge * (horizontal ? 1.0 : 0.62) + 8 * fine);
+      const k = (j * w + i) * 4;
+      data[k] = v;
+      data[k + 1] = v;
+      data[k + 2] = Math.min(255, v + 3);
+      data[k + 3] = 255;
+    }
+  }
+  const t = new THREE.DataTexture(data, w, w, THREE.RGBAFormat);
+  t.wrapS = THREE.RepeatWrapping;
+  t.wrapT = THREE.RepeatWrapping;
+  // 擠出板件的 UV 以 mm 為單位：一張貼圖 = 12 mm（每束約 1.5 mm，3K 斜紋常見尺寸，推估）
+  t.repeat.set(1 / 12, 1 / 12);
+  t.colorSpace = THREE.SRGBColorSpace;
+  t.magFilter = THREE.LinearFilter;
+  t.needsUpdate = true;
+  return t;
+}
+
+/**
+ * FRP（玻纖環氧板）貼圖：灰色底上有隨機方向的短玻纖紋與淡淡的雲狀深淺（固定種子，可重現）
+ * @type {() => THREE.DataTexture}
+ */
+function frpFiberTexture() {
+  const w = 128;
+  const data = new Float32Array(w * w).fill(0);
+  let seed = 4242;
+  const rand = () => {
+    seed = (seed * 1664525 + 1013904223) % 4294967296;
+    return seed / 4294967296;
+  };
+  // 短纖維：隨機起點、隨機方向、長 6–20 px 的亮線
+  for (let f = 0; f < 420; f++) {
+    let x = rand() * w;
+    let y = rand() * w;
+    const a = rand() * Math.PI;
+    const len = 6 + rand() * 14;
+    const amp = 0.25 + rand() * 0.35;
+    for (let t = 0; t < len; t++) {
+      const ix = ((Math.floor(x) % w) + w) % w;
+      const iy = ((Math.floor(y) % w) + w) % w;
+      data[iy * w + ix] += amp;
+      x += Math.cos(a);
+      y += Math.sin(a);
+    }
+  }
+  const out = new Uint8Array(w * w * 4);
+  for (let k = 0; k < w * w; k++) {
+    const i = k % w;
+    const j = Math.floor(k / w);
+    const cloud = 0.5 + 0.25 * Math.sin(i * 0.11 + Math.sin(j * 0.07) * 2) + 0.25 * Math.sin(j * 0.09 + Math.sin(i * 0.05) * 2);
+    const v = Math.min(255, Math.round(170 + 22 * cloud + 26 * Math.min(1, data[k])));
+    out[k * 4] = v;
+    out[k * 4 + 1] = Math.min(255, v + 4);
+    out[k * 4 + 2] = Math.min(255, v + 6);
+    out[k * 4 + 3] = 255;
+  }
+  const t = new THREE.DataTexture(out, w, w, THREE.RGBAFormat);
+  t.wrapS = THREE.RepeatWrapping;
+  t.wrapT = THREE.RepeatWrapping;
+  // 一張貼圖 = 24 mm
+  t.repeat.set(1 / 24, 1 / 24);
+  t.colorSpace = THREE.SRGBColorSpace;
+  t.magFilter = THREE.LinearFilter;
+  t.needsUpdate = true;
+  return t;
+}
+
+/**
+ * 發泡海綿表面（細小氣孔的明暗雜訊），給煞車海綿當 bump / 顏色貼圖
+ * @type {() => THREE.DataTexture}
+ */
+function spongePoreTexture() {
+  const w = 64;
+  const data = new Uint8Array(w * w * 4);
+  let seed = 777;
+  const rand = () => {
+    seed = (seed * 1664525 + 1013904223) % 4294967296;
+    return seed / 4294967296;
+  };
+  for (let k = 0; k < w * w; k++) {
+    const v = rand() < 0.18 ? Math.round(150 + 40 * rand()) : Math.round(225 + 30 * rand());
+    data[k * 4] = v;
+    data[k * 4 + 1] = v;
+    data[k * 4 + 2] = v;
+    data[k * 4 + 3] = 255;
+  }
+  const t = new THREE.DataTexture(data, w, w, THREE.RGBAFormat);
+  t.wrapS = THREE.RepeatWrapping;
+  t.wrapT = THREE.RepeatWrapping;
+  t.repeat.set(1 / 8, 1 / 8);
+  t.needsUpdate = true;
+  return t;
+}
+
 /** 建立材質集合 */
 function makeMaterials() {
   return {
@@ -160,13 +275,16 @@ function makeMaterials() {
     rollerAlu: new THREE.MeshPhysicalMaterial({ name: 'metal-roller-aluminum', color: 0xc4c9d0, roughness: 0.28, metalness: 0.95, side: THREE.DoubleSide }),
     screw: new THREE.MeshStandardMaterial({ color: 0xd8d8d8, roughness: 0.25, metalness: 1.0 }),
     // 第三階段改裝零件（material.name 給 Blender 管線分類：frp-*、carbon-*、alu-*、sponge-*、*-weight）
-    frpPlate: new THREE.MeshPhysicalMaterial({ name: 'frp-gray', color: 0x8d9196, roughness: 0.55, metalness: 0.0, clearcoat: 0.2, clearcoatRoughness: 0.5 }),
-    carbonPlate: new THREE.MeshPhysicalMaterial({ name: 'carbon-plate', color: 0x1b1c1f, roughness: 0.32, metalness: 0.1, clearcoat: 0.8, clearcoatRoughness: 0.15 }),
+    // iter-47：FRP 板加短玻纖紋（frpFiberTexture）、碳纖板加斜紋貼圖（carbonWeaveTexture）；reviewer iter-46「只是平塗的灰色、黑色」
+    frpPlate: new THREE.MeshPhysicalMaterial({ name: 'frp-gray', color: 0x7c8488, map: frpFiberTexture(), roughness: 0.62, metalness: 0.0, clearcoat: 0.25, clearcoatRoughness: 0.45 }),
+    carbonPlate: new THREE.MeshPhysicalMaterial({ name: 'carbon-plate', color: 0xffffff, map: carbonWeaveTexture(), roughness: 0.3, metalness: 0.15, clearcoat: 1.0, clearcoatRoughness: 0.08 }),
     aluSpacer: new THREE.MeshStandardMaterial({ name: 'alu-spacer', color: 0xb9bec6, roughness: 0.3, metalness: 0.9 }),
-    brassWeight: new THREE.MeshStandardMaterial({ name: 'brass-weight', color: 0xc9a24a, roughness: 0.3, metalness: 0.95 }),
+    // iter-47：黃銅再亮一點（app 沒有環境貼圖時金屬會偏暗，reviewer iter-46「很小的金色圓柱，不容易認出來」）
+    brassWeight: new THREE.MeshStandardMaterial({ name: 'brass-weight', color: 0xe0b45a, roughness: 0.26, metalness: 0.8, emissive: 0x2a1c05 }),
+    nylonCap: new THREE.MeshStandardMaterial({ name: 'plastic-nylon-cap', color: 0xe9e6dc, roughness: 0.55, metalness: 0.0 }),
     steelWeight: new THREE.MeshStandardMaterial({ name: 'steel-weight', color: 0x9da2a8, roughness: 0.35, metalness: 0.9 }),
-    spongeWhite: new THREE.MeshStandardMaterial({ name: 'sponge-white', color: 0xe8e6df, roughness: 1.0, metalness: 0.0 }),
-    spongeBlue: new THREE.MeshStandardMaterial({ name: 'sponge-blue', color: 0x2f6fd0, roughness: 1.0, metalness: 0.0 }),
+    spongeWhite: new THREE.MeshStandardMaterial({ name: 'sponge-white', color: 0xf4f2ea, map: spongePoreTexture(), bumpMap: spongePoreTexture(), bumpScale: 0.4, roughness: 1.0, metalness: 0.0, emissive: 0x1c1c1a }),
+    spongeBlue: new THREE.MeshStandardMaterial({ name: 'sponge-blue', color: 0x3c86f0, map: spongePoreTexture(), bumpMap: spongePoreTexture(), bumpScale: 0.4, roughness: 1.0, metalness: 0.0, emissive: 0x06142a }),
     light: new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: 0x99aabb, emissiveIntensity: 0.3, roughness: 0.2 }),
   };
 }
@@ -540,9 +658,10 @@ function gearTrainLayout() {
  * 導輪（iter-06 重做；ref_ma-chassis：槍灰色導輪，上下輪緣凸出、中段內縮，頂面內凹看得到培林）：
  * Lathe 截面＝上下輪緣（含倒角）＋中段腰身＋頂底面內凹環；培林分外環（鋼，凸起）／黑色密封蓋（內凹）／內環（鋼）三層；
  * 導輪與臂之間有墊片間隙，頂部墊片＋十字頭螺絲，底部六角螺帽。物理接觸半徑不變（r.r）
- * @type {(mats: ReturnType<typeof makeMaterials>, r: { x: number, y: number, z: number, r: number, h: number }) => THREE.Group}
+ * opt.bare = true：裝在導輪板的導輪柱上（下方的墊片 / 螺帽由 buildStayPlates 的導輪柱負責），不畫底部墊片、螺帽、螺絲尾端
+ * @type {(mats: ReturnType<typeof makeMaterials>, r: { x: number, y: number, z: number, r: number, h: number }, opt?: { bare?: boolean }) => THREE.Group}
  */
-const buildRoller = (mats, r) => {
+const buildRoller = (mats, r, opt = {}) => {
   const g = new THREE.Group();
   const R = r.r;
   const H = r.h / 2;
@@ -613,6 +732,10 @@ const buildRoller = (mats, r) => {
     slot.rotation.y = rot;
     g.add(slot);
   }
+  if (opt.bare) {
+    g.position.set(r.x, r.y, r.z);
+    return g;
+  }
   // 底部墊片（導輪與臂板之間的間隙）＋六角螺帽＋螺絲尾端
   const spacer = new THREE.Mesh(new THREE.CylinderGeometry(2.0, 2.0, 0.9, 20), mats.steel);
   spacer.position.y = -H + recessDepth - 0.75;
@@ -629,17 +752,18 @@ const buildRoller = (mats, r) => {
 
 /**
  * 導輪（可能是雙層）：每一片接觸面各建一顆 buildRoller（尺寸取該片的直徑與高度），整組放在導輪中心
- * @type {(mats: ReturnType<typeof makeMaterials>, r: { x: number, y: number, z: number, r: number, h: number, tiers?: { y: number, r: number, h: number }[] }) => THREE.Group}
+ * @type {(mats: ReturnType<typeof makeMaterials>, r: { x: number, y: number, z: number, r: number, h: number, tiers?: { y: number, r: number, h: number }[] }, opt?: { bare?: boolean }) => THREE.Group}
  */
-const buildRollerStack = (mats, r) => {
+const buildRollerStack = (mats, r, opt = {}) => {
   const tiers = r.tiers ?? [{ y: 0, r: r.r, h: r.h }];
   if (tiers.length === 1) {
-    return buildRoller(mats, { x: r.x, y: r.y + tiers[0].y, z: r.z, r: tiers[0].r, h: tiers[0].h });
+    return buildRoller(mats, { x: r.x, y: r.y + tiers[0].y, z: r.z, r: tiers[0].r, h: tiers[0].h }, opt);
   }
   const g = new THREE.Group();
-  for (const t of tiers) {
-    g.add(buildRoller(mats, { x: r.x, y: r.y + t.y, z: r.z, r: t.r, h: t.h }));
-  }
+  tiers.forEach((t, i) => {
+    // 雙層導輪是一體成形：只有最下層保留底部五金
+    g.add(buildRoller(mats, { x: r.x, y: r.y + t.y, z: r.z, r: t.r, h: t.h }, { bare: opt.bare || i > 0 }));
+  });
   // 兩片之間的縮腰（同材質的短圓柱）
   const ys = tiers.map((t) => r.y + t.y);
   const waistH = Math.max(...ys) - Math.min(...ys);
@@ -650,11 +774,14 @@ const buildRollerStack = (mats, r) => {
 };
 
 /**
- * FRP / 碳纖導輪板（外形與開孔取自零件資料 plate，與質量、干涉檢查同一份）＋導輪螺絲柱（兩層導輪時的長螺絲＋墊管）
+ * FRP / 碳纖導輪板（外形與開孔取自零件資料 plate，與質量、干涉檢查同一份；板厚照資料 1.5 mm，不加倒角）＋導輪柱
+ * 導輪柱（iter-47，ref_chevalier-ma_gradeup / ref_aero-avante-ar）：板底的螺絲頭 → 板面墊片 → 鋁墊管撐到導輪底 → 導輪 →
+ * （兩層時）鋁墊管撐到上層導輪 → 頂部墊片＋鋁墊管＋尼龍蓋。導輪高度一律取 rollerLayout（與物理碰撞體同一份）
  * @type {(mats: ReturnType<typeof makeMaterials>) => THREE.Group}
  */
 const buildStayPlates = (mats) => {
   const g = new THREE.Group();
+  const layout = rollerLayout(spec);
   for (const slot of ['frontStay', 'rearStay']) {
     const st = asmCur.partsBySlot[slot];
     const pl = st.plate;
@@ -665,30 +792,53 @@ const buildStayPlates = (mats) => {
     grp.name = slot;
     grp.userData.part = slot === 'frontStay' ? 'stay-front' : 'stay-rear';
     const mat = st.material === 'carbon' ? mats.carbonPlate : mats.frpPlate;
-    const holes = pl.holes.map((h) => circlePts(h.x, h.z, h.r, 20));
-    const plate = extrudeXZ(pl.outline, pl.thickness_mm, mat, holes, 0.15);
+    const holes = pl.holes.map((h) => circlePts(h.x, h.z, h.r, 16));
+    const plate = extrudeXZ(pl.outline, pl.thickness_mm, mat, holes);
     plate.position.y = pl.y_mm;
     grp.add(plate);
-    // 導輪螺絲（鋼）：由板底穿過保桿到導輪；兩層導輪時加墊管（鋁）撐到上層
+    const plateTop = pl.y_mm + pl.thickness_mm;
     const sx = slot === 'frontStay' ? 1 : -1;
-    const top = slot === 'frontStay' ? st.rollerY_mm : (st.upperRollerHeight_mm ?? st.lowerRollerHeight_mm);
-    for (const sz of [-1, 1]) {
-      const x = sx * st.rollerX_mm;
-      const z = sz * st.rollerZ_mm;
-      const len = top - pl.y_mm;
-      const screw = new THREE.Mesh(new THREE.CylinderGeometry(0.95, 0.95, len, 12), mats.steel);
-      screw.position.set(x, pl.y_mm + len / 2, z);
-      grp.add(screw);
-      const head = new THREE.Mesh(new THREE.CylinderGeometry(1.9, 1.9, 0.9, 6), mats.steel);
-      head.position.set(x, pl.y_mm - 0.45, z);
+    // 每個導輪位置（同一 x、z 的上下導輪疊成一根柱）
+    /** @type {Map<string, any[]>} */
+    const posts = new Map();
+    for (const r of layout.filter((q) => Math.sign(q.x) === sx)) {
+      const key = `${r.x.toFixed(2)},${r.z.toFixed(2)}`;
+      posts.set(key, [...(posts.get(key) ?? []), r]);
+    }
+    for (const stack of posts.values()) {
+      stack.sort((a, b) => a.y - b.y);
+      const { x, z } = stack[0];
+      /** @type {(y0: number, y1: number, rad: number, m: THREE.Material) => void} 兩高度之間的圓柱 */
+      const tube = (y0, y1, rad, m) => {
+        if (y1 - y0 <= 0.05) {
+          return;
+        }
+        const t = new THREE.Mesh(new THREE.CylinderGeometry(rad, rad, y1 - y0, 20), m);
+        t.position.set(x, (y0 + y1) / 2, z);
+        grp.add(t);
+      };
+      // 板底的十字頭螺絲頭
+      const head = new THREE.Mesh(new THREE.CylinderGeometry(1.9, 2.0, 1.0, 20), mats.screw);
+      head.position.set(x, pl.y_mm - 0.5, z);
       grp.add(head);
-      if (slot === 'rearStay' && st.upperRollerHeight_mm !== null && st.upperRollerHeight_mm !== undefined) {
-        const lo = st.lowerRollerHeight_mm + 2.5;
-        const hi = st.upperRollerHeight_mm - 2.5;
-        const tube = new THREE.Mesh(new THREE.CylinderGeometry(1.8, 1.8, hi - lo, 16), mats.aluSpacer);
-        tube.position.set(x, (lo + hi) / 2, z);
-        grp.add(tube);
+      // 板面墊片 → 鋁墊管 → 導輪底墊片
+      let y = plateTop;
+      tube(y, y + 0.4, 2.6, mats.steel);
+      y += 0.4;
+      for (const r of stack) {
+        const bottom = r.y - r.h / 2;
+        tube(y, bottom - 0.3, 1.8, mats.aluSpacer);
+        tube(bottom - 0.3, bottom, 2.4, mats.steel);
+        y = r.y + r.h / 2;
       }
+      // 頂部：螺絲桿露出 4 mm，套一小段鋁墊管＋尼龍蓋（實車導輪柱頂端常見的防脫蓋，推估尺寸）
+      tube(y + 0.9, y + 1.3, 2.2, mats.steel);
+      tube(y + 1.3, y + 3.3, 1.6, mats.aluSpacer);
+      const cap = new THREE.Mesh(new THREE.SphereGeometry(1.9, 18, 10, 0, Math.PI * 2, 0, Math.PI / 2), mats.nylonCap);
+      cap.position.set(x, y + 3.3, z);
+      grp.add(cap);
+      // 螺絲桿（板底 → 頂端）
+      tube(pl.y_mm, y + 3.6, 0.95, mats.screw);
     }
     g.add(grp);
   }
@@ -708,22 +858,66 @@ const buildOptionalParts = (mats) => {
     grp.name = `mass-damper-${d.index}`;
     grp.userData.part = 'mass-damper';
     const mat = mats.brassWeight;
+    const h = part.height_mm;
+    const top = d.seat.y + h + part.stroke_mm;
     let w;
     if (part.shape === 'box') {
-      w = new THREE.Mesh(new THREE.BoxGeometry(part.length_mm, part.height_mm, part.width_mm), mat);
+      // 方塊制振器：四邊小倒角（擠出＋倒角），中間兩個螺絲孔各穿一支螺絲
+      const L = part.length_mm;
+      const W = part.width_mm;
+      const shape = new THREE.Shape([new THREE.Vector2(-L / 2, -W / 2), new THREE.Vector2(L / 2, -W / 2), new THREE.Vector2(L / 2, W / 2), new THREE.Vector2(-L / 2, W / 2)]);
+      const geo = new THREE.ExtrudeGeometry(shape, { depth: h - 0.6, bevelEnabled: true, bevelThickness: 0.3, bevelSize: 0.3, bevelSegments: 2 });
+      geo.rotateX(-Math.PI / 2);
+      geo.translate(0, 0.3, 0);
+      w = new THREE.Mesh(geo, mat);
+      w.position.set(d.seat.x, d.seat.y, d.seat.z);
     } else {
-      w = new THREE.Mesh(new THREE.CylinderGeometry(part.diameter_mm / 2, part.diameter_mm / 2, part.height_mm, 32), mat);
+      // 圓柱制振器（ref_chevalier-ma_gradeup：黃銅圓柱，底部有凸緣、頂面倒角，中孔套在長螺絲上）
+      const R = part.diameter_mm / 2;
+      /** @type {number[][]} 截面（半徑, 高度），由中孔底 → 外緣 → 中孔頂 */
+      const prof = [
+        [1.15, 0],
+        [R, 0],
+        [R, 1.3],
+        [R - 0.6, 1.8],
+        [R - 0.6, h - 0.7],
+        [R - 1.1, h],
+        [1.15, h],
+      ];
+      w = new THREE.Mesh(new THREE.LatheGeometry(prof.map(([a, b]) => new THREE.Vector2(a, b)), 40), mat);
+      w.position.set(d.seat.x, d.seat.y, d.seat.z);
+      // 頂面車削的同心溝（深色細環）
+      const groove = new THREE.Mesh(new THREE.RingGeometry(R - 2.4, R - 2.0, 40), mats.chassisDark);
+      groove.rotation.x = -Math.PI / 2;
+      groove.position.set(d.seat.x, d.seat.y + h + 0.01, d.seat.z);
+      grp.add(groove);
     }
-    w.position.set(d.seat.x, d.seat.y + part.height_mm / 2, d.seat.z);
     grp.add(w);
-    // 螺絲軸（行程上方留空間）與頂部螺帽
-    const shaftLen = part.height_mm + part.stroke_mm + 1.2;
-    const shaft = new THREE.Mesh(new THREE.CylinderGeometry(0.95, 0.95, shaftLen, 12), mats.steel);
-    shaft.position.set(d.seat.x, d.seat.y + shaftLen / 2, d.seat.z);
-    grp.add(shaft);
-    const nut = new THREE.Mesh(new THREE.CylinderGeometry(1.9, 1.9, 1.2, 6), mats.steel);
-    nut.position.set(d.seat.x, d.seat.y + shaftLen - 0.6, d.seat.z);
-    grp.add(nut);
+    // 長螺絲：板底的螺絲頭 → 穿過制振器 → 行程上端的墊片＋防鬆螺帽＋露出的螺絲尾（每個螺絲孔一支）
+    const screwXs = part.shape === 'box' ? [-part.length_mm / 4, part.length_mm / 4] : [0];
+    for (const dx of screwXs) {
+      const sxp = d.seat.x + dx;
+      // 後制振器：螺絲由導輪板底面（板厚 1.5 mm）往上鎖，板底露出螺絲頭；側制振器：托架很低（離地 1 mm），用平頭螺絲埋在托架內，不畫頭
+      const below = part.mount === 'side' ? d.seat.y - 1.0 : d.seat.y - 1.5;
+      const shaftTop = top + 3.2;
+      const shaft = new THREE.Mesh(new THREE.CylinderGeometry(0.95, 0.95, shaftTop - below, 12), mats.screw);
+      shaft.position.set(sxp, (below + shaftTop) / 2, d.seat.z);
+      grp.add(shaft);
+      if (part.mount !== 'side') {
+        const head = new THREE.Mesh(new THREE.CylinderGeometry(1.9, 2.0, 1.0, 20), mats.screw);
+        head.position.set(sxp, below - 0.5, d.seat.z);
+        grp.add(head);
+      }
+      const washer = new THREE.Mesh(new THREE.CylinderGeometry(2.6, 2.6, 0.4, 20), mats.steel);
+      washer.position.set(sxp, top + 0.2, d.seat.z);
+      grp.add(washer);
+      const nut = new THREE.Mesh(new THREE.CylinderGeometry(2.0, 2.0, 1.6, 6), mats.steel);
+      nut.position.set(sxp, top + 1.2, d.seat.z);
+      grp.add(nut);
+      const nylon = new THREE.Mesh(new THREE.CylinderGeometry(1.6, 1.6, 0.6, 16), mats.nylonCap);
+      nylon.position.set(sxp, top + 2.3, d.seat.z);
+      grp.add(nylon);
+    }
     if (part.mount === 'side') {
       // 側托架：從底盤側壁伸出的小板（ABS）
       const sz = Math.sign(d.seat.z);
@@ -734,9 +928,26 @@ const buildOptionalParts = (mats) => {
     g.add(grp);
   }
   if (o.sponge) {
+    // 煞車海綿（iter-47）：圓角方塊（海綿裁切邊），表面氣孔貼圖；白 = 強力、藍 = 溫和（G 節 [T15492]、[T15512]）
     const b = o.sponge.solid;
-    const m = new THREE.Mesh(new THREE.BoxGeometry(b.max.x - b.min.x, b.max.y - b.min.y, b.max.z - b.min.z), o.sponge.part.color === 'blue' ? mats.spongeBlue : mats.spongeWhite);
-    m.position.set((b.min.x + b.max.x) / 2, (b.min.y + b.max.y) / 2, (b.min.z + b.max.z) / 2);
+    const lx = b.max.x - b.min.x;
+    const lz = b.max.z - b.min.z;
+    const ly = b.max.y - b.min.y;
+    const shape = new THREE.Shape();
+    const rr = Math.min(1.5, lx / 4, lz / 4);
+    shape.moveTo(-lx / 2 + rr, -lz / 2);
+    shape.lineTo(lx / 2 - rr, -lz / 2);
+    shape.quadraticCurveTo(lx / 2, -lz / 2, lx / 2, -lz / 2 + rr);
+    shape.lineTo(lx / 2, lz / 2 - rr);
+    shape.quadraticCurveTo(lx / 2, lz / 2, lx / 2 - rr, lz / 2);
+    shape.lineTo(-lx / 2 + rr, lz / 2);
+    shape.quadraticCurveTo(-lx / 2, lz / 2, -lx / 2, lz / 2 - rr);
+    shape.lineTo(-lx / 2, -lz / 2 + rr);
+    shape.quadraticCurveTo(-lx / 2, -lz / 2, -lx / 2 + rr, -lz / 2);
+    const geo = new THREE.ExtrudeGeometry(shape, { depth: ly, bevelEnabled: false, curveSegments: 6 });
+    geo.rotateX(Math.PI / 2);
+    const m = new THREE.Mesh(geo, o.sponge.part.color === 'blue' ? mats.spongeBlue : mats.spongeWhite);
+    m.position.set((b.min.x + b.max.x) / 2, b.max.y, (b.min.z + b.max.z) / 2);
     m.name = 'brake-sponge';
     m.userData.part = 'brake-sponge';
     g.add(m);
@@ -1196,15 +1407,10 @@ function buildChassis(mats) {
     return m;
   };
   for (const sx of [-1, 1]) {
+    // 保桿幾何（parts/bumperGeom.js）：與「保桿切除」的質量扣除同一份定義
+    const bg = bumperGeometry(ch, sx);
     // 中央橋接板（底盤前端 → 導輪臂根部）
-    const bridge = [
-      [sx * 50, -22],
-      [sx * 62, -20],
-      [sx * (rx + 3), -9],
-      [sx * (rx + 3), 9],
-      [sx * 62, 20],
-      [sx * 50, 22],
-    ];
+    const bridge = bg.bridge;
     // iter-06：橋接板改成「上蓋＋下方鏤空肋層」（MA 保桿底面是三角形肋格，頂面為平整上蓋）：
     // 下層 1.4 mm 開三角形／長圓口袋，上層 1.0 mm 上蓋封住 → 底面看是鏤空骨架、不會透出背景；
     // 上蓋外緣加立起的邊框樑、中央 2 顆十字螺絲（與後方上層導輪架同等的細節）
@@ -1227,68 +1433,52 @@ function buildChassis(mats) {
     }
     // 橋接板前緣立起的厚邊（保桿正面）
     g.add(beam(sx * (rx + 2.4), -9, sx * (rx + 2.4), 9, 1.4, 4.2, bumperY));
+    // 這一端換成 FRP / 碳纖導輪板時，保桿兩側的導輪臂剪掉（實車改裝常見的「保桿切除」，導輪改由板子撐），
+    // 只留中央橋接板當板子的鎖點（iter-47，reviewer iter-46：板子被原廠保桿蓋住、看起來很厚）。
+    // 註：底盤質量仍用未加工的實測值 24.4 g（[NAO]），剪掉的導輪臂約 0.5 g 未扣（推估），見 PARTS_RESEARCH 第三階段 L 節
+    const platedEnd = sx > 0 ? asmCur.partsBySlot.frontStay.plate : asmCur.partsBySlot.rearStay.plate;
     // iter-35：導輪臂改成和橋接板一體成形的寬保桿（reviewer iter-34：「細長的直桿導輪架加一塊平板」；
     // ref_ma-chassis：前後保桿是一整片帶曲線外形的寬板，兩端包住導輪座，板上有減重孔，外緣有立起的圓角肋）
-    {
-      /** @type {(t: number) => number[]} 保桿外形（俯視）：t 由左導輪座外側 → 根部 → 右導輪座外側，回傳 [X, Z]（X 為距中心的 |x|） */
-      const outline = [];
-      const rootX = 50;
-      // 外側後緣：根部 (50, ±22) 以二次曲線往外前方接到導輪座後外側
-      const arc = (a, b, c, n) => {
-        for (let k = 0; k <= n; k++) {
-          const u = k / n;
-          outline.push([(1 - u) * (1 - u) * a[0] + 2 * u * (1 - u) * b[0] + u * u * c[0], (1 - u) * (1 - u) * a[1] + 2 * u * (1 - u) * b[1] + u * u * c[1]]);
-        }
-      };
-      arc([rootX, -22], [rx - 12, -24], [rx - 2.5, -(rz + 4.4)], 10);
-      // 包住導輪座的前外角
-      arc([rx + 1.5, -(rz + 4.6)], [rx + 5.2, -(rz + 3)], [rx + 5, -(rz - 3.5)], 6);
-      // 前緣內凹弧：兩導輪座之間往內凹，中段是保桿正面
-      arc([rx + 3.2, -(rz - 9)], [rx - 1, -12], [rx + 3, -6], 8);
-      outline.push([rx + 3, 6]);
-      arc([rx - 1 + 4, 6], [rx - 1, 12], [rx + 3.2, rz - 9], 8);
-      arc([rx + 5, rz - 3.5], [rx + 5.2, rz + 3], [rx + 1.5, rz + 4.6], 6);
-      arc([rx - 2.5, rz + 4.4], [rx - 12, 24], [rootX, 22], 10);
-      const pts = outline.map(([X, Z]) => [sx * X, Z]);
-      /** @type {number[][][]} 減重孔：兩臂各一排長圓孔＋中央一排圓孔 */
-      const holes = [];
-      for (const hx of [56, 62]) {
-        holes.push(circlePts(sx * hx, 0, 1.1, 14));
-      }
-      for (const sz of [-1, 1]) {
-        for (let k = 0; k < 3; k++) {
-          const f = 0.22 + k * 0.24;
-          const hx = 55 + (rx - 55) * f;
-          const hz = 18 + (rz - 18) * f;
-          holes.push(roundedRect(sx * hx, sz * hz, 3.6, 2.2, 1.0));
-        }
-        holes.push(circlePts(sx * 54, sz * 13.5, 1.0, 14));
-      }
-      const plate = extrudeXZ(pts, bt, mats.chassis, holes, 0.35);
+    if (!platedEnd) {
+      const plate = extrudeXZ(bg.wide, bt, mats.chassis, bg.wideHoles, 0.35);
       plate.position.y = bumperY;
       g.add(plate);
+    } else {
+      // 切除後留下的中央部分 = 寬保桿板 ∩ 橋接板範圍（切除的質量見 bumperTrim，同一份幾何）
+      const inBridge = (pt) => {
+        let c = false;
+        for (let i = 0, j = bridge.length - 1; i < bridge.length; j = i++) {
+          const [xi, zi] = bridge[i];
+          const [xj, zj] = bridge[j];
+          if (zi > pt[1] !== zj > pt[1] && pt[0] < ((xj - xi) * (pt[1] - zi)) / (zj - zi) + xi) {
+            c = !c;
+          }
+        }
+        return c;
+      };
+      const keepHoles = bg.wideHoles.filter((h) => h.every((pt) => inBridge(pt)));
+      const center = extrudeXZ(bridge, bt, mats.chassis, keepHoles, 0.35);
+      center.position.y = bumperY;
+      g.add(center);
     }
-    for (const sz of [-1, 1]) {
-      const ax0 = sx * 54;
-      const az0 = sz * 16;
-      const ax1 = sx * rx;
-      const az1 = sz * rz;
-      const dirX = ax1 - ax0;
-      const dirZ = az1 - az0;
-      // 導輪座（圓柱凸台，導輪下方）
-      const boss = new THREE.Mesh(new THREE.CylinderGeometry(4.6, 4.6, bt + 1.0, 24), mats.chassis);
-      boss.position.set(ax1, bumperY + (bt + 1.0) / 2 - 0.5, az1);
-      g.add(boss);
-      // 三角斜撐：臂中段下方往後下方連回底盤側框（從側面與前 3/4 視角看得到）
-      const mx = ax0 + dirX * 0.45;
-      const mz = az0 + dirZ * 0.45;
-      const strut = beam(sx * 44, sz * 22.5, mx, mz, 1.6, 1.6, 0);
-      strut.position.y = (y0 + t + bumperY) / 2 + 0.4;
-      strut.rotation.z = sx * Math.atan2(bumperY - (y0 + t), Math.hypot(mx - sx * 44, mz - sz * 22.5)) * 0.9;
-      g.add(strut);
-      const web = extrudeXY([[0, 0], [10, 0], [10, 3.2], [0, 1]], 1.2, mats.chassis);
-      web.position.set(sx > 0 ? 50 : -60, bumperY - 2.2, sz * 21.5 - 0.6);
-      g.add(web);
+    // 導輪座凸台、三角斜撐、補強片屬於導輪臂；保桿切除時一起拿掉（iter-47，幾何同 bumperTrim）
+    if (!platedEnd) {
+      for (const b of bg.bosses) {
+        const boss = new THREE.Mesh(new THREE.CylinderGeometry(b.r, b.r, b.h, 24), mats.chassis);
+        boss.position.set(b.x, b.yc, b.z);
+        g.add(boss);
+      }
+      for (const st of bg.struts) {
+        const strut = beam(st.a[0], st.a[1], st.b[0], st.b[1], st.w, st.h, 0);
+        strut.position.y = st.yc;
+        strut.rotation.z = sx * Math.atan2(bumperY - (y0 + t), Math.hypot(st.b[0] - st.a[0], st.b[1] - st.a[1])) * 0.9;
+        g.add(strut);
+      }
+      for (const w of bg.webs) {
+        const web = extrudeXY([[0, 0], [10, 0], [10, 3.2], [0, 1]], w.thickness, mats.chassis);
+        web.position.set(w.x, w.y, w.z);
+        g.add(web);
+      }
     }
     // iter-34：拿掉兩臂之間的 X 形補強（reviewer：「保桿上一根斜放的細桿，像多出來的零件」；上蓋已有安裝孔與邊框樑）
   }
@@ -1299,7 +1489,8 @@ function buildChassis(mats) {
   }
   g.add(buildStayPlates(mats));
   for (const r of rollerLayout(spec)) {
-    g.add(buildRollerStack(mats, r));
+    const onPlate = r.x > 0 ? !!asmCur.partsBySlot.frontStay.plate : !!asmCur.partsBySlot.rearStay.plate;
+    g.add(buildRollerStack(mats, r, { bare: onPlate }));
   }
 
   // ---- 雙軸馬達（置中、軸向沿 x，130 型外殼平面朝上下）----
@@ -1465,7 +1656,7 @@ function buildChassis(mats) {
 
 /**
  * 建立整台車（底盤、輪胎、車殼）。底盤座標的所有東西放在 sprung 群組，整組升降 asm.lift_mm（換輪徑時）
- * @type {(asm?: any, opt?: { body?: boolean }) => THREE.Group} 單位 mm；asm 省略時用預設組裝；opt.body = false 不裝車殼
+ * @type {(asm?: any, opt?: { body?: boolean }) => THREE.Group} 單位 mm；asm 省略時用預設組裝；opt.body = false 或 asm.body = null 不裝車殼
  */
 export function buildCarModel(asm = assemble(loadConfig('default')), opt = {}) {
   spec = asm.spec;
@@ -1497,7 +1688,8 @@ export function buildCarModel(asm = assemble(loadConfig('default')), opt = {}) {
     });
     sprung.add(wheel);
   }
-  if (opt.body !== false) {
+  // asm.body 為 null（組裝時 body: null，不裝車殼）時同樣只建底盤
+  if (opt.body !== false && asm.body) {
     const body = asm.body.def.build(mats);
     body.name = 'body';
     body.userData.part = 'body';
@@ -1605,7 +1797,8 @@ export function buildTrackModel(track) {
   //   （遠端掠射角的燈箱反射疊在飽和紅上變粉白；只調 envMap／clearcoat 時幾乎沒改善，主因是底層 F0 鏡面）
   const plasticMat = new THREE.MeshPhysicalMaterial({ vertexColors: true, roughness: 0.34, metalness: 0.0, specularIntensity: 0.5, clearcoat: 0.35, clearcoatRoughness: 0.2, envMapIntensity: 1.2, side: THREE.DoubleSide });
   applyPlasticGrain(plasticMat);
-  for (const m of track.wallMeshes) {
+  // 牆（含換道橋的橋牆與支架）與橋板（路面）都直接用物理的同一份三角網格
+  for (const m of [...track.wallMeshes, ...(track.roadMeshes ?? [])]) {
     const geo = new THREE.BufferGeometry();
     const v = new Float32Array(m.vertices.length);
     const col = new Float32Array(m.vertices.length);
@@ -1699,36 +1892,5 @@ export function buildTrackModel(track) {
   seamGeo.computeVertexNormals();
   g.add(new THREE.Mesh(seamGeo, new THREE.MeshStandardMaterial({ color: 0x1a1b1f, roughness: 0.9, side: THREE.DoubleSide })));
 
-  // 換道立體橋（iter-00 只做外觀）：外側線道爬升、越過其他車道後落到內側線道
-  if (track.laneChanger) {
-    const lc = track.laneChanger;
-    const hBridge = globalSpec.track.bridgeHeight_mm;
-    const segN = 40;
-    const deckPos = [];
-    const deckIdx = [];
-    const s0 = lc.start - 0.45;
-    const s1 = lc.end + 0.45;
-    for (let i = 0; i <= segN; i++) {
-      const u = i / segN;
-      const s = s0 + (s1 - s0) * u;
-      const lift = Math.min(1, Math.min(u, 1 - u) / 0.3);
-      const y = hBridge * (lift * lift * (3 - 2 * lift));
-      const d = -P + 2 * P * (0.5 - 0.5 * Math.cos(Math.PI * Math.min(1, Math.max(0, (u - 0.3) / 0.4))));
-      const a = track.path.point(s, d + 0.0575);
-      const b = track.path.point(s, d - 0.0575);
-      deckPos.push(a.x * 1000, y, a.z * 1000, b.x * 1000, y, b.z * 1000);
-      if (i < segN) {
-        const k = i * 2;
-        deckIdx.push(k, k + 2, k + 1, k + 1, k + 2, k + 3);
-      }
-    }
-    const deckGeo = new THREE.BufferGeometry();
-    deckGeo.setAttribute('position', new THREE.Float32BufferAttribute(deckPos, 3));
-    deckGeo.setIndex(deckIdx);
-    deckGeo.computeVertexNormals();
-    const deck = new THREE.Mesh(deckGeo, new THREE.MeshStandardMaterial({ color: 0xd8d8d8, roughness: 0.6, side: THREE.DoubleSide }));
-    deck.castShadow = true;
-    g.add(deck);
-  }
   return g;
 }

@@ -69,15 +69,86 @@ export function createWorld(track) {
     );
     wallHandles.add(col.handle);
   }
-  return { world, floor, wallHandles, track };
+  // 路面（換道器的橋板與引道）：和地板一樣是路面，不列入牆（P06 只量牆）
+  const roadHandles = new Set();
+  for (const m of track.roadMeshes ?? []) {
+    const col = world.createCollider(RAPIER.ColliderDesc.trimesh(m.vertices, m.indices, flags).setFriction(0.3), ground);
+    roadHandles.add(col.handle);
+  }
+  return { world, floor, wallHandles, roadHandles, track };
 }
 
 /**
- * 車體碰撞方塊（mm，車體座標）：車殼外框的長寬，底面 = 底盤離地高度，頂面 = 車殼頂 − 2 mm（同第一階段）
+ * 車子目前所在的層（'ground' 地面 / 'bridge' 換道器橋上）：以車體原點（輪胎接地面中央）判斷，
+ * 從橋下通過的車算地面層。牆的量測與位置投影只看同一層的牆（橋下的車不會被算成穿過橋上的牆）
+ * @type {(env: ReturnType<typeof createWorld>, car: ReturnType<typeof createCar>) => 'ground' | 'bridge'}
+ */
+export function carLevel(env, car) {
+  const { track } = env;
+  if (!track.levelAt) {
+    return 'ground';
+  }
+  const t = car.chassis.translation();
+  return track.levelAt(t.x, t.y, t.z);
+}
+
+/**
+ * 車體原點離所在層路面的高度（m）：地面層 = y，橋上 = y − 橋面高。判斷「飛出 / 跳起」用
+ * @type {(env: ReturnType<typeof createWorld>, car: ReturnType<typeof createCar>) => number}
+ */
+export function heightAboveRoad(env, car) {
+  const { track } = env;
+  const t = car.chassis.translation();
+  if (!track.roadHeight) {
+    return t.y;
+  }
+  const c = track.path.project(t.x, t.z);
+  return t.y - track.roadHeight(c.s, carLevel(env, car));
+}
+
+/**
+ * 某點所在通道（車體中心 d 的上下相鄰兩道牆）：回傳牆線偏移與橫向斜率
+ * @type {(track: any, s: number, centerD: number, level: 'ground' | 'bridge') => { upper: number, lower: number, slopeU: number, slopeL: number, faceU: number, faceL: number }}
+ */
+function channelAt(track, s, centerD, level) {
+  const half = track.dims.wallT / 2;
+  const walls = track.wallsAt ? track.wallsAt(s, level) : track.lineOffsetsAt(s).map((d) => ({ d, slope: 0, half }));
+  let upper = Infinity;
+  let lower = -Infinity;
+  let slopeU = 0;
+  let slopeL = 0;
+  let halfU = half;
+  let halfL = half;
+  // 橋上只有一條車道（兩道橋牆）：直接取這兩道牆。斜向段的牆斜率達 0.7，
+  // 若用車體中心的 d 去比對車頭 / 車尾處的牆線，會因牆線沿 s 平移而選錯通道
+  if (walls.length === 2 && walls[0].bridge && walls[1].bridge) {
+    const [u, l] = walls;
+    return { upper: u.d, lower: l.d, slopeU: u.slope, slopeL: l.slope, faceU: u.d - u.half, faceL: l.d + l.half };
+  }
+  for (const w of walls) {
+    if (w.d >= centerD) {
+      if (w.d < upper) {
+        upper = w.d;
+        slopeU = w.slope;
+        halfU = w.half ?? half;
+      }
+    } else if (w.d > lower) {
+      lower = w.d;
+      slopeL = w.slope;
+      halfL = w.half ?? half;
+    }
+  }
+  // 牆面（朝車道那一面）沿 d 的位置
+  return { upper, lower, slopeU, slopeL, faceU: upper - halfU, faceL: lower + halfL };
+}
+
+/**
+ * 車體碰撞方塊（mm，車體座標）：車殼外框的長寬，底面 = 底盤離地高度，頂面 = 車殼頂 − 2 mm（同第一階段）；沒裝車殼時用底盤本體外框
  * @type {(asm: any) => { hx: number, hy: number, hz: number, cx: number, cy: number }}
  */
 export function bodyColliderBox(asm) {
-  const b = asm.body.bbox_mm;
+  // 沒裝車殼（asm.body = null）時用底盤本體外框
+  const b = asm.body?.bbox_mm ?? asm.chassisBox_mm;
   // 底面 = 底盤 / 車殼 / 導輪的最低點（不含煞車海綿、配重等掛在下方的選配零件：海綿另有接觸模型，見 spongeForces）
   const bottom = asm.structureClearance_mm ?? asm.groundClearance_mm;
   const top = b.max.y - 2;
@@ -480,28 +551,21 @@ export function carKineticEnergy(car) {
 function projectRollersOutOfWalls(env, car) {
   const { track } = env;
   const slop = spec.sim.wallProjectionSlop_mm * MM;
-  const half = track.dims.wallT / 2;
   const t = car.chassis.translation();
   const center = track.path.project(t.x, t.z);
+  const level = carLevel(env, car);
   let worst = 0;
   let dir = 0;
   let sAt = center.s;
   for (const r of car.rollers) {
     const w = localToWorld(car, { x: r.x * MM, y: r.y * MM, z: r.z * MM });
     const pp = track.path.project(w.x, w.z);
-    const lines = track.lineOffsetsAt(pp.s);
-    let upper = Infinity;
-    let lower = -Infinity;
-    for (const d of lines) {
-      if (d >= center.d) {
-        upper = Math.min(upper, d);
-      } else {
-        lower = Math.max(lower, d);
-      }
-    }
-    const rr = r.r * MM;
-    const penUpper = pp.d + rr - (upper - half);
-    const penLower = lower + half - (pp.d - rr);
+    const ch = channelAt(track, pp.s, center.d, level);
+    // 斜向牆（換道段）上，球沿賽道橫向的伸展 = r / cosα = r·√(1 + 斜率²)
+    const rU = r.r * MM * Math.sqrt(1 + ch.slopeU * ch.slopeU);
+    const rL = r.r * MM * Math.sqrt(1 + ch.slopeL * ch.slopeL);
+    const penUpper = pp.d + rU - ch.faceU;
+    const penLower = ch.faceL - (pp.d - rL);
     if (penUpper - slop > worst) {
       worst = penUpper - slop;
       dir = -1;
@@ -573,27 +637,20 @@ export function carExtremePoints(car) {
 
 /**
  * 車體相對所在車道通道的最大穿牆深度（m，正值為超出牆面）
- * 對每個外緣點：在該點的 s 處取牆線，以車體中心的 d 找出所在通道（上下相鄰兩條牆線），牆面 = 牆線 ∓ 牆厚/2
+ * 對每個外緣點：在該點的 s 處取車子所在層的牆線，以車體中心的 d 找出所在通道（上下相鄰兩條牆線），牆面 = 牆線 ∓ 牆厚/2
  */
 export function wallPenetration(env, car) {
   const { track } = env;
   const t = car.chassis.translation();
   const c = track.path.project(t.x, t.z);
-  const half = track.dims.wallT / 2;
+  // 只看車子所在那一層的牆（橋下通過的車不算橋上的牆，橋上的車不算下層的牆）；
+  // 穿透沿賽道橫向量（斜向牆時比垂直牆面的距離大 1/cosα 倍，偏嚴格）
+  const level = carLevel(env, car);
   let pen = -Infinity;
   for (const p of carExtremePoints(car)) {
     const pp = track.path.project(p.x, p.z);
-    const lines = track.lineOffsetsAt(pp.s);
-    let upper = Infinity;
-    let lower = -Infinity;
-    for (const d of lines) {
-      if (d >= c.d) {
-        upper = Math.min(upper, d);
-      } else {
-        lower = Math.max(lower, d);
-      }
-    }
-    pen = Math.max(pen, pp.d - (upper - half), lower + half - pp.d);
+    const ch = channelAt(track, pp.s, c.d, level);
+    pen = Math.max(pen, pp.d - ch.faceU, ch.faceL - pp.d);
   }
   return pen;
 }

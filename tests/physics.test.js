@@ -5,7 +5,7 @@ import { spec } from '../src/spec.js';
 import { Battery, theoreticalTopSpeed, longitudinalForce } from '../src/powertrain.js';
 import { assemble, loadConfig } from '../src/assembly.js';
 import { buildCircuit, buildStraight } from '../src/track.js';
-import { initRapier, createWorld, createCar, stepCar, forwardSpeed, upAxis, wallPenetration, minWallContactDist, localToWorld } from '../src/sim.js';
+import { initRapier, createWorld, createCar, stepCar, forwardSpeed, upAxis, wallPenetration, minWallContactDist, localToWorld, heightAboveRoad, carLevel } from '../src/sim.js';
 
 // 第二階段：P01–P10 使用預設組裝（configs/default.json，SPEC 1.12）
 const ASM = assemble(loadConfig('default'));
@@ -34,14 +34,20 @@ function runStraightTopSpeed({ soc, seconds = 7 }) {
 }
 
 /**
- * 主賽道跑一圈（從換道段前的內側線道出發），逐步記錄驗證所需資料
+ * 主賽道從 s0 = 0.15（換道器前）的指定車道出發，逐步記錄驗證所需資料。
+ * 預設跑一圈；until 指定時跑到絕對位置 s0 + 進度 ≥ until 為止（P10 只跑到換道器出口後）
+ * @type {(opt?: { lane?: number, until?: number }) => any}
  */
-function runCircuitLap() {
+function runCircuitLap({ lane = 0, until } = {}) {
   const track = buildCircuit();
   const env = createWorld(track);
   const s0 = 0.15;
-  const car = createCar(env, { assembly: ASM, s: s0, lane: 0 });
+  const car = createCar(env, { assembly: ASM, s: s0, lane });
   const L = track.path.length;
+  const stopAt = until === undefined ? L + 0.05 : until - s0;
+  let maxH = -Infinity;
+  let minH = Infinity;
+  let maxBridgeY = 0;
   let progress = 0;
   let lastS = s0;
   let arcSteps = 0;
@@ -58,7 +64,7 @@ function runCircuitLap() {
   const lc = track.laneChanger;
   const maxSteps = Math.round(10 / spec.sim.dt_s);
   let steps = 0;
-  for (; steps < maxSteps && progress < L + 0.05; steps++) {
+  for (; steps < maxSteps && progress < stopAt; steps++) {
     stepCar(env, car);
     const t = car.chassis.translation();
     const c = track.path.project(t.x, t.z);
@@ -81,6 +87,13 @@ function runCircuitLap() {
     minUp = Math.min(minUp, upAxis(car).y);
     minY = Math.min(minY, t.y);
     maxY = Math.max(maxY, t.y);
+    // 離所在層路面的高度（換道器橋上以橋面為準）
+    const h = heightAboveRoad(env, car);
+    maxH = Math.max(maxH, h);
+    minH = Math.min(minH, h);
+    if (carLevel(env, car) === 'bridge') {
+      maxBridgeY = Math.max(maxBridgeY, t.y);
+    }
 
     // P05：彎道中，外側（d 較小、遠離彎心）導輪與牆接觸
     if (c.seg.type === 'arc') {
@@ -121,6 +134,10 @@ function runCircuitLap() {
     laneAfter,
     speedAfterChanger,
     maxSpeed,
+    maxH,
+    minH,
+    maxBridgeY,
+    track,
   };
 }
 
@@ -129,7 +146,8 @@ let lap = null;
 beforeAll(async () => {
   await initRapier();
   lap = runCircuitLap();
-  console.log('[circuit lap]', JSON.stringify(lap));
+  const { track, ...rest } = lap;
+  console.log('[circuit lap]', JSON.stringify(rest));
 });
 
 describe('物理驗證 P01–P03、P05–P07、P10', () => {
@@ -198,11 +216,33 @@ describe('物理驗證 P01–P03、P05–P07、P10', () => {
     expect(lap.maxPen).toBeLessThanOrEqual(0.001);
   });
 
-  test('P10_lane_changer 通過換道段後換到相鄰車道且未卡住、未飛出', () => {
-    console.log(`[P10] 換道前車道 ${lap.laneBefore} → 換道後車道 ${lap.laneAfter}, 出口速度 ${lap.speedAfterChanger === null ? 'N/A' : f3(lap.speedAfterChanger)} m/s, 最小 up.y ${f3(lap.minUp)}`);
-    expect(lap.laneBefore).not.toBeNull();
-    expect(lap.laneAfter).toBe(lap.laneBefore + 1);
-    expect(lap.speedAfterChanger).toBeGreaterThan(0.5);
-    expect(lap.minUp).toBeGreaterThan(0.8);
-  });
+  test('P10_lane_changer 三條車道出發都能通過換道器（立體橋），依佈局換到下一條車道（內→中、中→外、外→內走橋），未卡住、未飛出、不穿牆', () => {
+    const track = lap.track;
+    const lc = track.laneChanger;
+    const b = track.bridge;
+    const wallH = spec.track.wallHeight_mm * 0.001;
+    console.log(`[P10] 換道器 s ${f3(lc.start)}–${f3(lc.end)} m：橋面 ${(b.deckHeight * 1000).toFixed(0)} mm、坡度 ${b.slope_deg}°、引道 ${f3(b.rampLength)} m、斜向段 ${f3(b.latEnd - b.latStart)} m、橋下淨高 ${(b.clearance * 1000).toFixed(0)} mm（支架樑底 ${(b.supportClearance * 1000).toFixed(0)} mm）`);
+    // 橋下淨高（含支架樑底）必須 ≥ 規則車高上限 70 mm
+    expect(b.supportClearance).toBeGreaterThanOrEqual(spec.rules.maxHeight_mm * 0.001);
+    for (const lane of [0, 1, 2]) {
+      // 內側車道直接用 P05–P07 那一圈；中、外側車道各跑到換道器出口後 0.3 m
+      const r = lane === 0 ? lap : runCircuitLap({ lane, until: lc.end + 0.3 });
+      const pen = Math.max(r.maxPen, Math.max(0, -r.minContactDist));
+      console.log(`[P10] 車道 ${lane}：換道前 ${r.laneBefore} → 換道後 ${r.laneAfter}（應為 ${track.nextLane(lane)}）, 出口速度 ${r.speedAfterChanger === null ? 'N/A' : f3(r.speedAfterChanger)} m/s, 最小 up.y ${f3(r.minUp)}, 離路面高度 ${(r.minH * 1000).toFixed(2)}–${(r.maxH * 1000).toFixed(2)} mm, 橋上最高 ${(r.maxBridgeY * 1000).toFixed(1)} mm, 穿透 ${(pen * 1000).toFixed(3)} mm`);
+      expect(r.laneBefore).toBe(lane);
+      expect(r.laneAfter).toBe(track.nextLane(lane));
+      expect(r.speedAfterChanger).toBeGreaterThan(0.5);
+      expect(r.minUp).toBeGreaterThan(0.8);
+      expect(r.maxH).toBeLessThan(wallH);
+      expect(r.minH).toBeGreaterThan(-0.005);
+      expect(pen).toBeLessThanOrEqual(0.001);
+      if (lane === 2) {
+        // 外側車道真的爬上橋面（車體原點達橋面高度 −5 mm 以上）
+        expect(r.maxBridgeY).toBeGreaterThan(b.deckHeight - 0.005);
+      } else {
+        // 其他車道從橋下通過，沒有上橋
+        expect(r.maxBridgeY).toBe(0);
+      }
+    }
+  }, 120000);
 });

@@ -2,7 +2,7 @@
 // rollerX_mm 為導輪軸到前後軸中點的距離（正值，後導輪架放在 −x）；rollerZ_mm 為導輪軸到車中線的距離
 // 第三階段：FRP / 碳纖板導輪架。板件外形（plate.outline）同時用於質量、干涉檢查、3D 模型（plateGeom.js）
 // 相容性：features 列出這個導輪架提供的安裝點（例如煞車海綿座、後制振器座），選配零件的 compat.requires 要對得上
-import { wingOutline, plateMass } from './plateGeom.js';
+import { symmetricOutline, holeRow, plateMass } from './plateGeom.js';
 
 /** 密度（g/cm³）：SPEC 1.14 / PARTS_RESEARCH 3.1；碳纖見 PARTS_RESEARCH 第三階段 E 節 */
 const RHO_FRP = 1.85;
@@ -14,49 +14,70 @@ const BUMPER_BOTTOM_Y = 5.4;
 /** @type {(holes: { r: number }[]) => number} 圓孔總面積 */
 const holeArea = (holes) => holes.reduce((a, h) => a + Math.PI * h.r * h.r, 0);
 
+/** 小孔：φ2.0（實車導輪板的成排小孔，可鎖 M2 螺絲調整導輪 / 配件位置），間距 4 mm（推估：依 ref_chevalier-ma_gradeup、ref_aero-avante-ar 照片目視） */
+const SMALL_HOLE_R = 1.0;
+const HOLE_PITCH = 4;
+
 /**
- * 減重孔：沿根部 → 導輪座的臂各開 n 個圓孔（左右對稱），另加導輪螺絲孔
- * @type {(sx: number, rootX: number, rootZ: number, rollerX: number, rollerZ: number, n: number, r: number) => { x: number, z: number, r: number }[]}
+ * 板件的孔：導輪螺絲孔、鎖保桿的 2 個螺絲孔，再加上沿 rows 線段排列的成排小孔（左右對稱）
+ * @type {(sx: number, outline: [number, number][], rollerX: number, rollerZ: number, mountX: number, rows: [[number, number], [number, number]][]) => { x: number, z: number, r: number }[]}
  */
-const armHoles = (sx, rootX, rootZ, rollerX, rollerZ, n, r) => {
+const plateHoles = (sx, outline, rollerX, rollerZ, mountX, rows) => {
   /** @type {{ x: number, z: number, r: number }[]} */
-  const holes = [];
-  for (const sz of [-1, 1]) {
-    // 孔沿臂的中線排列：根部內側 (rootX + 13, 0.6·rootZ) → 導輪座內側 (rollerX − 3, rollerZ − 7)
-    const ax = rootX + 13;
-    const az = rootZ * 0.6;
-    const bx = rollerX - 3;
-    const bz = rollerZ - 7;
-    for (let k = 0; k < n; k++) {
-      const f = n > 1 ? k / (n - 1) : 0.5;
-      holes.push({ x: sx * (ax + (bx - ax) * f), z: sz * (az + (bz - az) * f), r });
-    }
+  const holes = [
     // 導輪螺絲孔 φ2.2（M2）
-    holes.push({ x: sx * rollerX, z: sz * rollerZ, r: 1.1 });
+    { x: sx * rollerX, z: -rollerZ, r: 1.1 },
+    { x: sx * rollerX, z: rollerZ, r: 1.1 },
+    // 鎖保桿的螺絲孔
+    { x: sx * mountX, z: -6, r: 1.1 },
+    { x: sx * mountX, z: 6, r: 1.1 },
+  ];
+  for (const [a, b] of rows) {
+    holes.push(...holeRow(outline, [sx * a[0], a[1]], [sx * b[0], b[1]], HOLE_PITCH, SMALL_HOLE_R, holes));
   }
-  // 中央兩個鎖保桿的螺絲孔
-  holes.push({ x: sx * (rootX + 6), z: -6, r: 1.1 }, { x: sx * (rootX + 6), z: 6, r: 1.1 });
-  // 中央減重孔（板中線上，螺絲孔與導輪座之間）
-  holes.push({ x: sx * (rootX + 15), z: 0, r: 3.5 });
   return holes;
 };
 
-// ---- 前導輪板 ----
-const FRONT_FRP_OUTLINE = wingOutline({ sx: 1, rootX: 52, rootHalfW: 16, rollerX: 74, rollerZ: 42.5, padR: 5, noseX: 78, noseHalfW: 9 });
-const FRONT_FRP_HOLES = armHoles(1, 52, 16, 74, 42.5, 3, 4.2);
+// ---- 前導輪板：橫跨車頭的窄長條（深約 10 mm）＋往後鎖在保桿下方的中央舌片（ref_aero-avante-ar 的 FRP 前寬板）----
+const FRONT_FRP_OUTLINE = symmetricOutline(
+  [[79, 0], [79, -36], [78.2, -44.5], [75.5, -47.6], [72, -47.8], [69.4, -45.5], [69, -40], [69, -14], [52, -14], [52, 0]],
+  1,
+);
+const FRONT_FRP_HOLES = plateHoles(1, FRONT_FRP_OUTLINE, 74, 42.5, 56, [
+  [[74, 2], [74, 38]],
+  [[60, 9.5], [66, 9.5]],
+]);
 const FRONT_FRP_T = 1.5;
-const FRONT_CARBON_OUTLINE = wingOutline({ sx: 1, rootX: 52, rootHalfW: 15, rollerX: 74, rollerZ: 42.5, padR: 4.8, noseX: 77, noseHalfW: 8 });
-const FRONT_CARBON_HOLES = armHoles(1, 52, 15, 74, 42.5, 3, 4.2);
+const FRONT_CARBON_OUTLINE = symmetricOutline(
+  [[79, 0], [79, -38], [77.6, -45.2], [74.5, -47.8], [71, -47.4], [69, -44], [69, -14.5], [52, -14.5], [52, 0]],
+  1,
+);
+const FRONT_CARBON_HOLES = plateHoles(1, FRONT_CARBON_OUTLINE, 74, 42.5, 56, [
+  [[74, 2], [74, 38]],
+  [[60, 10], [66, 10]],
+]);
 const FRONT_CARBON_T = 1.5;
 
-// ---- 後導輪板 ----
-// FRP 後板：根部較寬（±21）、臂較靠近後輪 → 換 31 mm 大徑輪時臂會碰到輪胎（STAY_TIRE_CLEARANCE）
-const REAR_FRP_OUTLINE = wingOutline({ sx: -1, rootX: 50, rootHalfW: 21, rollerX: 71.5, rollerZ: 42.5, padR: 5, noseX: 83, noseHalfW: 5 });
-const REAR_FRP_HOLES = armHoles(-1, 50, 21, 71.5, 42.5, 3, 4.2);
+// ---- 後導輪板：中央舌片（鎖在後保桿下方，尾端延伸成制振器座）＋兩支斜臂伸到導輪座 ----
+// FRP 後板：根部較寬（±21）、斜臂靠近後輪 → 換 31 mm 大徑輪時臂會碰到輪胎（STAY_TIRE_CLEARANCE）
+const REAR_FRP_OUTLINE = symmetricOutline(
+  [[82.5, 0], [82.5, -5.5], [79, -8], [66, -11], [75.6, -37.5], [76.2, -42.5], [74.5, -46.8], [71, -48], [67.6, -46.4], [50, -21], [50, 0]],
+  -1,
+);
+const REAR_FRP_HOLES = plateHoles(-1, REAR_FRP_OUTLINE, 71.5, 42.5, 54, [
+  [[59, 18], [70, 37]],
+  [[60, 0], [80, 0]],
+]);
 const REAR_FRP_T = 1.5;
 // 碳纖寬後板：導輪更外側（±44.5，配 19 mm 導輪會超過 105 mm 寬，WIDTH）、單層導輪座（可裝雙層導輪）
-const REAR_CARBON_OUTLINE = wingOutline({ sx: -1, rootX: 52, rootHalfW: 15, rollerX: 72, rollerZ: 44.5, padR: 4.8, noseX: 83, noseHalfW: 5 });
-const REAR_CARBON_HOLES = armHoles(-1, 52, 15, 72, 44.5, 3, 4.2);
+const REAR_CARBON_OUTLINE = symmetricOutline(
+  [[82.5, 0], [82.5, -5.5], [79, -8], [67, -10], [76.5, -39.5], [77, -44.5], [75, -49], [71.5, -50.3], [68, -48.6], [53, -15], [53, 0]],
+  -1,
+);
+const REAR_CARBON_HOLES = plateHoles(-1, REAR_CARBON_OUTLINE, 72, 44.5, 57, [
+  [[63, 20], [71.5, 39]],
+  [[61, 0], [80, 0]],
+]);
 const REAR_CARBON_T = 1.5;
 
 /** @type {import('./types').PartBase[]} */
@@ -90,6 +111,8 @@ export const stayParts = [
     rollerY_mm: 10,
     plate: { outline: FRONT_FRP_OUTLINE, holes: FRONT_FRP_HOLES, y_mm: BUMPER_BOTTOM_Y - FRONT_FRP_T, thickness_mm: FRONT_FRP_T, density_g_cm3: RHO_FRP },
     mass_g: plateMass(FRONT_FRP_OUTLINE, holeArea(FRONT_FRP_HOLES), FRONT_FRP_T, RHO_FRP),
+    /** 裝這塊板時把底盤保桿這一端的兩側導輪臂剪掉（質量由 parts/bumperGeom.js 的切除幾何 × 底盤密度推導，assemble() 從底盤扣除） */
+    chassisTrim: { kind: 'bumper-wings', src: '推估：實車裝 FRP / 碳纖導輪板時常把原廠保桿的導輪臂剪掉；切除範圍＝寬保桿板在中央橋接板以外的部分＋導輪座凸台＋三角斜撐＋補強片（與 3D 模型同一份幾何）' },
     features: [],
     src: {
       rollerZ_mm: '推估：19 mm 導輪時外緣跨距 2 ×（42.5 + 9.5）= 104 mm，剛好在規則 < 105 mm 內（寬板設計目的）',
@@ -109,6 +132,8 @@ export const stayParts = [
     rollerY_mm: 10,
     plate: { outline: FRONT_CARBON_OUTLINE, holes: FRONT_CARBON_HOLES, y_mm: BUMPER_BOTTOM_Y - FRONT_CARBON_T, thickness_mm: FRONT_CARBON_T, density_g_cm3: RHO_CARBON },
     mass_g: plateMass(FRONT_CARBON_OUTLINE, holeArea(FRONT_CARBON_HOLES), FRONT_CARBON_T, RHO_CARBON),
+    /** 裝這塊板時把底盤保桿這一端的兩側導輪臂剪掉（質量由 parts/bumperGeom.js 的切除幾何 × 底盤密度推導，assemble() 從底盤扣除） */
+    chassisTrim: { kind: 'bumper-wings', src: '推估：實車裝 FRP / 碳纖導輪板時常把原廠保桿的導輪臂剪掉；切除範圍＝寬保桿板在中央橋接板以外的部分＋導輪座凸台＋三角斜撐＋補強片（與 3D 模型同一份幾何）' },
     features: [],
     src: {
       rollerZ_mm: '同 stay-front-frp（推估）',
@@ -150,15 +175,18 @@ export const stayParts = [
     upperRollerHeight_mm: 18,
     plate: { outline: REAR_FRP_OUTLINE, holes: REAR_FRP_HOLES, y_mm: BUMPER_BOTTOM_Y - REAR_FRP_T, thickness_mm: REAR_FRP_T, density_g_cm3: RHO_FRP },
     mass_g: plateMass(REAR_FRP_OUTLINE, holeArea(REAR_FRP_HOLES), REAR_FRP_T, RHO_FRP),
+    /** 裝這塊板時把底盤保桿這一端的兩側導輪臂剪掉（質量由 parts/bumperGeom.js 的切除幾何 × 底盤密度推導，assemble() 從底盤扣除） */
+    chassisTrim: { kind: 'bumper-wings', src: '推估：實車裝 FRP / 碳纖導輪板時常把原廠保桿的導輪臂剪掉；切除範圍＝寬保桿板在中央橋接板以外的部分＋導輪座凸台＋三角斜撐＋補強片（與 3D 模型同一份幾何）' },
     features: ['rear-brake-mount', 'rear-damper-mount'],
-    brakeMount: { xMin_mm: 60, xMax_mm: 74, halfZ_mm: 12, y_mm: BUMPER_BOTTOM_Y - REAR_FRP_T },
+    brakeMount: { xMin_mm: 58, xMax_mm: 72, halfZ_mm: 9, y_mm: BUMPER_BOTTOM_Y - REAR_FRP_T },
     damperMount: { x_mm: -79, z_mm: 0, y_mm: BUMPER_BOTTOM_Y },
     src: {
       rollerZ_mm: '推估：19 mm 導輪時外緣跨距 104 mm（< 105）',
       thickness_mm: 'PARTS_RESEARCH 第三階段 E 節 [T15524]、[T15518] 官方：FRP 板 1.5 mm',
       density_g_cm3: 'SPEC 1.14：FRP 1.85 g/cm³',
       mass_g: '由外形面積扣開孔 × 厚度 × 密度推導；對照 [MYF2] 碳纖後導輪架實測 2.46 g × 密度比',
-      outline: '推估：根部較寬（±21 mm），臂靠近後輪；31 mm 大徑輪會碰到臂（規則檢查 STAY_TIRE_CLEARANCE）',
+      outline: '推估（原創外形，參考 ref_chevalier-ma_gradeup 後板的「中央舌片＋斜臂」結構）：根部較寬（±21 mm），臂靠近後輪；31 mm 大徑輪會碰到臂（規則檢查 STAY_TIRE_CLEARANCE）',
+      holes: '推估：φ2 mm 成排小孔、間距 4 mm（照片目視），質量扣除孔面積',
       damperMount: '推估：板尾延伸的制振器座（車尾中央）',
     },
   },
@@ -173,8 +201,10 @@ export const stayParts = [
     upperRollerHeight_mm: null,
     plate: { outline: REAR_CARBON_OUTLINE, holes: REAR_CARBON_HOLES, y_mm: BUMPER_BOTTOM_Y - REAR_CARBON_T, thickness_mm: REAR_CARBON_T, density_g_cm3: RHO_CARBON },
     mass_g: plateMass(REAR_CARBON_OUTLINE, holeArea(REAR_CARBON_HOLES), REAR_CARBON_T, RHO_CARBON),
+    /** 裝這塊板時把底盤保桿這一端的兩側導輪臂剪掉（質量由 parts/bumperGeom.js 的切除幾何 × 底盤密度推導，assemble() 從底盤扣除） */
+    chassisTrim: { kind: 'bumper-wings', src: '推估：實車裝 FRP / 碳纖導輪板時常把原廠保桿的導輪臂剪掉；切除範圍＝寬保桿板在中央橋接板以外的部分＋導輪座凸台＋三角斜撐＋補強片（與 3D 模型同一份幾何）' },
     features: ['rear-brake-mount', 'rear-damper-mount'],
-    brakeMount: { xMin_mm: 60, xMax_mm: 74, halfZ_mm: 12, y_mm: BUMPER_BOTTOM_Y - REAR_CARBON_T },
+    brakeMount: { xMin_mm: 58, xMax_mm: 72, halfZ_mm: 9, y_mm: BUMPER_BOTTOM_Y - REAR_CARBON_T },
     damperMount: { x_mm: -79, z_mm: 0, y_mm: BUMPER_BOTTOM_Y },
     src: {
       rollerZ_mm: '推估：寬板；13 mm 導輪外緣跨距 102 mm，19 mm 導輪 108 mm 超過規則（由 WIDTH 擋下）',

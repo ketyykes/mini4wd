@@ -216,13 +216,25 @@ export function sdNumber(text, { h, w, gap, slant = 0.18 }) {
       // 7：加長的頂橫 + 從右上斜到左下的斜筆，避免被看成 1
       boxes.push([x0, x0 + w, h / 2 - 0.19 * h, h / 2]);
       extra.push(sdBar(x0 + w - 0.2 * w, h / 2 - 0.1 * h, x0 + 0.3 * w, -h / 2 - 0.05 * h, 0.34 * w));
+    } else if (ch === '1') {
+      // 1（iter-47）：置中直筆＋左上斜旗＋底座，避免被看成 J 或 I
+      boxes.push([x0 + 0.36 * w, x0 + 0.66 * w, -h / 2, h / 2]);
+      boxes.push([x0 + 0.08 * w, x0 + 0.94 * w, -h / 2, -h / 2 + 0.15 * h]);
+      extra.push(sdBar(x0 + 0.5 * w, h / 2 - 0.08 * h, x0 + 0.08 * w, h / 2 - 0.36 * h, 0.26 * w));
+    } else if (ch === '5') {
+      // 5（iter-47）：直角外框（不倒圓角，和圓滑的 S 區隔）、頂橫加長外伸、左上直筆和頂橫成直角、下半是開口朝左的方鉤
+      boxes.push([x0, x0 + 1.08 * w, h / 2 - 0.17 * h, h / 2]);
+      boxes.push([x0, x0 + 0.3 * w, 0, h / 2]);
+      boxes.push([x0, x0 + w, -0.08 * h, 0.08 * h]);
+      boxes.push([x0 + 0.7 * w, x0 + w, -h / 2, 0.08 * h]);
+      boxes.push([x0, x0 + w, -h / 2, -h / 2 + 0.17 * h]);
     } else {
       for (const seg of DIGIT_MAP[ch] ?? '') {
         const [a, b, c, d] = DIGIT_SEGMENTS[seg];
         boxes.push([x0 + a * w, x0 + c * w, -h / 2 + b * h, -h / 2 + d * h]);
       }
     }
-    return { x0, boxes, extra, round: ch !== '7' };
+    return { x0, boxes, extra, round: ch !== '7' && ch !== '1' && ch !== '5' };
   });
   // 外框圓角（約 0.38 字寬）：讓 0 / 8 圓潤、和字母區隔
   const rOuter = 0.38 * w;
@@ -309,7 +321,7 @@ export function createBodySurface(data, mode, step = 0.5, bump = null, extra = {
   }
 
   /** @type {(x: number) => any} 控制點內插（預設線性；xSmooth 時用單調 Hermite，站位處不再有折痕，稜線仍由面板邊界保留） */
-  const ctrl = (x) => {
+  const ctrlRaw = (x) => {
     const { k, t, h } = bracket(sx, x);
     const a = params[k];
     const b = params[k + 1];
@@ -330,6 +342,19 @@ export function createBodySurface(data, mode, step = 0.5, bump = null, extra = {
       yShoulder: lerp(a.yShoulder, b.yShoulder, t),
       yLow: lerp(a.yLow, b.yLow, t),
     };
+  };
+
+  // 效能（iter-47）：同一個 x 會被連續查詢很多次（網格逐行、法線差分、裁切二分法），快取最近一次結果（數值完全相同）
+  let ctrlX = NaN;
+  /** @type {any} */
+  let ctrlV = null;
+  /** @type {(x: number) => any} */
+  const ctrl = (x) => {
+    if (x !== ctrlX) {
+      ctrlX = x;
+      ctrlV = ctrlRaw(x);
+    }
+    return ctrlV;
   };
 
   if (mode === 'linear') {
@@ -592,6 +617,112 @@ export function surfaceTopY(surf, x, z) {
   if (surf.topY) {
     return surf.topY(x, z);
   }
+  return fastTopY(surf, x, z);
+}
+
+/** @type {WeakMap<object, { xs: number[], tabs: Float64Array[] }>} 每個曲面最近幾個 x 的剖面 z(s) 取樣表 */
+const topYCache = new WeakMap();
+/** @type {number} 取樣表的 s 分段數 */
+const TOPY_N = 64;
+
+/**
+ * surfaceTopY 的加速版（iter-47 效能）：先用快取的 64 段 z(s) 取樣表找到 |z| 所在的小區間，
+ * 再在區間內用 Illinois 法求根（收斂到 |z(s) − |z|| < 1e-10 mm，和原本二分 26 次的結果差異 < 1e-6 mm）
+ * @type {(surf: LoftSurface, x: number, z: number) => number}
+ */
+function fastTopY(surf, x, z) {
+  let c = topYCache.get(surf);
+  if (!c) {
+    c = { xs: [], tabs: [] };
+    topYCache.set(surf, c);
+  }
+  const o = [0, 0];
+  let k = c.xs.indexOf(x);
+  if (k < 0) {
+    const tab = new Float64Array(TOPY_N + 1);
+    for (let j = 0; j <= TOPY_N; j++) {
+      surf.eval(x, j / TOPY_N, o);
+      tab[j] = o[1];
+    }
+    c.xs.unshift(x);
+    c.tabs.unshift(tab);
+    if (c.xs.length > 6) {
+      c.xs.pop();
+      c.tabs.pop();
+    }
+    k = 0;
+  }
+  const tab = c.tabs[k];
+  const az = Math.abs(z);
+  // 找第一個 z(s_j) ≥ |z| 的取樣點（原本的二分法同樣假設 z(s) 單調）
+  let j = 0;
+  while (j < TOPY_N && tab[j] < az) {
+    j++;
+  }
+  if (j === 0) {
+    surf.eval(x, 0, o);
+    if (o[1] >= az) {
+      // 和原本相同：|z| 在中線處時二分會收斂到 s ≈ 2^-26
+      let lo = 0;
+      let hi = 1 / TOPY_N;
+      for (let it = 0; it < 20; it++) {
+        const m = (lo + hi) / 2;
+        surf.eval(x, m, o);
+        if (o[1] >= az) {
+          hi = m;
+        } else {
+          lo = m;
+        }
+      }
+      surf.eval(x, hi, o);
+      return o[0];
+    }
+  }
+  if (j === TOPY_N && tab[j] < az) {
+    surf.eval(x, 1, o);
+    return o[0];
+  }
+  // 區間內用 Illinois 法（割線＋保持夾住）求 z(s) = |z|，通常 4–6 次就收斂到 1e-10 mm
+  let lo = (j - 1) / TOPY_N;
+  let hi = j / TOPY_N;
+  let flo = tab[j - 1] - az;
+  let fhi = tab[j] - az;
+  let side = 0;
+  for (let it = 0; it < 40 && hi - lo > 1e-12; it++) {
+    const m = flo === fhi ? (lo + hi) / 2 : (lo * fhi - hi * flo) / (fhi - flo);
+    surf.eval(x, m, o);
+    const fm = o[1] - az;
+    if (Math.abs(fm) < 1e-10) {
+      return o[0];
+    }
+    if (fm >= 0) {
+      hi = m;
+      fhi = fm;
+      if (side === 1) {
+        flo /= 2;
+      }
+      side = 1;
+    } else {
+      lo = m;
+      flo = fm;
+      if (side === -1) {
+        fhi /= 2;
+      }
+      side = -1;
+    }
+  }
+  surf.eval(x, hi, o);
+  return o[0];
+}
+
+/**
+ * 原本的 surfaceTopY 實作（保留給驗證測試比對）
+ * @type {(surf: LoftSurface, x: number, z: number) => number}
+ */
+export function surfaceTopYReference(surf, x, z) {
+  if (surf.topY) {
+    return surf.topY(x, z);
+  }
   const o = [0, 0];
   const az = Math.abs(z);
   let lo = 0;
@@ -768,6 +899,8 @@ function getGrid(surf) {
  */
 export function buildRegion(surf, fns, opt = {}) {
   const offset = opt.offset ?? 0;
+  /** @type {number} 裁切邊界二分次數（預設 14；iter-47 效能選項，呼叫端可降低） */
+  const bisectIters = opt.bisect ?? 14;
   const grid = getGrid(surf);
   const nf = fns.length;
   /** @type {number[]} */
@@ -860,7 +993,7 @@ export function buildRegion(surf, fns, opt = {}) {
       let lo = 0;
       let hi = 1;
       let t = a.f[k] / (a.f[k] - b.f[k]);
-      for (let it = 0; it < 14; it++) {
+      for (let it = 0; it < bisectIters; it++) {
         const x = lerp(a.x, b.x, t);
         const s = lerp(a.s, b.s, t);
         surf.eval(x, s, o);

@@ -2311,3 +2311,18 @@
 2. 車殼：`shared/design/STYLE_RESEARCH.md`、輪廓 IoU 量測（`src/bodies/`）、6 款車殼（致敬 3＋比賽型 3，2 款 31 mm 輪拱）、`tests/bodies.test.js`（P20）。預期 P20 通過、車殼設計多樣性提升。
 3. 網頁：換件頁（`web/garage.*`，`web/index.html` 無 `?view=` 時導向）、規則即時檢查、上賽道模擬、URL 狀態、`tests/web.test.js`（P19）。預期 P19 通過。
 - 主 agent：SPEC 第 2 部分 P17–P20 與 IoU 量法、計分 /20、REVIEWER_BRIEF（多樣性、能否認出現成車）。
+
+### 執行 / 驗證（iter-46，09:30–11:30）
+- 零件 subagent：新零件 16 款（查證見 PARTS_RESEARCH 第三階段 A–M，已併入 SPEC 1.13）、`OPTIONAL_SLOTS`、`slotChoices`、`compat`、`GEAR_CHASSIS` / `MOUNT_COMPAT` / `<A>_<B>_CLEARANCE`；制振器 = Rapier 剛體＋prismatic joint；煞車海綿 = 射線接觸（k = E·A/t、μ）；`tests/parts.test.js`（P17、P18：910 組兩兩替換與獨立格點幾何檢查一致）；示範設定 `race-frp`、`carbon-damper`。
+- 車殼 subagent：`silhouette.js`（IoU 量法）、`style: homage|race`、新增 beast / fork / pc-box（31 mm 合法）、skeleton 短窄化、aero-wing 細腰；STYLE_RESEARCH、概念圖（Codex）。
+- 網頁 subagent：`web/garage.*`（index.html 無 `?view=` 時導向）、即時規則檢查、上賽道、URL 狀態、`tests/web.test.js`（P19）。
+- 測試 **20/20**。外觀（`shared/reviews/iter-46/REVIEW.md`）：錨點 7.25；對照 7×4；本輪 6.5 / 7.5 / 6.5 / 7 = **6.88** → **84.38**。A/B：比例差（skeleton 輪胎外露、beast 前臉懸空、pc-box 平板）、底盤好（改裝零件）、車殼設計差（新三款完成度、skeleton 退步）、材質持平；陣容多樣性「好」；原創性檢查 6 款都認不出是現成車；無商標。
+- 決策：第三階段基準，保留（必要功能；與第二階段 /16 分開排名）。
+
+## iter-47（11:00 起，與 iter-46 評分重疊開工）
+
+### 規劃
+1. 車殼：fork 平滑機身＋流線尾臂＋翼型尾鰭；beast 琥珀發光菱形眼＋上翹衝角；pc-box 尾端收尾（已完成，待評）；接著 skeleton 葉子板框與鼻部黃邊、pc-box 車頭斜面 / 擋風折線 / 輪拱弧線；車殼幾何首次計算加速（網頁換車殼卡頓）。
+2. 賽道 / 物理：lane changer 立體橋物理（坡道依 SPEC 8°、碰撞體與外觀同一份幾何、高度感知量測），P10 擴充為三條車道出發；`assemble({body: null})`。
+3. 改裝零件外觀（物理 subagent 改完 model.js 後）：FRP / 碳纖板變薄、成排小孔、碳纖紋理；導輪架高（螺絲＋墊片柱）；制振器立在長螺絲上；煞車海綿可見視角。
+- 介面：理論極速說明移除程式檔名（主 agent）。

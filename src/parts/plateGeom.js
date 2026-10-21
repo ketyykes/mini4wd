@@ -56,3 +56,73 @@ export const polygonCentroid = (pts) => {
  */
 export const plateMass = (outline, holeArea_mm2, thickness_mm, density_g_cm3) =>
   ((polygonArea(outline) - holeArea_mm2) * thickness_mm * density_g_cm3) / 1000;
+
+/**
+ * 左右對稱外形：half 為 z ≤ 0 那一半的頂點（由板前緣中線 → 外側 → 板後緣中線，x 取正值），
+ * 自動鏡射出 z > 0 那一半；sx = −1 時整個外形鏡射到車尾（−x）
+ * @type {(half: Pt2[], sx: number) => Pt2[]}
+ */
+export const symmetricOutline = (half, sx) => {
+  /** @type {Pt2[]} */
+  const mirrored = half
+    .filter(([, z]) => z !== 0)
+    .map(([x, z]) => /** @type {Pt2} */ ([x, -z]))
+    .reverse();
+  return [...half, ...mirrored].map(([x, z]) => [sx * x, z]);
+};
+
+/** @type {(px: number, pz: number, a: number[], b: number[]) => number} 點到線段距離 */
+const segDist2 = (px, pz, a, b) => {
+  const dx = b[0] - a[0];
+  const dz = b[1] - a[1];
+  const t = Math.max(0, Math.min(1, ((px - a[0]) * dx + (pz - a[1]) * dz) / (dx * dx + dz * dz)));
+  return Math.hypot(px - a[0] - t * dx, pz - a[1] - t * dz);
+};
+
+/** @type {(px: number, pz: number, poly: Pt2[]) => boolean} */
+const insidePoly2 = (px, pz, poly) => {
+  let c = false;
+  for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
+    const [xi, zi] = poly[i];
+    const [xj, zj] = poly[j];
+    if (zi > pz !== zj > pz && px < ((xj - xi) * (pz - zi)) / (zj - zi) + xi) {
+      c = !c;
+    }
+  }
+  return c;
+};
+
+/**
+ * 沿線段 a → b 以固定間距排一排圓孔（實車導輪板的成排小孔），左右對稱（z 取正負各一排）。
+ * 只保留「孔緣離板外形 ≥ minWeb、離已有的孔 ≥ minWeb」的孔，確保板子不會被打穿到邊
+ * @type {(outline: Pt2[], a: Pt2, b: Pt2, spacing: number, r: number, existing: { x: number, z: number, r: number }[], minWeb?: number) => { x: number, z: number, r: number }[]}
+ */
+export const holeRow = (outline, a, b, spacing, r, existing, minWeb = 0.9) => {
+  const len = Math.hypot(b[0] - a[0], b[1] - a[1]);
+  const n = Math.max(1, Math.floor(len / spacing) + 1);
+  /** @type {{ x: number, z: number, r: number }[]} */
+  const out = [];
+  for (const sz of a[1] === 0 && b[1] === 0 ? [1] : [1, -1]) {
+    for (let k = 0; k < n; k++) {
+      const f = n > 1 ? k / (n - 1) : 0.5;
+      const x = a[0] + (b[0] - a[0]) * f;
+      const z = sz * (a[1] + (b[1] - a[1]) * f);
+      if (!insidePoly2(x, z, outline)) {
+        continue;
+      }
+      let edge = Infinity;
+      for (let i = 0; i < outline.length; i++) {
+        edge = Math.min(edge, segDist2(x, z, outline[i], outline[(i + 1) % outline.length]));
+      }
+      if (edge - r < minWeb) {
+        continue;
+      }
+      const all = [...existing, ...out];
+      if (all.some((h) => Math.hypot(h.x - x, h.z - z) - h.r - r < minWeb)) {
+        continue;
+      }
+      out.push({ x, z, r });
+    }
+  }
+  return out;
+};

@@ -192,12 +192,14 @@ const SLOT_KEYS = [...Object.keys(SLOTS), 'body'];
  * @property {number} distance 行駛距離 m
  * @property {number} laps 完成圈數
  * @property {number} voltage 電池端電壓 V
+ * @property {number} lane 目前車道（0 = 內側）
+ * @property {boolean} onBridge 目前在換道器立體橋上
+ * @property {number[]} laneHistory 這一場依序跑過的車道
  * @property {number} lastUpdateMs 數值面板最後更新時間（Date.now()）
  * @property {number} updateCount 數值面板更新次數
  * @property {number} modelUpdateCount 3D 模型重建次數
  * @property {number} modelUpdatedMs 3D 模型最後重建時間（Date.now()）
  * @property {string | null} modelKey 目前 3D 模型對應的組裝設定（JSON）
- * @property {boolean} bodyFallback 不裝車殼但 src 尚不支援無車殼組裝，數值仍含上一款車殼
  * @property {string | null} error 組裝失敗訊息
  * @property {string[]} notices URL 解析等提示
  */
@@ -217,12 +219,14 @@ const garage = {
   distance: 0,
   laps: 0,
   voltage: 0,
+  lane: 0,
+  onBridge: false,
+  laneHistory: [],
   lastUpdateMs: 0,
   updateCount: 0,
   modelUpdateCount: 0,
   modelUpdatedMs: 0,
   modelKey: null,
-  bodyFallback: false,
   error: null,
   notices: [],
 };
@@ -230,8 +234,6 @@ const garage = {
 
 /** @type {any} 目前的完整組裝結果（給 3D 與上賽道用） */
 let currentAsm = null;
-/** @type {string} 不裝車殼時拿來計算的上一款車殼 id */
-let lastRealBody = '';
 /** @type {ReturnType<typeof createGarageScene>} */
 let scene;
 /** @type {Awaited<ReturnType<typeof startRace>> | null} */
@@ -484,19 +486,12 @@ const writeUrl = () => {
 // 組裝 → 數值 / 規則 / 3D
 // ---------------------------------------------------------------------------
 
-/**
- * 依目前設定組裝；不裝車殼時先試 src 是否支援 body = null，不支援就用上一款車殼計算數值（並標示）
- * @type {(config: AssemblyConfig) => { asm: any, fallback: boolean }}
- */
-const computeAssembly = (config) => {
-  if (!isEmptyValue(config.body)) {
-    return { asm: assemble(config), fallback: false };
+/** @type {(fit: { tire_mm: number, roller_mm: number } | null, key: 'tire_mm' | 'roller_mm') => string} 不裝車殼時沒有間隙 */
+const clearanceText = (fit, key) => {
+  if (!fit) {
+    return '—（不裝車殼）';
   }
-  try {
-    return { asm: assemble(config), fallback: false };
-  } catch {
-    return { asm: assemble({ ...config, body: lastRealBody }), fallback: true };
-  }
+  return `${fit[key].toFixed(2)} mm`;
 };
 
 /** @type {(x: number, d?: number) => string} */
@@ -516,10 +511,10 @@ const renderStats = (asm, codes, topSpeed) => {
     ['全寬', `${fx(s.z)} mm`, '規則 < 105 mm', codes.has('WIDTH')],
     ['全高', `${fx(s.y)} mm`, '規則 < 70 mm', codes.has('HEIGHT')],
     ['離地高度', `${fx(asm.groundClearance_mm, 2)} mm`, '規則 ≥ 1 mm', codes.has('GROUND_CLEARANCE')],
-    ['車殼與輪胎間隙', `${fx(asm.fit.tire_mm, 2)} mm`, '須 ≥ 1 mm', codes.has('BODY_TIRE_CLEARANCE')],
-    ['車殼與導輪間隙', `${fx(asm.fit.roller_mm, 2)} mm`, '須 ≥ 1 mm', codes.has('BODY_ROLLER_CLEARANCE')],
+    ['車殼與輪胎間隙', clearanceText(asm.fit, 'tire_mm'), '須 ≥ 1 mm', codes.has('BODY_TIRE_CLEARANCE')],
+    ['車殼與導輪間隙', clearanceText(asm.fit, 'roller_mm'), '須 ≥ 1 mm', codes.has('BODY_ROLLER_CLEARANCE')],
     ['齒輪比', `${asm.gearRatio}:1`, '', codes.has('GEAR_RATIO')],
-    ['理論極速', `${fx(topSpeed, 2)} m/s（${fx(topSpeed * 3.6)} km/h）`, '滿電、平直路面（powertrain.js）', false, 'em'],
+    ['理論極速', `${fx(topSpeed, 2)} m/s（${fx(topSpeed * 3.6)} km/h）`, '滿電、平直路面的力平衡解', false, 'em'],
   ];
   statsEl.replaceChildren();
   for (const [name, value, limit, bad, cls] of rows) {
@@ -615,15 +610,12 @@ const update = () => {
   /** @type {string[]} */
   const notes = [...garage.notices];
   try {
-    const { asm, fallback } = computeAssembly(garage.config);
+    // 不裝車殼時 config.body = null，assemble() 直接組出沒有車殼的整車（asm.body、asm.fit 為 null）
+    const asm = assemble(garage.config);
     const validation = validateAssembly(asm);
     const top = theoreticalTopSpeed({ assembly: asm }).vTheory;
     currentAsm = asm;
     garage.error = null;
-    garage.bodyFallback = fallback;
-    if (fallback) {
-      notes.push(`目前的組裝程式還不支援「不裝車殼」，數值仍以車殼 ${lastRealBody} 計算；3D 只是拿掉車殼顯示`);
-    }
     const codes = new Set(validation.violations.map((v) => v.code));
     garage.asm = {
       mass_g: asm.mass_g,
@@ -631,7 +623,7 @@ const update = () => {
       bbox: { ...asm.bbox_mm.size },
       groundClearance_mm: asm.groundClearance_mm,
       topSpeed_ms: top,
-      bodyMass_g: asm.body.mass_g,
+      bodyMass_g: asm.body ? asm.body.mass_g : 0,
     };
     garage.validation = {
       ok: validation.ok,
@@ -643,8 +635,6 @@ const update = () => {
     markBadFields(validation.violations);
     if (!validation.ok) {
       setRaceEnabled(false, '組合不合法，修正上方違規項目後才能上賽道');
-    } else if (fallback) {
-      setRaceEnabled(false, '請先選一款車殼再上賽道');
     } else {
       setRaceEnabled(true, '在 3 線道賽道上跑 3 圈（Rapier 物理模擬）');
     }
@@ -710,9 +700,6 @@ const onSlotChange = (slot, value) => {
   } else {
     garage.config[slot] = value;
   }
-  if (slot === 'body' && value !== NONE) {
-    lastRealBody = value;
-  }
   update();
 };
 
@@ -723,7 +710,6 @@ const onPresetChange = (name) => {
   }
   garage.preset = name;
   garage.config = presetConfig(name);
-  lastRealBody = garage.config.body;
   syncSelects();
   update();
 };
@@ -751,7 +737,7 @@ const lockSelects = (disabled) => {
 /** @type {Record<string, string>} */
 const RACE_STATUS_TEXT = {
   running: '',
-  finished: '完賽：內、中、外三線道各跑一圈（終點在第 3 次換道段入口；外側換道橋目前只有外觀）',
+  finished: '完賽：官方 3 圈，經 3 次換道器，三條車道各跑一圈',
   derailed: '車子翻覆或飛出賽道，模擬停止',
   stalled: '車子卡住不動，模擬停止',
 };
@@ -774,6 +760,9 @@ const onRace = async () => {
     garage.speed = 0;
     garage.distance = 0;
     garage.laps = 0;
+    garage.lane = 0;
+    garage.onBridge = false;
+    garage.laneHistory = [0];
     btnGarage.focus();
   } catch (err) {
     garage.running = false;
@@ -821,7 +810,14 @@ const updateHud = () => {
   $('hud-dist').textContent = `${fx(s.distance, 2)} m`;
   $('hud-volt').textContent = `${fx(s.voltage, 2)} V`;
   $('hud-amp').textContent = `${fx(s.current, 2)} A`;
-  $('hud-lane').textContent = `第 ${s.lane + 1} 道`;
+  let laneText = `第 ${s.lane + 1} 道`;
+  if (s.onBridge) {
+    laneText += '（換道橋上）';
+  }
+  $('hud-lane').textContent = laneText;
+  garage.lane = s.lane;
+  garage.onBridge = s.onBridge;
+  garage.laneHistory = s.laneHistory;
   $('hud-time').textContent = `${fx(s.simTime, 2)} s`;
   let note = RACE_STATUS_TEXT[s.status] ?? '';
   if (s.status === 'running' && s.realtimeRatio < 0.95) {
@@ -883,7 +879,6 @@ const init = () => {
   buildBodySelect();
   buildSlotSelects();
   readUrl();
-  lastRealBody = isEmptyValue(garage.config.body) ? presetConfig(garage.preset).body : garage.config.body;
   syncSelects();
   selConfig.addEventListener('change', () => onPresetChange(selConfig.value));
   selBody.addEventListener('change', () => onSlotChange('body', selBody.value));

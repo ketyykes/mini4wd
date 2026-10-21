@@ -1,10 +1,9 @@
 // 換件頁的「上賽道」：直接使用 src/sim.js（與 vitest 物理測試同一套 Rapier 模擬，不另寫物理）
-// 3 線道賽道：從換道段出口的內側車道出發，每經過一次換道段往外換一個車道（內 → 中 → 外）。
-// src/track.js 的外側換道橋目前只有外觀（物理上外側車道在第 3 次換道段入口被外牆收掉），
-// 所以終點線設在第 3 次換道段入口：三個車道各跑完一整圈，總距離 = 3 圈 − 換道段長
+// 官方 3 圈：從換道器前（s = 0.15 m，與 tests 的整圈測試相同）的內側車道出發，每圈經過一次換道器 / 立體橋換車道
+// （track.nextLane），3 圈內三條車道各跑一圈，跑滿 3 × 一圈長度即完賽
 import { spec } from '../src/spec.js';
 import { buildCircuit } from '../src/track.js';
-import { initRapier, createWorld, createCar, stepCar, forwardSpeed, upAxis } from '../src/sim.js';
+import { initRapier, createWorld, createCar, stepCar, forwardSpeed, upAxis, carLevel } from '../src/sim.js';
 
 /** 每幀物理計算的時間上限（ms）：超過就讓模擬比真實時間慢，畫面仍維持流暢 */
 const FRAME_BUDGET_MS = 14;
@@ -30,6 +29,8 @@ const STALL_TIME_S = 1.5;
  * @property {number} voltage 電池端電壓 V（負載下）
  * @property {number} current 馬達電流 A
  * @property {number} lane 目前車道（0 = 內側）
+ * @property {boolean} onBridge 目前在換道器立體橋上
+ * @property {number[]} laneHistory 依序跑過的車道（地面層，換道後才新增）
  * @property {number} realtimeRatio 模擬時間 / 真實時間
  * @property {RaceStatus} status
  */
@@ -59,15 +60,13 @@ function createSession(asm) {
   const track = getCircuit();
   const env = createWorld(track);
   const L = track.path.length;
-  const lc = track.laneChanger;
-  // 起跑線：換道段出口後 5 cm、內側車道（lane 0）
-  let s0 = 0.15;
-  let finishDistance = RACE_LAPS * L;
-  if (lc) {
-    s0 = lc.end + 0.05;
-    finishDistance = lc.start + RACE_LAPS * L - s0 - 0.02;
-  }
+  // 起跑線：換道器前、內側車道（lane 0）；終點 = 起跑線後 3 圈
+  const s0 = 0.15;
+  const finishDistance = RACE_LAPS * L;
   const car = createCar(env, { assembly: asm, s: s0, lane: 0 });
+  /** @type {number[]} */
+  const laneHistory = [0];
+  let onBridge = false;
   const dt = spec.sim.dt_s;
   let stallTime = 0;
   let progress = 0;
@@ -112,6 +111,15 @@ function createSession(asm) {
         break;
       }
     }
+    // 車道紀錄：只在地面層判斷（橋上的橫向位置不對應地面車道）
+    onBridge = carLevel(env, car) === 'bridge';
+    if (!onBridge && track.laneOf) {
+      const t = car.chassis.translation();
+      const lane = track.laneOf(track.path.project(t.x, t.z).d);
+      if (lane !== laneHistory[laneHistory.length - 1]) {
+        laneHistory.push(lane);
+      }
+    }
     if (progress >= finishDistance) {
       status = 'finished';
       return;
@@ -136,8 +144,9 @@ function createSession(asm) {
   const snapshot = () => {
     const t = car.chassis.translation();
     const c = track.path.project(t.x, t.z);
-    let lane = 0;
-    if (track.laneOf) {
+    // 橋上沿用進橋前的車道（橋的橫向位置不對應地面車道）
+    let lane = laneHistory[laneHistory.length - 1];
+    if (!onBridge && track.laneOf) {
       lane = track.laneOf(c.d);
     }
     return {
@@ -151,6 +160,8 @@ function createSession(asm) {
       voltage: car.last.terminalVoltage || car.battery.ocv(),
       current: car.last.current,
       lane,
+      onBridge,
+      laneHistory: laneHistory.slice(),
       realtimeRatio: realTime > 0 ? simTime / realTime : 1,
       status,
     };

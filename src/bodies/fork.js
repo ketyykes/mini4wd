@@ -2,8 +2,8 @@
 // 設計：shared/design/body-fork/DESIGN.md（致敬元素、和原作車的差異）。剖面為本檔站位表（推估，依 DESIGN.md 外框限制與底盤高度掃描）。
 // 塗裝全為自創：珍珠銀＋電光青＋黑、閃電斜紋、號碼「9」；不含任何廠商 / 作品名稱、商標或角色圖像。
 import * as THREE from 'three';
-import { makePolyBody, finPlate, flatPlate, buildDriver } from './polyBody.js';
-import { namedMaterial, decalMaterial, sdNumber, sdBar, sideDecal, topDecal, mergeGeos } from './loft.js';
+import { makePolyBody, flatPlate, buildDriver, sweepEllipse, airfoilFin } from './polyBody.js';
+import { namedMaterial, decalMaterial, sdNumber, sdBar, sideDecal, topDecal, mergeGeos, lerp } from './loft.js';
 
 /**
  * 機身半剖面站位表（8 點）。車輪外露：輪胎所在的 x 範圍（前 24.5–55.5、後 −55.5–−24.5）半寬 ≤ 23.5，
@@ -47,24 +47,27 @@ const materials = () => ({
 });
 
 /**
- * 尾樑：側視多邊形往 z 擠出成方條（上緣倒角），x −26 ~ −72，|z| 11–23
- * @type {(zc: number) => THREE.BufferGeometry}
+ * 尾臂（iter-47）：從側箱後端長出、往後內收的掃掠橢圓管（概念圖的一體流線尾臂），x −14 ~ −72。
+ * 後輪範圍（x −55.5 ~ −24.5）內外緣 |z| ≤ 23.5（31 mm 輪胎內側面 24.75）、下緣 y ≥ 24.4（開關頂 23.2）
+ * @type {(sg: number) => THREE.BufferGeometry}
  */
-const buildBoom = (zc) => {
-  const shape = new THREE.Shape(
+const buildArm = (sg) =>
+  sweepEllipse(
     [
-      [-26, 24.4],
-      [-72, 22.6],
-      [-72, 27.4],
-      [-60, 28.2],
-      [-34, 29.2],
-      [-26, 28.4],
-    ].map(([x, y]) => new THREE.Vector2(x, y)),
+      [0, 25.2, sg * 23],
+      [-12, 26.4, sg * 23.2],
+      [-24, 27.1, sg * 19.6],
+      [-40, 27.6, sg * 17.6],
+      [-56, 27.6, sg * 17],
+      [-72, 26.8, sg * 17],
+    ],
+    56,
+    // 前段從側箱裡長出來（半徑由小漸大，前端埋在殼內），後段漸細
+    (t) => {
+      const grow = Math.min(1, t / 0.22);
+      return [lerp(1.6, 4.2, grow) - 1.0 * Math.max(0, t - 0.22), lerp(0.8, 3, grow) - 0.7 * Math.max(0, t - 0.22)];
+    },
   );
-  const g = new THREE.ExtrudeGeometry(shape, { depth: 11, bevelEnabled: true, bevelThickness: 0.5, bevelSize: 0.5, bevelSegments: 2 });
-  g.translate(0, 0, zc - 5.5);
-  return g;
-};
 
 export const forkBody = makePolyBody({
   id: 'body-fork',
@@ -76,6 +79,8 @@ export const forkBody = makePolyBody({
   wallThickness_mm: 0.8,
   stations: STATIONS,
   tuck: 1.2,
+  // iter-47：平滑剖面，只保留側箱肩稜（第 6 點）為銳利稜線
+  hard: [6],
   // 車輪外露：機身避開輪胎，不需要輪拱
   wheelArches: [],
   canopy: {
@@ -100,16 +105,16 @@ export const forkBody = makePolyBody({
   mountInnerY: (kit) => (x) => (x < -44 ? 27.2 : kit.innerYAt(x)),
   extras: (kit) => {
     const parts = [];
-    // 雙尾樑（實心件，以表面積 × 壁厚近似質量）
-    parts.push({ geometry: mergeGeos([buildBoom(-17), buildBoom(17)]), mat: 'silver2', shell: true, name: 'tail-booms' });
+    // 雙尾臂（實心管，以表面積 × 壁厚近似質量）
+    parts.push({ geometry: mergeGeos([buildArm(-1), buildArm(1)]), mat: 'silver2', shell: true, name: 'tail-arms' });
     // 尾樑之間的橋板（後卡座吊在這裡）
     parts.push({
       geometry: flatPlate(
         [
-          [-46, -12],
-          [-46, 12],
-          [-58, 12],
-          [-58, -12],
+          [-46, -14.5],
+          [-46, 14.5],
+          [-58, 14.5],
+          [-58, -14.5],
         ],
         27.2,
         1.4,
@@ -118,22 +123,10 @@ export const forkBody = makePolyBody({
       shell: true,
       name: 'tail-bridge',
     });
-    // 分叉尾鰭：尾樑上外傾 14° 的後掠高鰭
+    // 分叉尾鰭（iter-47）：尾臂上外傾 14° 的後掠薄翼型鰭（前緣圓、後緣尖）
     const fins = [];
     for (const sg of [-1, 1]) {
-      fins.push(
-        finPlate(
-          [
-            [-46, 28.6],
-            [-71, 27.6],
-            [-74, 47],
-            [-68, 47],
-          ],
-          sg * 17,
-          1.2,
-          sg * 14,
-        ),
-      );
+      fins.push(airfoilFin([-49, -70, 29.2], [-66, -74.5, 47], 1.5, sg * 17, sg * 14));
     }
     parts.push({ geometry: mergeGeos(fins), mat: 'cyan2', outline: true, name: 'fork-fins' });
     // 刃鼻下方的黑色前翼（細長分流板，往前尖出）

@@ -12,6 +12,7 @@ import { getBody, bodyMassProps, bodyClearance } from './bodies/index.js';
 import { rollerLayout, wheelLayout, componentLayout } from './carLayout.js';
 import { solidGap, solidBox, verticesGap } from './parts/clearance.js';
 import { polygonCentroid } from './parts/plateGeom.js';
+import { bumperTrim } from './parts/bumperGeom.js';
 
 /** @typedef {import('./parts/types').PlacedPart} PlacedPart */
 /** @typedef {import('./parts/types').Vec3} Vec3 */
@@ -163,8 +164,9 @@ export function assemble(config) {
     }
     p[slot] = resolvePart(v, category);
   }
-  const body = getBody(config.body);
-  const bodyProps = bodyMassProps(body);
+  // body 為 null / 空字串時不裝車殼（只有底盤）：質量、重心、外框、規則檢查都只算底盤
+  const body = config.body ? getBody(config.body) : null;
+  const bodyProps = body ? bodyMassProps(body) : null;
   const s = buildSpec(p);
   const ch = p.chassis;
 
@@ -189,10 +191,27 @@ export function assemble(config) {
     if (mass_g <= 0) {
       return;
     }
-    parts.push({ slot, id: p[slot]?.id ?? body.id, category: p[slot]?.category ?? 'body', label, mass_g, pos: lifted(pos, lift) });
+    parts.push({ slot, id: p[slot]?.id ?? body?.id ?? slot, category: p[slot]?.category ?? 'body', label, mass_g, pos: lifted(pos, lift) });
   };
 
-  place('chassis', '底盤本體', ch.mass_g, ch.com_mm);
+  // 保桿切除（iter-47）：裝 FRP / 碳纖導輪板（chassisTrim）的那一端，底盤保桿兩側導輪臂剪掉；
+  // 切除質量 = 切除幾何（parts/bumperGeom.js，與 3D 模型同一份）× 底盤密度，從底盤本體的質量與重心扣除
+  const chassisTrim = [];
+  for (const [slot, sx] of [['frontStay', 1], ['rearStay', -1]]) {
+    if (p[slot].chassisTrim) {
+      const t = bumperTrim(ch, sx);
+      chassisTrim.push({ slot, end: sx > 0 ? 'front' : 'rear', mass_g: t.mass_g, com_mm: t.com_mm, volume_mm3: t.volume_mm3 });
+    }
+  }
+  let chMass = ch.mass_g;
+  const chMom = { x: ch.mass_g * ch.com_mm.x, y: ch.mass_g * ch.com_mm.y, z: ch.mass_g * ch.com_mm.z };
+  for (const t of chassisTrim) {
+    chMass -= t.mass_g;
+    chMom.x -= t.mass_g * t.com_mm.x;
+    chMom.y -= t.mass_g * t.com_mm.y;
+    chMom.z -= t.mass_g * t.com_mm.z;
+  }
+  place('chassis', chassisTrim.length > 0 ? '底盤本體（保桿切除後）' : '底盤本體', chMass, { x: chMom.x / chMass, y: chMom.y / chMass, z: chMom.z / chMass });
   place('motor', '雙軸馬達', p.motor.mass_g, { x: comp.motor.x, y: comp.motor.y, z: comp.motor.z });
   const cells = p.battery.cells;
   comp.battery.zs.slice(0, cells).forEach((z, i) => {
@@ -250,7 +269,9 @@ export function assemble(config) {
   if (opt.ballast) {
     place('ballast', `配重（${opt.ballast.mount}）`, opt.ballast.mass_g, opt.ballast.pos);
   }
-  parts.push({ slot: 'body', id: body.id, category: 'body', label: `車殼 ${body.id}`, mass_g: bodyProps.mass_g, pos: lifted(bodyProps.com_mm, lift) });
+  if (body) {
+    parts.push({ slot: 'body', id: body.id, category: 'body', label: `車殼 ${body.id}`, mass_g: bodyProps.mass_g, pos: lifted(bodyProps.com_mm, lift) });
+  }
 
   // ---- 質量、重心、慣性：整車（P14）與「剛體部分」（不含可上下滑動的制振器，物理引擎的車體剛體用）----
   const total = massProps(parts, ch, bodyProps);
@@ -275,11 +296,12 @@ export function assemble(config) {
   // ---- 外框（車體座標）：底盤本體、輪胎、導輪、車殼的聯集 ----
   const R = p.wheels.diameter_mm / 2;
   const halfTire = p.wheels.width_mm / 2;
+  const chassisBox = { min: lifted(ch.bbox_mm.min, lift), max: lifted(ch.bbox_mm.max, lift) };
+  const bodyBox = body ? { min: lifted(bodyProps.bbox_mm.min, lift), max: lifted(bodyProps.bbox_mm.max, lift) } : null;
+  /** @type {{ min: Vec3, max: Vec3 }[]} 結構外框：底盤本體＋車殼（沒裝車殼時只有底盤） */
+  const structBoxes = bodyBox ? [chassisBox, bodyBox] : [chassisBox];
   /** @type {{ min: Vec3, max: Vec3 }[]} */
-  const boxes = [
-    { min: lifted(ch.bbox_mm.min, lift), max: lifted(ch.bbox_mm.max, lift) },
-    { min: lifted(bodyProps.bbox_mm.min, lift), max: lifted(bodyProps.bbox_mm.max, lift) },
-  ];
+  const boxes = [...structBoxes];
   for (const w of wheels) {
     boxes.push({ min: { x: w.x - R, y: 0, z: w.z - halfTire }, max: { x: w.x + R, y: 2 * R, z: w.z + halfTire } });
   }
@@ -306,15 +328,19 @@ export function assemble(config) {
   const frontalArea_mm2 = bbox_mm.size.z * bbox_mm.size.y * globalSpec.aero.frontalAreaFill;
   // 離地高度：輪胎以外的最低點（底盤本體、車殼、導輪）
   // structureClearance_mm：只看底盤本體、車殼、導輪（物理車體碰撞方塊的底面用這個）；groundClearance_mm 另含導輪板與選配零件（規則檢查用）
-  const structureClearance_mm = Math.min(...boxes.filter((_, i) => i < 2).map((b) => b.min.y), ...rollers.map((r) => r.y - r.h / 2 + lift));
+  const structureClearance_mm = Math.min(...structBoxes.map((b) => b.min.y), ...rollers.map((r) => r.y - r.h / 2 + lift));
   const groundClearance_mm = Math.min(structureClearance_mm, ...extraBoxes.map((b) => b.min.y));
 
   // 車殼與輪胎、導輪的間隙（底盤座標：輪軸相對底盤固定，換大徑輪時輪胎往外長）
-  const fit = bodyClearance(
-    body,
-    wheels.map((w) => ({ x: w.x, y: w.y, z: w.z, r: R, width: p.wheels.width_mm })),
-    rollers,
-  );
+  // 沒裝車殼時 fit = null（規則檢查跳過車殼間隙）
+  let fit = null;
+  if (body) {
+    fit = bodyClearance(
+      body,
+      wheels.map((w) => ({ x: w.x, y: w.y, z: w.z, r: R, width: p.wheels.width_mm })),
+      rollers,
+    );
+  }
   const interference = interferenceChecks(body, bodyProps, wheels.map((w) => ({ ...w, r: R, width: p.wheels.width_mm })), rollers, opt.solids);
 
   return {
@@ -329,6 +355,7 @@ export function assemble(config) {
     frontalArea_mm2,
     fit,
     interference,
+    chassisTrim,
     features: [...new Set([...(ch.features ?? []), ...(p.frontStay.features ?? []), ...(p.rearStay.features ?? [])])],
     optional: { dampers: opt.dampers, sponge: opt.sponge, ballast: opt.ballast },
     rigid: { mass_g: rigid.mass_g, com_mm: rigid.com_mm, inertia_kgm2: rigid.inertia_kgm2 },
@@ -344,13 +371,18 @@ export function assemble(config) {
       rollers: rollers.map((r) => ({ ...r, y: r.y + lift })),
     },
     chassisMounts: ch.bodyMounts.map((m) => ({ ...lifted(m, lift), id: m.id })),
-    body: {
-      id: body.id,
-      def: body,
-      mounts: body.mounts.map((m) => ({ ...lifted(m, lift), id: m.id })),
-      mass_g: bodyProps.mass_g,
-      bbox_mm: { min: lifted(bodyProps.bbox_mm.min, lift), max: lifted(bodyProps.bbox_mm.max, lift) },
-    },
+    // 底盤本體外框（車體座標）：沒裝車殼時物理碰撞方塊用這個
+    chassisBox_mm: chassisBox,
+    // 沒裝車殼時為 null
+    body: body
+      ? {
+          id: body.id,
+          def: body,
+          mounts: body.mounts.map((m) => ({ ...lifted(m, lift), id: m.id })),
+          mass_g: bodyProps.mass_g,
+          bbox_mm: bodyBox,
+        }
+      : null,
   };
 }
 
@@ -385,7 +417,14 @@ function massProps(parts, ch, bodyProps) {
     inertia.y += q.mass_g * (dx * dx + dz * dz);
     inertia.z += q.mass_g * (dx * dx + dy * dy);
   }
-  for (const [m, b] of [[ch.mass_g, ch.bbox_mm], [bodyProps.mass_g, bodyProps.bbox_mm]]) {
+  /** @type {[number, { min: Vec3, max: Vec3 }][]} 底盤本體與車殼（沒裝車殼時只有底盤） */
+  // 底盤本體的質量取零件清單裡的值（保桿切除後的質量）
+  const chPart = parts.find((q) => q.slot === 'chassis');
+  const spread = [[chPart ? chPart.mass_g : ch.mass_g, ch.bbox_mm]];
+  if (bodyProps) {
+    spread.push([bodyProps.mass_g, bodyProps.bbox_mm]);
+  }
+  for (const [m, b] of spread) {
     const bi = boxInertia(m, b);
     inertia.x += bi.x;
     inertia.y += bi.y;
@@ -540,8 +579,8 @@ function interferenceChecks(body, bodyProps, wheels, rollers, solids) {
       record(code, P.label, Q.label, cachedGap(P.solid, Q.solid));
     }
   }
-  // 選配零件、導輪板與車殼（車殼頂點到零件實體的距離）
-  for (const s of solids) {
+  // 選配零件、導輪板與車殼（車殼頂點到零件實體的距離）；沒裝車殼時跳過
+  for (const s of body ? solids : []) {
     const key = JSON.stringify([body.id, s.solid]);
     let g = bodyGapCache.get(key);
     if (g === undefined) {

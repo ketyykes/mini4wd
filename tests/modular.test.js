@@ -66,10 +66,11 @@ function runStraightTopSpeed(asm, soc = 1, seconds = 7) {
 }
 
 /**
- * 主賽道跑一圈（從換道段前的內側線道出發），回傳 P06／P07／P10 需要的資料
- * @type {(asm: object) => object}
+ * 主賽道跑 laps 圈（從換道器前的內側線道出發），回傳 P06／P07／P10 需要的資料；
+ * 每經過一次換道器記錄前後車道（第 k 次在 lc.start + kL 之前 / lc.end + kL 之後）
+ * @type {(asm: object, laps?: number) => any}
  */
-function runCircuitLap(asm) {
+function runCircuitLap(asm, laps = 1) {
   const { sim, track: T } = api();
   const track = T.buildCircuit();
   const env = sim.createWorld(track);
@@ -84,12 +85,17 @@ function runCircuitLap(asm) {
   let minUp = 1;
   let maxY = -Infinity;
   let minY = Infinity;
-  let laneBefore = null;
-  let laneAfter = null;
+  /** @type {(number | null)[]} */
+  const laneBefore = Array(laps).fill(null);
+  /** @type {(number | null)[]} */
+  const laneAfter = Array(laps).fill(null);
+  let maxH = -Infinity;
+  let minH = Infinity;
+  let bridgeSteps = 0;
   const lc = track.laneChanger;
-  const maxSteps = Math.round(10 / dt);
+  const maxSteps = Math.round(10 * laps / dt);
   let steps = 0;
-  for (; steps < maxSteps && progress < L + 0.05; steps++) {
+  for (; steps < maxSteps && progress < laps * L + 0.05; steps++) {
     sim.stepCar(env, car);
     const t = car.chassis.translation();
     const c = track.path.project(t.x, t.z);
@@ -110,15 +116,24 @@ function runCircuitLap(asm) {
     minUp = Math.min(minUp, sim.upAxis(car).y);
     minY = Math.min(minY, t.y);
     maxY = Math.max(maxY, t.y);
-    const sAbs = s0 + progress;
-    if (laneBefore === null && sAbs >= lc.start - 0.1) {
-      laneBefore = track.laneOf(c.d);
+    // 離所在層路面的高度（換道器橋上以橋面為準）
+    const h = sim.heightAboveRoad(env, car);
+    maxH = Math.max(maxH, h);
+    minH = Math.min(minH, h);
+    if (sim.carLevel(env, car) === 'bridge') {
+      bridgeSteps++;
     }
-    if (laneAfter === null && sAbs >= lc.end + 0.25) {
-      laneAfter = track.laneOf(c.d);
+    const sAbs = s0 + progress;
+    for (let k = 0; k < laps; k++) {
+      if (laneBefore[k] === null && sAbs >= lc.start + k * L - 0.1) {
+        laneBefore[k] = track.laneOf(c.d);
+      }
+      if (laneAfter[k] === null && sAbs >= lc.end + k * L + 0.25) {
+        laneAfter[k] = track.laneOf(c.d);
+      }
     }
   }
-  return { lapLength: L, progress, time: steps * dt, maxPen, contactPen: Math.max(0, -minContactDist), minUp, minY, maxY, laneBefore, laneAfter };
+  return { track, lapLength: L, laps, progress, time: steps * dt, maxPen, contactPen: Math.max(0, -minContactDist), minUp, minY, maxY, minH, maxH, bridgeSteps, laneBefore, laneAfter };
 }
 
 /**
@@ -428,21 +443,66 @@ describe('第二階段：零件組裝 / 規則 / 車殼（P04、P08、P09、P11�
     }
   });
 
-  test('P16_every_body_lap 每款車殼各跑完 1 圈（含彎道與 lane changer），不穿牆、不飛出、未翻覆', () => {
+  test('P16_every_body_lap 每款車殼各跑完官方 3 圈（約 20 m，3 條車道各一圈，含彎道與 3 次換道器 / 立體橋），不穿牆、不飛出、未翻覆', () => {
     const { assemble, listBodies } = api();
     const bodies = listBodies();
     expect(bodies.length).toBeGreaterThan(0);
     for (const b of bodies) {
-      const lap = runCircuitLap(assemble(cfgWith({ body: b.id })));
+      const lap = runCircuitLap(assemble(cfgWith({ body: b.id })), 3);
       const pen = Math.max(lap.maxPen, lap.contactPen);
-      console.log(`[P16] ${b.id}：進度 ${f3(lap.progress)} / ${f3(lap.lapLength)} m, ${f3(lap.time)} s, 穿透 ${(pen * 1000).toFixed(3)} mm, 最小 up.y ${f3(lap.minUp)}, 車道 ${lap.laneBefore} → ${lap.laneAfter}`);
-      expect(lap.progress).toBeGreaterThanOrEqual(lap.lapLength);
+      const lanes = lap.laneBefore.map((x, k) => `${x}→${lap.laneAfter[k]}`).join('、');
+      console.log(`[P16] ${b.id}：進度 ${f3(lap.progress)} / ${f3(3 * lap.lapLength)} m, ${f3(lap.time)} s, 穿透 ${(pen * 1000).toFixed(3)} mm, 最小 up.y ${f3(lap.minUp)}, 離路面高度 ${(lap.minH * 1000).toFixed(2)}–${(lap.maxH * 1000).toFixed(2)} mm, 換道 ${lanes}, 橋上步數 ${lap.bridgeSteps}`);
+      expect(lap.progress).toBeGreaterThanOrEqual(3 * lap.lapLength);
       expect(pen).toBeLessThanOrEqual(0.001);
       expect(lap.minUp).toBeGreaterThan(0.8);
-      expect(lap.maxY).toBeLessThan(0.05);
-      expect(lap.minY).toBeGreaterThan(-0.005);
-      expect(lap.laneBefore).not.toBeNull();
-      expect(lap.laneAfter).toBe(lap.laneBefore + 1);
+      // 不飛出：車體原點離所在層路面 < 5 cm（地面層即 y < 0.05，同第二階段；橋上以橋面為準）
+      expect(lap.maxH).toBeLessThan(0.05);
+      expect(lap.minH).toBeGreaterThan(-0.005);
+      for (let k = 0; k < 3; k++) {
+        expect(lap.laneBefore[k]).not.toBeNull();
+        expect(lap.laneAfter[k]).toBe(lap.track.nextLane(lap.laneBefore[k]));
+      }
+      // 3 圈內 3 條車道各跑一次，且外側車道那一圈確實走了立體橋
+      expect(new Set(lap.laneBefore).size).toBe(3);
+      expect(lap.bridgeSteps).toBeGreaterThan(0);
     }
   }, 300000);
+
+  test('P16b_no_body body: null（不裝車殼）：質量 / 重心 / 外框 / 規則只算底盤，模型與物理都能建立', () => {
+    const { assemble, validateAssembly, model, sim, track: T } = api();
+    const withBody = assemble(cfgWith());
+    const bare = assemble(cfgWith({ body: null }));
+    expect(bare.body).toBeNull();
+    expect(bare.fit).toBeNull();
+    // 質量 = 有車殼的組裝扣掉車殼質量；零件清單沒有車殼
+    expect(bare.mass_g).toBeCloseTo(withBody.mass_g - withBody.body.mass_g, 6);
+    expect(bare.parts.some((q) => q.slot === 'body')).toBe(false);
+    const sum = bare.parts.reduce((acc, q) => acc + q.mass_g, 0);
+    expect(bare.mass_g).toBeCloseTo(sum, 9);
+    // 重心 = 底盤零件質量加權位置
+    for (const k of ['x', 'y', 'z']) {
+      const c = bare.parts.reduce((acc, q) => acc + q.mass_g * q.pos[k], 0) / sum;
+      expect(bare.com_mm[k]).toBeCloseTo(c, 9);
+    }
+    // 外框不含車殼：不大於有車殼的外框
+    expect(bare.bbox_mm.size.y).toBeLessThanOrEqual(withBody.bbox_mm.size.y + 1e-9);
+    expect(bare.bbox_mm.size.x).toBeLessThanOrEqual(withBody.bbox_mm.size.x + 1e-9);
+    // 規則檢查照常運作（不檢查車殼間隙）
+    const res = validateAssembly(bare);
+    const codes = res.violations.map((v) => v.code);
+    console.log(`[P16b] 無車殼：${f3(bare.mass_g)} g（有車殼 ${f3(withBody.mass_g)} g），外框 ${f3(bare.bbox_mm.size.x)} × ${f3(bare.bbox_mm.size.z)} × ${f3(bare.bbox_mm.size.y)} mm，違規 ${codes.join(',') || '無'}`);
+    expect(codes.some((c) => c.startsWith('BODY_'))).toBe(false);
+    // 3D 模型：沒有車殼節點
+    const m = model.buildCarModel(bare);
+    expect(m.getObjectByName('body')).toBeUndefined();
+    expect(m.getObjectByName('chassis')).toBeDefined();
+    // 物理：能建車並在直線上前進
+    const env = sim.createWorld(T.buildStraight(5));
+    const car = sim.createCar(env, { assembly: bare, s: 0.2, lane: 0 });
+    for (let i = 0; i < 2000; i++) {
+      sim.stepCar(env, car);
+    }
+    expect(car.chassis.mass() * 1000).toBeCloseTo(bare.rigid.mass_g, 3);
+    expect(sim.forwardSpeed(car)).toBeGreaterThan(0.5);
+  });
 });

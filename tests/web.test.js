@@ -17,6 +17,8 @@ const UPDATE_LIMIT_MS = 1000;
 /** 上賽道後車速門檻（m/s）與等待時間（ms） */
 const RACE_MIN_SPEED = 0.5;
 const RACE_WAIT_MS = 20000;
+/** 從起跑到通過第一次換道器的等待時間（ms；約 5 m，慢速電腦模擬可能低於即時） */
+const LANE_CHANGE_WAIT_MS = 45000;
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -187,7 +189,7 @@ describe('P19 網頁換件', () => {
     expect((await garageState()).running).toBe(false);
   }, 60000);
 
-  test('P19_合法組合上賽道後車子在賽道上跑', async () => {
+  test('P19_合法組合上賽道後車子在賽道上跑且經換道器換車道', async () => {
     await changeSlot('wheels', 'wheel-26-lowprofile');
     const g0 = await garageState();
     expect(g0.validation.ok).toBe(true);
@@ -202,11 +204,44 @@ describe('P19 網頁換件', () => {
     expect(g.distance).toBeGreaterThan(d1);
     expect(g.voltage).toBeGreaterThan(0);
     expect(['running', 'finished']).toContain(g.raceStatus);
+    // 經過換道器（第二條直線，s ≈ 3.3–5.0 m）後車道改變：內側（0）→ track.nextLane(0)
+    const { buildCircuit } = await import('../src/track.js');
+    const expectedLane = buildCircuit().nextLane(0);
+    await page.waitForFunction(() => window.__garage.laneHistory.length >= 2 || !window.__garage.running || window.__garage.raceStatus !== 'running', null, { timeout: LANE_CHANGE_WAIT_MS });
+    const g2 = await garageState();
+    console.log(`[P19] 換道：車道紀錄 ${g2.laneHistory.join(' → ')}，行駛 ${g2.distance.toFixed(2)} m，狀態 ${g2.raceStatus}`);
+    expect(g2.laneHistory[0]).toBe(0);
+    expect(g2.laneHistory[1]).toBe(expectedLane);
     // 回車庫
     await page.click('[data-action="garage"]');
     await expect.poll(async () => (await garageState()).running).toBe(false);
     await expect.poll(() => page.locator('[data-action="race"]').isEnabled()).toBe(true);
-  }, 60000);
+  }, 120000);
+
+  test('P19_不裝車殼（只看底盤）數值與 Node 端一致且可上賽道', async () => {
+    await page.selectOption('select[data-slot="config"]', 'default');
+    const ms = await changeSlot('body', '__none__');
+    const g = await garageState();
+    console.log(`[P19] 不裝車殼：${ms} ms，總重 ${g.asm.mass_g.toFixed(2)} g，外框 ${g.asm.bbox.x.toFixed(1)}×${g.asm.bbox.z.toFixed(1)}×${g.asm.bbox.y.toFixed(1)} mm，規則 ${g.validation.ok ? '合法' : g.validation.codes.join(',')}`);
+    expect(ms).toBeLessThan(UPDATE_LIMIT_MS);
+    expect(g.config.body).toBe(null);
+    expect(g.asm.bodyMass_g).toBe(0);
+    expectMatchesNode(g);
+    expect(new URL(page.url()).searchParams.get('body')).toBe('none');
+    // 3D 模型已依不裝車殼的設定重建
+    expect(g.modelKey).toBe(JSON.stringify(g.config));
+    // 拿掉車殼仍符合規則（總重 ≥ 90 g、尺寸變小），可以上賽道
+    expect(g.validation.ok).toBe(true);
+    await expect.poll(() => page.locator('[data-action="race"]').isEnabled()).toBe(true);
+    await page.click('[data-action="race"]');
+    await page.waitForFunction((v) => window.__garage.running && window.__garage.speed > v, RACE_MIN_SPEED, { timeout: RACE_WAIT_MS });
+    const d1 = (await garageState()).distance;
+    await page.waitForTimeout(800);
+    expect((await garageState()).distance).toBeGreaterThan(d1);
+    await page.click('[data-action="garage"]');
+    await expect.poll(async () => (await garageState()).running).toBe(false);
+    await changeSlot('body', 'body-wedge');
+  }, 90000);
 
   test('P19_URL 參數可還原組裝', async () => {
     const p2 = await browser.newPage({ viewport: { width: 1600, height: 900 } });

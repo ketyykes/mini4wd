@@ -28,7 +28,7 @@ slot 值的寫法：
 | 齒輪 | `gear-3.5`、`gear-3.7`、`gear-4.0`、`gear-4.2` | `compat.chassisLayouts`；4.2:1 只適用單軸底盤（`GEAR_CHASSIS`） |
 | 輪胎 | `wheel-26-lowprofile`、`wheel-31-large`、`wheel-24-narrow`、`wheel-26-lowfriction` | 低摩擦胎 μ = 0.4 |
 | 導輪 | `roller-13`、`roller-13-alu`、`roller-19`、`roller-13-12-double` | 雙層導輪用 `tiers`（每片接觸面一顆碰撞球）；導輪架的導輪高度以 5 mm 單層導輪為準，較高的導輪往上長 |
-| 前導輪架 | `stay-front-standard`、`stay-front-frp`、`stay-front-carbon` | 板件 `plate`（俯視外形、開孔、板底高度、厚度、密度）→ 質量 = 面積 × 厚度 × 密度 |
+| 前導輪架 | `stay-front-standard`、`stay-front-frp`、`stay-front-carbon` | 板件 `plate`（俯視外形、開孔、板底高度、厚度、密度）→ 質量 = 面積 × 厚度 × 密度；`chassisTrim` = 裝這塊板時剪掉底盤保桿導輪臂，切除幾何在 `src/parts/bumperGeom.js`（模型與質量共用），`assemble()` 從底盤本體扣除質量與重心 |
 | 後導輪架 | `stay-rear-standard`、`stay-rear-frp`、`stay-rear-carbon-wide` | `upperRollerHeight_mm: null` 為單層（可裝雙層導輪）；`brakeMount`（煞車座）、`damperMount`（後制振器座） |
 | 制振器 | `damper-rear-cylinder`、`damper-side-square` | 獨立 Rapier 剛體＋prismatic joint（行程 `stroke_mm` 為硬止點），下止點是單邊彈性座墊（`seatDeflection_mm`、`seatDampingRatio`） |
 | 煞車海綿 | `sponge-1mm-strong`、`sponge-2mm-strong`、`sponge-3mm-mild` | 貼在後導輪架 `brakeMount` 下方；接觸剛性 k = E·A/t、摩擦 μ，只在射線碰到地面 / 坡道時有力 |
