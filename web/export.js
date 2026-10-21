@@ -7,14 +7,14 @@ import { buildCarModel } from '../src/model.js';
 import { assemble, loadConfig } from '../src/assembly.js';
 
 /**
- * 建立要匯出的車輛模型（模型 API 改為依組裝設定 / 車殼 id 建模時，只需改這個函式）
- * bodyId：車殼 id（預設 body-wedge；'none' 只匯出底盤）；回傳單位 mm，x 向前、y 向上、z 向右
- * @type {(bodyId: string) => THREE.Object3D}
+ * 建立要匯出的車輛模型
+ * configName：組裝設定名稱（app/configs/<名稱>.json，預設 default）；
+ * bodyId：車殼 id（空字串 = 用組裝設定裡的車殼；'none' 只匯出底盤與零件）；回傳單位 mm，x 向前、y 向上、z 向右
+ * @type {(bodyId: string, configName?: string) => THREE.Object3D}
  */
-// eslint-disable-next-line no-unused-vars
-const buildModelForExport = (bodyId) => {
-  // iter-33：依車殼 id 組裝（預設組裝＋指定車殼）；'none' 只匯出底盤
-  const config = loadConfig('default');
+const buildModelForExport = (bodyId, configName = 'default') => {
+  // iter-33：依車殼 id 組裝；iter-47：可指定組裝設定（例如 race-frp、carbon-damper），車殼 id 再覆寫設定裡的車殼
+  const config = loadConfig(configName);
   if (bodyId && bodyId !== 'none') {
     config.body = bodyId;
   }
@@ -132,6 +132,8 @@ const categoryFromName = (name, mat) => {
     [/pearl/, 'paint_pearl'],
     [/metallic|^paint-.*metal/, 'paint'],
     [/^paint-/, 'paint_gloss'],
+    // 第三階段：PC 透明殼內側噴漆（例如 pc-paint-fluo-pink）——外面看是亮面漆（隔一層 PC 的光澤）
+    [/^pc-paint-/, 'paint_gloss'],
     [/inner|interior|dark-matte/, 'plastic_matte'],
     [/carbon/, 'carbon'],
     [/^frp-/, 'frp'],
@@ -324,10 +326,12 @@ async function exportGlb(root) {
 
 async function main() {
   const params = new URLSearchParams(location.search);
-  const bodyId = params.get('body') || 'body-wedge';
-  const model = buildModelForExport(bodyId);
-  model.name = `mini4wd_${bodyId}`;
-  model.userData = { m4BodyId: bodyId, m4Units: 'mm', m4Axes: 'x-forward,y-up,z-right' };
+  const configName = params.get('config') || '';
+  // 沒指定組裝設定時維持舊行為（預設設定＋車殼 id，預設 body-wedge）；指定設定時車殼預設用設定裡的
+  const bodyId = params.get('body') || (configName ? '' : 'body-wedge');
+  const model = buildModelForExport(bodyId, configName || 'default');
+  model.name = `mini4wd_${configName ? `${configName}_` : ''}${bodyId || 'config-body'}`;
+  model.userData = { m4BodyId: bodyId, m4Config: configName || 'default', m4Units: 'mm', m4Axes: 'x-forward,y-up,z-right' };
   // GLTFExporter 只匯出 Scene 或 Object3D；包一層 Scene 讓根節點名稱固定
   const scene = new THREE.Scene();
   scene.add(model);
