@@ -55,10 +55,13 @@ slot 值的寫法：
    - `makeLoftKit(data, { mode: 'linear' | 'smooth' })` 產生外殼曲面，再用 `buildRegion` 依塗裝 / 貼紙 / 開口的保留函式切出各區塊；
    - `mounts` 一律用 `getPart('chassis-midship').bodyMounts`（前 (52,13,0)、後 (−50,15,0)）；
    - 外殼外表面的 mesh 標 `userData.shell = true`（只標一次；內面、貼紙、燈具不標），質量 = 面積 × `wallThickness_mm` × `density_g_cm3`；
-   - 材質設 `material.name`（Blender 管線靠名稱對應寫實材質）。
+   - 有厚度的實體件（牙板、鰭、尾翼、衝角、擋板、駕駛人剪影等）標 `userData.solid = true`（可附 `{ density_g_cm3 }`），質量 = 封閉網格體積（散度定理）× 密度，網格必須封閉、繞向朝外；
+   - 會改變外輪廓的薄件（角、尾鰭、前翼）另標 `userData.outline = true`，P20 的輪廓 IoU 只看 `shell` 與 `outline`（「計入質量」與「計入輪廓」是兩組獨立標記）；
+   - `BodyDef` 填 `style: 'homage' | 'race'`（致敬風格 / 常見比賽型）與 `theme`；
+   - 材質設 `material.name`（Blender 管線靠名稱對應寫實材質，規則見 `web/export.js` 的 `categoryFromName`，例如 `paint-*`、`pc-clear-*`、`pc-smoke-*`、`lamp-*`、`plastic-*-black`、`brass-*`）。
 4. 在 `src/bodies/index.js` 的 `bodies` 陣列註冊。
-5. 驗證：`node scripts/score.mjs`（P08 質量範圍、P09 外框、P15 安裝點與間隙 ≥ 1 mm、P16 跑圈會自動涵蓋新車殼）；`node scripts/render.mjs <iter> side,front34,top,rear34 <body-id>` 看截圖；`../render/run.sh <body-id> 128` 出 Blender 展示圖。
+5. 驗證：`node scripts/score.mjs`（P08 質量範圍、P09 外框、P15 安裝點與間隙 ≥ 1 mm、P16 每款車殼各跑官方 3 圈、P20 與其他車殼的側視 / 俯視輪廓 IoU < 0.85，`src/bodies/silhouette.js`）；要支援 31 mm 大徑輪，輪拱需在底盤抬高 2.5 mm 後仍與輪胎間隙 ≥ 1 mm；`node scripts/render.mjs <iter> side,front34,top,rear34 <body-id>` 看截圖；`../render/run.sh <body-id> 128` 出 Blender 展示圖（指定組裝設定：`CONFIG=<名稱> ../render/run.sh <body-id|-> 128`）；網頁換件頁會自動列出新車殼與新零件（`node scripts/garage-shots.mjs <iter> [查詢字串]` 截圖）。
 
 ## 新增一份組裝設定
-現有：`default`、`speed`（高轉速馬達）、`technical`（4:1＋19 mm 導輪）、`light`（鏤空車殼）、`race-frp`（FRP 前後導輪板＋13 mm 鋁導輪＋扭力型馬達＋3.7:1＋2 mm 煞車海綿＋中央 1 g 配重）、`carbon-damper`（碳纖前板＋碳纖寬後板＋13-12 mm 雙層導輪＋後制振器＋低摩擦胎）。新設定必須合法（P18 會檢查所有 `configs/*.json`）。
+現有：`default`、`speed`（高轉速馬達）、`technical`（4:1＋19 mm 導輪）、`light`（鏤空車殼）、`race-frp`（FRP 前後導輪板＋13 mm 鋁導輪＋扭力型馬達＋3.7:1＋1 mm 煞車海綿（貼在 FRP 煞車板下）＋後板 1 g 黃銅配重）、`carbon-damper`（碳纖前板＋碳纖寬後板＋13-12 mm 雙層導輪＋後制振器＋低摩擦胎）。新設定必須合法（P18 會檢查所有 `configs/*.json`）。
 複製 `configs/default.json` 改 slot，並在 `src/assembly.js` 的 `CONFIGS` 註冊名稱，之後 `loadConfig('<名稱>')` 即可使用。
