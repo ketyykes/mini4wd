@@ -2400,3 +2400,12 @@
 
 ### 驗證
 - 02:11 基準測試 **19/20**（P20 依新定義失敗：新致敬款 0 款、舊三款仍在清單，預期中）。
+- 外觀基準（`shared/reviews/iter-53/REVIEW.md`，沿用 iter-52 圖、第四階段 6 項）：錨點 6.17；本輪 7 / 6 / 7 / 5 / 7 / 7.5 = **6.58** → 總分 **80.42**（19/20）。
+- 評審重點：舊致敬款卡通味不足——缺小而有色的座艙（V5）、輪拱高於腰線（V1）、鼻尖往後掃的大面積雙色圖形（V12/V13）、成對頭燈（V14）；低多邊形折面、突出物缺翼根。已轉達 A / B 組。
+
+## iter-54（02:25 起）
+### 規劃
+1. 車殼 A 組（subagent）：body-tortoise-dome、body-marlin-sail、body-owl-hush（`homageA.js`）。
+2. 車殼 B 組（subagent）：body-gazelle-leap、body-halo-orbit、body-dartfrog-hop（`homageB.js`）。
+3. 新零件規格查證（subagent，`PARTS_RESEARCH.md` 第四階段節）；概念圖由主 agent 依序用 Codex 產生（429 間隔重試）。
+- 預期：6 款新致敬款上線 → 舊三款退役 → P20 通過（20/20），外觀「設計完成度與多樣性」與「致敬風格感」提升。
