@@ -2519,3 +2519,22 @@
 ### 驗證
 - `node scripts/score.mjs`：**20/20**（11:28）。外觀：只新增選項，預設車與車殼未變 → 沿用第五階段基準 7.08。
 - 決策：**保留**。
+
+## iter-59（11:33 起）：中間齒輪軸（含氟塗層 / 中間齒輪培林組）、9 / 11 mm 培林導輪；車殼修正（subagent，worktree 並行）
+### 規劃
+1. 主 agent（零件）：新 slot `counterShaft`（中間齒輪軸 / 培林）——`counter-shaft-standard`、`gear-shaft-ptfe`（15390，TW18）、`counter-bearing-520`（15347，TW17）；中間齒輪軸承的 μ 與輪軸軸承分開。`roller-9-bearing`（15344，TW07）、`roller-11-bearing`（15345，TW08）。
+2. 車殼 subagent（獨立 worktree，只准改 5 款車殼檔）：依 iter-55 評審修 dartfrog 主色與蹼翼、marlin 銀白與前輪罩、gazelle / dartfrog 鼻部折面、tortoise 車尾白邊、owl 羽紋。
+- 預期：塑膠軸承時 含氟軸 / 培林組 → 中間齒輪損失 k_c 變小、極速略高、斷電減速較少；輪軸用培林時含氟軸無作用。新零件累計 11 款、5 類（加傳動）。
+
+### 執行（零件）
+- `src/parts/counterShafts.js`：中間齒輪軸承 μ 的規則寫在 `assembly.js counterBearingFriction`（自帶培林 → 培林 μ；否則跟輪軸軸承 slot：培林 → 培林 μ、塑膠軸承 → 軸對塑膠軸承的 μ）；`spec.bearings.counterFrictionCoeff` → `P.counterBearingMu` → `powertrain.counterGearLossFraction`。物理公式本身不變，只是 μ 改用中間齒輪自己的值（不是倍率捷徑）。
+- 相容層：舊組裝設定 / 舊網址沒有 `counterShaft` 時用標準軸（`SLOT_DEFAULTS`），所以 configs 不必改、預設車的數值完全不變。
+- 質量：軸本身含在齒輪組質量內（gears.js 中間齒輪與軸 0.6 g/組）且同尺寸 → 增量 0；培林組的 520 培林 0.2 g ×2 取代 bearings slot 的中間齒輪軸承（塑膠 0.1 g ×2）。
+- 培林導輪 3D：`buildBearingRoller`（鋼外圈＋黑色防塵蓋＋內圈），9 mm 小於一般導輪輪轂的培林座，所以獨立外形。
+- 實測：塑膠軸承時 k_c 標準 0.0651 / 含氟 0.0488 / 培林組 0.0010；理論極速 3.983 / 3.990 / 4.009 m/s；3 s 後斷電 1 s 減速 0.962 / 0.956 / 0.935 m/s。9 / 11 mm 導輪主賽道 4 s 最大穿牆 0.065 / 0.064 mm、全寬 93 / 95 mm（13 mm 97）。
+- 測試（只新增）：P17_counter_shaft（上述方向＋輪軸培林時含氟軸完全無差＋培林組質量差 2 × 0.1 g＋9 / 11 mm 寬度與過彎不穿牆不翻車）；P19 網頁切換 counterShaft 兩款與 9 mm 培林導輪、URL 還原含 `counterShaft`。P18_pairwise 自動涵蓋新 slot。
+- 截圖 `renders/iter-59-parts_garage.png`。
+
+### 驗證（零件）
+- `node scripts/score.mjs`：**20/20**（11:41）。外觀：只新增選項，預設車不變。
+- 決策：零件部分**保留**並先提交；車殼 subagent 的結果另行 A/B 後再決定合併。

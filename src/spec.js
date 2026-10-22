@@ -51,6 +51,8 @@ export function deriveParams(s, massTotal_g) {
     counterLargePitchRadius_mm: s.drivetrain.counterLargePitchRadius_mm,
     counterSmallPitchRadius_mm: s.drivetrain.counterSmallPitchRadius_mm,
     bearingMu: s.bearings.frictionCoeff,
+    // iter-59：中間齒輪軸承的 μ（中間齒輪軸 slot 決定；舊規格沒有時同輪軸軸承）
+    counterBearingMu: s.bearings.counterFrictionCoeff ?? s.bearings.frictionCoeff,
     shaftRadius: s.bearings.shaftRadius_mm * MM,
     counterShaftRadius_mm: s.bearings.counterShaftRadius_mm,
     gravity: s.sim.gravity,

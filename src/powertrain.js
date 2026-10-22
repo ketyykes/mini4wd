@@ -115,11 +115,13 @@ export function axleFrictionForce(P) {
 /**
  * 中間齒輪軸承（前後各 1 組）的損失比例 k_c：
  * 中間齒輪兩個嚙合點的切向力 F1 = τ_c / r_大齒、F2 = τ_c / r_小齒，MA 的小齒輪、中間齒輪、輪軸齒輪大致排成一直線，
- * 兩力同向相加；軸承摩擦扭力 = μ·(F1 + F2)·r_軸 = k_c·τ_c，k_c = μ·r_軸·(1/r_大齒 + 1/r_小齒)
+ * 兩力同向相加；軸承摩擦扭力 = μ·(F1 + F2)·r_軸 = k_c·τ_c，k_c = μ·r_軸·(1/r_大齒 + 1/r_小齒)（μ = 中間齒輪軸承的摩擦係數）
  * @type {(P: any) => number}
  */
 export function counterGearLossFraction(P) {
-  return P.bearingMu * P.counterShaftRadius_mm * (1 / P.counterLargePitchRadius_mm + 1 / P.counterSmallPitchRadius_mm);
+  // iter-59：μ 用中間齒輪軸承自己的值（中間齒輪軸 slot：含氟塗層軸 / 中間齒輪培林組），舊的整車參數沒有時同輪軸軸承
+  const mu = P.counterBearingMu ?? P.bearingMu;
+  return mu * P.counterShaftRadius_mm * (1 / P.counterLargePitchRadius_mm + 1 / P.counterSmallPitchRadius_mm);
 }
 
 /**

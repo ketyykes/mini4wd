@@ -358,6 +358,10 @@ describe('P19 網頁換件', () => {
       ['motor', 'motor-rev'],
       ['wheels', 'wheel-31-lowfriction'],
       ['massDamper', 'damper-side-square-32'],
+      // iter-59：中間齒輪軸（含氟塗層 / 中間齒輪培林組）、9 mm 培林導輪
+      ['counterShaft', 'gear-shaft-ptfe'],
+      ['counterShaft', 'counter-bearing-520'],
+      ['rearRollers', 'roller-9-bearing'],
     ];
     for (const [slot, value] of changes) {
       const ms = await changeSlot(slot, value);
@@ -367,10 +371,10 @@ describe('P19 網頁換件', () => {
       expect(g.config[slot]).toBe(value);
       expectMatchesNode(g);
     }
-    for (const [slot, value] of [['frontRollers', 'roller-13'], ['rearRollers', 'roller-13'], ['motor', 'motor-standard'], ['wheels', 'wheel-26-lowprofile'], ['massDamper', '__none__']]) {
+    for (const [slot, value] of [['frontRollers', 'roller-13'], ['rearRollers', 'roller-13'], ['motor', 'motor-standard'], ['wheels', 'wheel-26-lowprofile'], ['massDamper', '__none__'], ['counterShaft', 'counter-shaft-standard']]) {
       await changeSlot(slot, value);
     }
-    const query = 'frontRollers=roller-19-rubber&rearRollers=roller-19-plastic-ring&motor=motor-rev&wheels=wheel-31-lowfriction&massDamper=damper-side-square-32&body=body-pc-box';
+    const query = 'frontRollers=roller-19-rubber&rearRollers=roller-19-plastic-ring&motor=motor-rev&wheels=wheel-31-lowfriction&massDamper=damper-side-square-32&body=body-pc-box&counterShaft=counter-bearing-520';
     const p2 = await browser.newPage({ viewport: { width: 1600, height: 900 } });
     await p2.goto(`${baseUrl}/web/garage.html?${query}`);
     await p2.waitForFunction(() => window.__garage?.ready === true, null, { timeout: 90000 });

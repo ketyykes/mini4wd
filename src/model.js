@@ -800,6 +800,63 @@ function gearTrainLayout() {
   };
 }
 
+/**
+ * 滾珠培林導輪（第五階段 iter-59：15344 / 15345）：鋼外圈（四角倒角）＋上下黑色防塵蓋＋鋼內圈，外圈外緣 = 接觸半徑 R；
+ * 頂部墊片與螺絲頭、底部墊片與螺帽同一般導輪（opt.bare 時不畫底部）
+ * @type {(mats: ReturnType<typeof makeMaterials>, r: { x: number, y: number, z: number, r: number, h: number }, opt?: { bare?: boolean }) => THREE.Group}
+ */
+const buildBearingRoller = (mats, r, opt = {}) => {
+  const g = new THREE.Group();
+  const R = r.r;
+  const H = r.h / 2;
+  // 外圈厚度約外徑的 12%、內圈內徑 3 mm（推估，PARTS_RESEARCH AA 節）
+  const outerIn = R - Math.max(0.8, R * 0.24);
+  const innerOut = 2.3;
+  const innerIn = 1.5;
+  const c = 0.25;
+  /** @type {number[][]} 外圈截面（r, y） */
+  const outerProf = [
+    [outerIn, H],
+    [R - c, H],
+    [R, H - c],
+    [R, -H + c],
+    [R - c, -H],
+    [outerIn, -H],
+  ];
+  g.add(new THREE.Mesh(new THREE.LatheGeometry(outerProf.map(([a, b]) => new THREE.Vector2(a, b)).reverse(), 40), mats.steel));
+  const innerRing = new THREE.Mesh(new THREE.CylinderGeometry(innerOut, innerOut, r.h, 24, 1, true), mats.steel);
+  g.add(innerRing);
+  for (const sy of [-1, 1]) {
+    const faceRot = sy > 0 ? -Math.PI / 2 : Math.PI / 2;
+    // 防塵蓋比外圈端面低 0.15 mm
+    const shield = new THREE.Mesh(new THREE.RingGeometry(innerOut, outerIn, 40), mats.chassisDark);
+    shield.rotation.x = faceRot;
+    shield.position.y = sy * (H - 0.15);
+    g.add(shield);
+    const inner = new THREE.Mesh(new THREE.RingGeometry(innerIn, innerOut, 24), mats.steel);
+    inner.rotation.x = faceRot;
+    inner.position.y = sy * H;
+    g.add(inner);
+  }
+  const washer = new THREE.Mesh(new THREE.CylinderGeometry(2.3, 2.3, 0.4, 24), mats.steel);
+  washer.position.y = H + 0.2;
+  g.add(washer);
+  const head = new THREE.Mesh(new THREE.SphereGeometry(2.0, 20, 8, 0, Math.PI * 2, 0, Math.PI / 2), mats.screw);
+  head.scale.y = 0.5;
+  head.position.y = H + 0.4;
+  g.add(head);
+  if (!opt.bare) {
+    const spacer = new THREE.Mesh(new THREE.CylinderGeometry(2.0, 2.0, 0.9, 20), mats.steel);
+    spacer.position.y = -H - 0.45;
+    g.add(spacer);
+    const nut = new THREE.Mesh(new THREE.CylinderGeometry(1.9, 1.9, 1.4, 6), mats.steel);
+    nut.position.y = -H - 1.6;
+    g.add(nut);
+  }
+  g.position.set(r.x, r.y, r.z);
+  return g;
+};
+
 /** @type {Map<string, THREE.Material>} 導輪外環材質（依材料與顏色共用；名稱給 web/export.js 對應 Blender 材質類別：rubber / plastic） */
 const rollerRingMats = new Map();
 
@@ -848,6 +905,10 @@ const buildRollerRing = (ring, R) => {
  * @type {(mats: ReturnType<typeof makeMaterials>, r: { x: number, y: number, z: number, r: number, h: number, finish?: string, taper?: import('./parts/types').RollerSpec['taper'], ring?: import('./parts/types').RollerSpec['ring'] }, opt?: { bare?: boolean }) => THREE.Group}
  */
 const buildRoller = (mats, r, opt = {}) => {
+  // 第五階段：滾珠培林直接當導輪（finish = steel，9 / 11 mm）：外形就是一顆培林
+  if (r.finish === 'steel') {
+    return buildBearingRoller(mats, r, opt);
+  }
   const g = new THREE.Group();
   const R = r.r;
   const H = r.h / 2;

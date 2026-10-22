@@ -35,6 +35,7 @@ const SLOT_LABELS = {
   gear: '齒輪組',
   wheels: '輪胎＋輪框',
   bearings: '軸承',
+  counterShaft: '中間齒輪軸／培林',
   frontRollers: '前導輪',
   rearRollers: '後導輪',
   frontStay: '前導輪架',

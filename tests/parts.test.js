@@ -8,6 +8,7 @@ import { validateAssembly } from '../src/regulation.js';
 import { listParts } from '../src/parts/index.js';
 import { listBodies, bodyMassProps } from '../src/bodies/index.js';
 import { theoreticalTopSpeed, longitudinalForce, motorOperatingPoint, batteryResistanceAt, Battery } from '../src/powertrain.js';
+import * as powertrainApi from '../src/powertrain.js';
 import { spec } from '../src/spec.js';
 import { buildStraight, buildCircuit } from '../src/track.js';
 import * as sim from '../src/sim.js';
@@ -356,6 +357,79 @@ describe('P17 新零件的物理效果（只透過組裝設定替換）', () => 
     expect(Math.abs(d32.mass_g - noD.mass_g - 2 * (8.3 + 0.9))).toBeLessThan(1e-6);
     expect(d32.movable.length).toBe(2);
     expect(Math.abs(movable - 2 * 8.3)).toBeLessThan(1e-9);
+  }, 240000);
+
+  test('P17_counter_shaft 中間齒輪軸（台灣買得到）：塑膠軸承時 含氟塗層軸 / 中間齒輪培林組 → 中間齒輪損失變小、極速較高、斷電滑行減速較少；輪軸用培林時含氟軸沒有作用；9 / 11 mm 培林導輪外框較窄且能正常過彎', () => {
+    const { counterGearLossFraction } = powertrainApi;
+    /** @type {(over: Record<string, any>) => any} */
+    const A = (over) => {
+      const asm = assemble(cfg(over));
+      expect(validateAssembly(asm).ok, JSON.stringify(over)).toBe(true);
+      return asm;
+    };
+    const bush = A({ bearings: 'bushing-plastic' });
+    const bushPtfe = A({ bearings: 'bushing-plastic', counterShaft: 'gear-shaft-ptfe' });
+    const bushCb = A({ bearings: 'bushing-plastic', counterShaft: 'counter-bearing-520' });
+    const ball = A({});
+    const ballPtfe = A({ counterShaft: 'gear-shaft-ptfe' });
+    const kc = (asm) => counterGearLossFraction(asm.P);
+    const th = (asm) => theoreticalTopSpeed({ assembly: asm }).vTheory;
+    console.log(`[P17] 中間齒輪損失 k_c：塑膠軸承 標準軸 ${kc(bush).toFixed(4)} / 含氟軸 ${kc(bushPtfe).toFixed(4)} / 培林組 ${kc(bushCb).toFixed(4)}；滾珠培林 標準 ${kc(ball).toFixed(4)} / 含氟 ${kc(ballPtfe).toFixed(4)}；理論極速 ${f3(th(bush))} / ${f3(th(bushPtfe))} / ${f3(th(bushCb))} m/s`);
+    expect(kc(bushPtfe)).toBeLessThan(kc(bush));
+    expect(kc(bushCb)).toBeLessThan(kc(bushPtfe));
+    expect(th(bushPtfe)).toBeGreaterThan(th(bush));
+    expect(th(bushCb)).toBeGreaterThan(th(bushPtfe));
+    // 輪軸用滾珠培林時中間齒輪也是培林（套件 bearing-620 含 520）：含氟軸不和軸承滑動 → 完全沒有差別
+    expect(kc(ballPtfe)).toBe(kc(ball));
+    expect(th(ballPtfe)).toBe(th(ball));
+    // 質量：培林組的 520 培林（0.2 g ×2）取代塑膠中間齒輪軸承（0.1 g ×2）
+    expect(Math.abs(bushCb.mass_g - bush.mass_g - 2 * (0.2 - 0.1))).toBeLessThan(1e-9);
+
+    // 模擬：直線全速 3 s 後斷電 1 s，損失小的減速少
+    /** @type {(asm: any) => { v0: number, dv: number }} */
+    const coast = (asm) => {
+      const env = sim.createWorld(buildStraight(100));
+      const car = sim.createCar(env, { assembly: asm, s: 0.2, lane: 0, drain: false });
+      const dt = env.world.timestep;
+      for (let i = 0; i < 3 / dt; i++) {
+        sim.stepCar(env, car);
+      }
+      const v0 = sim.forwardSpeed(car);
+      car.powered = false;
+      for (let i = 0; i < 1 / dt; i++) {
+        sim.stepCar(env, car);
+      }
+      return { v0, dv: v0 - sim.forwardSpeed(car) };
+    };
+    const cBush = coast(bush);
+    const cPtfe = coast(bushPtfe);
+    const cCb = coast(bushCb);
+    console.log(`[P17] 塑膠軸承：3 s 車速 標準軸 ${f3(cBush.v0)} / 含氟軸 ${f3(cPtfe.v0)} / 培林組 ${f3(cCb.v0)} m/s；斷電 1 s 減速 ${f3(cBush.dv)} / ${f3(cPtfe.dv)} / ${f3(cCb.dv)} m/s`);
+    expect(cPtfe.v0).toBeGreaterThan(cBush.v0);
+    expect(cCb.v0).toBeGreaterThan(cPtfe.v0);
+    expect(cPtfe.dv).toBeLessThan(cBush.dv);
+    expect(cCb.dv).toBeLessThan(cPtfe.dv);
+
+    // 9 / 11 mm 培林導輪：外框寬 9 < 11 < 13 mm；主賽道 4 s 不穿牆（≤ 1 mm，同 P06）、不翻車
+    const w = (over) => A(over).bbox_mm.size.z;
+    console.log(`[P17] 全寬：9 mm ${f3(w({ rollers: 'roller-9-bearing' }))}、11 mm ${f3(w({ rollers: 'roller-11-bearing' }))}、13 mm ${f3(w({}))} mm`);
+    expect(w({ rollers: 'roller-9-bearing' })).toBeLessThan(w({ rollers: 'roller-11-bearing' }));
+    expect(w({ rollers: 'roller-11-bearing' })).toBeLessThan(w({}));
+    for (const id of ['roller-9-bearing', 'roller-11-bearing']) {
+      const track = buildCircuit();
+      const env = sim.createWorld(track);
+      const car = sim.createCar(env, { assembly: A({ rollers: id }), s: 0.15, lane: 0 });
+      let maxPen = 0;
+      let minUp = 1;
+      for (let i = 0; i < Math.round(4 / env.world.timestep); i++) {
+        sim.stepCar(env, car);
+        maxPen = Math.max(maxPen, sim.wallPenetration(env, car));
+        minUp = Math.min(minUp, sim.upAxis(car).y);
+      }
+      console.log(`[P17] ${id} 主賽道 4 s：最大穿牆 ${(maxPen * 1000).toFixed(3)} mm、最小 up.y ${f3(minUp)}`);
+      expect(maxPen).toBeLessThanOrEqual(0.001);
+      expect(minUp).toBeGreaterThan(0.8);
+    }
   }, 240000);
 
   test('P17_mass_damper 制振器可上下滑動 → 落地後垂直彈跳衰減較快（對照：同一顆鎖死當固定配重）', () => {

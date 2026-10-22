@@ -28,6 +28,8 @@ export const SLOTS = {
   gear: 'gear',
   wheels: 'wheel',
   bearings: 'bearing',
+  // iter-59：中間齒輪軸 / 中間齒輪軸承（含氟塗層軸、中間齒輪培林組）；舊設定沒有這個 slot 時用標準軸（SLOT_DEFAULTS）
+  counterShaft: 'counter-shaft',
   // iter-56：前後導輪分開選（原本單一 rollers slot 前後共用；舊欄位由 normalizeConfig 相容）
   frontRollers: 'roller',
   rearRollers: 'roller',
@@ -58,6 +60,14 @@ export const LEGACY_SLOT_ALIASES = {
 };
 
 /**
+ * 後來新增的必填 slot 的預設值（相容層）：舊組裝設定、舊分享連結沒有這些 slot 時，裝套件標準零件
+ * @type {Record<string, string>}
+ */
+export const SLOT_DEFAULTS = {
+  counterShaft: 'counter-shaft-standard',
+};
+
+/**
  * 組裝設定正規化（相容層）：舊欄位 `rollers` 展開成 frontRollers 與 rearRollers，並移除舊欄位
  * 舊欄位與新欄位同時出現時以舊欄位為準：舊程式常用 `{ ...loadConfig(), rollers: 'x' }` 覆寫導輪，
  * 而 loadConfig() 已帶新欄位，若新欄位優先，這種覆寫會被悄悄忽略（網頁 URL 另外處理：URL 的新欄位優先，見 web/garage.js readUrl）
@@ -74,6 +84,11 @@ export function normalizeConfig(config) {
       out[slot] = out[legacy];
     }
     delete out[legacy];
+  }
+  for (const [slot, id] of Object.entries(SLOT_DEFAULTS)) {
+    if (out[slot] === undefined) {
+      out[slot] = id;
+    }
   }
   return out;
 }
@@ -157,6 +172,8 @@ function buildSpec(p) {
     bearings: {
       kind: p.bearings.kind,
       frictionCoeff: p.bearings.frictionCoeff,
+      // iter-59：中間齒輪軸承的 μ 與輪軸軸承分開（中間齒輪軸 slot 決定，見 counterBearingFriction）
+      counterFrictionCoeff: counterBearingFriction(p.bearings, p.counterShaft),
       shaftRadius_mm: globalSpec.bearingsGeometry.shaftRadius_mm,
       counterShaftRadius_mm: globalSpec.bearingsGeometry.counterShaftRadius_mm,
     },
@@ -179,6 +196,21 @@ function buildSpec(p) {
     },
   };
 }
+
+/**
+ * 中間齒輪軸承的摩擦係數（parts/counterShafts.js 的規則）：中間齒輪軸 slot 自帶培林 → 培林 μ；
+ * 否則跟著輪軸軸承 slot：滾珠培林 → 培林 μ，塑膠軸承 → 這支軸對塑膠軸承的 μ（沒寫就用塑膠軸承本身的值）
+ * @type {(bearings: Record<string, any>, counterShaft: Record<string, any>) => number}
+ */
+const counterBearingFriction = (bearings, counterShaft) => {
+  if (counterShaft.counterBearing) {
+    return counterShaft.counterBearing.frictionCoeff;
+  }
+  if (bearings.kind === 'bushing' && counterShaft.bushingFrictionCoeff !== null && counterShaft.bushingFrictionCoeff !== undefined) {
+    return counterShaft.bushingFrictionCoeff;
+  }
+  return bearings.frictionCoeff;
+};
 
 /**
  * 導輪零件 → 整車規格用的導輪欄位
@@ -308,7 +340,13 @@ export function assemble(rawConfig) {
     for (const sz of [1, -1]) {
       place('bearings', `輪軸軸承 ${sx > 0 ? '前' : '後'}${sz > 0 ? '右' : '左'}`, p.bearings.mass_g, { x: sx * hw, y: axleY, z: sz * 23.4 });
     }
-    place('bearings', `中間齒輪軸承 ${sx > 0 ? '前' : '後'}`, p.bearings.counterMass_g, { x: sx * counterX, y: comp.motor.y, z: 0 });
+    // iter-59：中間齒輪軸 slot 自帶培林（中間齒輪培林組）時，中間齒輪軸承改由它提供（取代輪軸軸承 slot 的中間齒輪軸承）
+    const cb = p.counterShaft.counterBearing;
+    if (cb) {
+      place('counterShaft', `中間齒輪培林 ${sx > 0 ? '前' : '後'}`, cb.mass_g, { x: sx * counterX, y: comp.motor.y, z: 0 });
+    } else {
+      place('bearings', `中間齒輪軸承 ${sx > 0 ? '前' : '後'}`, p.bearings.counterMass_g, { x: sx * counterX, y: comp.motor.y, z: 0 });
+    }
   }
   for (const r of rollers) {
     place(r.slot, `導輪 ${r.id}`, p[r.slot].mass_g, { x: r.x, y: r.y, z: r.z });
