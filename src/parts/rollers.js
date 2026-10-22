@@ -380,7 +380,7 @@ export const rollerParts = [
       diameter_mm: '[T15532] 官方：上下皆 19 mm',
       height_mm: '推估（AO 節）：總高約 10 mm',
       tiers: '推估：同 roller-13-12-double（上下兩片各 4.5 mm、中間縮腰 1 mm）',
-      color: '[T15532] 官方品名「ブルー」；色碼沿用 roller-19-plastic-ring-dish 的藍（推估）。※ model.js 目前塑膠導輪一律用黑色材質，未讀這個欄位',
+      color: '[T15532] 官方品名「ブルー」；色碼沿用 roller-19-plastic-ring-dish 的藍（推估）（model.js 讀取，iter-81 起）',
       wallFriction: '推估（AO 節）：同塑膠導輪 0.05',
       restitution: '推估（AO 節）：0.1',
       mass_g: '推估（AO 節）：[SAGANO]「低摩擦プラ 19mm 0.5g」× 2 層 = 1.0 g',

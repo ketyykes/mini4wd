@@ -2960,3 +2960,19 @@
 ### 驗證
 - `P17_mass_damper` 加 4 款（可滑動 vs 鎖死：彈起與滯空都較小）；`P18_known_cases` 加 3 個（8×8×32 × 預設車殼 → DAMPER_BODY_CLEARANCE、slim × 標準後架 → MOUNT_COMPAT、AR 側 × pc-box → DAMPER_BODY_CLEARANCE）＋3 個合法對照；`P17_phase7_laps` 加 4 組（共 20 組）。指定測試 5 項通過。
 - `node scripts/score.mjs`：**20/20**（04:29）。外觀沿用 7.75 → 88.75。worktree `/tmp/wt-p7c` 與分支 `p7-dampers-brakes` 已移除。新零件累計 21 款、6 類。
+
+## iter-81（第二組示範設定 p7-parts、新零件外觀修正、外觀評審）
+### 計畫
+- 評審要看得到更多新零件：新增示範設定 `p7-parts`（前 19-19 藍色雙層＋φ15 穩定頭、後碳纖寬板＋9-8 雙層鋁、樽型細制振器、白色硬 slick、灰色海綿；132.58 g、合法、主賽道 3 圈最大穿牆 0.071 mm）。
+- app 截圖＋Blender 出圖，交給 reviewer 做 A/B（對照 = iter-74 基準的 p5 / p4 圖）。
+
+### 執行
+- 截圖發現 15532 藍色雙層導輪畫成黑色：`assembly.js` 的 `rollerSpec` 沒有帶 `color`（iter-76 只補了 `rollerLayoutOf` 那層）→ 補上。
+- Blender 圖發現白色 slick 胎是黑色：`render/showcase.py` 的 `tire_material` 胎色寫死黑色 → GLB 胎色是淺色（max > 0.3）時改用 GLB 顏色，黑胎不變。
+- app 截圖 `renders/iter-81-p7_*`、`iter-81-p7parts_*`；Blender `render/out/config-p7-parts/` 4 張（351 s）。
+- 評審資料夾 `shared/reviews/iter-81/`（本輪＋對照＋錨點＋說明.md）。
+
+### 驗證
+- `node scripts/score.mjs`：**20/20**（04:51）。
+- 外觀評審（`shared/reviews/iter-81/REVIEW.md`）：本輪 7 / 7 / 8 / 7 / 7 / 7 = **7.17**；同一位評審給「對照」（iter-74 基準同一批 p5 / p4 圖，md5 逐檔相同）也是 7 / 7 / 8 / 7 / 7 / 7 = 7.17。iter-74 的評審給同一批圖 8 / 7.5 / 8 / 8 / 7.5 / 7.5 = 7.75 → 差距是評審之間的尺度不同；A/B 六項全判「持平」→ **外觀沿用基準 7.75**（照評審說明「沒有差異必須判持平」的 A/B 規則；原始分數一併記錄）。
+- 評審對新零件（第 6 項）的意見：藍色 19-19＋穩定頭辨識度最高；單向輪框的兩件式看不出來（內轂同色、縫太淺）；球頭連桿看不到球頭與杯、擺臂靜止角度像斜坡、app 截圖的黃銅塊像平光土黃；9-8 雙層鋁導輪像墊片疊；樽型制振器腰部鼓起不明顯；白色 slick 胎壁看起來偏厚。→ iter-82 修。

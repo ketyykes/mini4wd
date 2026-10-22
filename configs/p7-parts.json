@@ -1,0 +1,22 @@
+{
+  "_readme": "示範（第七階段零件展示 2）：前 19-19 mm 藍色 POM 雙層導輪＋φ15 穩定頭、後碳纖寬板＋9-8 mm 雙層鋁導輪＋樽型細制振器、大徑白色硬質 slick 胎、三種摩擦海綿（中）；車殼 pc-box（透明殼看得到底盤）",
+  "chassis": "chassis-midship",
+  "motor": "motor-standard",
+  "gear": "gear-3.5",
+  "wheels": "wheel-31-hard-slick",
+  "bearings": "bearing-620",
+  "frontRollers": "roller-19-19-plastic-double",
+  "rearRollers": "roller-9-8-alu-double",
+  "frontStay": "stay-front-standard",
+  "rearStay": "stay-rear-carbon-wide",
+  "battery": "battery-aa-nimh-950",
+  "batteryCover": "battery-cover-standard",
+  "switch": "switch-standard",
+  "axles": "axle-hex-60",
+  "body": "body-pc-box",
+  "gearCover": "gear-cover-standard",
+  "hardware": "hardware-standard",
+  "stabilizer": "stabilizer-head-15",
+  "massDamper": "damper-slim",
+  "brakeSponge": "sponge-3type-b"
+}

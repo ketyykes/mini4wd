@@ -9,6 +9,7 @@ import carbonDamperConfig from '../configs/carbon-damper.json';
 import p4TechConfig from '../configs/p4-tech.json';
 import p5TaiwanConfig from '../configs/p5-taiwan.json';
 import p7DemoConfig from '../configs/p7-demo.json';
+import p7PartsConfig from '../configs/p7-parts.json';
 import { spec as globalSpec, deriveParams } from './spec.js';
 import { resolvePart, listParts } from './parts/index.js';
 import { getBody, bodyMassProps, bodyClearance } from './bodies/index.js';
@@ -130,7 +131,7 @@ export function slotChoices(slot) {
 }
 
 /** @type {Record<string, any>} */
-const CONFIGS = { default: defaultConfig, speed: speedConfig, technical: technicalConfig, light: lightConfig, 'race-frp': raceFrpConfig, 'carbon-damper': carbonDamperConfig, 'p4-tech': p4TechConfig, 'p5-taiwan': p5TaiwanConfig, 'p7-demo': p7DemoConfig };
+const CONFIGS = { default: defaultConfig, speed: speedConfig, technical: technicalConfig, light: lightConfig, 'race-frp': raceFrpConfig, 'carbon-damper': carbonDamperConfig, 'p4-tech': p4TechConfig, 'p5-taiwan': p5TaiwanConfig, 'p7-demo': p7DemoConfig, 'p7-parts': p7PartsConfig };
 
 /** @type {() => string[]} 所有組裝設定名稱 */
 export const listConfigs = () => Object.keys(CONFIGS);
@@ -231,6 +232,8 @@ const rollerSpec = (ro) => ({
   taper: ro.taper ?? null,
   // 第五階段：導輪外環（橡膠 O 環 / 塑膠環），只給 3D 外形用
   ring: ro.ring ?? null,
+  // 第七階段（iter-81）：塑膠導輪的顏色（例如 15532 藍色 POM），只給 3D 外形用
+  color: ro.color,
 });
 
 /**
