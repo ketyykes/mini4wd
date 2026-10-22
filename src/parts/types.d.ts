@@ -101,6 +101,20 @@ export interface RollerSpec {
   tiers: { diameter_mm: number; height_mm: number; y_mm: number }[] | null;
   /** 錐形導輪輪廓；一般導輪為 null */
   taper: { cylinderHeight_mm: number; coneHeight_mm: number; bottomDiameter_mm: number } | null;
+  /** 外環（第五階段：橡膠 O 環 / 塑膠環，環的外緣就是接觸直徑）；沒有外環為 null */
+  ring: RollerRing | null;
+}
+
+/** 導輪外環（第五階段）：只影響 3D 外形；接觸直徑、摩擦、恢復係數、質量仍取零件本身的欄位 */
+export interface RollerRing {
+  /** 'rubber'（橡膠 O 環，圓截面）| 'plastic'（塑膠環，矩形截面） */
+  material: 'rubber' | 'plastic';
+  /** 環的截面厚度（徑向，mm） */
+  thickness_mm: number;
+  /** 環的高度（軸向，mm；O 環 = 線徑） */
+  height_mm: number;
+  /** 3D 顏色（0xRRGGBB） */
+  color: number;
 }
 
 /** 擺好位置的一顆導輪（底盤座標，assembly.js rollerLayoutOf；asm.layout.rollers 另加 lift） */
@@ -119,4 +133,5 @@ export interface PlacedRoller {
   partId: string;
   finish: string;
   taper: RollerSpec['taper'];
+  ring: RollerSpec['ring'];
 }

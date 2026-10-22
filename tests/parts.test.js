@@ -9,7 +9,7 @@ import { listParts } from '../src/parts/index.js';
 import { listBodies, bodyMassProps } from '../src/bodies/index.js';
 import { theoreticalTopSpeed, longitudinalForce, motorOperatingPoint, batteryResistanceAt, Battery } from '../src/powertrain.js';
 import { spec } from '../src/spec.js';
-import { buildStraight } from '../src/track.js';
+import { buildStraight, buildCircuit } from '../src/track.js';
 import * as sim from '../src/sim.js';
 
 /** @type {(x: number) => string} */
@@ -232,6 +232,67 @@ describe('P17 新零件的物理效果（只透過組裝設定替換）', () => 
     const tooWide = validateAssembly(assemble(cfg({ rearStay: 'stay-rear-carbon-wide', rollers: 'roller-19' })));
     expect(tooWide.violations.map((v) => v.code)).toContain('WIDTH');
   });
+
+  test('P17_roller_ring 第五階段導輪（台灣買得到）：橡膠環 μ 大 → 過彎減速較多；塑膠環 μ 小 → 過彎較快；直線不碰牆時與摩擦無關；17 mm 外框介於 13 / 19 mm', () => {
+    // 主賽道從換道器前出發跑 4 s：記錄彎道平均速度與前進距離（導輪只在彎道貼牆，切向摩擦力 = Rapier 接觸摩擦 min(導輪 μ, 牆 μ) × 法向力）
+    /** @type {(over: Record<string, any>) => { arcV: number, dist: number }} */
+    const corner = (over) => {
+      const asm = assemble(cfg(over));
+      expect(validateAssembly(asm).ok, JSON.stringify(over)).toBe(true);
+      const track = buildCircuit();
+      const env = sim.createWorld(track);
+      const car = sim.createCar(env, { assembly: asm, s: 0.15, lane: 0 });
+      const L = track.path.length;
+      let lastS = 0.15;
+      let dist = 0;
+      let arcV = 0;
+      let arcN = 0;
+      const n = Math.round(4 / env.world.timestep);
+      for (let i = 0; i < n; i++) {
+        sim.stepCar(env, car);
+        const t = car.chassis.translation();
+        const c = track.path.project(t.x, t.z);
+        let ds = c.s - lastS;
+        if (ds < -L / 2) {
+          ds += L;
+        }
+        dist += ds;
+        lastS = c.s;
+        if (c.seg.type === 'arc') {
+          arcV += sim.forwardSpeed(car);
+          arcN++;
+        }
+      }
+      return { arcV: arcV / arcN, dist };
+    };
+    const alu = corner({ rollers: 'roller-19' });
+    const rubber = corner({ rollers: 'roller-19-rubber' });
+    const plastic = corner({ rollers: 'roller-19-plastic-ring' });
+    // 對照：同一顆導輪（質量、尺寸相同）只把 μ 換成鋁導輪的 0.05 → 證明差異來自牆面摩擦，不是質量
+    const rubberMu05 = corner({ rollers: { base: 'roller-19-rubber', wallFriction: 0.05 } });
+    const plasticMu05 = corner({ rollers: { base: 'roller-19-plastic-ring', wallFriction: 0.05 } });
+    console.log(`[P17] 4 s 前進距離 / 彎道平均速度：塑膠環 ${f3(plastic.dist)} m / ${f3(plastic.arcV)}、鋁 19 ${f3(alu.dist)} / ${f3(alu.arcV)}、橡膠環 ${f3(rubber.dist)} / ${f3(rubber.arcV)}；對照 μ=0.05：橡膠環款 ${f3(rubberMu05.dist)} / ${f3(rubberMu05.arcV)}、塑膠環款 ${f3(plasticMu05.dist)} / ${f3(plasticMu05.arcV)}`);
+    expect(plastic.arcV).toBeGreaterThan(alu.arcV);
+    expect(alu.arcV).toBeGreaterThan(rubber.arcV);
+    expect(plastic.dist).toBeGreaterThan(alu.dist);
+    expect(alu.dist).toBeGreaterThan(rubber.dist);
+    expect(rubber.arcV).toBeLessThan(rubberMu05.arcV);
+    expect(plastic.arcV).toBeGreaterThan(plasticMu05.arcV);
+
+    // 直線（不碰牆）：摩擦不同、其他相同的兩台車極速相同（接觸類零件只在實際接觸時受力）
+    const straightRubber = flatTopSpeed(assemble(cfg({ rollers: 'roller-19-rubber' })), 4);
+    const straightMu05 = flatTopSpeed(assemble(cfg({ rollers: { base: 'roller-19-rubber', wallFriction: 0.05 } })), 4);
+    const dv = Math.abs(straightRubber.vSteady - straightMu05.vSteady) / straightMu05.vSteady;
+    console.log(`[P17] 直線極速：橡膠環 ${f3(straightRubber.vSteady)}、同款 μ=0.05 ${f3(straightMu05.vSteady)} m/s（差 ${(dv * 100).toFixed(4)}%）`);
+    // 容許 0.1%：同一份組裝只差導輪 μ，直線不碰牆 → 理論上完全相同，只留浮點誤差的空間
+    expect(dv).toBeLessThan(0.001);
+
+    // 17 mm 全鋁：外框寬介於 13 mm 與 19 mm 之間（同一孔位、半徑差）；17 mm 穩定頭只能配 19 mm 前導輪
+    const w = (over) => assemble(cfg(over)).bbox_mm.size.z;
+    console.log(`[P17] 全寬：13 mm ${f3(w({}))}、17 mm ${f3(w({ rollers: 'roller-17-alu' }))}、19 mm ${f3(w({ rollers: 'roller-19' }))} mm`);
+    expect(w({ rollers: 'roller-17-alu' })).toBeGreaterThan(w({}));
+    expect(w({ rollers: 'roller-17-alu' })).toBeLessThan(w({ rollers: 'roller-19' }));
+  }, 180000);
 
   test('P17_mass_damper 制振器可上下滑動 → 落地後垂直彈跳衰減較快（對照：同一顆鎖死當固定配重）', () => {
     for (const [name, over] of [
@@ -978,6 +1039,9 @@ describe('P18 干涉與安裝相容性', () => {
       { over: { stabilizer: 'stabilizer-head-17', frontRollers: 'roller-13', rearRollers: 'roller-19', body: null }, codes: ['STABILIZER_ROLLER_SIZE'] },
       // 舊欄位 rollers 視為前後同款
       { over: { rollers: 'roller-19-tapered' }, codes: ['ROLLER_TAPER_MOUNT'] },
+      // ---- 第五階段（iter-57）：台灣買得到的導輪 ----
+      { over: { stabilizer: 'stabilizer-head-17', frontRollers: 'roller-17-alu', body: null }, codes: ['STABILIZER_ROLLER_SIZE'] },
+      { over: { rearStay: 'stay-rear-carbon-wide', rearRollers: 'roller-19-rubber' }, codes: ['WIDTH'] },
     ];
     for (const c of cases) {
       const res = validateAssembly(assemble(cfg(c.over)));

@@ -348,6 +348,38 @@ describe('P19 網頁換件', () => {
     await p2.close();
   }, 180000);
 
+  test('P19_第五階段台灣零件網頁切換後數值與 assemble() 一致、URL 可還原', async () => {
+    /** @type {[string, string][]} */
+    const changes = [
+      ['frontRollers', 'roller-19-rubber'],
+      ['rearRollers', 'roller-19-plastic-ring'],
+      ['frontRollers', 'roller-17-alu'],
+    ];
+    for (const [slot, value] of changes) {
+      const ms = await changeSlot(slot, value);
+      const g = await garageState();
+      console.log(`[P19] ${slot}=${value}：${ms} ms，總重 ${g.asm.mass_g.toFixed(2)} g，全寬 ${g.asm.bbox.z.toFixed(1)} mm，規則 ${g.validation.ok ? '合法' : g.validation.codes.join(',')}`);
+      expect(ms, `${slot}=${value} 更新時間`).toBeLessThan(UPDATE_LIMIT_MS);
+      expect(g.config[slot]).toBe(value);
+      expectMatchesNode(g);
+    }
+    for (const [slot, value] of [['frontRollers', 'roller-13'], ['rearRollers', 'roller-13']]) {
+      await changeSlot(slot, value);
+    }
+    const query = 'frontRollers=roller-19-rubber&rearRollers=roller-19-plastic-ring';
+    const p2 = await browser.newPage({ viewport: { width: 1600, height: 900 } });
+    await p2.goto(`${baseUrl}/web/garage.html?${query}`);
+    await p2.waitForFunction(() => window.__garage?.ready === true, null, { timeout: 90000 });
+    const g2 = await p2.evaluate(() => JSON.parse(JSON.stringify(window.__garage)));
+    for (const kv of query.split('&')) {
+      const [slot, value] = kv.split('=');
+      expect(g2.config[slot]).toBe(value);
+      expect(await p2.locator(`select[data-slot="${slot}"]`).inputValue()).toBe(value);
+    }
+    expectMatchesNode(g2);
+    await p2.close();
+  }, 180000);
+
   test('P19_URL 參數可還原組裝', async () => {
     const p2 = await browser.newPage({ viewport: { width: 1600, height: 900 } });
     await p2.goto(`${baseUrl}/web/garage.html?motor=motor-high-rev&body=body-skeleton`);

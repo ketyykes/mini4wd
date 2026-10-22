@@ -800,13 +800,52 @@ function gearTrainLayout() {
   };
 }
 
+/** @type {Map<string, THREE.Material>} 導輪外環材質（依材料與顏色共用；名稱給 web/export.js 對應 Blender 材質類別：rubber / plastic） */
+const rollerRingMats = new Map();
+
+/**
+ * 導輪外環（第五階段）：橡膠 O 環是圓截面的環（TorusGeometry），塑膠環是矩形截面（四角倒圓 0.2 mm）的環；外緣半徑 = 接觸半徑 R
+ * @type {(ring: import('./parts/types').RollerRing, R: number) => THREE.Mesh}
+ */
+const buildRollerRing = (ring, R) => {
+  const key = `${ring.material}|${ring.color}`;
+  let mat = rollerRingMats.get(key);
+  if (!mat) {
+    if (ring.material === 'rubber') {
+      mat = new THREE.MeshStandardMaterial({ name: 'rubber-roller-ring', color: ring.color, roughness: 0.9, metalness: 0.0 });
+    } else {
+      mat = new THREE.MeshPhysicalMaterial({ name: 'plastic-roller-ring', color: ring.color, roughness: 0.42, metalness: 0.0, clearcoat: 0.2 });
+    }
+    rollerRingMats.set(key, mat);
+  }
+  if (ring.material === 'rubber') {
+    const tube = ring.thickness_mm / 2;
+    const torus = new THREE.Mesh(new THREE.TorusGeometry(R - tube, tube, 12, 48), mat);
+    torus.rotation.x = Math.PI / 2;
+    return torus;
+  }
+  const r0 = R - ring.thickness_mm;
+  const h = ring.height_mm / 2;
+  const c = 0.2;
+  /** @type {number[][]} 截面（r, y），由內上 → 外上 → 外下 → 內下 */
+  const prof = [
+    [r0, h],
+    [R - c, h],
+    [R, h - c],
+    [R, -h + c],
+    [R - c, -h],
+    [r0, -h],
+  ];
+  return new THREE.Mesh(new THREE.LatheGeometry(prof.map(([a, b]) => new THREE.Vector2(a, b)).reverse(), 48), mat);
+};
+
 /**
  * 導輪（iter-06 重做；ref_ma-chassis：槍灰色導輪，上下輪緣凸出、中段內縮，頂面內凹看得到培林）：
  * Lathe 截面＝上下輪緣（含倒角）＋中段腰身＋頂底面內凹環；培林分外環（鋼，凸起）／黑色密封蓋（內凹）／內環（鋼）三層；
  * 導輪與臂之間有墊片間隙，頂部墊片＋十字頭螺絲，底部六角螺帽。物理接觸半徑不變（r.r）
  * opt.bare = true：裝在導輪板的導輪柱上（下方的墊片 / 螺帽由 buildStayPlates 的導輪柱負責），不畫底部墊片、螺帽、螺絲尾端
  * iter-56：前後導輪可不同款，材質（r.finish）與錐形輪廓（r.taper）取自這顆導輪自己的零件資料（rollerLayoutOf）
- * @type {(mats: ReturnType<typeof makeMaterials>, r: { x: number, y: number, z: number, r: number, h: number, finish?: string, taper?: import('./parts/types').RollerSpec['taper'] }, opt?: { bare?: boolean }) => THREE.Group}
+ * @type {(mats: ReturnType<typeof makeMaterials>, r: { x: number, y: number, z: number, r: number, h: number, finish?: string, taper?: import('./parts/types').RollerSpec['taper'], ring?: import('./parts/types').RollerSpec['ring'] }, opt?: { bare?: boolean }) => THREE.Group}
  */
 const buildRoller = (mats, r, opt = {}) => {
   const g = new THREE.Group();
@@ -853,10 +892,36 @@ const buildRoller = (mats, r, opt = {}) => {
       [brgR, -H + recessDepth],
     ];
   }
+  // 第五階段：有外環（橡膠 O 環 / 塑膠環）的導輪：輪轂外緣退到環的內緣，中段挖出環槽，環的外緣 = 接觸直徑 R（零件資料 ring）
+  const ring = r.ring ?? null;
+  if (ring && !tp) {
+    const hubR = R - ring.thickness_mm;
+    const flangeR = R - Math.min(0.45, ring.thickness_mm * 0.4);
+    const halfRing = ring.height_mm / 2;
+    prof = [
+      [brgR, H - recessDepth],
+      [recessR - 0.8, H - recessDepth],
+      [recessR - 0.8, H],
+      [flangeR - 0.3, H],
+      [flangeR, H - 0.3],
+      [flangeR, halfRing + 0.1],
+      [hubR, halfRing],
+      [hubR, -halfRing],
+      [flangeR, -halfRing - 0.1],
+      [flangeR, -H + 0.3],
+      [flangeR - 0.3, -H],
+      [recessR - 0.8, -H],
+      [recessR - 0.8, -H + recessDepth],
+      [brgR, -H + recessDepth],
+    ];
+  }
   const bodyGeo = new THREE.LatheGeometry(prof.map(([a, b]) => new THREE.Vector2(a, b)).reverse(), 48);
   // 導輪本體材質依零件：塑膠（黑）或鋁合金（亮銀）
   const body = new THREE.Mesh(bodyGeo, r.finish === 'aluminum' ? mats.rollerAlu : mats.rollerBody);
   g.add(body);
+  if (ring && !tp) {
+    g.add(buildRollerRing(ring, R));
+  }
   for (const sy of [-1, 1]) {
     const faceRot = sy > 0 ? -Math.PI / 2 : Math.PI / 2;
     const floorY = sy * (H - recessDepth);
@@ -919,12 +984,12 @@ const buildRoller = (mats, r, opt = {}) => {
 
 /**
  * 導輪（可能是雙層）：每一片接觸面各建一顆 buildRoller（尺寸取該片的直徑與高度），整組放在導輪中心
- * @type {(mats: ReturnType<typeof makeMaterials>, r: { x: number, y: number, z: number, r: number, h: number, tiers?: { y: number, r: number, h: number }[], finish?: string, taper?: import('./parts/types').RollerSpec['taper'] }, opt?: { bare?: boolean }) => THREE.Group}
+ * @type {(mats: ReturnType<typeof makeMaterials>, r: { x: number, y: number, z: number, r: number, h: number, tiers?: { y: number, r: number, h: number }[], finish?: string, taper?: import('./parts/types').RollerSpec['taper'], ring?: import('./parts/types').RollerSpec['ring'] }, opt?: { bare?: boolean }) => THREE.Group}
  */
 const buildRollerStack = (mats, r, opt = {}) => {
   const tiers = r.tiers ?? [{ y: 0, r: r.r, h: r.h }];
   if (tiers.length === 1) {
-    return buildRoller(mats, { x: r.x, y: r.y + tiers[0].y, z: r.z, r: tiers[0].r, h: tiers[0].h, finish: r.finish, taper: r.taper }, opt);
+    return buildRoller(mats, { x: r.x, y: r.y + tiers[0].y, z: r.z, r: tiers[0].r, h: tiers[0].h, finish: r.finish, taper: r.taper, ring: r.ring }, opt);
   }
   const g = new THREE.Group();
   tiers.forEach((t, i) => {

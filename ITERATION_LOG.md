@@ -2465,3 +2465,28 @@
 ### 驗證
 - `node scripts/score.mjs`：**20/20**（10:55，低負載）。外觀不受影響（只多一個選單，車殼與預設車未變）→ 沿用第五階段基準評分前不計外觀。
 - 決策：**保留**（GOAL 第五階段工作 A 的硬性要求，測試 20/20）。
+
+## iter-57（11:05 起）：台灣零件調查＋第一批導輪
+### 規劃
+1. 台灣零件調查（subagent，`shared/reference/` 限定）：`TAIWAN_SOURCES.md`＋`PARTS_RESEARCH.md` 第五階段 Z–AJ 節與建議實作順序表。
+2. 主 agent：順序表前 3 款導輪——`roller-19-rubber`（橡膠 O 環，TW02 / TW01）、`roller-19-plastic-ring`（塑膠環，TW03）、`roller-17-alu`（TW05）；導輪外環的 3D 外形（零件資料 `ring`）。
+3. 同時：Blender 64 samples 出 iter-55 六款車殼圖（工作 B，背景）。
+- 預期：同直徑下過彎速度 塑膠環 > 鋁 > 橡膠環；直線不碰牆時與摩擦無關；17 mm 外框介於 13 / 19 mm。
+
+### 執行
+- 調查結果：TAIWAN_SOURCES 25 列，全部實際開啟（露天上新北市兩家實體四驅車店：四驅博士學校、新莊超音速陽明），8 類。主 agent 抽查 TW01、TW02 兩頁：標題、賣家、所在地與表中一致。蝦皮頁面讀不到內容、PChome 無上架。
+- 調查發現的既有資料問題（記錄，未改數值）：`wheel-31-large` 的來源寫 15544，但 15544 官方是低摩擦款（iter-58 加 `wheel-31-lowfriction` 時一併改正來源文字）；`roller-19` 的 1.9 g 取自錐形款 [T95436]，平面款 15464 部落格表 1.3 g（改值會動到既有零件，列為待查，見 PROGRESS 待決事項）。
+- 72 mm 輪軸（15297 / 15417）官方只適用 Super X / XX、MA 裝不上 → GOAL 的「加長輪軸改輪距」在 MA 不成立，不做；60 mm 黑色強化軸只差抗彎強度（本專案不模擬彎曲）→ 不做。
+- 實驗（決定物理做法前）：導輪與牆的切向力 = Rapier 接觸摩擦 min(導輪 μ, 牆 0.3) × 法向力；同一台車只改導輪 μ 0.03 / 0.05 / 0.10 / 0.30 → 4 s 前進 4.96 / 4.64 / 3.98 / 2.38 m，μ 有明確且單調的效果，不需要新的物理程式，零件只給資料。
+- 零件（`src/parts/rollers.js`）：三款都有 `src.taiwan` 指向 TAIWAN_SOURCES 列；摩擦 / 恢復係數 / 環尺寸都標推估並寫依據。新型別 `RollerRing`（`types.d.ts`），`rollerSpec` / `rollerLayoutOf` 帶 `ring` 給 3D 模型。
+- 3D（`src/model.js` `buildRollerRing`）：橡膠 O 環 = 圓截面環、塑膠環 = 矩形截面環，環外緣 = 接觸直徑；輪轂外緣退到環內緣。材質名 `rubber-roller-ring` / `plastic-roller-ring`（Blender 匯出自動對應橡膠 / 塑膠）。截圖 `renders/iter-57-rollers_garage.png`。
+- 測試（只新增）：
+  - P17_roller_ring：4 s 前進距離 塑膠環 11.558 > 鋁 19 11.093 > 橡膠環 10.586 m；彎道均速 3.149 > 3.009 > 2.829 m/s；對照「同一顆導輪只把 μ 改成 0.05」：橡膠環款 11.284 m、塑膠環款 11.237 m → 差異來自牆面摩擦而不是質量；直線極速（不碰牆）兩者完全相同（差 0.0000%，容許 0.1%）；全寬 13 / 17 / 19 mm = 97 / 101 / 103 mm。
+  - P18 known_cases：17 mm 前導輪＋17 mm 穩定頭 → STABILIZER_ROLLER_SIZE；寬後板＋後 19 mm 橡膠環 → WIDTH。pairwise 自動涵蓋新款。
+  - P19：網頁切換前橡膠環 / 後塑膠環 / 前 17 mm 都與 `assemble()` 一致、1 秒內更新，URL 還原。
+- SPEC 1.13 新增 3 列。
+
+### 驗證
+- `node scripts/score.mjs`：**20/20**（11:19，Blender 已結束、低負載）。
+- 外觀：只新增零件選項，預設車與 6 款車殼未變 → 外觀評分併入 iter-55 評審後的第五階段基準。
+- 決策：**保留**（新零件物理方向正確、全部測試通過）。

@@ -192,6 +192,8 @@ const rollerSpec = (ro) => ({
   tiers: ro.tiers ?? null,
   // 第四階段：錐形導輪的輪廓（上段圓柱＋下段截錐），3D 模型與 sim.js 接觸幾何用同一份
   taper: ro.taper ?? null,
+  // 第五階段：導輪外環（橡膠 O 環 / 塑膠環），只給 3D 外形用
+  ring: ro.ring ?? null,
 });
 
 /**
@@ -209,8 +211,8 @@ export function rollerLayoutOf(s) {
   const isFront = (/** @type {{ id: string }} */ r) => r.id === 'FL' || r.id === 'FR';
   const fr = s.chassis.frontRoller;
   const rr = s.chassis.rearRoller;
-  const front = rollerLayout(withRoller(fr)).filter(isFront).map((r) => ({ ...r, slot: 'frontRollers', partId: fr.id, finish: fr.finish, taper: fr.taper }));
-  const rear = rollerLayout(withRoller(rr)).filter((r) => !isFront(r)).map((r) => ({ ...r, slot: 'rearRollers', partId: rr.id, finish: rr.finish, taper: rr.taper }));
+  const front = rollerLayout(withRoller(fr)).filter(isFront).map((r) => ({ ...r, slot: 'frontRollers', partId: fr.id, finish: fr.finish, taper: fr.taper, ring: fr.ring }));
+  const rear = rollerLayout(withRoller(rr)).filter((r) => !isFront(r)).map((r) => ({ ...r, slot: 'rearRollers', partId: rr.id, finish: rr.finish, taper: rr.taper, ring: rr.ring }));
   return [...front, ...rear];
 }
 
