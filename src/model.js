@@ -345,7 +345,8 @@ function makeMaterials() {
     carbonPlate: new THREE.MeshPhysicalMaterial({ name: 'carbon-plate', color: 0xffffff, map: cachedTexture('carbon', carbonWeaveTexture), roughness: 0.3, metalness: 0.15, clearcoat: 1.0, clearcoatRoughness: 0.08 }),
     aluSpacer: new THREE.MeshStandardMaterial({ name: 'alu-spacer', color: 0xb9bec6, roughness: 0.3, metalness: 0.9 }),
     // iter-47：黃銅再亮一點（app 沒有環境貼圖時金屬會偏暗，reviewer iter-46「很小的金色圓柱，不容易認出來」）
-    brassWeight: new THREE.MeshStandardMaterial({ name: 'brass-weight', color: 0xe0b45a, roughness: 0.26, metalness: 0.8, emissive: 0x2a1c05 }),
+    // iter-82（reviewer：app 截圖的黃銅像平光土黃）：粗糙度 0.26 → 0.18、環境反射加強，看得出金屬亮面
+    brassWeight: new THREE.MeshStandardMaterial({ name: 'brass-weight', color: 0xe6bd62, roughness: 0.18, metalness: 0.85, emissive: 0x2a1c05, envMapIntensity: 1.5 }),
     nylonCap: new THREE.MeshStandardMaterial({ name: 'plastic-nylon-cap', color: 0x34373c, roughness: 0.55, metalness: 0.0 }),
     // iter-50：板件切口（側面與孔壁）另用一個材質，讓 1.5 mm 板厚與孔緣看得出來：FRP 切口偏白（玻纖斷面）、碳纖切口霧灰
     frpEdge: new THREE.MeshStandardMaterial({ name: 'frp-edge', color: 0xc4c9c6, roughness: 0.8, metalness: 0.0 }),
@@ -557,17 +558,18 @@ function buildWheel(mats, side) {
   if (spec.tire.rimStyle === 'oneway') {
     // 第七階段（iter-79）：單向輪框——輪框與中央內轂是兩件（內轂裝在輪軸上，輪框可以相對內轂往前空轉）：
     // 內轂比一般輪轂大（φ7.4，內含單向離合），外圈一道暗色分隔縫，轂面 8 道棘輪狀凸肋（示意內部棘爪；實際棘爪在內部看不到）
-    const clutchHub = new THREE.Mesh(new THREE.CylinderGeometry(3.7, 3.7, 1.9, 32), mats.rim);
+    // iter-82（reviewer：內轂與輪框同色看不出兩件）：內轂用黑色塑膠（顏色推估：官方頁沒寫內轂顏色），分隔縫加寬到 0.7 mm
+    const clutchHub = new THREE.Mesh(new THREE.CylinderGeometry(3.6, 3.6, 1.9, 32), mats.rollerBody);
     clutchHub.rotation.x = Math.PI / 2;
     clutchHub.position.z = side * 0.15;
     face.add(clutchHub);
-    const gap = new THREE.Mesh(new THREE.RingGeometry(3.7, 4.1, 40), mats.chassisDark);
+    const gap = new THREE.Mesh(new THREE.RingGeometry(3.6, 4.3, 40), mats.boreDark);
     gap.position.z = side * 0.62;
     gap.rotation.y = side > 0 ? 0 : Math.PI;
     face.add(gap);
     for (let k = 0; k < 8; k++) {
       const a = (k / 8) * Math.PI * 2;
-      const tooth = new THREE.Mesh(new THREE.BoxGeometry(1.3, 0.45, 0.35), mats.rimBarrel);
+      const tooth = new THREE.Mesh(new THREE.BoxGeometry(1.3, 0.45, 0.35), mats.rim);
       tooth.position.set(Math.cos(a) * 2.9, Math.sin(a) * 2.9, side * 1.2);
       // 棘輪齒：沿切線方向略斜，看得出單一旋轉方向
       tooth.rotation.z = a + Math.PI / 2 + 0.5;
@@ -1269,38 +1271,41 @@ const buildSwingDamper = (mats, d) => {
   const base = new THREE.Mesh(new THREE.BoxGeometry(7, baseT, 22), [mats.frpEdge, mats.frpEdge, mats.frpPlate, mats.frpPlate, mats.frpEdge, mats.frpEdge]);
   base.position.set(pv.x, baseY + baseT / 2, pv.z);
   grp.add(base);
-  // 擺臂：1.5 mm FRP 小板，從支點水平伸到方塊後面、蓋在方塊頂面（兩支螺絲鎖進方塊）
+  // 擺臂（iter-82 依 reviewer 改）：支點高度 pv.y 落在方塊的高度範圍內 → 擺臂是一片「水平 FRP 板＋末端往上折的 L 形鎖片」，
+  // 鎖片貼在方塊朝支點那一面、兩支螺絲水平鎖進方塊（原本的斜板＋頂板看起來像斜坡）
   const armT = 1.5;
-  const armTopY = d.seat.y + H + armT;
-  const armX0 = pv.x - 1.5;
-  const armX1 = d.seat.x + W / 2 - 0.5;
-  // 擺臂由支點斜上到方塊頂面：用一段斜板＋一段平板
-  const rise = armTopY - armT / 2 - pv.y;
-  const slopeLen = Math.hypot(d.seat.x - W / 2 - armX0, rise);
-  const slope = new THREE.Mesh(new THREE.BoxGeometry(slopeLen, armT, 20), [mats.frpEdge, mats.frpEdge, mats.frpPlate, mats.frpPlate, mats.frpEdge, mats.frpEdge]);
-  slope.position.set((armX0 + d.seat.x - W / 2) / 2, pv.y + rise / 2, pv.z);
-  slope.rotation.z = Math.atan2(rise, d.seat.x - W / 2 - armX0);
-  grp.add(slope);
-  const flat = new THREE.Mesh(new THREE.BoxGeometry(armX1 - (d.seat.x - W / 2), armT, 20), [mats.frpEdge, mats.frpEdge, mats.frpPlate, mats.frpPlate, mats.frpEdge, mats.frpEdge]);
-  flat.position.set((armX1 + d.seat.x - W / 2) / 2, armTopY - armT / 2, pv.z);
+  const faceX = d.seat.x - W / 2;
+  const armX0 = pv.x + 1.2;
+  const armY = pv.y + 0.4;
+  const frpBox = [mats.frpEdge, mats.frpEdge, mats.frpPlate, mats.frpPlate, mats.frpEdge, mats.frpEdge];
+  const flat = new THREE.Mesh(new THREE.BoxGeometry(faceX - armT - armX0, armT, 20), frpBox);
+  flat.position.set((armX0 + faceX - armT) / 2, armY, pv.z);
   grp.add(flat);
+  const tabY0 = armY - armT / 2;
+  const tabY1 = d.seat.y + H - 0.6;
+  const tab = new THREE.Mesh(new THREE.BoxGeometry(armT, tabY1 - tabY0, 20), [mats.frpPlate, mats.frpPlate, mats.frpEdge, mats.frpEdge, mats.frpEdge, mats.frpEdge]);
+  tab.position.set(faceX - armT / 2, (tabY0 + tabY1) / 2, pv.z);
+  grp.add(tab);
   for (const sz of [-1, 1]) {
     const zc = pv.z + sz * 8;
-    // 球頭螺柱：底座上的鋼柱＋φ3 鋼球
+    // 球頭螺柱：底座上的鋼柱＋φ3.2 鋼球
     const post = new THREE.Mesh(new THREE.CylinderGeometry(0.8, 0.8, pv.y - baseY - baseT, 12), mats.steel);
     post.position.set(pv.x, (pv.y + baseY + baseT) / 2, zc);
     grp.add(post);
-    const ball = new THREE.Mesh(new THREE.SphereGeometry(1.5, 16, 12), mats.steel);
+    const ball = new THREE.Mesh(new THREE.SphereGeometry(1.6, 20, 14), mats.steel);
     ball.position.set(pv.x, pv.y, zc);
     grp.add(ball);
-    // 樹脂球頭杯（黑）：包住鋼球、和擺臂一體
-    const cup = new THREE.Mesh(new THREE.CylinderGeometry(2.2, 2.2, 3.4, 16), mats.chassisDark);
-    cup.rotation.z = Math.PI / 2;
-    cup.position.set(pv.x + 0.6, pv.y + 0.4, zc);
+    // 樹脂球頭杯（黑）：只包住鋼球上半（半球殼＋往擺臂的短頸），下半顆鋼球露出來、看得出是球頭（iter-82）
+    const cup = new THREE.Mesh(new THREE.SphereGeometry(2.1, 20, 10, 0, Math.PI * 2, 0, Math.PI * 0.42), mats.chassisDark);
+    cup.position.set(pv.x, pv.y, zc);
     grp.add(cup);
-    // 方塊固定螺絲（十字頭，從擺臂上方鎖入）
+    const neck = new THREE.Mesh(new THREE.BoxGeometry(armX0 - pv.x + 0.6, 1.4, 3.0), mats.chassisDark);
+    neck.position.set((pv.x + armX0) / 2 + 0.3, armY, zc);
+    grp.add(neck);
+    // 方塊固定螺絲（十字頭，從鎖片外側水平鎖入方塊）
     const head = new THREE.Mesh(new THREE.CylinderGeometry(1.6, 1.6, 0.8, 16), mats.screw);
-    head.position.set(d.seat.x, armTopY + 0.4, zc);
+    head.rotation.z = Math.PI / 2;
+    head.position.set(faceX - armT - 0.4, d.seat.y + H / 2 + 0.6, zc);
     grp.add(head);
   }
   return grp;
@@ -1341,7 +1346,7 @@ const buildOptionalParts = (mats) => {
       // 圓柱制振器（ref_chevalier-ma_gradeup：黃銅圓柱，底部有凸緣、頂面倒角，中孔套在長螺絲上）
       const R = part.diameter_mm / 2;
       /** @type {number[][]} 截面（半徑, 高度），由中孔底 → 外緣 → 中孔頂 */
-      const prof = [
+      let prof = [
         [1.15, 0],
         [R, 0],
         [R, 1.3],
@@ -1350,6 +1355,15 @@ const buildOptionalParts = (mats) => {
         [R - 1.1, h],
         [1.15, h],
       ];
+      if (part.profile === 'barrel') {
+        // 第七階段（iter-82）：樽型（15501 官方「樽型タイプ」）——中段最粗 = 零件直徑，兩端縮 0.9 mm 的圓弧鼓腹
+        prof = [[1.15, 0]];
+        for (let i = 0; i <= 12; i++) {
+          const t = i / 12;
+          prof.push([R - 0.9 * (2 * t - 1) ** 2, t * h]);
+        }
+        prof.push([1.15, h]);
+      }
       w = new THREE.Mesh(new THREE.LatheGeometry(prof.map(([a, b]) => new THREE.Vector2(a, b)), 40), mat);
       w.position.set(d.seat.x, d.seat.y, d.seat.z);
       // 頂面車削的同心溝（深色細環）
@@ -1360,12 +1374,15 @@ const buildOptionalParts = (mats) => {
     }
     grp.add(w);
     // 第五階段：托架（零件資料 bracket，例如 MA 側制振器組的 FRP 側板）：貼在配重內側的直立板，位置與 assembly.js 托架質量的位置相同
-    if (part.bracket && part.shape === 'box') {
+    if (part.bracket) {
       const t = part.bracket.thickness_mm;
       const side = Math.sign(d.seat.z) || 1;
       const plateH = h + part.stroke_mm + 1.0;
-      const plate = new THREE.Mesh(new THREE.BoxGeometry(part.length_mm + 3, plateH, t), [mats.frpEdge, mats.frpEdge, mats.frpEdge, mats.frpEdge, mats.frpPlate, mats.frpPlate]);
-      plate.position.set(d.seat.x, d.seat.y + plateH / 2, d.seat.z - side * (part.width_mm / 2 + t / 2));
+      // iter-82：圓柱制振器（AR 側制振器）的托架也畫出來（原本只畫方塊）；板長 = 方塊長或圓柱直徑 + 3 mm
+      const plateLen = part.shape === 'box' ? part.length_mm + 3 : part.diameter_mm + 3;
+      const halfW = part.shape === 'box' ? part.width_mm / 2 : part.diameter_mm / 2;
+      const plate = new THREE.Mesh(new THREE.BoxGeometry(plateLen, plateH, t), [mats.frpEdge, mats.frpEdge, mats.frpEdge, mats.frpEdge, mats.frpPlate, mats.frpPlate]);
+      plate.position.set(d.seat.x, d.seat.y + plateH / 2, d.seat.z - side * (halfW + t / 2));
       grp.add(plate);
     }
     // 長螺絲：板底的螺絲頭 → 穿過制振器 → 行程上端的墊片＋防鬆螺帽＋露出的螺絲尾（每個螺絲孔一支）

@@ -645,6 +645,22 @@ describe('P17 新零件的物理效果（只透過組裝設定替換）', () => 
     expect(n98.bbox_mm.size.z).toBeLessThan(A({}).bbox_mm.size.z);
   }, 120000);
 
+  test('P17_audit_L4 物理稽核 L4 修正：馬達被拖到無載轉速以上（τ < 0）時輪上力 = τ·G/(r·η)（反向功率流，損失讓煞車力變大）', () => {
+    // L4：同一個轉速點，比較通電時的輪上力與馬達扭力
+    const asm = assemble(cfg({}));
+    const P = asm.P;
+    const battery = new Battery(P, 1);
+    const vHigh = theoreticalTopSpeed({ assembly: asm }).v0 * 1.2;
+    const omegaMotor = (vHigh / P.wheelRadius) * P.gearRatio;
+    const op = motorOperatingPoint(P, battery.ocv(), omegaMotor, batteryResistanceAt(P, battery.soc));
+    const lf = longitudinalForce(P, { speed: vHigh, powered: true, battery });
+    const eta = powertrainApi.driveEfficiency(P);
+    expect(op.torque).toBeLessThan(0);
+    expect(lf.drive).toBeCloseTo((op.torque * P.gearRatio) / (P.wheelRadius * eta), 12);
+    // 反向時的煞車力比「乘 η」的舊算法大（|F| 多 1/η² 倍）
+    expect(Math.abs(lf.drive)).toBeGreaterThan(Math.abs((op.torque * P.gearRatio * eta) / P.wheelRadius));
+  });
+
   test('P17_oneway_wheel ★單向輪（15443，新機制：單向離合）：同零件關掉離合作對照——通電直線加速相同（離合咬合）；斷電滑行時輪子比傳動系快 → 離合脫開、馬達與齒輪不再拖車 → 滑行較遠；滑行動能單調不增', () => {
     /** @type {(clutch: boolean) => any} */
     const A = (clutch) => {

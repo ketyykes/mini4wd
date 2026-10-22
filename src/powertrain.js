@@ -167,7 +167,13 @@ export function longitudinalForce(P, { speed, powered, battery }) {
     current = op.current;
     terminalVoltage = op.terminalVoltage;
     motorVoltage = op.motorVoltage;
-    drive = (op.torque * gearRatio * driveEfficiency(P)) / r;
+    // 物理稽核 L4（iter-82）：τ ≥ 0 時功率由馬達流向輪子，輪上力 = τ·G·η/r；τ < 0（馬達被拖到無載轉速以上、反向功率流）時
+    // 輪子要多出傳動損失才能拖動馬達 → 輪上力 = τ·G/(r·η)（與 motorCoastDragForce 一致）
+    if (op.torque >= 0) {
+      drive = (op.torque * gearRatio * driveEfficiency(P)) / r;
+    } else {
+      drive = (op.torque * gearRatio) / (r * driveEfficiency(P));
+    }
   } else {
     resist += motorCoastDragForce(P, speed);
   }

@@ -177,6 +177,8 @@ export const massDamperParts = [
     mount: 'rear',
     count: 1,
     shape: 'cylinder',
+    // 外觀：樽型（官方「樽型タイプ」，model.js 畫中段鼓腹；物理仍用直徑 7 mm 的圓柱）
+    profile: 'barrel',
     diameter_mm: 7,
     height_mm: 11.5,
     stroke_mm: 2,
@@ -204,6 +206,8 @@ export const massDamperParts = [
     mount: 'rear',
     count: 1,
     shape: 'cylinder',
+    // 外觀：樽型（官方「樽型タイプ」，model.js 畫中段鼓腹；物理仍用直徑 7 mm 的圓柱）
+    profile: 'barrel',
     diameter_mm: 7,
     height_mm: 5.5,
     stroke_mm: 2,
