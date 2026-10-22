@@ -377,7 +377,9 @@ export function createCar(env, opt = {}) {
     P,
     box,
     // 傳動系轉動狀態（第四階段）：omega = 輪子角速度（rad/s，4 輪與齒輪、馬達機械連結成一個自由度），J = 換算到輪軸的等效轉動慣量
-    spin: { omega: 0, J: P.spinInertia },
+    // 第七階段（iter-79）單向輪：oneWay = true 時 omega = 輪子角速度（J_w = 4 顆輪），omegaD = 傳動系（馬達＋齒輪＋輪軸，J_d = J − J_w）角速度，
+    // 兩者經單向離合連接（見 stepCar）；engaged = 本步離合是否咬合
+    spin: { omega: 0, J: P.spinInertia, oneWay: P.oneWayClutch, omegaD: 0, Jd: P.spinInertia - P.spinInertiaWheels, Jw: P.spinInertiaWheels, engaged: true },
     battery: new Battery(P, opt.soc ?? 1),
     drain: opt.drain ?? true,
     powered: opt.powered ?? true,
@@ -567,10 +569,14 @@ export function stepCar(env, car) {
   const spin = car.spin;
   const wheelSpeed = spin.omega * P.wheelRadius;
   // 馬達轉速由傳動系轉速決定（不是車體速度）：騰空時輪子可以空轉到無載轉速，落地時再由約束衝量和車速拉齊
-  const lf = longitudinalForce(P, { speed: wheelSpeed, powered: car.powered, battery: car.battery });
+  // 單向輪：馬達轉速取傳動系 omegaD（輪子可以比傳動系轉得快）
+  const driveSpeed = spin.oneWay ? spin.omegaD * P.wheelRadius : wheelSpeed;
+  const lf = longitudinalForce(P, { speed: driveSpeed, powered: car.powered, battery: car.battery });
 
   let net;
-  if (car.powered) {
+  if (spin.oneWay) {
+    net = oneWayDrivetrainStep(car, lf, dt);
+  } else if (car.powered) {
     net = lf.drive - Math.sign(wheelSpeed) * lf.resist;
   } else if (Math.abs(wheelSpeed) < 0.002) {
     // 滑行停止：不施加阻力，避免數值上反向加速
@@ -668,7 +674,13 @@ export function stepCar(env, car) {
   }
 
   // 傳動系：沒傳到車體的那部分扭力（摩擦圓限制、騰空）讓 ω 改變；F_q 全部傳到車體時 ω 在這裡不變，由約束衝量處理
-  if (spin.J > 0) {
+  if (spin.oneWay) {
+    // 單向輪：net 只有輪胎滾動阻力，沒傳到車體的部分（騰空）作用在輪子 J_w；之後檢查離合
+    if (spin.Jw > 0) {
+      spin.omega += ((net - appliedLong) * P.wheelRadius * dt) / spin.Jw;
+    }
+    oneWayClutchEngage(spin);
+  } else if (spin.J > 0) {
     spin.omega += ((net - appliedLong) * P.wheelRadius * dt) / spin.J;
   }
 
@@ -728,7 +740,18 @@ function rollingConstraintImpulse(car, spareFwd, spareBack) {
   const r = car.P.wheelRadius;
   const fwd = forwardAxis(car);
   const v = forwardSpeed(car);
-  const k = body.invMass() + (r * r) / spin.J;
+  // 單向輪：離合咬合時輪子＋傳動系一起（J），脫開時只有輪子（J_w）。
+  // 咬合但約束衝量 < 0（車比輪面快：下坡、著地，地面要把輪子轉快）→ 輪子超越傳動系、離合脫開 → 只帶動輪子
+  let J = spin.J;
+  let withDrivetrain = !spin.oneWay;
+  if (spin.oneWay) {
+    withDrivetrain = spin.engaged && spin.omega * r - v > 0;
+    J = withDrivetrain ? spin.J : spin.Jw;
+    if (!(J > 0)) {
+      return;
+    }
+  }
+  const k = body.invMass() + (r * r) / J;
   let impulse = (spin.omega * r - v) / k;
   impulse = Math.max(-spareBack, Math.min(spareFwd, impulse));
   if (impulse === 0) {
@@ -736,7 +759,54 @@ function rollingConstraintImpulse(car, spareFwd, spareBack) {
   }
   // 衝量作用在車體質心（只改前進速度，不另外產生俯仰；接地點力造成的俯仰已由每步的輪胎力處理）
   body.applyImpulse({ x: fwd.x * impulse, y: fwd.y * impulse, z: fwd.z * impulse }, true);
-  spin.omega -= (impulse * r) / spin.J;
+  spin.omega -= (impulse * r) / J;
+  if (spin.oneWay && withDrivetrain) {
+    spin.omegaD = spin.omega;
+  }
+}
+
+/**
+ * 單向輪（第七階段 iter-79，官方 15443 / 95628「左右のタイヤの回転差を吸収」）的傳動系一步：
+ * 傳動系（馬達＋齒輪＋輪軸，J_d）承受馬達驅動力與傳動系阻力（輪軸軸承摩擦、斷電時的馬達拖曳）；
+ * 輪子（J_w）只承受輪胎滾動阻力，回傳值 = 施加在接地點的縱向力（只有滾阻）。驅動力經離合（oneWayClutchEngage）
+ * 合併後由純滾動約束衝量傳到車體。阻力不會讓角速度反向（夾到 0）
+ * @type {(car: any, lf: { drive: number, resist: number }, dt: number) => number}
+ */
+function oneWayDrivetrainStep(car, lf, dt) {
+  const P = car.P;
+  const spin = car.spin;
+  const r = P.wheelRadius;
+  const rolling = P.crr * P.massTotal * P.gravity;
+  const drivetrainResist = lf.resist - rolling;
+  if (spin.Jd > 0) {
+    const drive = car.powered ? lf.drive : 0;
+    const wD0 = spin.omegaD;
+    spin.omegaD += ((drive - Math.sign(wD0) * drivetrainResist) * r * dt) / spin.Jd;
+    if (!car.powered && wD0 !== 0 && Math.sign(spin.omegaD) !== Math.sign(wD0)) {
+      spin.omegaD = 0;
+    }
+  }
+  const wheelSpeed = spin.omega * r;
+  if (Math.abs(wheelSpeed) < 0.002) {
+    return 0;
+  }
+  return -Math.sign(wheelSpeed) * rolling;
+}
+
+/**
+ * 單向離合：傳動系比輪子快（ω_d > ω_w）時咬合——兩者以角動量守恆合併成同一角速度（完全非彈性，動能只減不增）；
+ * 輪子比傳動系快時脫開（輪子空轉超越，不傳力）。空轉阻力官方無資料 → 0（推估，PARTS_RESEARCH AT 節第 1 點）
+ * @type {(spin: any) => void}
+ */
+function oneWayClutchEngage(spin) {
+  if (spin.omegaD >= spin.omega) {
+    const w = (spin.Jd * spin.omegaD + spin.Jw * spin.omega) / (spin.Jd + spin.Jw);
+    spin.omega = w;
+    spin.omegaD = w;
+    spin.engaged = true;
+  } else {
+    spin.engaged = false;
+  }
 }
 
 /**
@@ -945,7 +1015,10 @@ export function carKineticEnergy(car) {
     const Is = sb.principalInertia();
     e += 0.5 * sb.mass() * (u.x * u.x + u.y * u.y + u.z * u.z) + 0.5 * (Is.x * ws.x * ws.x + Is.y * ws.y * ws.y + Is.z * ws.z * ws.z);
   }
-  if (car.spin) {
+  if (car.spin?.oneWay) {
+    // 單向輪：輪子與傳動系分開算
+    e += 0.5 * car.spin.Jw * car.spin.omega * car.spin.omega + 0.5 * car.spin.Jd * car.spin.omegaD * car.spin.omegaD;
+  } else if (car.spin) {
     e += 0.5 * car.spin.J * car.spin.omega * car.spin.omega;
   }
   return e;

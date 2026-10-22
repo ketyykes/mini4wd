@@ -1,10 +1,10 @@
 {
-  "_readme": "示範（第七階段）：第七階段新零件組合——球頭連桿擺動式制振器（FRP 後導輪板）…（逐輪補上），車殼 pc-box（透明殼看得到底盤）",
+  "_readme": "示範（第七階段）：第七階段新零件組合——球頭連桿擺動式制振器（FRP 後導輪板）、單向輪框＋low profile 胎（26 mm）、HG 620 培林、前硬彈簧滑動保桿，其餘同第五階段示範；車殼 pc-box（透明殼看得到底盤）",
   "chassis": "chassis-midship",
   "motor": "motor-rev",
   "gear": "gear-3.7",
-  "wheels": "wheel-26-lightweight",
-  "bearings": "bearing-620",
+  "wheels": "wheel-26-oneway",
+  "bearings": "bearing-620-hg",
   "counterShaft": "counter-bearing-520",
   "frontRollers": "roller-11-bearing",
   "rearRollers": "roller-13-alu",

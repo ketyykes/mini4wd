@@ -554,6 +554,26 @@ function buildWheel(mats, side) {
     const hubRib = new THREE.Mesh(new THREE.TorusGeometry(2.9, 0.32, 8, 32), mats.rim);
     face.add(hubRib);
   }
+  if (spec.tire.rimStyle === 'oneway') {
+    // 第七階段（iter-79）：單向輪框——輪框與中央內轂是兩件（內轂裝在輪軸上，輪框可以相對內轂往前空轉）：
+    // 內轂比一般輪轂大（φ7.4，內含單向離合），外圈一道暗色分隔縫，轂面 8 道棘輪狀凸肋（示意內部棘爪；實際棘爪在內部看不到）
+    const clutchHub = new THREE.Mesh(new THREE.CylinderGeometry(3.7, 3.7, 1.9, 32), mats.rim);
+    clutchHub.rotation.x = Math.PI / 2;
+    clutchHub.position.z = side * 0.15;
+    face.add(clutchHub);
+    const gap = new THREE.Mesh(new THREE.RingGeometry(3.7, 4.1, 40), mats.chassisDark);
+    gap.position.z = side * 0.62;
+    gap.rotation.y = side > 0 ? 0 : Math.PI;
+    face.add(gap);
+    for (let k = 0; k < 8; k++) {
+      const a = (k / 8) * Math.PI * 2;
+      const tooth = new THREE.Mesh(new THREE.BoxGeometry(1.3, 0.45, 0.35), mats.rimBarrel);
+      tooth.position.set(Math.cos(a) * 2.9, Math.sin(a) * 2.9, side * 1.2);
+      // 棘輪齒：沿切線方向略斜，看得出單一旋轉方向
+      tooth.rotation.z = a + Math.PI / 2 + 0.5;
+      face.add(tooth);
+    }
+  }
   // 輪框外緣凸緣（面向外側的金屬唇邊）
   const flange = new THREE.Mesh(new THREE.TorusGeometry(rr - 0.35, 0.45, 8, 40), mats.rim);
   flange.position.z = side * 0.6;

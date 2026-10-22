@@ -2927,3 +2927,22 @@
 - 新測試 `P17_phase7_stabilizer_heads`（φ11 35° > φ15 20° > φ17 10°，直立 0 步接觸）、`P17_phase7_sponge_bearing`（坡底 1.932 > 1.923 > 1.915 m/s、摩擦功 3.93 < 6.54 < 8.90 mJ；HG 3 s 車速與斷電減速只驗方向）。
 - `P18_known_cases` 加 5 個（φ15 × 13 mm / 13-12 雙層、φ11 × 9 mm → STABILIZER_ROLLER_SIZE；φ15 × 19 mm × 預設車殼 → STABILIZER_BODY_CLEARANCE；三種海綿 × FRP 後板 → GROUND_CLEARANCE）＋4 個合法對照；`P17_phase7_laps` 加 6 組（共 15 組）。指定測試 7 項通過。
 - `node scripts/score.mjs`：**20/20**（03:57）。外觀沿用 7.75 → 88.75。worktree `/tmp/wt-p7b` 與分支 `p7-stab-brake-bearing` 已移除。新零件累計 16 款、6 類（制振器 3、導輪 4、輪胎 3、穩定頭 2、煞車海綿 3、培林 1）。
+
+## iter-79（★單向輪：第二個新物理機制「單向離合」）
+### 計畫
+- AS 第 18 順位 `wheel-26-oneway`（15443）。原本模型：馬達＋齒輪＋四輪是一個轉動自由度 ω，推力先加在車體、再由純滾動約束把車速和 ω·r 拉齊——這種寫法分不出離合往哪邊傳力。
+- 做法：只有零件帶 `oneWayClutch` 時走新路徑（標準輪路徑完全不動）：傳動系 ω_d（J_d）承受馬達驅動與傳動系阻力（輪軸軸承、斷電馬達拖曳），輪子 ω_w（J_w）只承受輪胎滾阻；ω_d ≥ ω_w 時以角動量守恆合併（咬合），否則脫開；純滾動約束在咬合時用 J、在脫開或「車比輪快」時只用 J_w。
+- 成功標準：通電直線加速和「同零件鎖死離合」相同（< 0.5%）；斷電滑行較遠；滑行動能單調不增；主賽道 3 圈；20/20。
+
+### 執行
+- `spec.js`：`P.oneWayClutch`、`P.spinInertiaWheels`（= reflected 4 顆輪）。
+- `sim.js`：`spin` 加 `omegaD / Jd / Jw / engaged`；`oneWayDrivetrainStep`（傳動系積分、阻力不讓 ω_d 反向）、`oneWayClutchEngage`；`rollingConstraintImpulse` 依離合狀態選 J；`carKineticEnergy` 單向輪時輪子與傳動系分開算。
+- `wheels.js`：`wheel-26-oneway`（3.4 g，rimStyle `oneway`、`oneWayClutch: true`；src 寫明過彎左右輪轉速差**未建模**）。
+- `model.js`：rimStyle `oneway`——兩件式輪框（φ7.4 中央離合內轂、暗色分隔縫、8 道棘輪狀凸肋）。
+- 示範設定 `p7-demo` 改用單向輪＋HG 620 培林（145.09 g、合法、主賽道 3 圈最大穿牆 0.274 mm）。
+- 原想加「5° 下坡坡底較快」：`rampRun` 只給車體初速、傳動系從 0 起步，鎖死組要多轉起傳動系，差距混進初始條件假象 → 不用，只比從通電穩態斷電的滑行。
+
+### 驗證
+- `P17_oneway_wheel`：0.3 s 起步 1.118 / 1.115 m/s（差 0.27%）；2 s 後斷電滑行 3 s 9.680 / 7.590 m；傳動系 ω_d·r 0.000、輪面 2.836 m/s；滑行動能最大回升 0 J。30 mm 落下稽核：著地步 +9.6 µJ（對照 +7.1 µJ，同 L8 已知誤差）。
+- 主賽道 3 圈（預設＋單向輪）：最大穿牆 0.068 mm、最小 up.y 0.983。`P17_phase7_laps` 加入（16 組）。指定測試 6 項通過。
+- `node scripts/score.mjs`：**20/20**（04:11）。外觀沿用 7.75 → 88.75。新零件累計 17 款、6 類；新機制 2 個（球頭連桿擺動、單向離合）。

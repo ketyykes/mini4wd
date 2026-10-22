@@ -233,6 +233,40 @@ export const wheelParts = [
       taiwan: 'TAIWAN_SOURCES TW22（四驅博士學校／露天，15544）',
     },
   },
+  // ---- 第七階段（iter-79）：單向輪（PARTS_RESEARCH 第七階段 AN 節、AS 第 18 順位）----
+  // oneWayClutch：輪框內有單向離合（輪子只能比輪軸轉得快）。sim.js 依這個物理量把輪子與傳動系拆成兩個轉動自由度（不是依 id 的特例）
+  {
+    id: 'wheel-26-oneway',
+    category: 'wheel',
+    name: '小徑 low profile 輪胎＋單向輪框（26 mm）',
+    diameter_mm: 26.0,
+    width_mm: 9.0,
+    rimDiameter_mm: 19.8,
+    frictionCoeff: 0.7,
+    rollingResistanceCoeff: 0.02,
+    slipAngleSaturation_rad: 0.1,
+    tread: 'rubber',
+    rimStyle: 'oneway',
+    rimBaseMass_g: 1.5,
+    mass_g: 3.4,
+    oneWayClutch: true,
+    compat: {},
+    src: {
+      grade: 'PARTS_RESEARCH 第七階段 AN 節 [T15443] 官方：「ローハイトタイヤ＆ワンウェイホイールセット」「スムーズなコーナリングを生み出すワンウェイホイールに､軽量でギャップに強いローハイトタイヤ」「ミニ四駆PROをはじめミニ四駆各車に取り付けられます」；機制 [T95628]「左右のタイヤの回転差を吸収して、スムーズなコーナリングを生み出します」',
+      diameter_mm: '推估（AN 節）：同 wheel-26-lowprofile 26 mm（官方頁沒寫直徑）',
+      width_mm: '推估（AN 節）：9 mm（同 wheel-26-lowprofile）',
+      rimDiameter_mm: '同 wheel-26-lowprofile（推估）',
+      frictionCoeff: '推估（AN 節）：同 wheel-26-lowprofile 0.7（同款 low profile 胎）',
+      rollingResistanceCoeff: '推估（AN 節）：同 wheel-26-lowprofile 0.02',
+      slipAngleSaturation_rad: '同 wheel-26-lowprofile（推估）',
+      mass_g: '推估（AN 節）：low profile 胎 1.9 g（[NAO] 3.0 − 1.1）＋單向輪框 1.5 g = 3.4 g',
+      rimBaseMass_g: `推估（AN 節）：一般輪框 1.1 g＋棘爪 / 內轂 0.4 g = 1.5 g；${RIM_SRC}`,
+      oneWayClutch: '[T15443] / [T95628] 官方「ワンウェイホイール」：輪子可以比輪軸轉得快（不傳力），不能比輪軸慢（咬合傳力）。空轉阻力官方無資料 → 0（推估，AS 節第 1 點）。**未建模**：本專案同軸左右輪共用一個轉速、沒有過彎左右輪轉速差的拖滑模型，所以官方說的「過彎順暢」效果沒有模擬；模擬到的是「輪子比傳動系快時離合脫開」（斷電滑行、下坡、著地時不拖動馬達與齒輪）',
+      rule: 'AN 節：規則未明文規定單向輪（[REG7] 全文沒有 one-way），官方グレードアップパーツ → 合法；Sec.3「4WD setup」：前進驅動方向仍由輪軸帶動（推估判讀）',
+      compat: 'AN 節：官方適用含 MA（AR 需削底盤）',
+      taiwan: 'TAIWAN_SOURCES TW31（新莊超音速陽明／露天，15443）',
+    },
+  },
   // ---- 第七階段（iter-76）：大徑 slick 胎、低反發海綿窄胎（PARTS_RESEARCH 第七階段 AN 節）----
   // 著地恢復係數（AN 節推估 hard 0.2 / soft 0.3 / 海綿 0.05）沒有建模：sim.js 輪胎垂直方向用全車共用的懸吊彈簧 / 阻尼（spec.sim），
   // 所以不放成零件欄位（避免看起來有物理效果），只記在 src.restitution（iter-76 主 agent 整合時拿掉 subagent 加的 tireRestitution 欄位）

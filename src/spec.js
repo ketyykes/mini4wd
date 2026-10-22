@@ -45,6 +45,9 @@ export function deriveParams(s, massTotal_g) {
     circuitResistance: s.circuit?.resistance_ohm ?? 0,
     // 傳動系換算到輪軸的等效轉動慣量 J_eq（kg·m²，parts/inertia.js）
     spinInertia: s.spin?.total_kgm2 ?? 0,
+    // 第七階段（iter-79）：單向輪（輪框內有單向離合）——4 顆輪子的轉動慣量（kg·m²）另外記，單向輪時輪子與傳動系是兩個轉動自由度
+    oneWayClutch: !!s.tire.oneWayClutch,
+    spinInertiaWheels: s.spin ? s.spin.reflected_gmm2.wheels * 1e-9 : 0,
     capacity_C: s.battery.capacity_mAh * 3.6,
     gearRatio: s.drivetrain.gearRatio,
     gearEfficiency: s.drivetrain.gearEfficiency,

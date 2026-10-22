@@ -641,6 +641,55 @@ describe('P17 新零件的物理效果（只透過組裝設定替換）', () => 
     expect(n98.bbox_mm.size.z).toBeLessThan(A({}).bbox_mm.size.z);
   }, 120000);
 
+  test('P17_oneway_wheel ★單向輪（15443，新機制：單向離合）：同零件關掉離合作對照——通電直線加速相同（離合咬合）；斷電滑行時輪子比傳動系快 → 離合脫開、馬達與齒輪不再拖車 → 滑行較遠；滑行動能單調不增', () => {
+    /** @type {(clutch: boolean) => any} */
+    const A = (clutch) => {
+      const asm = assemble(cfg({ wheels: 'wheel-26-oneway' }));
+      expect(validateAssembly(asm).ok).toBe(true);
+      // 對照組：同一款零件（質量、慣量、μ、C_rr 都相同），只把離合鎖死
+      asm.P.oneWayClutch = clutch;
+      return asm;
+    };
+    const on = A(true);
+    const off = A(false);
+    expect(on.P.spinInertiaWheels).toBeGreaterThan(0);
+    expect(on.P.spinInertiaWheels).toBeLessThan(on.P.spinInertia);
+    const vOn = launch(on, 0.3).vEnd;
+    const vOff = launch(off, 0.3).vEnd;
+    /** @type {(asm: any) => { v0: number, dist: number, maxRise: number, wheelSlip: number, omegaD: number, omegaWr: number }} */
+    const coast = (asm) => {
+      const env = sim.createWorld(buildStraight(100));
+      const car = sim.createCar(env, { assembly: asm, s: 0.2, lane: 0, drain: false });
+      const dt = env.world.timestep;
+      for (let i = 0; i < 2 / dt; i++) {
+        sim.stepCar(env, car);
+      }
+      const v0 = sim.forwardSpeed(car);
+      const x0 = car.chassis.translation().x;
+      car.powered = false;
+      let prev = sim.carKineticEnergy(car);
+      let maxRise = 0;
+      for (let i = 0; i < 3 / dt; i++) {
+        sim.stepCar(env, car);
+        const e = sim.carKineticEnergy(car);
+        maxRise = Math.max(maxRise, e - prev);
+        prev = e;
+      }
+      const r = asm.P.wheelRadius;
+      return { v0, dist: car.chassis.translation().x - x0, maxRise, wheelSlip: Math.abs(car.spin.omega * r - sim.forwardSpeed(car)), omegaD: car.spin.omegaD, omegaWr: car.spin.omega * r };
+    };
+    const cOn = coast(on);
+    const cOff = coast(off);
+    console.log(`[P17] 單向輪：0.3 s 起步 離合 ${f3(vOn)} / 鎖死 ${f3(vOff)} m/s；2 s 後斷電滑行 3 s 距離 ${f3(cOn.dist)} / ${f3(cOff.dist)} m（傳動系 ω_d·r ${f3(cOn.omegaD * on.P.wheelRadius)}、輪面 ${f3(cOn.omegaWr)} m/s，最大動能回升 ${cOn.maxRise.toExponential(2)} J）`);
+    // 咬合時驅動力全部經離合傳到輪子：起步差 < 0.5%（差值來自傳動系與輪子分兩步積分）
+    expect(Math.abs(vOn - vOff) / vOff).toBeLessThan(0.005);
+    // 斷電：傳動系被軸承與馬達拖曳減速、輪子跟著車滾 → 傳動系比輪子慢（離合脫開）
+    expect(cOn.omegaD * on.P.wheelRadius).toBeLessThan(cOn.omegaWr);
+    expect(cOn.wheelSlip).toBeLessThan(0.01);
+    expect(cOn.dist).toBeGreaterThan(cOff.dist * 1.05);
+    expect(cOn.maxRise).toBeLessThanOrEqual(1e-7);
+  }, 120000);
+
   test('P17_balllink_swing 球頭連桿制振器（第七階段新機制：繞橫向軸擺動）：擺角在止點範圍內、靜止角 = 座墊壓縮平衡角、座墊力作用 / 反作用同點、斷電滑行動能不增', () => {
     const asm = assemble(cfg({ rearStay: 'stay-rear-frp', massDamper: 'damper-balllink-square', body: null }));
     expect(validateAssembly(asm).ok).toBe(true);
@@ -780,6 +829,7 @@ describe('P17 新零件的物理效果（只透過組裝設定替換）', () => 
       { brakeSponge: 'sponge-3type-b' },
       { brakeSponge: 'sponge-3type-c' },
       { bearings: 'bearing-620-hg' },
+      { wheels: 'wheel-26-oneway' },
     ];
     for (const over of cases) {
       const asm = assemble(cfg(over));
@@ -1636,7 +1686,7 @@ describe('P18 干涉與安裝相容性', () => {
       }
     }
     // 合法的對照：雙層導輪＋單層的碳纖寬後板、FRP 後板＋後制振器
-    for (const over of [{ rollers: 'roller-13-12-double', rearStay: 'stay-rear-carbon-wide' }, { rearStay: 'stay-rear-frp', massDamper: 'damper-rear-cylinder' }, { stabilizer: 'stabilizer-head-17', rollers: 'roller-19', body: null }, { rollers: 'roller-13-tapered', frontStay: 'stay-front-frp', rearStay: 'stay-rear-frp', body: null }, { frontRollers: 'roller-19-tapered', rearRollers: 'roller-13-alu', frontStay: 'stay-front-frp' }, { frontRollers: 'roller-13-12-double' }, { rearStay: 'stay-rear-carbon-wide', frontRollers: 'roller-19' }, { massDamper: 'damper-side-square', body: 'body-aero-wing' }, { massDamper: 'damper-side-square-32', body: 'body-pc-box' }, { wheels: 'wheel-31-lowfriction', body: 'body-pc-box' }, { motor: 'motor-rev' }, { rearStay: 'stay-rear-frp', massDamper: 'damper-balllink-square' }, { rearStay: 'stay-rear-frp', massDamper: 'damper-heavy' }, { massDamper: 'damper-square-8x8x14', body: 'body-hinge-deck' }, { frontRollers: 'roller-13-12-alu-double-rubber' }, { frontRollers: 'roller-9-8-alu-double', rearRollers: 'roller-9-8-alu-double' }, { wheels: 'wheel-31-soft-slick', body: 'body-pc-box' }, { wheels: 'wheel-31-sponge-lowrebound', body: 'body-pc-box' }, { stabilizer: 'stabilizer-head-11' }, { stabilizer: 'stabilizer-head-15', frontRollers: 'roller-17-alu', body: null }, { brakeSponge: 'sponge-3type-c' }, { bearings: 'bearing-620-hg' }]) {
+    for (const over of [{ rollers: 'roller-13-12-double', rearStay: 'stay-rear-carbon-wide' }, { rearStay: 'stay-rear-frp', massDamper: 'damper-rear-cylinder' }, { stabilizer: 'stabilizer-head-17', rollers: 'roller-19', body: null }, { rollers: 'roller-13-tapered', frontStay: 'stay-front-frp', rearStay: 'stay-rear-frp', body: null }, { frontRollers: 'roller-19-tapered', rearRollers: 'roller-13-alu', frontStay: 'stay-front-frp' }, { frontRollers: 'roller-13-12-double' }, { rearStay: 'stay-rear-carbon-wide', frontRollers: 'roller-19' }, { massDamper: 'damper-side-square', body: 'body-aero-wing' }, { massDamper: 'damper-side-square-32', body: 'body-pc-box' }, { wheels: 'wheel-31-lowfriction', body: 'body-pc-box' }, { motor: 'motor-rev' }, { rearStay: 'stay-rear-frp', massDamper: 'damper-balllink-square' }, { rearStay: 'stay-rear-frp', massDamper: 'damper-heavy' }, { massDamper: 'damper-square-8x8x14', body: 'body-hinge-deck' }, { frontRollers: 'roller-13-12-alu-double-rubber' }, { frontRollers: 'roller-9-8-alu-double', rearRollers: 'roller-9-8-alu-double' }, { wheels: 'wheel-31-soft-slick', body: 'body-pc-box' }, { wheels: 'wheel-31-sponge-lowrebound', body: 'body-pc-box' }, { stabilizer: 'stabilizer-head-11' }, { stabilizer: 'stabilizer-head-15', frontRollers: 'roller-17-alu', body: null }, { brakeSponge: 'sponge-3type-c' }, { bearings: 'bearing-620-hg' }, { wheels: 'wheel-26-oneway' }]) {
       const res = validateAssembly(assemble(cfg(over)));
       expect(res.ok, JSON.stringify(res.violations)).toBe(true);
     }
