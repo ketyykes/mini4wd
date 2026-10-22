@@ -2555,3 +2555,23 @@
 ### 驗證（煞車架）
 - `node scripts/score.mjs`：**20/20**（12:19）。外觀：只新增選項，預設車不變。
 - 決策：**保留**（煞車架部分）；新零件累計 12 款、6 類（導輪、馬達、輪胎、制振、傳動、煞車）。滑動保桿等 subagent 回報後另行合併。
+
+## iter-61（12:10 起）：車殼修正 5 款（subagent）＋前滑動保桿（subagent）合併、逐款 A/B
+### 規劃
+1. 合併車殼 subagent（worktree）的 5 款修正：dartfrog 檸檬黃＋6 肋大蹼翼＋鼻端平滑、marlin 銀白提亮＋細擋泥刃補黑縫、gazelle 鼻端下捲去折面、tortoise 鴨尾唇白邊、owl 羽紋加粗。
+2. subagent 用 `decal-` 開頭的材質名稱讓 Blender 不壓暗高明度漆（借用貼紙分類）→ 改成正式分類 `paint-bright-*` → `web/export.js` 的 `paint_bright` → `render/showcase.py` 以明度上限 0.75 算亮面實色漆（一般 paint_gloss 仍 0.45，防螢光色自發光感）。
+3. 合併前滑動保桿（`stay-front-slide-soft` / `-hard`，15469，TW10）。
+- 預期：5 款逐款 A/B 沒有「差」才保留；滑動保桿撞牆峰值力小、能量不增加。
+
+### 執行
+- 車殼：body-check 5 款合法、31 mm 與 32 mm 側制振器相容性與修改前相同（31 mm：tortoise / gazelle / dartfrog；側制振器：gazelle / dartfrog）；dartfrog 15.4 → 18.45 g。
+- 前滑動保桿（subagent）：第一次的成果放在 root repo 的 Agent worktree 內另 clone 的 app，subagent 結束後該 worktree 因 root 無變更被自動清除、commit 遺失 → 主 agent 建 `/tmp/wt-slide`（app worktree，基底 2882117），請同一個 subagent 重新套用（數據逐位相同），合併後移除 worktree。**教訓：Agent 的 worktree 隔離要在 app repo 下建立，成果合併前不要讓 worktree 被清理。**
+  - 物理：滑動板＋前導輪＋穩定零件為獨立剛體，prismatic joint 沿車體 z、±2.5 mm 硬止擋；前導輪碰撞體掛在滑動板上 → 牆力只能經彈簧 / 止擋傳到車身。彈簧 F(u) = −[k·u + sign(u)·min(F0, k_seat·|u|)]（保守力，有對應位能），阻尼 c = 2ζ√(km)；隱式 Euler 以衝量施加；牆面衝量改在「車體＋滑動板」7 自由度系統求解（恢復係數 0）；沒有滑動保桿時沿用原程式。
+  - P17_slide_bumper：10°、1.5 m/s 撞牆車身峰值側向力 軟 1.28 / 硬 3.29 / FRP 板 28.06 N；20°、2 m/s 106.5 / 110.1 / 203.2 N；動能＋彈簧位能整段最大值等於撞前值（153.147 mJ → 0.1 s 後 136 mJ）；平地極速與同質量 FRP 差 0.038%；主賽道一圈最大穿牆 0.22 / 0.17 mm、不翻車。P18_slide_bumper_width：行程端點外框（推估規則）13 mm 導輪 103 mm 合法、17 mm 107 / 19 mm 109 mm → WIDTH。P11_slide_bumper。P19：網頁切換滑動保桿（17 mm 前導輪 WIDTH、換 13 mm 合法）與 URL 還原。
+- Blender 64 samples 5 款 × 5 視角（12:26–12:47）、app 截圖 `renders/iter-61_*`；評分資料夾 `shared/reviews/iter-61/`（對照 = iter-55 本輪）。
+
+### 驗證
+- `node scripts/score.mjs`：**20/20**（12:48，合併後）。
+- reviewer（`shared/reviews/iter-61/REVIEW.md`）：錨點 6.17；對照 7 / 7 / 8 / 6.5 / 6.5 / 7.5 = 7.08；本輪 7 / 7.5 / 8 / 7 / 7 / 7.5 = **7.33** → **86.67**。A/B：風格感、設計、材質好，其餘持平。
+- 逐款 A/B：dartfrog（蹼翼好；黃色判持平，仍偏芥末）、marlin、gazelle、tortoise、owl 都沒有任何一項「差」→ **5 款全保留**。滑動保桿只是新選項 → 保留。
+- 仍待改（評審）：dartfrog 黃色再提亮＋黑色座艙罩與藍綠流線面；gazelle 鼻部白擋泥板下緣黑缺口、鼻面黑虛線像接縫；owl 羽紋改粗人字形。
