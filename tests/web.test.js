@@ -367,6 +367,8 @@ describe('P19 網頁換件', () => {
       // iter-61：前滑動保桿（軟彈簧；前導輪 17 mm 時行程端點全寬 107 mm → WIDTH，網頁也要一致）
       ['frontStay', 'stay-front-slide-soft'],
       ['frontRollers', 'roller-13'],
+      // iter-63：滑動保桿換 HG 碳纖前寬板 2 mm
+      ['frontStay', 'stay-front-slide-hard-carbon'],
     ];
     for (const [slot, value] of changes) {
       const ms = await changeSlot(slot, value);

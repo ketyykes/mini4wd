@@ -103,21 +103,23 @@ const SLIDE_RAIL_MASS = ((SLIDE_RAIL.xMax_mm - SLIDE_RAIL.xMin_mm) * 2 * SLIDE_R
 /** 彈簧、螺絲、擋片等小五金（固定在底盤側，推估） */
 const SLIDE_HARDWARE_G = 1.9;
 const SLIDE_PLATE_MASS = plateMass(SLIDE_OUTLINE, holeArea(SLIDE_HOLES), SLIDE_PLATE_T, RHO_ALU);
+/** iter-63：HG 碳纖前寬板 2 mm（15548，滑動保桿用）：同外形、同厚度，密度 1.6 */
+const SLIDE_PLATE_MASS_CARBON = plateMass(SLIDE_OUTLINE, holeArea(SLIDE_HOLES), SLIDE_PLATE_T, RHO_CARBON);
 
 /**
  * 前滑動保桿零件（金＝軟彈簧、銀＝硬彈簧，同一份幾何）
  * @type {(o: { id: string, name: string, springK_N_per_mm: number, preload_N: number, springColor: number, springSrc: string }) => import('./types').PartBase}
  */
-const slideFrontPart = ({ id, name, springK_N_per_mm, preload_N, springColor, springSrc }) => ({
+const slideFrontPart = ({ id, name, springK_N_per_mm, preload_N, springColor, springSrc, carbonPlate = false }) => ({
   id,
   category: 'stay-front',
   name,
-  material: 'aluminum',
+  material: carbonPlate ? 'carbon' : 'aluminum',
   rollerX_mm: 74,
   rollerZ_mm: 42.5,
   rollerY_mm: 10,
   // 滑動板（鋁）：外形同時給質量、干涉檢查（行程中央位置）、3D 模型
-  plate: { outline: SLIDE_OUTLINE, holes: SLIDE_HOLES, y_mm: SLIDE_RAIL.y_mm - SLIDE_PLATE_T, thickness_mm: SLIDE_PLATE_T, density_g_cm3: RHO_ALU },
+  plate: { outline: SLIDE_OUTLINE, holes: SLIDE_HOLES, y_mm: SLIDE_RAIL.y_mm - SLIDE_PLATE_T, thickness_mm: SLIDE_PLATE_T, density_g_cm3: carbonPlate ? RHO_CARBON : RHO_ALU },
   /** @type {import('./types').SlideSpec} */
   slide: {
     stroke_mm: 2.5,
@@ -125,13 +127,13 @@ const slideFrontPart = ({ id, name, springK_N_per_mm, preload_N, springColor, sp
     preload_N,
     dampingRatio: 0.3,
     seatDeflection_mm: 0.05,
-    plateMass_g: SLIDE_PLATE_MASS,
+    plateMass_g: carbonPlate ? SLIDE_PLATE_MASS_CARBON : SLIDE_PLATE_MASS,
     rail: SLIDE_RAIL,
     railMass_g: SLIDE_RAIL_MASS,
     hardware_g: SLIDE_HARDWARE_G,
     spring: { x_mm: 70.5, innerZ_mm: SLIDE_RAIL.halfZ_mm, outerZ_mm: 23, coilDiameter_mm: 2.6, wireDiameter_mm: 0.45, turns: 7, color: springColor },
   },
-  mass_g: SLIDE_PLATE_MASS + SLIDE_RAIL_MASS + SLIDE_HARDWARE_G,
+  mass_g: (carbonPlate ? SLIDE_PLATE_MASS_CARBON : SLIDE_PLATE_MASS) + SLIDE_RAIL_MASS + SLIDE_HARDWARE_G,
   /** 裝滑動保桿時前保桿兩側的導輪臂剪掉（同 FRP 板；導輪改由滑動板撐） */
   chassisTrim: { kind: 'bumper-wings', src: '推估：實車裝滑動保桿時常把原廠保桿的導輪臂剪掉（導輪改由滑動板撐）；切除範圍同 FRP 前寬板' },
   features: [],
@@ -147,6 +149,12 @@ const slideFrontPart = ({ id, name, springK_N_per_mm, preload_N, springColor, sp
     hardware_g: '推估（W 節「樹脂件與彈簧螺絲約 2.5 g」− 滑軌 0.6 g）：彈簧 2 支、螺絲、擋片約 1.9 g',
     mass_g: '由滑動板外形 × 厚度 × 密度＋滑軌＋小五金推導，合計約 7.8 g（W 節推估約 8 g）',
     taiwan: 'TAIWAN_SOURCES TW10（四驅博士學校／露天，15469）',
+    ...(carbonPlate
+      ? {
+          carbonPlate: 'PARTS_RESEARCH 第五階段 AB 節 [T15548]：HG 碳纖前寬板 2 mm（スライドダンパー対応，需搭配 15469 使用）；同外形、厚 2 mm、碳纖密度 1.6 g/cm³（[RSCF]）→ 比鋁板輕約 41%，與官方同系列碳纖板「アルミ製に比べて約40％軽く」一致',
+          taiwanCarbon: 'TAIWAN_SOURCES TW12（四驅博士學校／露天，15548）＋TW10（15469 滑軌與彈簧）',
+        }
+      : {}),
   },
 });
 
@@ -304,5 +312,15 @@ export const stayParts = [
     preload_N: 2,
     springColor: 0xc8ccd2,
     springSrc: '推估（W 節）：硬（銀）k ≈ 2 N/mm、預壓 2 N——滿行程力約 7 N，與轉彎側向力同量級（「只有很用力才滑、出彎立刻回彈」）',
+  }),
+  // iter-63：滑動保桿換 HG 碳纖前寬板 2 mm（15548）＋硬彈簧
+  slideFrontPart({
+    id: 'stay-front-slide-hard-carbon',
+    name: '前寬滑動保桿・碳纖板＋硬彈簧（HG 碳纖前寬板 2 mm＋樹脂滑軌，銀色彈簧）',
+    springK_N_per_mm: 2,
+    preload_N: 2,
+    springColor: 0xc8ccd2,
+    springSrc: '同 stay-front-slide-hard（推估，W 節）',
+    carbonPlate: true,
   }),
 ];

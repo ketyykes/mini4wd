@@ -284,6 +284,26 @@ describe('P17 新零件的物理效果（只透過組裝設定替換）', () => 
     expect(minUp).toBeGreaterThan(0.8);
   }, 180000);
 
+  test('P17_slide_bumper_carbon 滑動保桿換 HG 碳纖前寬板 2 mm（台灣買得到）：滑動部分較輕（質量差 = 板體積 × 密度差），撞牆車身峰值力仍比 FRP 板小、能量不增加', () => {
+    const frpAsm = assemble(cfg({ frontStay: 'stay-front-frp', body: null }));
+    const alu = assemble(cfg({ frontStay: 'stay-front-slide-hard', body: null }));
+    const carbon = assemble(cfg({ frontStay: 'stay-front-slide-hard-carbon', body: null }));
+    expect(validateAssembly(carbon).ok, JSON.stringify(validateAssembly(carbon).violations)).toBe(true);
+    const dPlate = alu.partsBySlot.frontStay.slide.plateMass_g - carbon.partsBySlot.frontStay.slide.plateMass_g;
+    // 同外形、同厚度：板質量比 = 密度比 1.6 / 2.7
+    expect(carbon.partsBySlot.frontStay.slide.plateMass_g / alu.partsBySlot.frontStay.slide.plateMass_g).toBeCloseTo(1.6 / 2.7, 9);
+    expect(Math.abs(alu.slider.mass_g - carbon.slider.mass_g - dPlate)).toBeLessThan(1e-9);
+    expect(Math.abs(alu.mass_g - carbon.mass_g - dPlate)).toBeLessThan(1e-9);
+    const rF = slideWallImpact(frpAsm, 10, 1.5);
+    const rA = slideWallImpact(alu, 10, 1.5);
+    const rC = slideWallImpact(carbon, 10, 1.5);
+    console.log(`[P17] 滑動板 鋁 ${f3(alu.slider.mass_g)} g / 碳纖 ${f3(carbon.slider.mass_g)} g（板差 ${f3(dPlate)} g）；撞牆 10° 1.5 m/s 車身峰值側向力 鋁 ${f3(rA.peakF)} / 碳纖 ${f3(rC.peakF)} / FRP ${f3(rF.peakF)} N；碳纖 能量 ${f3(rC.E0 * 1000)} → 最大 ${f3(rC.Emax * 1000)} → ${f3(rC.Eend * 1000)} mJ`);
+    expect(rC.peakF).toBeLessThan(rF.peakF);
+    // 能量不增加（容許同 P17_slide_bumper 的 0.1%）
+    expect(rC.Emax).toBeLessThanOrEqual(rC.E0 * 1.001);
+    expect(rC.Eend).toBeLessThan(rC.E0);
+  }, 180000);
+
   test('P17_roller19 19 mm 導輪 → 外框變寬、導輪接觸點外移（模擬碰撞體同一份資料）', () => {
     const a13 = assemble(cfg());
     const a19 = assemble(cfg({ rollers: 'roller-19' }));
