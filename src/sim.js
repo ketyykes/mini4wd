@@ -267,6 +267,9 @@ export function createCar(env, opt = {}) {
   // 制振器（第三階段）：獨立剛體＋prismatic joint（沿車體 y 軸上下滑動，行程上下限為硬止點），
   // 下止點是有彈性的座墊（單邊接觸：只能往上推、不能往下拉，見 damperForces）
   const dampers = (asm.movable ?? []).map((d) => {
+    if (d.pivot) {
+      return createSwingDamper(world, chassis, d, start);
+    }
     const m = d.mass_g / 1000;
     const g = spec.sim.gravity;
     const seatK = (m * g) / (d.seatDeflection_mm * MM);
@@ -556,6 +559,7 @@ export function stepCar(env, car) {
   body.resetTorques(true);
   for (const d of car.dampers ?? []) {
     d.body.resetForces(true);
+    d.body.resetTorques(true);
   }
 
   // 空氣阻力施加在車體重心
@@ -647,7 +651,11 @@ export function stepCar(env, car) {
     spongeForces(env, car, { up, fwd, side });
   }
   for (const d of car.dampers ?? []) {
-    damperForces(car, d, up);
+    if (d.swing) {
+      swingDamperForces(car, d, up);
+    } else {
+      damperForces(car, d, up);
+    }
   }
 
   env.world.step();
@@ -773,6 +781,114 @@ function damperForces(car, d, up) {
 }
 
 /**
+ * 擺動式制振器（第七階段 iter-75，球頭連桿）：配重＋擺臂一個剛體，以 revolute joint 繞支點的車體 z 軸轉動（其餘自由度鎖住）。
+ * 往上擺的上限 = maxAngle（硬止點）；往下由座墊（單邊接觸）撐住，座墊最多壓縮約 1 mm 後是硬止點。
+ * 初始姿態：座墊在自重下壓縮 δ 的平衡角 φ0 = −δ / 支點到配重中心的水平距離（繞支點旋轉整個剛體）
+ * @type {(world: any, chassis: any, d: any, start: { x: number, z: number, theta: number }) => any}
+ */
+function createSwingDamper(world, chassis, d, start) {
+  const m = d.mass_g / 1000;
+  const g = spec.sim.gravity;
+  const MMv = (/** @type {{ x: number, y: number, z: number }} */ v) => ({ x: v.x * MM, y: v.y * MM, z: v.z * MM });
+  const pivot = MMv(d.pivot);
+  const com = MMv(d.pos);
+  const seat = MMv(d.seatPos);
+  const lever = seat.x - pivot.x;
+  // 座墊剛性：配重重力在座墊處的等效負載（力矩平衡：W·(com 到支點的水平距離) = F_seat·lever）
+  const seatLoad = (m * g * (com.x - pivot.x)) / lever;
+  const seatK = seatLoad / (d.seatDeflection_mm * MM);
+  // 座墊阻尼比相對「座墊處的等效質量」 I_pivot / lever²
+  const Ip = d.inertia_kgm2.z + m * ((com.x - pivot.x) ** 2 + (com.y - pivot.y) ** 2);
+  const mEff = Ip / (lever * lever);
+  const seatC = 2 * d.seatDampingRatio * Math.sqrt(seatK * mEff);
+  const phi0 = -(d.seatDeflection_mm * MM) / lever;
+  const rz = { x: 0, y: 0, z: Math.sin(phi0 / 2), w: Math.cos(phi0 / 2) };
+  const rel = rotate(rz, { x: com.x - pivot.x, y: com.y - pivot.y, z: com.z - pivot.z });
+  const local = { x: pivot.x + rel.x, y: pivot.y + rel.y, z: pivot.z + rel.z };
+  const rq = yawQuat(-start.theta);
+  const wp = rotate(rq, local);
+  // 車體旋轉 rq 再乘上繞車體 z 軸的 φ0
+  const q = {
+    w: rq.w * rz.w - rq.x * rz.x - rq.y * rz.y - rq.z * rz.z,
+    x: rq.w * rz.x + rq.x * rz.w + rq.y * rz.z - rq.z * rz.y,
+    y: rq.w * rz.y - rq.x * rz.z + rq.y * rz.w + rq.z * rz.x,
+    z: rq.w * rz.z + rq.x * rz.y - rq.y * rz.x + rq.z * rz.w,
+  };
+  const I = d.inertia_kgm2;
+  const rb = world.createRigidBody(
+    RAPIER.RigidBodyDesc.dynamic()
+      .setTranslation(start.x + wp.x, 0.0005 + wp.y, start.z + wp.z)
+      .setRotation(q)
+      .setAdditionalMassProperties(m, { x: 0, y: 0, z: 0 }, { x: I.x, y: I.y, z: I.z }, { x: 0, y: 0, z: 0, w: 1 })
+      .setCcdEnabled(true)
+      .setCanSleep(false),
+  );
+  // 支點在擺動剛體自身座標（φ = 0 時）的位置
+  const pivotOnBody = { x: pivot.x - com.x, y: pivot.y - com.y, z: pivot.z - com.z };
+  const jd = RAPIER.JointData.revolute(pivot, pivotOnBody, { x: 0, y: 0, z: 1 });
+  const joint = world.createImpulseJoint(jd, chassis, rb, true);
+  // 下限：座墊最多壓縮約 1 mm（之後是硬止點）；上限：maxAngle。
+  // Rapier 0.21 的 JointData.revolute 不會帶入 limits 欄位（只有 prismatic 會），要在建立後用 setLimits 設定
+  joint.setLimits(-(1 * MM) / lever, d.maxAngle_rad);
+  return {
+    body: rb,
+    joint,
+    swing: true,
+    anchor: seat,
+    seatOnBody: { x: seat.x - com.x, y: seat.y - com.y, z: seat.z - com.z },
+    pivot,
+    mass: m,
+    seatK,
+    seatC,
+    pivotC: d.pivotFriction_Nmspr,
+    label: d.label,
+  };
+}
+
+/**
+ * 擺動式制振器的座墊與支點摩擦（第七階段 iter-75）：
+ * - 座墊：配重中心（擺動剛體上的點）相對它在車體上的靜止位置沿車體 up 的位移 rel < 0 時被壓縮，F = k·(−rel) − c·rel'（≥ 0，只能往上推）；
+ *   作用力施加在擺動剛體的座墊點，反作用力施加在車體的**同一個世界座標點**（牛頓第三定律，力矩也相等相反 → 角動量守恆）。
+ * - 支點黏滯摩擦：τ = −c_p·(ω_擺 − ω_車)·ẑ，相等相反地施加在兩個剛體（只消耗相對轉動的能量）
+ * @type {(car: any, d: any, up: any) => void}
+ */
+function swingDamperForces(car, d, up) {
+  const anchorW = localToWorld(car, d.anchor);
+  const t = d.body.translation();
+  const off = rotate(d.body.rotation(), d.seatOnBody);
+  const pW = { x: t.x + off.x, y: t.y + off.y, z: t.z + off.z };
+  const rel = (pW.x - anchorW.x) * up.x + (pW.y - anchorW.y) * up.y + (pW.z - anchorW.z) * up.z;
+  const vd = d.body.velocityAtPoint(pW);
+  const va = car.chassis.velocityAtPoint(pW);
+  const relV = (vd.x - va.x) * up.x + (vd.y - va.y) * up.y + (vd.z - va.z) * up.z;
+  if (rel < 0) {
+    const f = Math.max(0, d.seatK * -rel - d.seatC * relV);
+    d.body.addForceAtPoint({ x: up.x * f, y: up.y * f, z: up.z * f }, pW, true);
+    car.chassis.addForceAtPoint({ x: -up.x * f, y: -up.y * f, z: -up.z * f }, pW, true);
+  }
+  const axis = rotate(car.chassis.rotation(), { x: 0, y: 0, z: 1 });
+  const wb = d.body.angvel();
+  const wc = car.chassis.angvel();
+  const wrel = (wb.x - wc.x) * axis.x + (wb.y - wc.y) * axis.y + (wb.z - wc.z) * axis.z;
+  const tau = -d.pivotC * wrel;
+  d.body.addTorque({ x: axis.x * tau, y: axis.y * tau, z: axis.z * tau }, true);
+  car.chassis.addTorque({ x: -axis.x * tau, y: -axis.y * tau, z: -axis.z * tau }, true);
+}
+
+/**
+ * 擺動式制振器相對車體的擺角（rad，往上為正）：由座墊點相對靜止位置的高度差與力臂換算（小角度）
+ * @type {(car: any, d: any) => number}
+ */
+export function swingAngle(car, d) {
+  const anchorW = localToWorld(car, d.anchor);
+  const t = d.body.translation();
+  const off = rotate(d.body.rotation(), d.seatOnBody);
+  const up = rotate(car.chassis.rotation(), { x: 0, y: 1, z: 0 });
+  const rel = (t.x + off.x - anchorW.x) * up.x + (t.y + off.y - anchorW.y) * up.y + (t.z + off.z - anchorW.z) * up.z;
+  return Math.asin(Math.max(-1, Math.min(1, rel / (d.anchor.x - d.pivot.x))));
+}
+
+/**
  * 整車動能（J）：車體剛體（平移＋轉動）＋制振器剛體＋滑動保桿的滑動剛體（iter-61）＋傳動系轉動動能 ½·J·ω²（第四階段：輪子、輪軸、齒輪、馬達電樞，換算到輪軸）
  * @type {(car: any) => number}
  */
@@ -788,6 +904,12 @@ export function carKineticEnergy(car) {
   for (const d of car.dampers ?? []) {
     const u = d.body.linvel();
     e += 0.5 * d.body.mass() * (u.x * u.x + u.y * u.y + u.z * u.z);
+    // 第七階段：擺動式制振器會相對車體轉動，轉動動能另計（滑動式的轉動被 joint 鎖住、慣性 1e-9，可忽略）
+    if (d.swing) {
+      const wd = rotate({ x: -d.body.rotation().x, y: -d.body.rotation().y, z: -d.body.rotation().z, w: d.body.rotation().w }, d.body.angvel());
+      const Id = d.body.principalInertia();
+      e += 0.5 * (Id.x * wd.x * wd.x + Id.y * wd.y * wd.y + Id.z * wd.z * wd.z);
+    }
   }
   // 滑動保桿的滑動剛體（iter-61）：平移＋轉動動能（轉動與車體同步，joint 鎖住相對轉動）；彈簧位能不在這裡（見 sliderState）
   // iter-64：前後滑動板各自計入

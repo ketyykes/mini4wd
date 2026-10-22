@@ -2835,3 +2835,46 @@
 - `griffinVane.js` 檔頭與 `theme` 文字「三片羽片」→「四片」（程式本來就是每側四片；只改文字）。
 - SPEC 1.14 間隙列的 31 mm 合法清單改成第六階段 10 款。
 - `node scripts/score.mjs`：**20/20**（22:26，最終版本）。
+
+---
+
+# 第七階段（2026-10-23 02:47 起）：更多合法的改裝零組件，全部符合物理定律
+
+> 使用者 02:47 改寫 GOAL（見根目錄 `GOAL.md`），02:51 以 `/goal` 指定執行到 09:00；08:00 後只修 bug、驗證、出圖、整理文件。
+
+## iter-74（第 0 輪：基準、零件研究、物理稽核）
+### 計畫
+- 基準：app main（`13aa52a`）跑 `node scripts/score.mjs`；改裝零件特寫（app `render.mjs` 搭配 `config=p5-taiwan`、Blender `render/out/config-p5-taiwan/`）＋外觀評審 → 第七階段基準分數。
+- `shared/REVIEWER_BRIEF.md` 改為第七階段版本（第 6 項「底盤與改裝零件細節」為重點，其餘 5 項不退步）。
+- 研究 subagent：`PARTS_RESEARCH.md` 第七階段節（AK 起，≥ 12 個候選，來源實際開啟）＋`TAIWAN_SOURCES.md`。
+- 物理稽核 subagent：新檔 `shared/reference/PHYSICS_AUDIT.md`（既有機制的能量、受力對稱、摩擦上限、量綱、特例分支）。
+- 預期：分數不變（20/20）；取得基準與實作順序。
+
+### 結果（03:02）
+- `node scripts/score.mjs`：**20/20**（02:57，app `13aa52a` 不變）。
+- 評審（`shared/reviews/iter-74/REVIEW.md`，第七階段 brief；看 p5-taiwan / p4-tech 的 app 特寫＋Blender＋陣容圖）：錨點 6.00；本輪 8 / 7.5 / 8 / 8 / 7.5 / 7.5 = **7.75** → 總分 **88.75**（第七階段基準）。最該改：app 零件材質（FRP 像金屬、黃銅偏芥末、碳纖看不出斜紋）、錐形導輪看起來像碗（程式截面本來就是直線斜邊，應是光影；未改）、橡膠環不凸出、滑動保桿缺滑軌座。
+- 研究 subagent：PARTS_RESEARCH 第七階段 AK–AT 節，25 款候選（官方適用表都含 MA，tamiya.com 官方頁 2026-10-23 實際開啟；4 款以 curl 讀取已標明），需新機制 4 款（球頭連桿擺動、導輪角度板、單向輪、前下擋板斜面）；TAIWAN_SOURCES 新增 TW26–TW41。
+- 物理稽核 subagent：`shared/reference/PHYSICS_AUDIT.md`。沒有找到零件 id 特例或倍率捷徑、恢復係數 > 1、缺反作用力、摩擦超過 μN、單位混用；發現 H1（導輪碰撞體是球，19 mm 導輪球底離地 0.5 mm，配 24 mm 輪時整車撐在導輪上、四輪法向力 0）、M1（滑動保桿撞牆測試的初始姿勢已插進對側牆）、L1–L9 低嚴重度項。H1 排進後續輪次修正。
+
+## iter-75（球頭連桿擺動式制振器＝新物理機制、重型制振器、8×8×14 側制振器）
+### 計畫
+- 依 AS 順序表：第 16 順位 ★`damper-balllink-square`（GOAL 要求的「新物理機制」之一）、第 1 順位 `damper-heavy`（15401）、第 2 順位 `damper-square-8x8x14`（15517）。
+- 預期：擺動式落地後彈跳比鎖死低、能量不增；重型 / 8×8 沿用滑動機制，質量與外框依官方數值。
+- 示範設定 `configs/p7-demo.json`（第七階段新零件逐輪加入）。
+
+### 執行
+- 擺動式制振器（新機制）：
+  - 零件資料 `swing`（擺臂 12 mm、上擺 10°、支點高 3 mm、擺臂 1.0 g 隨動、支點底座 2.0 g 固定、球頭黏滯 2×10⁻⁶ N·m·s/rad，全部推估並寫依據）。
+  - `assembly.js`：支點在後導輪板制振器座上方，配重橫放在支點前方 12 mm、靠在後保桿頂面；`swingMovable()` 把方塊＋擺臂合成一個剛體（質心、對質心慣性含平行軸）；干涉實體 = 擺動掃過範圍＋支點底座。
+  - `sim.js`：`createSwingDamper()` 用 Rapier revolute joint（車體 z 軸），初始姿態 = 座墊壓縮平衡角；`swingDamperForces()` 座墊力作用 / 反作用加在同一世界座標點、支點摩擦 ±τ；`carKineticEnergy` 加擺動剛體的轉動動能；`swingAngle()` 給測試用。
+  - 發現：Rapier 0.21 的 `JointData.revolute` 不會帶入 `limits`（只有 prismatic 會），第一次實測擺角 −19.5° ～ +32°；改用建立後 `joint.setLimits()`，擺角 −4.9° ～ +9.8°。
+  - `model.js`：`buildSwingDamper()`（FRP 支點底座、球頭螺柱＋鋼球、樹脂球頭杯、斜 + 平 FRP 擺臂、黃銅方塊、止擋墊、固定螺絲）。
+- `damper-heavy`、`damper-square-8x8x14`：沿用既有滑動制振器，只換尺寸與質量（官方）。
+- `configs/p7-demo.json`：pc-box、FRP 後板＋球頭連桿制振器、13 mm 鋁後導輪、26 mm 輕量輪框（31 mm 會碰 FRP 後板臂 → STAY_TIRE_CLEARANCE）＋第五階段示範的其餘零件；142.87 g，合法。
+
+### 驗證
+- 新測試：`P17_balllink_swing`（靜止擺角 = 解析平衡角 −1.432°、落下擺角在止點內、斷電滑行動能不增）、`P17_heavy_damper`、`P17_p7_demo`（3 圈）；`P17_mass_damper` 加 8×8×14 與球頭連桿；`P17_coast_energy` 加 p7-demo；`P18_known_cases` 加 5 個新違規案例（球頭連桿 / 重型制振器裝標準後架 → MOUNT_COMPAT；球頭連桿支點底座 × 後配重 → BALLAST_DAMPER_CLEARANCE；球頭連桿 × mantis → DAMPER_BODY_CLEARANCE；8×8×14 × owl → DAMPER_BODY_CLEARANCE）與 3 個合法對照。
+- **重型制振器的彈跳方向與其他款不同（如實記錄，不調參數）**：100 mm 落下，可滑動的第一個彈跳峰值反而比鎖死高（車體原點 0.514 vs 0.506 mm；系統質心 0.532 vs 0.494 mm），滯空較短（0 vs 9.0 ms）。行程 1–5 mm 掃描結果不單調（3 mm 最高），代表是重配重在行程內晚一步落回座墊、把車體再推一次的動力學結果，不是程式錯誤。行程 3 mm 是研究推估值（同 damper-rear-cylinder），**不為了讓測試通過改行程**；重型制振器不放進「彈起較低」的 P17_mass_damper 案例，另立 `P17_heavy_damper` 只檢查物理上必然成立的性質（質量守恆、滯空較短、斷電滑行能量不增）。其他 5 款以系統質心量也都是可滑動較低。
+- 30 mm 落下總機械能（`/tmp/audit-drop-p7.mjs`，座墊位能用座墊點位移）：球頭連桿兩組、重型制振器每步增量 0；8×8×14 只有射線輪接地那一步 +25.5 µJ（PEw，稽核 L8 已知）。
+- 指定測試 7 項通過（03:17）。
+- `node scripts/score.mjs`：**20/20**（03:22）。外觀：預設車與車殼不變，沿用基準 7.75（新零件外形併入下次評審）→ 總分 88.75。

@@ -534,6 +534,9 @@ describe('P17 新零件的物理效果（只透過組裝設定替換）', () => 
       ['側制振器', { massDamper: 'damper-side-square' }],
       // 第五階段（iter-58）：MA 側制振器組 6×6×32 mm（FRP 側板固定在底盤，只有黃銅方塊滑動）；不裝車殼（側制振器與多數車殼干涉，見 P18）
       ['MA 側制振器組 32 mm', { massDamper: 'damper-side-square-32', body: null }],
+      // 第七階段（iter-75）：8×8×14 側制振器、球頭連桿擺動式（擺動剛體；不裝車殼）。重型 8.8 g 另見 P17_heavy_damper
+      ['側制振器 8×8×14', { massDamper: 'damper-square-8x8x14', body: null }],
+      ['球頭連桿制振器（擺動）', { rearStay: 'stay-rear-frp', massDamper: 'damper-balllink-square', body: null }],
     ]) {
       const free = assemble(cfg(over));
       // 對照組：同一顆制振器用螺帽鎖死（locked，PARTS_RESEARCH H 節：官方說明可當固定配重）——質量、位置完全相同，只差能不能滑動
@@ -557,12 +560,156 @@ describe('P17 新零件的物理效果（只透過組裝設定替換）', () => 
     }
   }, 120000);
 
+  test('P17_heavy_damper 重型制振器 8.8 g（行程 3 mm，推估）：可滑動時彈跳滯空比鎖死短、質量守恆、斷電滑行動能不增；第一個彈跳峰值不要求較低（見說明）', () => {
+    // 說明（iter-75 實測，ITERATION_LOG 記錄）：8.8 g 配重在 3 mm 行程內晚一步落回座墊、把車體再往上推一次，
+    // 以「系統質心」量的第一個彈跳峰值反而比鎖死高（0.532 vs 0.494 mm），換 1–5 mm 行程結果不單調；這是模型結果，不調參數去配合。
+    // 這裡只檢查物理上一定成立的性質：質量守恆、滯空較短（落地後配重的衝量讓車輪較快回到地面）、能量不增
+    const over = { rearStay: 'stay-rear-frp', massDamper: 'damper-heavy' };
+    const free = assemble(cfg(over));
+    const locked = assemble(cfg({ ...over, massDamper: { base: 'damper-heavy', locked: true } }));
+    expect(free.mass_g).toBeCloseTo(locked.mass_g, 9);
+    expect(free.movable.length).toBe(1);
+    const env = sim.createWorld(buildStraight(2));
+    const car = sim.createCar(env, { assembly: free });
+    env.world.step();
+    const m = (car.chassis.mass() + car.dampers.reduce((a, d) => a + d.body.mass(), 0)) * 1000;
+    expect(Math.abs(m - free.mass_g)).toBeLessThan(0.1);
+    const df = dropTest(free, 100);
+    const dl = dropTest(locked, 100);
+    console.log(`[P17] 重型制振器 100 mm 落下：可滑動 彈起 ${f3(df.rebound_mm)} mm、滯空 ${df.air_ms.toFixed(1)} ms、Σ|v_y| ${f3(df.sumVy_mm)} mm；鎖死 彈起 ${f3(dl.rebound_mm)} mm、滯空 ${dl.air_ms.toFixed(1)} ms、Σ|v_y| ${f3(dl.sumVy_mm)} mm`);
+    expect(df.air_ms).toBeLessThan(dl.air_ms);
+    // 斷電滑行
+    const env2 = sim.createWorld(buildStraight(60));
+    const car2 = sim.createCar(env2, { assembly: free, s: 0.3, lane: 0, powered: false });
+    const dt = env2.world.timestep;
+    for (let i = 0; i < 0.1 / dt; i++) {
+      sim.stepCar(env2, car2);
+    }
+    for (const b of [car2.chassis, ...car2.dampers.map((d) => d.body)]) {
+      b.setLinvel({ x: 2.5, y: 0, z: 0 }, true);
+    }
+    let prev = sim.carKineticEnergy(car2);
+    let maxRise = 0;
+    for (let i = 0; i < 3 / dt; i++) {
+      sim.stepCar(env2, car2);
+      const e = sim.carKineticEnergy(car2);
+      maxRise = Math.max(maxRise, e - prev);
+      prev = e;
+    }
+    console.log(`[P17] 重型制振器 斷電滑行 3 s：相鄰步動能最大增加 ${maxRise.toExponential(2)} J`);
+    expect(maxRise).toBeLessThanOrEqual(1e-7);
+  }, 120000);
+
+  test('P17_balllink_swing 球頭連桿制振器（第七階段新機制：繞橫向軸擺動）：擺角在止點範圍內、靜止角 = 座墊壓縮平衡角、座墊力作用 / 反作用同點、斷電滑行動能不增', () => {
+    const asm = assemble(cfg({ rearStay: 'stay-rear-frp', massDamper: 'damper-balllink-square', body: null }));
+    expect(validateAssembly(asm).ok).toBe(true);
+    const mv = asm.movable[0];
+    // 擺動剛體 = 方塊 8.3 g＋擺臂 1.0 g；支點底座 2.0 g 留在車體剛體
+    expect(mv.mass_g).toBeCloseTo(9.3, 9);
+    expect(asm.rigid.mass_g + mv.mass_g).toBeCloseTo(asm.mass_g, 9);
+    const part = asm.partsBySlot.massDamper;
+    const lever = mv.seatPos.x - mv.pivot.x;
+    const phi0 = -part.seatDeflection_mm / lever;
+    // 靜置 0.3 s：擺角 = 座墊壓縮平衡角（容許 0.1°）
+    {
+      const env = sim.createWorld(buildStraight(4));
+      const car = sim.createCar(env, { assembly: asm, s: 0.5, lane: 0, powered: false });
+      for (let i = 0; i < 0.3 / env.world.timestep; i++) {
+        sim.stepCar(env, car);
+      }
+      const a = sim.swingAngle(car, car.dampers[0]);
+      console.log(`[P17] 球頭連桿：靜止擺角 ${((a * 180) / Math.PI).toFixed(3)}°（座墊平衡角 ${((phi0 * 180) / Math.PI).toFixed(3)}°）`);
+      expect(Math.abs(a - phi0)).toBeLessThan((0.1 * Math.PI) / 180);
+    }
+    // 100 mm 落下：擺角不超出 [下止點, 上止點]（容許 0.5°，Rapier 止點是軟約束）
+    {
+      const env = sim.createWorld(buildStraight(4));
+      const car = sim.createCar(env, { assembly: asm, s: 0.5, lane: 0, powered: false });
+      for (const b of [car.chassis, ...car.dampers.map((d) => d.body)]) {
+        const t = b.translation();
+        b.setTranslation({ x: t.x, y: t.y + 0.1, z: t.z }, true);
+      }
+      let lo = Infinity;
+      let hi = -Infinity;
+      for (let i = 0; i < 0.4 / env.world.timestep; i++) {
+        sim.stepCar(env, car);
+        const a = sim.swingAngle(car, car.dampers[0]);
+        lo = Math.min(lo, a);
+        hi = Math.max(hi, a);
+      }
+      const deg = (/** @type {number} */ r) => ((r * 180) / Math.PI).toFixed(2);
+      console.log(`[P17] 球頭連桿 100 mm 落下：擺角 ${deg(lo)}° ～ ${deg(hi)}°（上止點 ${deg(mv.maxAngle_rad)}°）`);
+      expect(hi).toBeGreaterThan(mv.maxAngle_rad / 2);
+      expect(hi).toBeLessThanOrEqual(mv.maxAngle_rad + (0.5 * Math.PI) / 180);
+      expect(lo).toBeGreaterThanOrEqual(-(1 / lever) - (0.5 * Math.PI) / 180);
+    }
+    // 斷電滑行 3 s：動能（含擺動剛體的轉動動能）相鄰步不增（容許同 P17_coast_energy）
+    {
+      const env = sim.createWorld(buildStraight(60));
+      const car = sim.createCar(env, { assembly: asm, s: 0.3, lane: 0, powered: false });
+      const dt = env.world.timestep;
+      for (let i = 0; i < 0.1 / dt; i++) {
+        sim.stepCar(env, car);
+      }
+      for (const b of [car.chassis, ...car.dampers.map((d) => d.body)]) {
+        b.setLinvel({ x: 2.5, y: 0, z: 0 }, true);
+      }
+      let prev = sim.carKineticEnergy(car);
+      const e0 = prev;
+      let maxRise = 0;
+      for (let i = 0; i < 3 / dt; i++) {
+        sim.stepCar(env, car);
+        const e = sim.carKineticEnergy(car);
+        maxRise = Math.max(maxRise, e - prev);
+        prev = e;
+      }
+      console.log(`[P17] 球頭連桿 斷電滑行 3 s：動能 ${f3(e0)} → ${prev.toExponential(3)} J，相鄰步最大增加 ${maxRise.toExponential(2)} J`);
+      expect(prev).toBeLessThan(e0);
+      expect(maxRise).toBeLessThanOrEqual(1e-7);
+    }
+  }, 120000);
+
+  test('P17_p7_demo 第七階段示範設定合法，主賽道跑完官方 3 圈、不穿牆（≤ 1 mm，同 P06）、不翻車', () => {
+    const asm = assemble(loadConfig('p7-demo'));
+    const v = validateAssembly(asm);
+    expect(v.ok, JSON.stringify(v.violations)).toBe(true);
+    const track = buildCircuit();
+    const env = sim.createWorld(track);
+    const car = sim.createCar(env, { assembly: asm, s: 0.15, lane: 0 });
+    const L = track.path.length;
+    let last = 0.15;
+    let dist = 0;
+    let maxPen = 0;
+    let minUp = 1;
+    let steps = 0;
+    for (; steps < Math.round(12 / env.world.timestep) && dist < 3 * L; steps++) {
+      sim.stepCar(env, car);
+      const t = car.chassis.translation();
+      const c = track.path.project(t.x, t.z);
+      let ds = c.s - last;
+      if (ds < -L / 2) {
+        ds += L;
+      }
+      if (ds > L / 2) {
+        ds -= L;
+      }
+      dist += ds;
+      last = c.s;
+      maxPen = Math.max(maxPen, sim.wallPenetration(env, car));
+      minUp = Math.min(minUp, sim.upAxis(car).y);
+    }
+    console.log(`[P17] p7-demo：${f3(asm.mass_g)} g，3 圈 ${f3(dist)} / ${f3(3 * L)} m、${(steps * env.world.timestep).toFixed(2)} s，最大穿牆 ${(maxPen * 1000).toFixed(3)} mm、最小 up.y ${f3(minUp)}`);
+    expect(dist).toBeGreaterThanOrEqual(3 * L);
+    expect(maxPen).toBeLessThanOrEqual(0.001);
+    expect(minUp).toBeGreaterThan(0.8);
+  }, 180000);
+
   test('P17_coast_energy 斷電滑行時整車動能單調不增（含制振器、煞車海綿的組裝）', () => {
     // 容許值：相鄰兩步動能增加量 ≤ 1e-7 J（約初始動能 0.4 J 的 2.5×10⁻⁷）。
     // 理由：射線輪的彈簧（靜態壓縮 0.3 mm）與制振器座墊在滑行中有微小的上下振動，位能與動能互換造成的數值起伏在 1e-8 J 等級；
     // 真的「自己加速」（例如阻力方向錯誤）會是每步 1e-4 J 以上，遠大於此值
     const TOL_J = 1e-7;
-    for (const name of ['default', 'race-frp', 'carbon-damper']) {
+    for (const name of ['default', 'race-frp', 'carbon-damper', 'p7-demo']) {
       const asm = assemble(loadConfig(name));
       const env = sim.createWorld(buildStraight(60));
       const car = sim.createCar(env, { assembly: asm, s: 0.3, lane: 0, powered: false });
@@ -1283,6 +1430,16 @@ describe('P18 干涉與安裝相容性', () => {
       { over: { massDamper: { base: 'damper-side-square-32', length_mm: 60 }, body: null }, codes: ['SIDE_PART_TIRE_ZONE', 'DAMPER_TIRE_CLEARANCE'] },
       // 32 mm 側制振器比 14 mm 長 → 碰到 aero-wing 車殼側裙（14 mm 款合法，見下方合法對照）
       { over: { massDamper: 'damper-side-square-32', body: 'body-aero-wing' }, codes: ['DAMPER_BODY_CLEARANCE'] },
+      // ---- 第七階段（iter-75）：新制振器 ----
+      // 球頭連桿、重型制振器要裝在後導輪板的制振器座（標準塑膠後架沒有）
+      { over: { massDamper: 'damper-balllink-square' }, codes: ['MOUNT_COMPAT'] },
+      { over: { massDamper: 'damper-heavy' }, codes: ['MOUNT_COMPAT'] },
+      // 球頭連桿的支點底座和後配重搶同一個位置（板尾舌片上方）
+      { over: { rearStay: 'stay-rear-frp', massDamper: 'damper-balllink-square', ballast: 'ballast-hex-1g@rear' }, codes: ['BALLAST_DAMPER_CLEARANCE'] },
+      // 擺動掃過的範圍碰到 mantis 車殼尾部
+      { over: { rearStay: 'stay-rear-frp', massDamper: 'damper-balllink-square', body: 'body-mantis-scythe' }, codes: ['DAMPER_BODY_CLEARANCE'] },
+      // 8×8 方塊比 6×6 寬 2 mm、高 2 mm → 碰到 owl 車殼側裙（6×6×14 在 aero-wing 合法，見合法對照）
+      { over: { massDamper: 'damper-square-8x8x14', body: 'body-owl-hush' }, codes: ['DAMPER_BODY_CLEARANCE'] },
     ];
     for (const c of cases) {
       const res = validateAssembly(assemble(cfg(c.over)));
@@ -1296,7 +1453,7 @@ describe('P18 干涉與安裝相容性', () => {
       }
     }
     // 合法的對照：雙層導輪＋單層的碳纖寬後板、FRP 後板＋後制振器
-    for (const over of [{ rollers: 'roller-13-12-double', rearStay: 'stay-rear-carbon-wide' }, { rearStay: 'stay-rear-frp', massDamper: 'damper-rear-cylinder' }, { stabilizer: 'stabilizer-head-17', rollers: 'roller-19', body: null }, { rollers: 'roller-13-tapered', frontStay: 'stay-front-frp', rearStay: 'stay-rear-frp', body: null }, { frontRollers: 'roller-19-tapered', rearRollers: 'roller-13-alu', frontStay: 'stay-front-frp' }, { frontRollers: 'roller-13-12-double' }, { rearStay: 'stay-rear-carbon-wide', frontRollers: 'roller-19' }, { massDamper: 'damper-side-square', body: 'body-aero-wing' }, { massDamper: 'damper-side-square-32', body: 'body-pc-box' }, { wheels: 'wheel-31-lowfriction', body: 'body-pc-box' }, { motor: 'motor-rev' }]) {
+    for (const over of [{ rollers: 'roller-13-12-double', rearStay: 'stay-rear-carbon-wide' }, { rearStay: 'stay-rear-frp', massDamper: 'damper-rear-cylinder' }, { stabilizer: 'stabilizer-head-17', rollers: 'roller-19', body: null }, { rollers: 'roller-13-tapered', frontStay: 'stay-front-frp', rearStay: 'stay-rear-frp', body: null }, { frontRollers: 'roller-19-tapered', rearRollers: 'roller-13-alu', frontStay: 'stay-front-frp' }, { frontRollers: 'roller-13-12-double' }, { rearStay: 'stay-rear-carbon-wide', frontRollers: 'roller-19' }, { massDamper: 'damper-side-square', body: 'body-aero-wing' }, { massDamper: 'damper-side-square-32', body: 'body-pc-box' }, { wheels: 'wheel-31-lowfriction', body: 'body-pc-box' }, { motor: 'motor-rev' }, { rearStay: 'stay-rear-frp', massDamper: 'damper-balllink-square' }, { rearStay: 'stay-rear-frp', massDamper: 'damper-heavy' }, { massDamper: 'damper-square-8x8x14', body: 'body-hinge-deck' }]) {
       const res = validateAssembly(assemble(cfg(over)));
       expect(res.ok, JSON.stringify(res.violations)).toBe(true);
     }

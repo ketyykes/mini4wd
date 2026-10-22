@@ -8,6 +8,7 @@ import raceFrpConfig from '../configs/race-frp.json';
 import carbonDamperConfig from '../configs/carbon-damper.json';
 import p4TechConfig from '../configs/p4-tech.json';
 import p5TaiwanConfig from '../configs/p5-taiwan.json';
+import p7DemoConfig from '../configs/p7-demo.json';
 import { spec as globalSpec, deriveParams } from './spec.js';
 import { resolvePart, listParts } from './parts/index.js';
 import { getBody, bodyMassProps, bodyClearance } from './bodies/index.js';
@@ -129,7 +130,7 @@ export function slotChoices(slot) {
 }
 
 /** @type {Record<string, any>} */
-const CONFIGS = { default: defaultConfig, speed: speedConfig, technical: technicalConfig, light: lightConfig, 'race-frp': raceFrpConfig, 'carbon-damper': carbonDamperConfig, 'p4-tech': p4TechConfig, 'p5-taiwan': p5TaiwanConfig };
+const CONFIGS = { default: defaultConfig, speed: speedConfig, technical: technicalConfig, light: lightConfig, 'race-frp': raceFrpConfig, 'carbon-damper': carbonDamperConfig, 'p4-tech': p4TechConfig, 'p5-taiwan': p5TaiwanConfig, 'p7-demo': p7DemoConfig };
 
 /** @type {() => string[]} 所有組裝設定名稱 */
 export const listConfigs = () => Object.keys(CONFIGS);
@@ -388,6 +389,10 @@ export function assemble(rawConfig) {
   const opt = optionalLayout(p, comp, rollers);
   for (const d of opt.dampers) {
     place('massDamper', d.label, d.mass_g, d.pos);
+    // 第七階段：擺動式制振器的擺臂隨配重一起擺動（另列一筆質量，物理引擎併入同一個擺動剛體）
+    if (d.swing) {
+      place('massDamper', `${d.label}擺臂`, d.swing.armMass_g, d.swing.armPos);
+    }
   }
   // 第五階段：制振器托架（例如 MA 側制振器的 FRP 側板）鎖死在底盤上，質量計入剛體，不跟配重一起滑動
   for (const b of opt.damperBrackets) {
@@ -414,7 +419,7 @@ export function assemble(rawConfig) {
   const { mass_g, com_mm } = total;
   const inertia_kgm2 = total.inertia_kgm2;
   // 制振器鎖死（locked = true，用螺帽鎖緊當固定配重）時視為剛體的一部分
-  const damperLabels = new Set(opt.dampers.map((d) => d.label));
+  const damperLabels = new Set(opt.dampers.flatMap((d) => (d.swing ? [d.label, `${d.label}擺臂`] : [d.label])));
   const movableParts = p.massDamper && !p.massDamper.locked ? parts.filter((q) => q.slot === 'massDamper' && damperLabels.has(q.label)) : [];
   // 滑動保桿（iter-61）：滑動板＋裝在上面的前導輪（＋同一支螺絲上的穩定零件）是另一個剛體，不屬於車體剛體
   // iter-64：後滑動保桿同理（後滑動板＋後導輪）；前後都裝時是兩個獨立的滑動剛體
@@ -424,7 +429,7 @@ export function assemble(rawConfig) {
   const sliderParts = parts.filter((q) => sliders.some((sl) => sl.labels.includes(q.label)));
   const detached = [...movableParts, ...sliderParts];
   const rigid = detached.length > 0 ? massProps(parts.filter((q) => !detached.includes(q)), ch, bodyProps) : total;
-  const movable = movableParts.map((q) => {
+  const movable = p.massDamper?.swing ? swingMovable(p.massDamper, movableParts, opt.dampers[0], lift) : movableParts.map((q) => {
     const d = p.massDamper;
     return {
       label: q.label,
@@ -552,6 +557,63 @@ export function assemble(rawConfig) {
         }
       : null,
   };
+}
+
+/**
+ * 擺動式制振器（第七階段 iter-75，球頭連桿）的擺動剛體：配重＋擺臂合成一個剛體，繞支點（球頭中心）的橫向軸（車體 z 軸）轉動。
+ * 質心 = 配重與擺臂的質量加權；對自身質心的慣性：配重方塊（6 × 6 × 32 mm，32 沿 z）＋擺臂細桿（沿 x）＋平行軸定理。
+ * 座墊接觸點 = 配重中心（座墊在配重正下方）。位置都是車體座標（已加 lift）
+ * @type {(d: Record<string, any>, movableParts: PlacedPart[], placed: any, lift: number) => any[]}
+ */
+function swingMovable(d, movableParts, placed, lift) {
+  if (movableParts.length === 0) {
+    return [];
+  }
+  const weight = movableParts.find((q) => q.label === placed.label);
+  const arm = movableParts.find((q) => q.label === `${placed.label}擺臂`);
+  const own = [weight, arm].filter((q) => q !== undefined);
+  const mass_g = own.reduce((a, q) => a + q.mass_g, 0);
+  const com = {
+    x: own.reduce((a, q) => a + q.mass_g * q.pos.x, 0) / mass_g,
+    y: own.reduce((a, q) => a + q.mass_g * q.pos.y, 0) / mass_g,
+    z: own.reduce((a, q) => a + q.mass_g * q.pos.z, 0) / mass_g,
+  };
+  // g·mm²：方塊自身（x 向寬 w、y 向高 h、z 向長 L）
+  const m = weight.mass_g;
+  const w = d.width_mm;
+  const h = d.height_mm;
+  const L = d.length_mm;
+  const I = { x: (m * (h * h + L * L)) / 12, y: (m * (w * w + L * L)) / 12, z: (m * (w * w + h * h)) / 12 };
+  // 擺臂：沿 x 的細桿（長 = 支點到配重的水平距離）
+  if (arm) {
+    const la = d.swing.armLength_mm;
+    I.y += (arm.mass_g * la * la) / 12;
+    I.z += (arm.mass_g * la * la) / 12;
+  }
+  for (const q of own) {
+    const dx = q.pos.x - com.x;
+    const dy = q.pos.y - com.y;
+    const dz = q.pos.z - com.z;
+    I.x += q.mass_g * (dy * dy + dz * dz);
+    I.y += q.mass_g * (dx * dx + dz * dz);
+    I.z += q.mass_g * (dx * dx + dy * dy);
+  }
+  return [
+    {
+      label: placed.label,
+      mass_g,
+      pos: com,
+      seatPos: weight.pos,
+      pivot: lifted(placed.swing.pivot, lift),
+      inertia_kgm2: { x: I.x * 1e-9, y: I.y * 1e-9, z: I.z * 1e-9 },
+      maxAngle_rad: (d.swing.maxAngle_deg * Math.PI) / 180,
+      pivotFriction_Nmspr: d.swing.pivotFriction_Nmspr,
+      stroke_mm: d.stroke_mm,
+      seatDeflection_mm: d.seatDeflection_mm,
+      seatDampingRatio: d.seatDampingRatio,
+      slideFriction_Nspm: 0,
+    },
+  ];
 }
 
 /** 滑動保桿的滑動板在零件清單（asm.parts）中的標籤（前 / 後） */
@@ -693,7 +755,24 @@ function optionalLayout(p, comp, rollers) {
   /** @type {{ label: string, mass_g: number, pos: Vec3 }[]} 制振器托架（固定在底盤，第五階段） */
   const damperBrackets = [];
   const d = p.massDamper;
-  if (d) {
+  if (d && d.swing) {
+    // 第七階段（iter-75）：擺動式制振器（球頭連桿）——支點在後導輪板制振器座上方，配重橫放在支點前方 armLength 處，
+    // 靜止時靠在後保桿頂面的止擋墊上；往上擺到 maxAngle 為止。干涉用「擺動掃過的範圍」：方塊轉 maxAngle 時角點多出的量另加 1 mm
+    const sw = d.swing;
+    const m = p.rearStay.damperMount ?? { x_mm: -79, z_mm: 0, y_mm: ch.bumperBottomY_mm };
+    const pivot = { x: m.x_mm, y: m.y_mm + sw.pivotHeight_mm, z: m.z_mm };
+    const seat = { x: m.x_mm + sw.armLength_mm, y: ch.bumperBottomY_mm + (ch.bumperThickness_mm ?? 2.4), z: m.z_mm };
+    const h = d.height_mm;
+    const swept = boxAt(seat.x, seat.z, seat.y, d.width_mm + 2, d.length_mm, h + d.stroke_mm + 1);
+    const pos = { x: seat.x, y: seat.y + h / 2, z: seat.z };
+    // 擺臂質心：支點與配重之間的中點（FRP 小板）
+    const armPos = { x: (pivot.x + pos.x) / 2, y: (pivot.y + pos.y) / 2, z: pivot.z };
+    dampers.push({ label: '制振器', mass_g: d.mass_g, pos, seat, part: d, swept, index: 0, swing: { pivot, armPos, armMass_g: sw.armMass_g } });
+    solids.push({ group: 'damper', slot: 'massDamper', label: '制振器', solid: /** @type {Solid} */ (swept) });
+    damperBrackets.push({ label: '制振器支點底座', mass_g: sw.bracketMass_g, pos: { x: pivot.x, y: m.y_mm + 1, z: pivot.z } });
+    // 支點底座＋球頭＋球頭杯也是實體（與 model.js 同尺寸：底座 7 × 22 mm、球頭杯外徑 4.4 mm 頂到支點上方 2.2 mm），和配重等零件一起做干涉檢查
+    solids.push({ group: 'damper', slot: 'massDamper', label: '制振器支點底座', solid: /** @type {Solid} */ (boxAt(pivot.x, pivot.z, m.y_mm, 7, 22, sw.pivotHeight_mm + 2.2)) });
+  } else if (d) {
     /** @type {{ x: number, y: number, z: number }[]} 制振器底面中心（下止點） */
     let seats = [];
     if (d.mount === 'side') {

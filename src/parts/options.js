@@ -88,6 +88,106 @@ export const massDamperParts = [
       taiwan: 'TAIWAN_SOURCES TW20（四驅博士學校／露天，15490）',
     },
   },
+  // ---- 第七階段（iter-75）：滑動式制振器新款（沿用既有座墊＋prismatic 結構，只換尺寸與質量；PARTS_RESEARCH 第七階段 AL 節）----
+  {
+    id: 'damper-heavy',
+    category: 'mass-damper',
+    name: '重型制振器（黃銅旋轉體 8.8 g，套在長螺絲上可上下滑動）',
+    material: 'brass',
+    mount: 'rear',
+    count: 1,
+    shape: 'cylinder',
+    diameter_mm: 12,
+    height_mm: 9.5,
+    stroke_mm: 3,
+    mass_g: 8.8,
+    seatDeflection_mm: 0.3,
+    seatDampingRatio: 0.5,
+    slideFriction_Nspm: 0.02,
+    compat: { requires: ['rear-damper-mount'] },
+    src: {
+      mass_g: 'PARTS_RESEARCH 第七階段 AL 節 [T15401] 官方：1 顆 8.8 g',
+      dims: '推估（AL 節）：官方未寫形狀尺寸；8.8 g ÷ 黃銅 8.5 g/cm³ ≈ 1,035 mm³ → 約 φ12 × 9.5 mm（中孔 φ2.2）',
+      stroke_mm: '推估（AL 節）：官方「六角ナットとスペーサーによりウェイトの可動範囲を調整」，取同 damper-rear-cylinder 的 3 mm',
+      seat: '座墊剛性、阻尼、滑動摩擦同 damper-rear-cylinder（推估）',
+      rule: '[REG7] Sec.3：制振器位置不限；裝在車尾中央',
+      taiwan: 'TAIWAN_SOURCES TW26',
+    },
+  },
+  {
+    id: 'damper-square-8x8x14',
+    category: 'mass-damper',
+    name: '側制振器 8×8×14 mm（黃銅方塊 6.6 g，左右各 1 顆，可上下滑動）',
+    material: 'brass',
+    mount: 'side',
+    count: 2,
+    shape: 'box',
+    length_mm: 14,
+    width_mm: 8,
+    height_mm: 8,
+    stroke_mm: 2,
+    mass_g: 6.6,
+    seatDeflection_mm: 0.3,
+    seatDampingRatio: 0.5,
+    slideFriction_Nspm: 0.02,
+    compat: { requires: ['side-damper-mount'] },
+    src: {
+      mass_g: 'PARTS_RESEARCH 第七階段 AL 節 [T15517] 官方：黃銅 8×8×14 mm、1 顆 6.6 g',
+      dims: 'AL 節 [T15517] 官方 8×8×14 mm；比 6 mm 款寬 2 mm（側裝時外框多 2 mm，由 WIDTH / SIDE_PART_TIRE_ZONE 檢查）',
+      stroke_mm: '推估：同 damper-side-square 2 mm',
+      seat: '座墊剛性、阻尼、滑動摩擦同 damper-side-square（推估）',
+      rule: '[REG7] Sec.3：位置不限，但輪胎外側禁裝區（SIDE_PART_TIRE_ZONE，官方條文）仍適用',
+      mount: 'AL 節：官方「使用可能マシン」含 MA；裝在底盤側制振器座（同 damper-side-square，兩者互斥）',
+    },
+  },
+  // ---- 第七階段（iter-75）：球頭連桿制振器（擺動式，新物理機制：繞橫向軸的鉸接自由度）----
+  {
+    id: 'damper-balllink-square',
+    category: 'mass-damper',
+    name: '球頭連桿制振器（黃銅方塊 6×6×32 mm 橫放，掛在擺臂上繞球頭支點上下擺動）',
+    material: 'brass',
+    mount: 'rear-swing',
+    count: 1,
+    shape: 'box',
+    /** 方塊沿車寬方向（z）橫放：length = z 向長度、width = x 向寬度 */
+    length_mm: 32,
+    width_mm: 6,
+    height_mm: 6,
+    /** 擺動式沒有直線行程；stroke_mm = 擺到上限時配重中心抬高的量（由 swing 推導，給干涉掃掠範圍用） */
+    stroke_mm: 12 * Math.sin((10 * Math.PI) / 180),
+    mass_g: 8.3,
+    seatDeflection_mm: 0.3,
+    seatDampingRatio: 0.5,
+    /** 擺動式不沿螺絲滑動（球頭支點的轉動摩擦另見 swing.pivotFriction_Nmspr） */
+    slideFriction_Nspm: 0,
+    swing: {
+      /** 支點（球頭中心）在後導輪板制振器座上方的高度 */
+      pivotHeight_mm: 3,
+      /** 支點到配重中心的水平距離（配重在支點前方，朝車頭） */
+      armLength_mm: 12,
+      /** 往上擺的角度上限（往下由座墊與硬止點限制） */
+      maxAngle_deg: 10,
+      /** 擺臂（FRP 小板＋球頭杯）：隨配重一起擺動 */
+      armMass_g: 1.0,
+      /** 支點底座（FRP 底板＋球頭螺柱＋螺絲）：鎖死在後導輪板上 */
+      bracketMass_g: 2.0,
+      /** 球頭的黏滯轉動摩擦（N·m·s/rad） */
+      pivotFriction_Nmspr: 2e-6,
+    },
+    compat: { requires: ['rear-damper-mount'] },
+    src: {
+      mass_g: 'PARTS_RESEARCH 第五階段 AD 節 [T15478] 官方：黃銅 6×6×32 mm 方塊 1 顆 8.3 g',
+      dims: 'AD 節 [T15478] 官方 6×6×32 mm',
+      swing: 'AD 節 [T15478]「ボールリンクを支点にして可動」：繞球頭支點擺動；擺臂 12 mm、上擺上限 10°、支點高 3 mm 為推估（AD 節推估擺角 ±10°；第七階段 AL 節另一推估為擺臂約 8 mm、0～12°，兩者都無官方數值，取 AD 節值；配重靠在後保桿頂面的止擋墊上，所以往下不能擺）',
+      armMass_g: '推估：FRP 擺臂約 12×20×1.5 mm ≈ 360 mm³ × 1.85 g/cm³ ≈ 0.67 g＋球頭杯 2 個約 0.3 g（AD 節附件合計約 3 g 的拆分）',
+      bracketMass_g: '推估：AD 節附件約 3 g 扣掉擺臂 1.0 g',
+      pivotFriction_Nmspr: '推估：球頭與樹脂杯之間的黏滯摩擦，量級取「擺臂角速度 100 rad/s 時摩擦力矩約 0.2 mN·m（配重重力力矩約 1 mN·m 的 1/5）」',
+      seat: '座墊剛性、阻尼同 damper-side-square（推估）：配重下方的止擋墊靠在後保桿頂面',
+      rule: '[REG6] Sec.3：旋轉 / 制振器位置不限；裝在車尾中央，不在輪胎外側，不觸及 SIDE_PART_TIRE_ZONE',
+      mount: 'AD 節：官方說 MA 免加工可裝，裝在後導輪板的制振器座（stay-rear-frp / stay-rear-carbon-wide）；塑膠標準後導輪架沒有 → MOUNT_COMPAT',
+      taiwan: 'TAIWAN_SOURCES TW21（新莊超音速陽明／露天，15478）',
+    },
+  },
 ];
 
 /**

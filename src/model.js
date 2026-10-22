@@ -1189,6 +1189,76 @@ const buildStayPlates = (mats) => {
 };
 
 /**
+ * 擺動式制振器（第七階段 iter-75，球頭連桿 [T15478]）：位置取自組裝結果（asm.optional.dampers 的 seat / pos / swing.pivot，與質量、干涉、物理同一份）。
+ * 支點底座（FRP 小板，鎖在後導輪板尾端）＋兩支球頭螺柱（鋼球 φ3）→ 擺臂（1.5 mm FRP 小板，前端兩個黑色樹脂球頭杯包住鋼球）→
+ * 黃銅方塊 6×6×32（橫放，兩支螺絲由擺臂上方鎖進方塊）；方塊正下方的黑色止擋墊靠在後保桿頂面（座墊）
+ * @type {(mats: ReturnType<typeof makeMaterials>, d: any) => THREE.Group}
+ */
+const buildSwingDamper = (mats, d) => {
+  const part = d.part;
+  const grp = new THREE.Group();
+  grp.name = `mass-damper-${d.index}`;
+  grp.userData.part = 'mass-damper';
+  const pv = d.swing.pivot;
+  const W = part.width_mm;
+  const H = part.height_mm;
+  const L = part.length_mm;
+  // 黃銅方塊（x 向寬 W、z 向長 L）：四邊小倒角
+  const shape = new THREE.Shape([new THREE.Vector2(-W / 2, -L / 2), new THREE.Vector2(W / 2, -L / 2), new THREE.Vector2(W / 2, L / 2), new THREE.Vector2(-W / 2, L / 2)]);
+  const geo = new THREE.ExtrudeGeometry(shape, { depth: H - 0.6, bevelEnabled: true, bevelThickness: 0.3, bevelSize: 0.3, bevelSegments: 2 });
+  geo.rotateX(-Math.PI / 2);
+  geo.translate(0, 0.3, 0);
+  const block = new THREE.Mesh(geo, mats.brassWeight);
+  block.position.set(d.seat.x, d.seat.y, d.seat.z);
+  grp.add(block);
+  // 止擋墊（座墊）：方塊正下方的黑色橡膠小墊，厚 = 座墊靜態壓縮後剩下的間隙（視覺上 0.4 mm）
+  const pad = new THREE.Mesh(new THREE.BoxGeometry(W - 1, 0.4, 8), mats.chassisDark);
+  pad.position.set(d.seat.x, d.seat.y - 0.2, d.seat.z);
+  grp.add(pad);
+  // 支點底座：FRP 小板（1.5 mm）鎖在後導輪板尾端上方
+  const baseT = 1.5;
+  const baseY = pv.y - part.swing.pivotHeight_mm;
+  const base = new THREE.Mesh(new THREE.BoxGeometry(7, baseT, 22), [mats.frpEdge, mats.frpEdge, mats.frpPlate, mats.frpPlate, mats.frpEdge, mats.frpEdge]);
+  base.position.set(pv.x, baseY + baseT / 2, pv.z);
+  grp.add(base);
+  // 擺臂：1.5 mm FRP 小板，從支點水平伸到方塊後面、蓋在方塊頂面（兩支螺絲鎖進方塊）
+  const armT = 1.5;
+  const armTopY = d.seat.y + H + armT;
+  const armX0 = pv.x - 1.5;
+  const armX1 = d.seat.x + W / 2 - 0.5;
+  // 擺臂由支點斜上到方塊頂面：用一段斜板＋一段平板
+  const rise = armTopY - armT / 2 - pv.y;
+  const slopeLen = Math.hypot(d.seat.x - W / 2 - armX0, rise);
+  const slope = new THREE.Mesh(new THREE.BoxGeometry(slopeLen, armT, 20), [mats.frpEdge, mats.frpEdge, mats.frpPlate, mats.frpPlate, mats.frpEdge, mats.frpEdge]);
+  slope.position.set((armX0 + d.seat.x - W / 2) / 2, pv.y + rise / 2, pv.z);
+  slope.rotation.z = Math.atan2(rise, d.seat.x - W / 2 - armX0);
+  grp.add(slope);
+  const flat = new THREE.Mesh(new THREE.BoxGeometry(armX1 - (d.seat.x - W / 2), armT, 20), [mats.frpEdge, mats.frpEdge, mats.frpPlate, mats.frpPlate, mats.frpEdge, mats.frpEdge]);
+  flat.position.set((armX1 + d.seat.x - W / 2) / 2, armTopY - armT / 2, pv.z);
+  grp.add(flat);
+  for (const sz of [-1, 1]) {
+    const zc = pv.z + sz * 8;
+    // 球頭螺柱：底座上的鋼柱＋φ3 鋼球
+    const post = new THREE.Mesh(new THREE.CylinderGeometry(0.8, 0.8, pv.y - baseY - baseT, 12), mats.steel);
+    post.position.set(pv.x, (pv.y + baseY + baseT) / 2, zc);
+    grp.add(post);
+    const ball = new THREE.Mesh(new THREE.SphereGeometry(1.5, 16, 12), mats.steel);
+    ball.position.set(pv.x, pv.y, zc);
+    grp.add(ball);
+    // 樹脂球頭杯（黑）：包住鋼球、和擺臂一體
+    const cup = new THREE.Mesh(new THREE.CylinderGeometry(2.2, 2.2, 3.4, 16), mats.chassisDark);
+    cup.rotation.z = Math.PI / 2;
+    cup.position.set(pv.x + 0.6, pv.y + 0.4, zc);
+    grp.add(cup);
+    // 方塊固定螺絲（十字頭，從擺臂上方鎖入）
+    const head = new THREE.Mesh(new THREE.CylinderGeometry(1.6, 1.6, 0.8, 16), mats.screw);
+    head.position.set(d.seat.x, armTopY + 0.4, zc);
+    grp.add(head);
+  }
+  return grp;
+};
+
+/**
  * 選配零件（第三階段）：制振器（含螺絲軸與座）、煞車海綿、配重。位置與尺寸取自組裝結果（asm.optional，與干涉檢查同一份）
  * @type {(mats: ReturnType<typeof makeMaterials>) => THREE.Group}
  */
@@ -1196,6 +1266,11 @@ const buildOptionalParts = (mats) => {
   const g = new THREE.Group();
   const o = asmCur.optional ?? {};
   for (const d of o.dampers ?? []) {
+    // 第七階段：擺動式（球頭連桿）制振器另建模型
+    if (d.swing) {
+      g.add(buildSwingDamper(mats, d));
+      continue;
+    }
     const part = d.part;
     const grp = new THREE.Group();
     grp.name = `mass-damper-${d.index}`;
