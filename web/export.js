@@ -127,6 +127,8 @@ const categoryFromName = (name, mat) => {
     [/^decal-/, 'decal'],
     [/^lamp-.*(lens|cover)/, 'lens'],
     [/^lamp-/, 'lamp'],
+    // 第六階段 iter-70：有色透明 PC（render/showcase.py glass_tint：保留六成色相，例如琥珀脈翅）
+    [/^pc-tint-/, 'glass_tint'],
     [/pc-clear|clear-pc|lens/, 'lens'],
     [/pc-smoke|smoke|glass|canopy-glass/, 'glass'],
     [/pearl/, 'paint_pearl'],

@@ -242,9 +242,9 @@ const materials = () => ({
   inner: namedMaterial('shell-inner-dark', { color: 0x18191b, roughness: 0.85, side: THREE.BackSide }),
   edge: namedMaterial('shell-edge-charcoal', { color: 0x3a3d42, roughness: 0.5, side: THREE.DoubleSide }),
   slot: namedMaterial('plastic-gill-black', { color: 0x08090a, roughness: 0.9, side: THREE.DoubleSide }),
-  // 半透明琥珀脈翅（iter-70：pc-smoke-amber → pc-clear-amber。Blender 依名稱 pc-clear → 透明 lens 薄殼材質（不加煙燻灰，
+  // 半透明琥珀脈翅（iter-70：pc-smoke-amber → pc-tint-amber。Blender 依名稱 pc-tint → 有色透明 PC 薄殼材質 glass_tint（保留色相、不加煙燻灰，
   // 舊名 pc-smoke 會被當煙燻 PC 而變成黑玻璃）；app 端提高明度、降低不透明度，看得出半透明琥珀而不是不透明橘）
-  amber: namedMaterial('pc-clear-amber', { color: 0xf2b040, roughness: 0.04, specularIntensity: 0.8, transparent: true, opacity: 0.3, envMapIntensity: 0.8, depthWrite: false, side: THREE.DoubleSide }),
+  amber: namedMaterial('pc-tint-amber', { color: 0xf2b040, roughness: 0.04, specularIntensity: 0.8, transparent: true, opacity: 0.3, envMapIntensity: 0.8, depthWrite: false, side: THREE.DoubleSide }),
   vein: namedMaterial('paint-vein-umber', { color: 0x2b1b0d, roughness: 0.35, clearcoat: 0.6 }),
   mint2: namedMaterial('paint-bright-mint-green', { color: 0x5fe0b0, roughness: 0.22, clearcoat: 1.0, side: THREE.DoubleSide }),
   eye: namedMaterial('lamp-mint', { color: 0x8affd6, emissive: 0x2fd59a, emissiveIntensity: 0.65, roughness: 0.08, clearcoat: 1.0 }),
