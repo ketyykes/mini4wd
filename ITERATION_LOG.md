@@ -2668,3 +2668,33 @@
 - 現有致敬款標 `homageSeries` / `form`（marlin 只標 form）。主線 `node scripts/score.mjs`：**20/20**（15:06）。
 - 第五階段收尾分數：19/20（第六階段 P20 定義）× 50 ＋ 7.25 × 5 = **83.75**（第六階段基準）；舊 P20 定義下 20/20 → 86.25。
 - 決策：**保留**。
+
+## iter-67（14:57 起）：6 款新車殼（3 個 subagent）＋marlin-sail 改歸 LG1（主 agent）＋網頁車殼選單分群
+### 規劃
+1. subagent race67（`/tmp/wt67-race`）：比賽型 `body-fastback-cabin`（coupe-cabin，可裝 31 mm）、`body-trail-canopy`（buggy-canopy）。
+2. subagent lg2a67（`/tmp/wt67-lg2`）：LG2 `body-griffin-vane`（high-cowl / closed / fender-winglets，31 mm）、`body-zeppelin-xtail`（bullet / clear / x-tail，31 mm）。
+3. subagent mix67（`/tmp/wt67-mix`）：LG1 `body-mantis-scythe`（long-hood / open-cockpit / folded-wings）、LG2 `body-hydroplane-sponson`（sponson / canopy / biplane）。
+4. 主 agent：marlin-sail 依 HOMAGE_RESEARCH 第 6 節 P5 改歸 LG1；網頁車殼選單依三組分群（GOAL 技術要求）。
+- subagent 共同規則 `/tmp/body-brief-common.md`：只跑 body-check、bodies.test、P16 單項與截圖（截圖要取鎖），完整計分與 Blender 由主 agent 取鎖統一跑。
+- 預期：LG1 5 款、LG2 5 款達標；比賽型 5 款（還差 1 款 → iter-68 hinge-deck）。
+
+### 執行
+- marlin-sail：T 表後懸 / 鼻尖站位內收（X_TAIL −77 → −71、X_NOSE 80 → 76），新月平尾、背帆後緣、鼻側前翼、頭燈跟著移；車殼長 157 → 147 mm（第一版後段收太急 → 輪胎間隙 1.00 mm 不合法，後段站位放寬後 1.20 mm 合法）。前輪細擋泥刃 → 淚滴小罩（6°–118°、半寬 5.2、徑向半厚 1.3，前圓後尖、導流斜面接車身）。`homageSeries: 'lg1'`。
+- 網頁 `web/garage.js` 車殼選單改用 `<optgroup>`：比賽常用車殼 / 致敬《爆走兄弟》1 / 致敬《爆走兄弟》2（WGP）/ 其他；P19 新案例檢查每款都在自己那一組（既有斷言不變）。
+- 合併：3 個分支依序 merge，`src/bodies/index.js` 衝突手動整合（第一次整合腳本把清單插錯位置、帶衝突標記提交 → 立即修正並 amend 合併提交）。
+- 第一次完整計分 **19/20**（15:26）：P16 `body-zeppelin-xtail` 跑 3 圈只到 17.43 / 19.81 m——外側車道上立體橋時卡住（橋上 94955 步、離路面 −1.21 mm）。lg2a67 查到原因：車殼物理碰撞是外框長方塊（`sim.js` `bodyColliderBox`，長寬取車殼外框、頂 = 車殼頂 − 2、底 = 底盤離地），zeppelin 外框長 158.9 mm 最長，方塊前後下角在坡道轉折刮路面。修正（只改 zeppelinXtail.js）：尾 −75 → −72、鼻 80.5 → 79.6、繫留錐縮短 → 長 153.2 mm；P16 19.864 / 19.813 m、穿透 0.730 mm。**之後車殼長度 > 約 155 mm 都有相同風險**（已告知 iter-68 subagent）。
+- 新款數據（body-check）：
+  | body-id | 組 | form / roof / wing | 車殼質量 | 車殼長 / 高 | 26 / 31 mm | 最大 IoU |
+  | --- | --- | --- | --- | --- | --- | --- |
+  | fastback-cabin | race（coupe-cabin） | fastback / closed / lip-spoiler | 7.80 g（PC 0.5） | 146.4 / 38.0 | 合法 / 合法 | 俯視 0.811 |
+  | trail-canopy | race（buggy-canopy） | buggy-wedge / canopy / rear-spoiler | 8.51 g | 136.9 / 41.6 | 合法 / 不合法 | 俯視 0.829（× marlin） |
+  | griffin-vane | LG2 | high-cowl / closed / fender-winglets | 14.70 g | 154.6 / 45.8 | 合法 / 合法（整車 134.42 g） | 俯視 0.826（× mantis） |
+  | zeppelin-xtail | LG2 | bullet / clear / x-tail | 12.97 g | 153.2 / 40.2 | 合法 / 合法 | 俯視 0.810（× halo） |
+  | mantis-scythe | LG1 | long-hood / open-cockpit / folded-wings | 12.14 g | 148.7 / 34.7 | 合法 / 不合法 | 俯視 0.827（× aero-wing） |
+  | hydroplane-sponson | LG2 | sponson / canopy / biplane | 15.46 g | 157.0 / 35.1 | 合法 / 不合法 | 俯視 0.814 |
+- 第六階段 P20 草稿試跑（15:26）：只剩「比賽型 5 款 < 6」失敗；LG1 / LG2 款數、型式種類、31 mm、IoU 都已滿足。
+- 其他：race67 為清掉自己卡住的 codex 程序執行 `pkill -f "codex exec --skip-git-repo-check"`，可能誤殺同時間其他 session 的 codex 生圖（已向使用者報告）。
+- Blender 64 samples 7 款 × 5 視角（15:30–16:01，取鎖）；評分資料夾 `shared/reviews/iter-67/`（marlin 對照 = iter-66 本輪；`陣容參考/` 放其他 8 款 front34）。
+
+### 驗證
+- `node scripts/score.mjs`：**20/20**（16:01，合併 zeppelin 修正後）。
