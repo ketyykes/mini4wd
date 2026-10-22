@@ -4,8 +4,8 @@
 // 剖面由本檔的站位函式產生（推估，依 HOMAGE_RESEARCH 第 4 節與外框 / 輪胎間隙掃描）。
 // 塗裝全為自創：翡翠綠＋象牙白＋古銅、六角甲片分格線、號碼「61」；不含任何廠商 / 作品名稱、商標或角色圖像。
 import * as THREE from 'three';
-import { makePolyBody, finPlate, flatPlate } from './polyBody.js';
-import { namedMaterial, decalMaterial, sdNumber, sdConvexPolygon, sideDecal, topDecal, mergeGeos, lerp, smoothstep } from './loft.js';
+import { makePolyBody, flatPlate } from './polyBody.js';
+import { namedMaterial, decalMaterial, sdNumber, sdConvexPolygon, sideDecal, topDecal, mergeGeos, lerp, smoothstep, buildRegion, featureSd } from './loft.js';
 
 /** @typedef {import('./loft.js').KeepFn} KeepFn */
 
@@ -49,29 +49,32 @@ const monoTable = (tx, tab) => {
 };
 
 /** @type {number} 車尾（鴨尾唇後緣）x */
-const X_TAIL = -61;
+const X_TAIL = -66;
 /** @type {number} 鼻尖 x */
 const X_NOSE = 68;
 
 /**
  * 縱向控制表（推估）：
- * - yTop：圓頂中線高度，頂點 52 在 x ≈ 0（軸距中點），前後圓滑下降；車尾 −56 處最低、再往後翹起成鴨尾唇
+ * - yTop：圓頂中線高度，頂點 52 在 x ≈ −10，前後圓滑下降；車尾 −57 處最低、再往後翹起成鴨尾唇（iter-55：尾端延長到 x −66，
+ *   唇緣中央 40.4、兩角 42.2（U 形上翹），唇下緣抬到 37.4 → 車尾是一道往上翹的薄唇，不再是平切立面）
  * - dw：龜甲圓頂的半寬（甲緣位置）；yRim：甲緣高度（圓頂底）
- * - hw：最寬處半寬（輪拱擋泥板外側），前後輪上方 42.5、兩輪之間收到 29.5、鼻尖收到 10（俯視像龜甲伸出四肢與頭）
- * - ySh：擋泥板肩高，輪心上方 35（31 mm 輪的拱頂 30.6 之上還有 4 mm 擋泥板帶）
+ * - hw：最寬處半寬。iter-55：四個輪拱做成往外鼓的「四肢」——輪心上方 46.5、兩輪之間與輪拱前後收到 40–42，
+ *   俯視看得到四個凸包；鼻尖收到 8（龜頭）
+ * - ySh：擋泥板肩高，輪心上方 35.6（31 mm 輪的拱頂 30.6 之上還有 5 mm 擋泥板帶），兩輪之間降到 22.5 → 四肢明顯高出腰線
  * - yLow：側壁下緣
  */
-const T = monoTable([-61, -57, -52, -44, -40, -30, -20, -10, 0, 10, 20, 30, 40, 48, 54, 60, 64, 68], {
-  yTop: [37.2, 34.8, 36.6, 43, 45.4, 49.6, 51.6, 52, 51.6, 50, 47, 42.4, 36, 30.5, 26, 22.2, 20, 18.2],
-  dw: [17, 19, 22, 26.5, 27.5, 31, 32.5, 33, 33, 33, 32.5, 31, 26.5, 20, 15, 10, 7.5, 5.5],
-  yRim: [39.5, 34.6, 33.2, 33.2, 33.2, 32.5, 31.5, 31, 30.8, 31, 31.5, 32.5, 31.6, 29, 26, 22.5, 20.5, 18.2],
-  hw: [20, 24, 30, 35.5, 37, 42, 46, 47, 47, 47, 46, 42, 37.5, 35.5, 29, 19, 12.5, 8],
-  ySh: [39.2, 33.5, 33, 34.8, 35, 30, 24.5, 22.5, 22, 22.5, 24.5, 30, 35, 33.8, 29.5, 23, 19.5, 17],
-  yLow: [24, 19, 15.5, 12, 11, 10, 9.5, 9.5, 9.5, 9.5, 9.5, 10, 11, 12, 13.5, 14.5, 15, 15],
+const T = monoTable([-66, -62, -57, -52, -44, -40, -34, -22, -10, 0, 10, 22, 34, 40, 46, 52, 58, 64, 68], {
+  yTop: [40.4, 37.6, 34.8, 36.6, 43, 45.4, 48.2, 51.2, 52, 51.6, 50.2, 46.4, 39.4, 36, 32.4, 28.6, 24.6, 20, 18.2],
+  dw: [12, 15.5, 19, 22, 26.5, 27.5, 29, 30.5, 31, 31, 31, 30.5, 28.5, 26.5, 22.5, 18, 12.5, 7.5, 5.5],
+  yRim: [41.6, 38.4, 34.6, 33.2, 33.2, 33.2, 32.8, 31.6, 31, 30.8, 31, 31.6, 32.4, 31.6, 30, 27.4, 24, 20.5, 18.2],
+  hw: [16, 21, 28, 35, 44.5, 46.5, 43.5, 37, 38.5, 39, 38.5, 37, 43.5, 46.5, 44.5, 37, 24, 12.5, 8],
+  ySh: [42.2, 38.6, 33.5, 33.5, 35.2, 35.6, 33.5, 25.5, 23, 22.5, 23, 25.5, 33.5, 35.6, 35, 32, 25, 19.5, 17],
+  yLow: [37.4, 30.5, 22, 15.5, 12, 11, 10.5, 9.5, 9.5, 9.5, 9.5, 9.5, 10.5, 11, 12, 13, 14.5, 15, 15],
 });
 
 /** @type {(x: number) => number} 圓頂半寬（塗裝分區、六角紋用） */
 const domeHalfW = (x) => T('dw', x);
+
 
 /**
  * 半剖面站位（每 2 mm 一站，8 點）：中線頂 → 圓頂 3 點 → 甲緣 → 甲緣外 1.2 mm 的落差台階 → 擋泥板肩 → 側壁下緣
@@ -134,6 +137,9 @@ const hexLines = (S) => {
   };
 };
 
+/** 六角甲片格線距離函式（對邊 16 mm） */
+const HEX = hexLines(16);
+
 /** @type {(x: number) => number} 象牙白下半車身的分色線：鼻尖低、往後斜升（V13 由鼻尖往後上掃） */
 const sweepBase = (x) => 18.5 - 0.075 * x;
 
@@ -157,12 +163,83 @@ const materials = () => ({
   lamp: namedMaterial('lamp-amber', { color: 0xffc040, emissive: 0xff9a10, emissiveIntensity: 0.8, roughness: 0.1, clearcoat: 1.0 }),
   bronzeDecal: decalMaterial('decal-bronze', { color: 0xb88a48, roughness: 0.35, metalness: 0.6 }),
   dark: decalMaterial('decal-black', { color: 0x10120f, roughness: 0.5 }),
+  bronzeGroove: namedMaterial('brass-groove-bronze', { color: 0xa87a3e, roughness: 0.35, metalness: 0.8, side: THREE.DoubleSide }),
+  visorBlack: namedMaterial('plastic-visor-black', { color: 0x060707, roughness: 0.5, side: THREE.DoubleSide }),
+  liner: namedMaterial('plastic-liner-matte', { color: 0x161a17, roughness: 0.85, side: THREE.DoubleSide }),
   ivoryDecal: decalMaterial('decal-ivory', { color: 0xefe6cc, roughness: 0.35 }),
   mount: namedMaterial('abs-mount-black', { color: 0x222326, roughness: 0.6 }),
 });
 
+/** @type {(x: number) => number} 圓頂中線象牙白背脊紋的半寬（越往後越窄） */
+const spineHalfW = (x) => lerp(1.1, 2.6, smoothstep(-56, 30, x));
+
+/** @type {any} 後輪前方的橫向進氣口（側視往後收窄的楔形） */
+const INTAKE = { view: 'side', shape: 'poly', pts: [[-6, 12.2], [-21.5, 12.2], [-21.5, 14.6], [-6, 15.6]], depth: 1.6 };
+
 /** @type {any} 觀察縫（俯視：圓頂前斜面上一道兩端往後掠的細縫） */
 const VISOR = { view: 'top', shape: 'poly', pts: [[39.2, 0], [37.8, 13.5], [35.2, 17.8], [36.3, 0]], depth: 1.4 };
+
+/**
+ * 輪拱內襯（iter-55）：輪拱切口內側的半圓環擋板（側視半徑 r0–r1、輪心上方 0°–180°），沿 z 厚 thick
+ * @type {(x0: number, r0: number, r1: number, z0: number, thick: number) => THREE.BufferGeometry}
+ */
+const archRing = (x0, r0, r1, z0, thick) => {
+  /** @type {THREE.Vector2[]} */
+  const pts = [];
+  const n = 32;
+  for (let i = 0; i <= n; i++) {
+    const a = (Math.PI * i) / n;
+    pts.push(new THREE.Vector2(x0 + r1 * Math.cos(a), 13 + r1 * Math.sin(a)));
+  }
+  for (let i = n; i >= 0; i--) {
+    const a = (Math.PI * i) / n;
+    pts.push(new THREE.Vector2(x0 + r0 * Math.cos(a), 13 + r0 * Math.sin(a)));
+  }
+  const g = new THREE.ExtrudeGeometry(new THREE.Shape(pts), { depth: thick, bevelEnabled: false, curveSegments: 1 });
+  g.translate(0, 0, z0);
+  return g;
+};
+
+/**
+ * 俯視彎曲的直立面板（封閉實心件）：z ∈ [−W, W]、y ∈ [yB, yT]，前表面 x = xc(z)、往前厚 t
+ * @type {(W: number, yB: number, yT: number, xc: (z: number) => number, t: number) => THREE.BufferGeometry}
+ */
+const curvedPanel = (W, yB, yT, xc, t) => {
+  const n = 24;
+  /** @type {number[]} */
+  const pos = [];
+  /** @type {(i: number, k: number, back: number) => number[]} */
+  const P = (i, k, back) => {
+    const z = lerp(-W, W, i / n);
+    return [xc(z) + back * t, k === 0 ? yB : yT, z];
+  };
+  for (let i = 0; i < n; i++) {
+    // 後表面（朝 −x）、前表面（朝 +x）
+    pos.push(...P(i, 0, 0), ...P(i, 1, 0), ...P(i + 1, 1, 0), ...P(i, 0, 0), ...P(i + 1, 1, 0), ...P(i + 1, 0, 0));
+    pos.push(...P(i, 0, 1), ...P(i + 1, 1, 1), ...P(i, 1, 1), ...P(i, 0, 1), ...P(i + 1, 0, 1), ...P(i + 1, 1, 1));
+    // 上下緣
+    pos.push(...P(i, 1, 0), ...P(i, 1, 1), ...P(i + 1, 1, 1), ...P(i, 1, 0), ...P(i + 1, 1, 1), ...P(i + 1, 1, 0));
+    pos.push(...P(i, 0, 0), ...P(i + 1, 0, 1), ...P(i, 0, 1), ...P(i, 0, 0), ...P(i + 1, 0, 0), ...P(i + 1, 0, 1));
+  }
+  for (const [i, sg] of [
+    [0, 1],
+    [n, -1],
+  ]) {
+    const a = P(i, 0, 0);
+    const b = P(i, 1, 0);
+    const c = P(i, 1, 1);
+    const d = P(i, 0, 1);
+    if (sg > 0) {
+      pos.push(...a, ...d, ...c, ...a, ...c, ...b);
+    } else {
+      pos.push(...a, ...b, ...c, ...a, ...c, ...d);
+    }
+  }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  g.computeVertexNormals();
+  return g;
+};
 
 export const tortoiseDomeBody = makePolyBody({
   id: 'body-tortoise-dome',
@@ -185,8 +262,22 @@ export const tortoiseDomeBody = makePolyBody({
   ],
   recesses: [
     { id: '觀察縫', ...VISOR },
+    // iter-55：六角甲片分格改成真的凹槽（寬 0.9、深 0.45 mm，槽底古銅），不只是貼線；中線背脊紋兩側不刻
+    {
+      id: '六角甲片分格槽',
+      view: 'top',
+      shape: 'fn',
+      sd: (x, y, z) => {
+        const az = Math.abs(z);
+        if (x > 34 || x < -60 || az > domeHalfW(x) - 0.9 || az < spineHalfW(x) + 0.5) {
+          return 10;
+        }
+        return Math.abs(HEX(x, y, az)) - 0.45;
+      },
+      depth: 0.45,
+    },
     // 後輪前方的橫向進氣口（側視往後收窄的楔形，象牙白底上的黑槽）
-    { id: '側進氣口', view: 'side', shape: 'poly', pts: [[-6, 12.2], [-21.5, 12.2], [-21.5, 14.6], [-6, 15.6]], depth: 1.6 },
+    { id: '側進氣口', ...INTAKE },
   ],
   sideZMin: 30,
   innerSkipRecess: true,
@@ -200,32 +291,30 @@ export const tortoiseDomeBody = makePolyBody({
     // 其餘（龜甲圓頂、甲緣外翻的裙邊、四個擋泥板）：翡翠綠
     { mat: 'jade', keep: () => 1 },
   ],
-  mats: { inner: 'inner', edge: 'edge', cap: 'ivory2', recess: 'recess', recessWall: 'recessWall', mount: 'mount' },
+  mats: { inner: 'inner', edge: 'edge', cap: 'ivory2', recess: 'bronzeGroove', recessWall: 'recessWall', mount: 'mount' },
   materials,
   extras: (kit) => {
     const parts = [];
-    const hex = hexLines(16);
-    // 六角甲片分格線（古銅）：只在圓頂上（甲緣內 1 mm、觀察縫之後）
+    // 觀察縫、側進氣口的槽底塗黑（凹槽共用古銅槽底材質，這兩處另外鋪一層黑色）
+    const visorSd = featureSd(VISOR, 30);
+    const intakeSd = featureSd(INTAKE, 30);
     parts.push({
-      geometry: kit.decal((x, y, z) => {
-        const az = Math.abs(z);
-        if (x > 34 || az > domeHalfW(x) - 0.9 || (x > -57 && az < lerp(1.1, 2.6, smoothstep(-56, 30, x)) + 0.4)) {
-          return -1;
-        }
-        return 0.55 - Math.abs(hex(x, y, az));
-      }),
-      mat: 'bronzeDecal',
-      name: 'decal-hex-plates',
+      geometry: mergeGeos([
+        buildRegion(kit.surf, [...kit.holes, (x, y, z) => -visorSd(x, y, z)], { offset: -VISOR.depth + 0.05 }).geometry,
+        buildRegion(kit.surf, [...kit.holes, (x, y, z) => -intakeSd(x, y, z)], { offset: -INTAKE.depth + 0.05 }).geometry,
+      ]),
+      mat: 'visorBlack',
+      name: 'visor-black',
     });
     // 甲緣古銅飾線（圓頂邊緣一圈）＋輪拱古銅甲緣環（拱緣外 0.6–2.0 mm）
-    const archRing = (x, y, z) => {
+    const archTrim = (x, y, z) => {
       const d = Math.min(Math.hypot(x - 40, y - 13), Math.hypot(x + 40, y - 13)) - 17.6;
-      return Math.abs(z) < 30 ? -1 : Math.min(d - 0.6, 2.0 - d);
+      return Math.abs(z) < 32 ? -1 : Math.min(d - 0.6, 2.0 - d);
     };
     parts.push({
       geometry: mergeGeos([
-        kit.decal((x, y, z) => (x > 60 || x < -59 ? -1 : 0.7 - Math.abs(Math.abs(z) - domeHalfW(x) - 0.4))),
-        kit.decal(archRing),
+        kit.decal((x, y, z) => (x > 60 || x < -64 ? -1 : 0.7 - Math.abs(Math.abs(z) - domeHalfW(x) - 0.4))),
+        kit.decal(archTrim),
         // 分色線上方的古銅細線（側面，從鼻尖往後上掃）
         kit.decal((x, y, z) => (Math.abs(z) < 28 ? -1 : Math.min(y - sweepLine(x) - 0.3, sweepLine(x) + 1.1 - y))),
       ]),
@@ -249,7 +338,7 @@ export const tortoiseDomeBody = makePolyBody({
     });
     // 圓頂中線的象牙白甲背脊紋（從觀察縫後一路到鴨尾唇，越往後越窄）
     parts.push({
-      geometry: kit.decal((x, y, z) => (x > 33 || x < -56 ? -1 : lerp(1.1, 2.6, smoothstep(-56, 30, x)) - Math.abs(z))),
+      geometry: kit.decal((x, y, z) => (x > 33 || x < -62 ? -1 : spineHalfW(x) - Math.abs(z))),
       mat: 'ivoryDecal',
       name: 'decal-spine',
     });
@@ -261,42 +350,23 @@ export const tortoiseDomeBody = makePolyBody({
       mat: 'dark',
       name: 'decal-number',
     });
-    // 鴨尾唇兩角的古銅翹尖（一體成形的唇角，不是獨立尾翼）
-    const tips = [];
+    // 前輪拱內襯（iter-55）：拱緣內側的半圓環擋板（z 22.5–23.1，距 31 mm 輪胎內側面 1.65 mm），擋住從側面看進殼內的空腔
+    parts.push({
+      geometry: mergeGeos([archRing(40, 12.5, 18, 22.5, 0.6), archRing(40, 12.5, 18, -23.1, 0.6)]),
+      mat: 'liner',
+      solid: true,
+      name: 'arch-liners',
+    });
+    // 鴨尾唇下方往內縮的車尾面板（iter-55）：中央在 x −60.5、兩側往前彎（俯視弧形），深翡翠綠＋一對琥珀尾燈，
+    // 讓鴨尾唇下面是有設計的凹入尾面，不是平切立面
+    parts.push({ geometry: curvedPanel(22, 17.6, 31.5, (z) => -60.5 + 3.2 * (z / 22) ** 2, 0.6), mat: 'recessWall', solid: true, outline: true, name: 'tail-panel' });
+    const tailLamps = [];
     for (const sg of [-1, 1]) {
-      tips.push(
-        finPlate(
-          [
-            [-53, 36.2],
-            [-61.6, 38.6],
-            [-63.2, 42.6],
-            [-58, 39.6],
-          ],
-          sg * 19.5,
-          1.4,
-          sg * 18,
-        ),
-      );
+      const g = new THREE.BoxGeometry(0.8, 2.0, 7.5);
+      g.translate(-60.5 + 3.2 * (13.5 / 22) ** 2 - 0.3, 26.2, sg * 13.5);
+      tailLamps.push(g);
     }
-    parts.push({ geometry: mergeGeos(tips), mat: 'bronze', outline: true, solid: true, name: 'duck-tail-tips' });
-    // 側裙下緣的短棘列（前後輪之間，往下的三角齒，像龜甲緣的鋸齒）
-    const spikes = [];
-    for (const sg of [-1, 1]) {
-      for (const x0 of [12, 4, -4]) {
-        spikes.push(
-          finPlate(
-            [
-              [x0 + 3, 10.2],
-              [x0 - 3, 10.2],
-              [x0 - 2.2, 7.6],
-            ],
-            sg * (T('hw', x0) - 0.9),
-            1.0,
-          ),
-        );
-      }
-    }
-    parts.push({ geometry: mergeGeos(spikes), mat: 'bronze', outline: true, solid: true, name: 'skirt-teeth' });
+    parts.push({ geometry: mergeGeos(tailLamps), mat: 'lamp', solid: true, name: 'tail-lamps' });
     // 鼻下古銅喙刃（V3 尖鼻的變形）：往前尖出的薄板，埋入鼻端下緣
     parts.push({
       geometry: flatPlate(
@@ -324,6 +394,6 @@ export const tortoiseDomeBody = makePolyBody({
     geometry: '本檔 T 表與 STATIONS（推估，依 HOMAGE_RESEARCH 4-1：長約 128、最高點約 52，外框與輪胎間隙用 body-check 掃描）',
     wheelArches: '四輪 R17.6：31 mm 大徑輪半徑 15.5＋2.1 mm 間隙（殼內面內縮後仍 ≥ 1 mm）（GOAL：至少 2 款新致敬款可裝 31 mm）',
     mounts: '對齊 chassis-midship 的車殼安裝點（SPEC 1.14）',
-    tips: '古銅唇角、側裙短棘視為 ABS 電鍍件（推估），質量 = 封閉體積 × ABS 1.05 g/cm³',
+    tips: '古銅喙刃視為 ABS 電鍍件、車尾面板與輪拱內襯為 ABS 實心件（推估），質量 = 封閉體積 × ABS 1.05 g/cm³',
   },
 });

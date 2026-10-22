@@ -4,8 +4,8 @@
 // 塗裝全為自創：洋紅＋石墨灰＋白、點狀星軌線、號碼「08」；不含任何廠商 / 作品名稱、商標或角色圖像。
 import * as THREE from 'three';
 import { makePolyBody, sweepEllipse, flatPlate } from './polyBody.js';
-import { namedMaterial, decalMaterial, sdNumber, sdBar, sdConvexPolygon, sideDecal, topDecal, mergeGeos, lerp, smoothstep } from './loft.js';
-import { monoCurve, buildStations, sdCircle } from './gazelleLeap.js';
+import { namedMaterial, decalMaterial, sdNumber, sdBar, sdConvexPolygon, sideDecal, mergeGeos, lerp, smoothstep, buildRegion, buildRim } from './loft.js';
+import { monoCurve, buildStations, sdCircle, buildArchLiner, smoothNormals } from './gazelleLeap.js';
 
 /** @typedef {import('./loft.js').BodyPart} BodyPart */
 
@@ -14,11 +14,11 @@ const XS = [-68, -60, -50, -40, -28, -14, 0, 14, 28, 40, 50, 60, 68, 76];
 /** @type {Record<string, (x: number) => number>} */
 const P = {
   // 中線頂：卵石形，最高點在軸距中點略後（36），前後圓滑下降
-  yC: monoCurve(XS, [26, 29.5, 32.5, 34.5, 35.8, 36.2, 35.8, 34.5, 31.5, 28.5, 25.5, 21.5, 18, 14.5]),
+  yC: monoCurve(XS, [23.5, 29.5, 32.5, 34.5, 35.8, 36.2, 35.8, 34.5, 31.5, 28.5, 25.5, 21.5, 18, 14.5]),
   // 側壁肩（側面唯一的銳利稜線）
-  yS: monoCurve(XS, [21, 23, 24.5, 25, 24.5, 24, 23.5, 23, 22, 21, 19.5, 17, 15, 13]),
+  yS: monoCurve(XS, [20.5, 23, 24.5, 25, 24.5, 24, 23.5, 23, 22, 21, 19.5, 17, 15, 13]),
   // 半寬：淚滴平面——後輪側裙處最寬（45），往前收成圓鼻
-  hw: monoCurve(XS, [31, 41.5, 45.5, 46, 46, 45, 42, 38, 36, 35.5, 32, 25, 17, 7]),
+  hw: monoCurve(XS, [22, 40.5, 45.5, 46, 46, 45, 42, 38, 36, 35.5, 32, 25, 17, 7]),
   // 側壁下緣：後輪側裙往下蓋住輪胎外側（9.8）、車尾抬起
   yLow: monoCurve(XS, [19, 15, 11, 9.8, 9.8, 9.8, 9.8, 9.8, 10.5, 12, 13, 13.5, 13.5, 13.5]),
 };
@@ -78,6 +78,7 @@ const materials = () => ({
   dWhite: decalMaterial('decal-white', { color: 0xf6f4ee, roughness: 0.4 }),
   dGraphite: decalMaterial('decal-graphite', { color: 0x2a2c31, roughness: 0.45 }),
   mount: namedMaterial('abs-mount-black', { color: 0x222326, roughness: 0.6 }),
+  liner: namedMaterial('shell-inner-dark', { color: 0x1c1a1e, roughness: 0.85, side: THREE.DoubleSide }),
 });
 
 /**
@@ -108,7 +109,8 @@ const buildRing = (xc, yc, a, b, c, t, n = 96, m = 16) => {
       const p10 = P2(i + 1, j);
       const p11 = P2(i + 1, j + 1);
       const p01 = P2(i, j + 1);
-      pos.push(...p00, ...p11, ...p10, ...p00, ...p01, ...p11);
+      // iter-55 修正繞向：法線朝外（原本朝內，Blender 的背面變暗處理讓光環變成黑色）
+      pos.push(...p00, ...p10, ...p11, ...p00, ...p11, ...p01);
     }
   }
   const g = new THREE.BufferGeometry();
@@ -117,8 +119,11 @@ const buildRing = (xc, yc, a, b, c, t, n = 96, m = 16) => {
   return g;
 };
 
-/** 光環幾何參數：x −60、中心高 36.5、半寬 21、半高 11.5（頂 48、底 25 埋進車尾） */
-const RING = { xc: -60, yc: 36.5, a: 21, b: 11.5, c: 5.6, t: 0.95 };
+/** 光環幾何參數（iter-55 加粗）：x −60、中心高 38.2、半寬 20.5、半高 11；斷面弦長 9.2 × 厚 4.8 mm（中空兩半合模件，以殼面積 × 壁厚算質量）；底部埋進頸部整流座 */
+const RING = { xc: -60, yc: 38.2, a: 20.5, b: 11, c: 4.6, t: 2.4 };
+
+/** @type {(x: number, y: number, z: number) => number} 後輪側裙板範圍（側視：上緣是往前後下垂的弧） */
+const SKIRT_KEEP = (x, y, z) => (Math.abs(z) < 34 ? -1 : Math.min(23 - y - 0.004 * (x + 40) ** 2, x + 60, -20 - x));
 
 export const haloOrbitBody = makePolyBody({
   id: 'body-halo-orbit',
@@ -146,19 +151,12 @@ export const haloOrbitBody = makePolyBody({
   zones: () => [
     // 環繞玻璃帶（俯視橢圓環）
     { mat: 'smoke', keep: (x, y, z) => Math.min(1 - ell(x, z, GLASS.ao, GLASS.bo), ell(x, z, GLASS.ai, GLASS.bi) - 1) * 20 },
-    // 頂蓋（玻璃帶內）石墨灰
-    { mat: 'graphite', keep: (x, y, z) => (1 - ell(x, z, GLASS.ai, GLASS.bi)) * 20 },
     // 鼻部中央的石墨灰「軌道面板」：從鼻尖往後展開到玻璃帶前緣（概念圖的灰色鼻板）
     { mat: 'graphite', keep: (x, y, z) => Math.min(x - 24, 3 + 0.36 * (76 - x) - Math.abs(z), ell(x, z, GLASS.ao, GLASS.bo) - 1) },
     // 後輪側裙板：側視圓角板（洋紅，和石墨灰下半車身形成對比），蓋在後輪外側
     {
       mat: 'magenta',
-      keep: (x, y, z) => {
-        if (Math.abs(z) < 34) {
-          return -1;
-        }
-        return Math.min(23 - y - 0.004 * (x + 40) ** 2, x + 60, -20 - x);
-      },
+      keep: (x, y, z) => SKIRT_KEEP(x, y, z),
     },
     // 下半車身石墨灰：前低後高的斜分色線，車尾整段石墨灰（和概念圖的灰色後半身呼應）
     { mat: 'graphite', keep: (x, y, z) => (Math.abs(z) > 24 ? 17 - 0.1 * x - y : -1) },
@@ -171,19 +169,20 @@ export const haloOrbitBody = makePolyBody({
     const parts = [];
     const top = (x) => kit.surf.topY(x, 0);
     // 光環翼（白）
-    parts.push({ geometry: buildRing(RING.xc, RING.yc, RING.a, RING.b, RING.c, RING.t), mat: 'white', solid: true, outline: true, name: 'halo-ring' });
+    parts.push({ geometry: smoothNormals(buildRing(RING.xc, RING.yc, RING.a, RING.b, RING.c, RING.t)), mat: 'white', shell: true, name: 'halo-ring' });
     // 光環下緣的翼根整流座（洋紅）：沿車尾中線從後艙蓋隆起、包住光環下緣
     const pylon = [];
-    for (let i = 0; i <= 8; i++) {
-      const x = lerp(-36, -66, i / 8);
-      pylon.push([x, top(Math.max(x, -67.5)) - 1.6 + 2.6 * smoothstep(0, 0.8, i / 8), 0]);
+    // iter-55：頸部整流座——從後艙蓋中線一體隆起、往後上升托住光環下緣（中空件，以殼面積 × 壁厚算質量）
+    for (let i = 0; i <= 10; i++) {
+      const u = i / 10;
+      const x = lerp(-34, -64.5, u);
+      pylon.push([x, top(Math.max(x, -67.5)) - 2.2 + 6.2 * smoothstep(0.15, 0.85, u), 0]);
     }
     parts.push({
-      geometry: sweepEllipse(pylon, 40, (t) => [lerp(0.8, 4.2, smoothstep(0, 0.75, t)) * (1 - 0.6 * smoothstep(0.9, 1, t)), lerp(1.0, 3.8, smoothstep(0, 0.7, t)) * (1 - 0.5 * smoothstep(0.9, 1, t))], 32),
+      geometry: smoothNormals(sweepEllipse(pylon, 48, (t) => [lerp(1.0, 6.2, smoothstep(0, 0.7, t)) * (1 - 0.55 * smoothstep(0.88, 1, t)), lerp(1.2, 4.6, smoothstep(0, 0.65, t)) * (1 - 0.45 * smoothstep(0.88, 1, t))], 32)),
       mat: 'magenta2',
-      solid: true,
-      outline: true,
-      name: 'halo-pylon',
+      shell: true,
+      name: 'halo-neck',
     });
     // 環上的小衛星（白球，右上 50°）＋石墨灰底座
     const th = (50 * Math.PI) / 180;
@@ -220,22 +219,18 @@ export const haloOrbitBody = makePolyBody({
       mat: 'dWhite',
       name: 'decal-orbit-band',
     });
-    // 後輪側裙上緣的白色弧線（裙板輪廓的分件線）
+    // 後輪側裙板（iter-55 改成立體）：裙板範圍往外鼓出 0.9 mm 的一層洋紅板，邊緣的台階側壁是白色＝實際高低差的弧形分件線
+    const skirt = buildRegion(kit.surf, [...kit.holes, (x, y, z) => SKIRT_KEEP(x, y, z)], { offset: 0.9 });
+    parts.push({ geometry: skirt.geometry, mat: 'magenta', shell: true, name: 'rear-skirt-panel' });
+    parts.push({ geometry: buildRim(skirt, 0, 0.9), mat: 'white2', name: 'rear-skirt-edge' });
+    // 玻璃帶外圈白色細邊（iter-55：拿掉內圈細邊與頂蓋號碼，讓環繞玻璃帶成為主角）
     parts.push({
-      geometry: kit.decal((x, y, z) => (Math.abs(z) < 34 ? -1 : Math.min(0.6 - Math.abs(23 - y - 0.004 * (x + 40) ** 2), x + 60, -20 - x)), { offset: 0.1 }),
-      mat: 'dWhite',
-      name: 'decal-skirt-arc',
-    });
-    // 玻璃帶白色細邊（內外兩圈）
-    parts.push({
-      geometry: kit.decal((x, y, z) => {
-        const eo = Math.abs(ell(x, z, GLASS.ao, GLASS.bo) - 1) * GLASS.bo;
-        const ei = Math.abs(ell(x, z, GLASS.ai, GLASS.bi) - 1) * GLASS.bi;
-        return 0.55 - Math.min(eo, ei);
-      }),
+      geometry: kit.decal((x, y, z) => 0.55 - Math.abs(ell(x, z, GLASS.ao, GLASS.bo) - 1) * GLASS.bo),
       mat: 'dWhite',
       name: 'decal-glass-trim',
     });
+    // 前輪拱內襯（iter-55）
+    parts.push({ geometry: buildArchLiner({ x: 40, y: 13, radius: 16 }, 29, 36), mat: 'liner', shell: true, name: 'arch-liner' });
     // 點狀星軌線（V13 構圖：從鼻尖斜掃到光環）：側面一條往後上升的弧，上面排一串由小變大的白點，夾一條細虛線
     /** @type {(u: number) => number} 弧線高度（u = x） */
     const orbitY = (u) => 15.5 + 9 * smoothstep(70, -50, u);
@@ -271,7 +266,6 @@ export const haloOrbitBody = makePolyBody({
     parts.push({
       geometry: mergeGeos([
         kit.decal(sideDecal(sdNumber('08', { h: 5.6, w: 3.1, gap: 0.8 }), { x0: -40, y0: 16.5, zMin: 34 })),
-        kit.decal(topDecal(sdNumber('08', { h: 6, w: 3.3, gap: 0.9 }), { x0: -4, yMin: 30 })),
       ]),
       mat: 'dWhite',
       name: 'decal-number',

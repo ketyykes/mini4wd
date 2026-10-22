@@ -5,7 +5,7 @@
 import * as THREE from 'three';
 import { makePolyBody, sweepEllipse } from './polyBody.js';
 import { namedMaterial, decalMaterial, sdNumber, sdBar, sdConvexPolygon, sideDecal, mergeGeos, lerp, smoothstep } from './loft.js';
-import { monoCurve, buildStations, sdCircle } from './gazelleLeap.js';
+import { monoCurve, buildStations, sdCircle, smoothMax, fenderFloor, buildArchLiner, smoothNormals } from './gazelleLeap.js';
 
 /** @typedef {import('./loft.js').BodyPart} BodyPart */
 
@@ -14,13 +14,13 @@ const XS = [-58, -50, -40, -30, -18, -4, 10, 24, 34, 40, 48, 56, 62, 66];
 /** @type {Record<string, (x: number) => number>} */
 const P = {
   // 中線頂：前低後高的蹲伏楔形（鼻 15 → 尾 33）
-  yC: monoCurve(XS, [30, 32.5, 33.5, 33.2, 32, 30, 28, 25.5, 23.5, 22.5, 21, 19, 17, 15]),
+  yC: monoCurve(XS, [27, 32.5, 33.5, 33.2, 32, 30, 28, 25.5, 23.5, 22.5, 21, 19, 17, 15]),
   // 擋泥板稜線：後腿肌肉（40）明顯高於前輪拱（32）
-  yF: monoCurve(XS, [33, 38.5, 40, 38.5, 33.5, 30, 29, 30, 31.8, 32.2, 31, 26, 21, 17]),
+  yF: monoCurve(XS, [29.5, 38.5, 40, 38.5, 33.5, 30, 29, 30, 31.8, 32.2, 31, 26, 21, 17]),
   // 半寬：寬圓鼻、腰部略收、後腿外鼓（46.5）
-  hw: monoCurve(XS, [44, 46.5, 46.5, 46, 41, 32.5, 31.5, 33.5, 35.5, 35.8, 36, 35.8, 34.5, 31]),
+  hw: monoCurve(XS, [40.5, 46, 46.5, 46, 41, 32.5, 31.5, 34.5, 38.5, 39.5, 40.5, 40, 38, 34]),
   // 側壁下緣
-  yLow: monoCurve(XS, [20, 16, 12, 11, 13, 17.5, 17.5, 15, 11, 12, 13.5, 14, 14, 14]),
+  yLow: monoCurve(XS, [21, 16, 12, 11, 13, 17.5, 17.5, 15, 11, 12, 13.5, 14, 14, 14]),
 };
 
 /**
@@ -32,10 +32,10 @@ const profile = (x) => {
   const hw = P.hw(x);
   const k = Math.min(1, (hw - 2.4) / 34);
   const yF0 = P.yF(x);
-  const archTop = Math.max(...[40, -40].map((ax) => 13 + Math.sqrt(Math.max(0, 18.3 ** 2 - (x - ax) ** 2))));
+  // iter-55：擋泥板內坡改用平滑拋物線＋平滑最大值（原本圓弧＋Math.max 在站位間留下折痕，車頂像融化的表皮）
   const yValley0 = Math.min(yC - 1.2, yF0 - 1.5);
-  const yValley = Math.max(yValley0, Math.min(archTop, yF0 - 0.8));
-  const yF = Math.max(yF0, yValley + 1);
+  const yValley = smoothMax(yValley0, Math.min(fenderFloor(x), yF0 - 0.8), 1.5);
+  const yF = smoothMax(yF0, yValley + 1, 1);
   const zF = Math.min(32 * k, hw - 4);
   const yShoulder = yF - 5.5 - 0.5 * Math.max(0, hw - zF - 8);
   const yLow = Math.min(P.yLow(x), yShoulder - 1);
@@ -54,18 +54,20 @@ const profile = (x) => {
 const STATIONS = buildStations(-58, 66, 2, profile);
 
 /** 眼泡位置（x、|z|、底座高度由殼面決定） */
-const EYE = { x: 14, z: 12.5, r: 4.9 };
+const EYE = { x: 14, z: 13, r: 6 };
 
 /** @type {() => Record<string, THREE.Material>} */
 const materials = () => ({
-  yellow: namedMaterial('paint-lemon-yellow', { color: 0xffc400, roughness: 0.3, clearcoat: 0.8, clearcoatRoughness: 0.1 }),
-  yellow2: namedMaterial('paint-lemon-yellow', { color: 0xffc400, roughness: 0.2, clearcoat: 1.0, side: THREE.DoubleSide }),
+  yellow: namedMaterial('paint-lemon-yellow', { color: 0xffe600, roughness: 0.22, clearcoat: 1.0, clearcoatRoughness: 0.05 }),
+  yellow2: namedMaterial('paint-lemon-yellow', { color: 0xffe600, roughness: 0.2, clearcoat: 1.0, side: THREE.DoubleSide }),
   black: namedMaterial('paint-gloss-black', { color: 0x121316, roughness: 0.28, clearcoat: 0.9 }),
   black2: namedMaterial('paint-gloss-black', { color: 0x121316, roughness: 0.28, clearcoat: 0.9, side: THREE.DoubleSide }),
   turq: namedMaterial('paint-turquoise', { color: 0x12b3b0, roughness: 0.22, clearcoat: 1.0 }),
   turq2: namedMaterial('paint-turquoise', { color: 0x12b3b0, roughness: 0.22, clearcoat: 1.0, side: THREE.DoubleSide }),
   // 眼泡：深煙燻透明圓頂（不透明度高，看起來是有色的「眼」，V5 的變形）
-  eye: namedMaterial('glass-smoke-eye', { color: 0x0b1416, roughness: 0.03, metalness: 0.3, clearcoat: 1.0, clearcoatRoughness: 0.01 }),
+  // 球眼：不透明黑色亮面漆（iter-55：原本煙燻透明，在 Blender 裡讀成透明小罩）
+  eyeBall: namedMaterial('paint-gloss-black-eye', { color: 0x0a0b0d, roughness: 0.08, clearcoat: 1.0, clearcoatRoughness: 0.02 }),
+  liner: namedMaterial('shell-inner-dark', { color: 0x1c1b14, roughness: 0.85, side: THREE.DoubleSide }),
   inner: namedMaterial('shell-inner-dark', { color: 0x1c1b14, roughness: 0.85, side: THREE.BackSide }),
   edge: namedMaterial('shell-edge-yellow', { color: 0xb89400, roughness: 0.5, side: THREE.DoubleSide }),
   recess: namedMaterial('plastic-gill-black', { color: 0x050505, roughness: 0.9, side: THREE.DoubleSide }),
@@ -78,7 +80,7 @@ const materials = () => ({
 });
 
 /** 蹼翼：翼根在車尾中線（x −44、殼面上 1 mm），4 根肋往後外放射，翼面往後上仰 */
-const FAN = { hubX: -46, tilt: 0.42, ribs: [-22, -8, 8, 22], tipX: -70 };
+const FAN = { hubX: -45, tilt: 0.4, ribs: [-27, -9.5, 9.5, 27], tipX: -71 };
 
 /**
  * 扇形蹼翼的翼面（俯視多邊形：肋尖之間是往內凹的弧，像張開的蹼），以翼根為支點往後上仰
@@ -98,7 +100,7 @@ const buildWebMembrane = (hubY) => {
   shape.lineTo(FAN.hubX + 1, 3);
   shape.lineTo(FAN.hubX + 1, -3);
   // shape 的 (x, y) = 俯視 (x, z)；擠出方向 = 厚度
-  const g = new THREE.ExtrudeGeometry(shape, { depth: 0.7, bevelEnabled: false, curveSegments: 12 });
+  const g = new THREE.ExtrudeGeometry(shape, { depth: 1.0, bevelEnabled: false, curveSegments: 16 });
   // (x, y, z) → (x, z, y)：擠出方向轉成 +y
   g.rotateX(-Math.PI / 2);
   g.translate(0, hubY + 0.9, 0);
@@ -125,7 +127,7 @@ const buildWebRibs = (hubY) => {
     FAN.ribs.map((z) => {
       const tipX = FAN.tipX + 0.06 * Math.abs(z) * 2 - 1.2;
       const pts = [0, 0.33, 0.66, 1].map((t) => rot(lerp(FAN.hubX + 1, tipX, t), hubY + 1.4, lerp(0, z * 1.04, t)));
-      return sweepEllipse(pts, 20, (t) => [lerp(1.3, 0.45, t), lerp(1.3, 0.45, t)], 12);
+      return sweepEllipse(pts, 20, (t) => [lerp(1.7, 0.6, t), lerp(1.7, 0.6, t)], 14);
     }),
   );
 };
@@ -194,42 +196,40 @@ export const dartfrogHopBody = makePolyBody({
     { mat: 'black', keep: (x, y) => Math.min(x - 59, 17.5 - y + 0.5 * (x - 59)) },
     { mat: 'yellow', keep: () => 1 },
   ],
-  mats: { inner: 'inner', edge: 'edge', cap: 'black', recess: 'recess', recessWall: 'recessWall', mount: 'mount' },
+  mats: { inner: 'inner', edge: 'edge', cap: 'turq', recess: 'recess', recessWall: 'recessWall', mount: 'mount' },
   materials,
   extras: (kit) => {
     /** @type {BodyPart[]} */
     const parts = [];
     const topAt = (x, z) => kit.surf.topY(x, z);
-    // 眼泡：黃色底座（半埋扁球）＋ 土耳其藍細環 ＋ 深煙燻半球
+    // 眼泡（iter-55 放大）：黃色扁座（半埋）＋ 土耳其藍環 ＋ 黑色亮面球眼（直徑 12 mm，中空件以殼面積 × 壁厚算質量）
     const bases = [];
     const rings = [];
-    const domes = [];
+    const balls = [];
     for (const sg of [-1, 1]) {
       const yb = topAt(EYE.x, EYE.z);
-      const base = new THREE.SphereGeometry(1, 24, 12);
-      base.scale(EYE.r + 1.6, 1.5, EYE.r + 1.6);
-      base.translate(EYE.x, yb + 0.9, sg * EYE.z);
+      const base = new THREE.SphereGeometry(1, 28, 12);
+      base.scale(EYE.r + 1.2, 1.5, EYE.r + 1.2);
+      base.translate(EYE.x, yb + 1.3, sg * EYE.z);
       bases.push(base);
-      const ring = new THREE.TorusGeometry(EYE.r + 0.35, 0.45, 8, 32);
+      const ring = new THREE.TorusGeometry(EYE.r + 0.2, 0.9, 10, 40);
       ring.rotateX(Math.PI / 2);
-      ring.translate(EYE.x, yb + 2.4, sg * EYE.z);
+      ring.translate(EYE.x, yb + 2.6, sg * EYE.z);
       rings.push(ring);
-      const dome = new THREE.SphereGeometry(EYE.r, 28, 14, 0, Math.PI * 2, 0, Math.PI / 2);
-      dome.scale(1, 0.92, 1);
-      dome.translate(EYE.x, yb + 2.2, sg * EYE.z);
-      // 封底（讓半球是封閉網格，可以算體積）
-      const cap = new THREE.CircleGeometry(EYE.r, 28);
-      cap.rotateX(Math.PI / 2);
-      cap.translate(EYE.x, yb + 2.2, sg * EYE.z);
-      domes.push(dome, cap);
+      // 球眼：球心在環面上方 0.9 mm，下緣 35% 藏進座裡（開口朝下的球冠）
+      const ball = new THREE.SphereGeometry(EYE.r, 32, 18, 0, Math.PI * 2, 0, Math.PI * 0.68);
+      ball.translate(EYE.x, yb + 3.5, sg * EYE.z);
+      balls.push(ball);
     }
     parts.push({ geometry: mergeGeos(bases), mat: 'yellow', solid: true, outline: true, name: 'eye-bases' });
-    parts.push({ geometry: mergeGeos(rings), mat: 'turq', name: 'eye-rings' });
-    parts.push({ geometry: mergeGeos(domes), mat: 'eye', solid: true, outline: true, name: 'eye-domes' });
+    parts.push({ geometry: mergeGeos(rings), mat: 'turq', solid: true, name: 'eye-rings' });
+    parts.push({ geometry: mergeGeos(balls), mat: 'eyeBall', shell: true, name: 'eye-balls' });
+    // 前輪拱內襯（iter-55）
+    parts.push({ geometry: buildArchLiner({ x: 40, y: 13, radius: 17.5 }, 29.5, 35.5, 0.35, Math.PI - 0.35), mat: 'liner', shell: true, name: 'arch-liner' });
     // 扇形蹼翼：黃色翼根座 ＋ 土耳其藍翼面 ＋ 黑色放射肋
     const hubY = topAt(FAN.hubX, 0) + 3;
     const hub = new THREE.SphereGeometry(1, 20, 10);
-    hub.scale(7.5, 4.6, 5);
+    hub.scale(6.2, 3.8, 4.2);
     hub.translate(FAN.hubX - 0.5, hubY - 2.2, 0);
     parts.push({ geometry: hub, mat: 'yellow', solid: true, outline: true, name: 'web-hub' });
     parts.push({ geometry: buildWebMembrane(hubY), mat: 'turq2', solid: true, outline: true, name: 'web-membrane' });
@@ -288,15 +288,12 @@ export const dartfrogHopBody = makePolyBody({
       name: 'decal-number',
     });
     // 頭燈（V14）：寬鼻兩側一對往外後斜的三角燈片
-    const lampSd = sdConvexPolygon([
-      [63, 10],
-      [58, 24],
-      [55, 21],
-    ]);
+    // iter-55：拿掉鼻端的三角燈片（看起來像獠牙），改成前擋泥板頂面一對往後拉長的橢圓燈
+    const lampSd = (px, pz) => Math.hypot((px - 52) / 4.2, (pz - 27) / 2.2) - 1;
     parts.push({ geometry: kit.decal((x, y, z) => -lampSd(x, Math.abs(z)), { offset: 0.1 }), mat: 'lamp', name: 'lamp-head' });
     // 鼻部「嘴線」：寬鼻正面一條黑色細橫線
     parts.push({
-      geometry: kit.decal((x, y, z) => Math.min(x - 52, 0.5 - Math.abs(y - (17.6 - 0.15 * (66 - x))))),
+      geometry: kit.decal((x, y, z) => Math.min(x - 50, 0.9 - Math.abs(y - (18.2 - 0.12 * (66 - x))))),
       mat: 'dBlack',
       name: 'decal-mouth',
     });

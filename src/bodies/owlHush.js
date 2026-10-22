@@ -2,10 +2,10 @@
 // 大型圓形深煙燻泡泡座艙、座艙後方兩撮短耳羽、車尾低位寬翼（後緣羽毛梳齒狀鋸齒、兩支短支柱、翼頂不高於座艙頂）。
 // 設計：shared/design/body-owl-hush/DESIGN.md（角色、致敬語彙、和劇中車 / 市售車殼的差異）。
 // 剖面由本檔的站位函式產生（推估，依 HOMAGE_RESEARCH 第 4 節與外框 / 輪胎間隙掃描）。
-// 塗裝全為自創：可可棕＋燕麥米＋琥珀、人字形羽紋、號碼「23」；不含任何廠商 / 作品名稱、商標或角色圖像。
+// 塗裝全為自創：可可棕＋燕麥米＋琥珀、疊羽紋、號碼「23」；不含任何廠商 / 作品名稱、商標或角色圖像。
 import * as THREE from 'three';
-import { makePolyBody, finPlate, buildDriver } from './polyBody.js';
-import { namedMaterial, decalMaterial, sdNumber, sdBar, sideDecal, topDecal, mergeGeos, lerp } from './loft.js';
+import { makePolyBody, finPlate, buildDriver, airfoilFin } from './polyBody.js';
+import { namedMaterial, decalMaterial, sdNumber, sdBar, sideDecal, topDecal, mergeGeos, lerp, buildRegion, buildRim } from './loft.js';
 
 /**
  * 單調三次內插（Fritsch–Carlson，不過衝）：給節點 tx 與各欄位的值，回傳 f(key, x)
@@ -98,16 +98,6 @@ const STATIONS = (() => {
 /** @type {(x: number) => number} 燕麥米（下）／可可棕（上）分色線：臉盤下緣起、往後上掃（V13） */
 const splitY = (x) => 17 + 0.075 * (60 - x);
 
-/**
- * 人字形羽紋（V 形重複細紋，尖端朝前）的距離函式：沿 x 週期 P，V 形斜率 k，條寬 w
- * @type {(P: number, k: number, w: number) => (x: number, z: number) => number}
- */
-const chevron = (P, k, w) => (x, z) => {
-  const u = x + k * Math.abs(z);
-  const ph = (((u % P) + P) % P) - P / 2;
-  return Math.abs(ph) - w / 2;
-};
-
 /** @type {() => Record<string, THREE.Material>} */
 const materials = () => ({
   cocoa: namedMaterial('paint-cocoa-brown', { color: 0x5a3a26, roughness: 0.22, metalness: 0.2, clearcoat: 1.0, clearcoatRoughness: 0.06 }),
@@ -126,33 +116,114 @@ const materials = () => ({
   oatDecal: decalMaterial('decal-oatmeal', { color: 0xeadbb8, roughness: 0.35 }),
   amberDecal: decalMaterial('decal-amber', { color: 0xf0a020, roughness: 0.3, clearcoat: 0.6 }),
   dark: decalMaterial('decal-black', { color: 0x14100c, roughness: 0.5 }),
+  brow: namedMaterial('paint-cocoa-dark', { color: 0x2c1b10, roughness: 0.25, clearcoat: 0.9 }),
+  brow2: namedMaterial('paint-cocoa-dark', { color: 0x2c1b10, roughness: 0.25, clearcoat: 0.9, side: THREE.DoubleSide }),
+  liner: namedMaterial('plastic-liner-matte', { color: 0x1a1512, roughness: 0.85, side: THREE.DoubleSide }),
   cocoaDecal: decalMaterial('decal-cocoa-brown', { color: 0x4e3020, roughness: 0.35, clearcoat: 0.6 }),
   mount: namedMaterial('abs-mount-black', { color: 0x222326, roughness: 0.6 }),
 });
 
 /**
- * 低位寬翼的俯視輪廓（x, z）：前緣微後掠的直線，後緣是羽毛梳齒狀鋸齒（每側 5 齒，齒尖朝後）
- * @type {(span: number) => number[][]}
+ * 疊羽紋（iter-55，取代人字細紋）：交錯排列的圓形羽片，每一點歸屬「最前面（x 最大）且蓋住它的羽片」，
+ * 畫那片羽毛露出來的後半圈邊緣 → 一片片往後疊的鱗狀羽，不再像魚骨。回傳值 ≥ 0 = 在邊線上
+ * @type {(Px: number, Pz: number, R: number, w: number) => (x: number, az: number) => number}
  */
-const wingOutline = (span) => {
-  /** @type {number[][]} */
+const featherScales = (Px, Pz, R, w) => (x, az) => {
+  const k0 = Math.floor(az / Pz);
+  let bestCx = -Infinity;
+  let bestD = Infinity;
+  for (let k = k0 - 1; k <= k0 + 2; k++) {
+    const off = Math.abs(k) % 2 === 1 ? Px / 2 : 0;
+    const m0 = Math.floor((x - off) / Px);
+    for (let m = m0 - 1; m <= m0 + 2; m++) {
+      const cx = m * Px + off;
+      const d = Math.hypot(x - cx, az - k * Pz);
+      if (d <= R && cx > bestCx) {
+        bestCx = cx;
+        bestD = d;
+      }
+    }
+  }
+  if (bestCx === -Infinity) {
+    return -1;
+  }
+  return w / 2 - Math.abs(R - bestD);
+};
+
+/**
+ * 有厚度的升力面（寬翼）：展向 u ∈ [−1, 1]（z = u · span）、弦向 v ∈ [v0, v1]（0 = 前緣、1 = 後緣），
+ * 上下兩面以 √v(1 − v) 厚度分布在前緣、後緣閉合；v 截斷處補端面、翼尖厚度收到 0 → 每一段都是封閉網格
+ * @type {(o: { v0: number, v1: number, nU: number, nV: number, span: number, le: (u: number) => number, te: (u: number) => number, y: (u: number, v: number) => number, thick: (u: number) => number }) => THREE.BufferGeometry}
+ */
+const liftSurface = (o) => {
+  /** @type {(v: number) => number} 正規化厚度分布（最大 1，v = 1/3） */
+  const tv = (v) => (Math.sqrt(v) * (1 - v)) / 0.3849;
+  /** @type {(i: number, j: number, sg: number) => number[]} */
+  const P = (i, j, sg) => {
+    const u = lerp(-1, 1, i / o.nU);
+    const v = lerp(o.v0, o.v1, j / o.nV);
+    const x = lerp(o.le(u), o.te(u), v);
+    return [x, o.y(u, v) + sg * 0.5 * o.thick(u) * tv(v), u * o.span];
+  };
+  /** @type {number[]} */
+  const pos = [];
+  for (let i = 0; i < o.nU; i++) {
+    for (let j = 0; j < o.nV; j++) {
+      for (const sg of [1, -1]) {
+        const a = P(i, j, sg);
+        const b = P(i + 1, j, sg);
+        const c = P(i + 1, j + 1, sg);
+        const d = P(i, j + 1, sg);
+        if (sg > 0) {
+          pos.push(...a, ...c, ...b, ...a, ...d, ...c);
+        } else {
+          pos.push(...a, ...b, ...c, ...a, ...c, ...d);
+        }
+      }
+    }
+  }
+  for (const [j, front] of [
+    [0, true],
+    [o.nV, false],
+  ]) {
+    for (let i = 0; i < o.nU; i++) {
+      const t0 = P(i, j, 1);
+      const t1 = P(i + 1, j, 1);
+      const b0 = P(i, j, -1);
+      const b1 = P(i + 1, j, -1);
+      if (front) {
+        pos.push(...t0, ...t1, ...b1, ...t0, ...b1, ...b0);
+      } else {
+        pos.push(...t0, ...b1, ...t1, ...t0, ...b0, ...b1);
+      }
+    }
+  }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  g.computeVertexNormals();
+  return g;
+};
+
+/**
+ * 輪拱內襯（iter-55）：輪拱切口內側的半圓環擋板（側視半徑 r0–r1、輪心上方 0°–180°），沿 z 厚 thick，
+ * 擋住從側面經輪胎與拱緣間隙看進殼內的空腔
+ * @type {(x0: number, r0: number, r1: number, z0: number, thick: number) => THREE.BufferGeometry}
+ */
+const archRing = (x0, r0, r1, z0, thick) => {
+  /** @type {THREE.Vector2[]} */
   const pts = [];
-  // 前緣：從右翼尖到左翼尖（翼尖略往後掠）
-  for (let i = 0; i <= 8; i++) {
-    const z = lerp(span, -span, i / 8);
-    pts.push([-47 - 3 * (Math.abs(z) / span) ** 2, z]);
+  const n = 32;
+  for (let i = 0; i <= n; i++) {
+    const a = (Math.PI * i) / n;
+    pts.push(new THREE.Vector2(x0 + r1 * Math.cos(a), 13 + r1 * Math.sin(a)));
   }
-  // 後緣鋸齒：左翼尖 → 右翼尖（齒根 x −57、齒尖 x −62.5）
-  const nTeeth = 10;
-  for (let i = 0; i < nTeeth; i++) {
-    const z0 = lerp(-span, span, i / nTeeth);
-    const z1 = lerp(-span, span, (i + 1) / nTeeth);
-    const sweep = 2.2 * (Math.abs((z0 + z1) / 2) / span) ** 2;
-    pts.push([-57 - sweep, z0 + (i === 0 ? 0 : 0.01)]);
-    pts.push([-62.5 - sweep, lerp(z0, z1, 0.7)]);
+  for (let i = n; i >= 0; i--) {
+    const a = (Math.PI * i) / n;
+    pts.push(new THREE.Vector2(x0 + r0 * Math.cos(a), 13 + r0 * Math.sin(a)));
   }
-  pts.push([-57 - 2.2, span]);
-  return pts;
+  const g = new THREE.ExtrudeGeometry(new THREE.Shape(pts), { depth: thick, bevelEnabled: false, curveSegments: 1 });
+  g.translate(0, 0, z0);
+  return g;
 };
 
 export const owlHushBody = makePolyBody({
@@ -189,6 +260,9 @@ export const owlHushBody = makePolyBody({
       return out;
     })(),
   },
+  // iter-55：眼窩（俯視圓形、深 1.3 mm），槽底放琥珀燈片，上緣加凸出的眉骨
+  recesses: [{ id: '眼窩 ×2', view: 'top', shape: 'fn', sd: (x, y, z) => Math.hypot(x - 61, Math.abs(z) - 14) - 4.4, depth: 1.3 }],
+  innerSkipRecess: true,
   sideZMin: 28,
   zones: () => [
     // 燕麥米：下半車身（分色線由臉盤往後上掃）
@@ -197,24 +271,23 @@ export const owlHushBody = makePolyBody({
     { mat: 'oat', keep: (x, y, z) => Math.min(x - 56 - 0.012 * z * z, 24 - Math.abs(z)) },
     { mat: 'cocoa', keep: () => 1 },
   ],
-  mats: { inner: 'inner', edge: 'edge', cap: 'oat2', cockpit: 'cockpit', glass: 'glass', mount: 'mount' },
+  mats: { inner: 'inner', edge: 'edge', cap: 'oat2', recess: 'cockpit', recessWall: 'brow2', cockpit: 'cockpit', glass: 'glass', mount: 'mount' },
   materials,
   extras: (kit) => {
     const parts = [];
     const top = (x) => kit.surf.topY(x, 0);
-    // 人字形羽紋（燕麥米，引擎蓋與快背；座艙底與臉盤除外）——由鼻往後掃的 V 形重複細紋
-    const chev = chevron(7, 0.55, 1.5);
+    // 疊羽紋（iter-55，燕麥米細邊，擋泥板與肩部；座艙底與臉盤除外）——羽尖朝後、一片疊一片
+    const scales = featherScales(6.2, 4.6, 4.4, 0.9);
     parts.push({
       geometry: kit.decal((x, y, z) => {
         const az = Math.abs(z);
         if (y < splitY(x) + 1.2 || x > 50 || az > 34 || az < 15.5 || kit.underCanopy(x, z) > -0.8) {
           return -1;
         }
-        // 只畫在中央隆起之外的擋泥板 / 肩部（|z| 15.5–34），中央留可可棕
-        return -chev(x, az);
+        return scales(x, az);
       }),
       mat: 'oatDecal',
-      name: 'decal-chevrons',
+      name: 'decal-feather-scales',
     });
     // 琥珀色分色細線（分色線上方）＋臉盤外圈細線
     parts.push({
@@ -232,24 +305,15 @@ export const owlHushBody = makePolyBody({
     const drv = buildDriver(10, kit.innerYAt(10) + kit.t, 1.25);
     parts.push({ geometry: drv.body, mat: 'driver', solid: true, name: 'cockpit-driver' });
     parts.push({ geometry: drv.helmet, mat: 'helmet', solid: true, name: 'cockpit-helmet' });
-    // 一對琥珀色圓「眼」燈（V14）：臉盤上方左右各一，外圈可可棕眼眶
-    const eyeC = [61, 14];
-    /** @type {(x: number, az: number) => number} 眉線（正值 = 眉線下方）：外側高、內側低的斜線，切掉眼燈上內側 */
-    const brow = (x, az) => 1.0 + 0.75 * (az - eyeC[1]) - (x - eyeC[0]);
-    parts.push({
-      geometry: kit.decal((x, y, z) => Math.min(4.3 - Math.hypot(x - eyeC[0], Math.abs(z) - eyeC[1]), brow(x, Math.abs(z))), { offset: 0.12 }),
-      mat: 'eye',
-      name: 'lamp-eyes',
-    });
-    parts.push({
-      geometry: kit.decal((x, y, z) => {
-        const r = Math.hypot(x - eyeC[0], Math.abs(z) - eyeC[1]);
-        // 眼眶：眼燈外圈 1.4 mm，眉線之上整塊塗黑（往內下斜的眉，眼神銳利）
-        return Math.min(5.8 - r, Math.max(r - 4.2, -brow(x, Math.abs(z)) + 0.05));
-      }),
-      mat: 'dark',
-      name: 'decal-eye-rings',
-    });
+    // 一對琥珀色圓「眼」燈（V14，iter-55 改成凹入的燈）：眼窩槽底的琥珀燈片＋眼窩上半圈凸出 0.6 mm 的深棕眉骨（外側高、內側低，眼神銳利）
+    const eyeSd = (x, y, z) => Math.hypot(x - 61, Math.abs(z) - 14) - 4.4;
+    const lamp = buildRegion(kit.surf, [...kit.holes, (x, y, z) => -eyeSd(x, y, z)], { offset: -1.3 + 0.08 });
+    parts.push({ geometry: lamp.geometry, mat: 'eye', name: 'lamp-eyes' });
+    /** @type {(x: number, y: number, z: number) => number} 眉骨範圍：眼窩上半（往車尾方向），斜線外側高、內側低 */
+    const browSide = (x, y, z) => x - 61 + 0.55 * (Math.abs(z) - 14) + 1.2;
+    const browReg = buildRegion(kit.surf, [...kit.holes, eyeSd, (x, y, z) => 1.8 - eyeSd(x, y, z), browSide], { offset: 0.6 });
+    parts.push({ geometry: browReg.geometry, mat: 'brow', name: 'eye-brow' });
+    parts.push({ geometry: buildRim(browReg, 0, 0.6), mat: 'brow2', name: 'eye-brow-wall' });
     // 鳥喙：臉盤中央往下的琥珀色小三角刃（埋入鼻端）
     parts.push({
       geometry: finPlate(
@@ -267,78 +331,58 @@ export const owlHushBody = makePolyBody({
       solid: true,
       name: 'beak',
     });
-    // 耳羽：座艙後方左右兩撮短凸起（高 ≤ 4 mm，往外傾 16°），根部埋入殼面
+    // 耳羽（iter-55 放大）：座艙後方左右兩撮三角凸起，高出殼面約 5.6 mm、往後掠、往外傾 10°，根部埋入殼面，側視看得到
     const tufts = [];
     for (const sg of [-1, 1]) {
-      const zc = sg * 10.5;
-      const y0 = kit.surf.topY(-12, zc) - 1.2;
+      const zc = sg * 11;
+      const y0 = kit.surf.topY(-13, zc) - 1.2;
       tufts.push(
         finPlate(
           [
-            [-8, y0],
-            [-17.5, y0 - 0.4],
-            [-17, y0 + 4.6],
-            [-13.5, y0 + 2.2],
+            [-6, y0],
+            [-20, y0 - 0.5],
+            [-20.5, y0 + 6.8],
+            [-14.5, y0 + 3.4],
           ],
           zc,
-          2.0,
-          sg * 16,
+          2.6,
+          sg * 10,
         ),
       );
     }
     parts.push({ geometry: mergeGeos(tufts), mat: 'cocoa2', outline: true, solid: true, name: 'ear-tufts' });
-    // 低位寬翼（V6 過彎型＝寬翼、V7 翼頂不高於座艙頂、V9 單段翼＋鋸齒後緣）：可可棕翼面＋琥珀鋸齒尖
+    // 前輪拱內襯：拱緣內側的半圓環擋板（z 23.0–23.6，距 26 mm 輪胎內側面 1.65 mm）
+    parts.push({
+      geometry: mergeGeos([archRing(40, 11, 15.6, 23.0, 0.6), archRing(40, 11, 15.6, -23.6, 0.6)]),
+      mat: 'liner',
+      solid: true,
+      name: 'arch-liners',
+    });
+    // 低位寬翼（V6 過彎型＝寬翼、V7 翼頂不高於座艙頂、V9 單段翼；iter-55 改成有弧度的翼型曲面）：
+    // 後緣是每側 6 片往外後方斜切的羽片（齒尖後掠），翼面帶 1.2 mm 弧度、5° 攻角、往翼尖上反 1.8 mm；
+    // 前 62% 可可棕、後段羽尖琥珀；沒有端板，翼頂約 39（低於座艙頂 43.5）→ 和比賽型 aero-wing 的鵝頸平板高位翼相反
     const span = 46;
     const yWing = 35.2;
-    const wShape = new THREE.Shape(wingOutline(span).map(([x, z]) => new THREE.Vector2(x, -z)));
-    const wingGeo = new THREE.ExtrudeGeometry(wShape, { depth: 1.2, bevelEnabled: true, bevelThickness: 0.2, bevelSize: 0.2, bevelSegments: 1 });
-    wingGeo.rotateX(-Math.PI / 2);
-    // 攻角：後緣往上 4°（繞前緣附近）
-    wingGeo.translate(48, 0, 0);
-    wingGeo.rotateZ((-4 * Math.PI) / 180);
-    wingGeo.translate(-48, yWing, 0);
-    parts.push({ geometry: wingGeo, mat: 'cocoa2', outline: true, solid: true, name: 'serrated-wing' });
-    // 鋸齒尖琥珀帶：翼面上方的鋸齒形貼片（齒尖 2.5 mm）
-    const teeth = [];
-    const nTeeth = 10;
-    for (let i = 0; i < nTeeth; i++) {
-      const z0 = lerp(-span, span, i / nTeeth);
-      const z1 = lerp(-span, span, (i + 1) / nTeeth);
-      const sweep = 2.2 * (Math.abs((z0 + z1) / 2) / span) ** 2;
-      const zt = lerp(z0, z1, 0.7);
-      const xr = -57 - sweep;
-      const tri = [
-        [xr - 3.0, lerp(z0, zt, 0.55)],
-        [-62.5 - sweep + 0.25, zt],
-        [xr - 3.0, lerp(zt, z1, 0.45)],
-      ];
-      const sh = new THREE.Shape(tri.map(([x, z]) => new THREE.Vector2(x, -z)));
-      const g = new THREE.ExtrudeGeometry(sh, { depth: 1.7, bevelEnabled: false });
-      g.rotateX(-Math.PI / 2);
-      g.translate(48, -0.25, 0);
-      g.rotateZ((-4 * Math.PI) / 180);
-      g.translate(-48, yWing, 0);
-      teeth.push(g);
-    }
-    parts.push({ geometry: mergeGeos(teeth), mat: 'amber2', outline: true, solid: true, name: 'wing-teeth' });
-    // 兩支短支柱（後傾的刀形支柱，底部加寬並埋入殼面）
+    const nFeather = 6;
+    const wing = {
+      nU: 2 * nFeather * 24,
+      span,
+      le: (u) => -47 - 3 * u * u,
+      te: (u) => {
+        const ph = (Math.abs(u) * nFeather) % 1;
+        return -57.5 - 2.5 * u * u - 5.5 * ph ** 1.3;
+      },
+      y: (u, v) => yWing + 1.8 * u * u + 1.2 * Math.sin(Math.PI * v) + v * 10 * Math.tan((5 * Math.PI) / 180),
+      thick: (u) => 1.9 * (1 - u ** 8),
+    };
+    parts.push({ geometry: liftSurface({ ...wing, v0: 0, v1: 0.62, nV: 8 }), mat: 'cocoa2', outline: true, solid: true, name: 'feather-wing' });
+    parts.push({ geometry: liftSurface({ ...wing, v0: 0.62, v1: 1, nV: 6 }), mat: 'amber2', outline: true, solid: true, name: 'feather-wing-tips' });
+    // 兩支短支柱：翼型斷面的刀形支柱（根部厚 2.6 mm，往翼面收到 70%），根部埋入殼面、頂端埋入翼面
     const stays = [];
     for (const sg of [-1, 1]) {
       const zc = sg * 15;
       const yb = kit.surf.topY(-52, zc) - 1.5;
-      stays.push(
-        finPlate(
-          [
-            [-45, yb],
-            [-57.5, yb],
-            [-57.5, yWing - 2.2 + 0.4],
-            [-53.5, yWing + 0.6],
-            [-51, yWing + 0.4],
-          ],
-          zc,
-          1.6,
-        ),
-      );
+      stays.push(airfoilFin([-43.5, -58, yb], [-48.5, -57, yWing + 0.9], 2.6, zc, 0, 16, 6, { taper: [1, 0.7] }));
     }
     parts.push({ geometry: mergeGeos(stays), mat: 'cocoa2', outline: true, solid: true, name: 'wing-stays' });
     // 側面大人字羽紋（V12 / V13）：燕麥米側裙上 3 道尖端朝前的可可棕 V 形，由前往後漸大，像收攏的翼羽
