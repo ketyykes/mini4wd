@@ -12,6 +12,7 @@ import * as powertrainApi from '../src/powertrain.js';
 import { spec } from '../src/spec.js';
 import { buildStraight, buildCircuit } from '../src/track.js';
 import * as sim from '../src/sim.js';
+import { axleInertia } from '../src/parts/inertia.js';
 
 /** @type {(x: number) => string} */
 const f3 = (x) => x.toFixed(3);
@@ -529,19 +530,21 @@ describe('P17 新零件的物理效果（只透過組裝設定替換）', () => 
   }, 240000);
 
   test('P17_mass_damper 制振器可上下滑動 → 落地後垂直彈跳衰減較快（對照：同一顆鎖死當固定配重）', () => {
-    for (const [name, over] of [
+    for (const [name, over, opt] of /** @type {[string, any, { sumVy?: boolean }?][]} */ ([
       ['後制振器', { rearStay: 'stay-rear-frp', massDamper: 'damper-rear-cylinder' }],
       ['側制振器', { massDamper: 'damper-side-square' }],
       // 第五階段（iter-58）：MA 側制振器組 6×6×32 mm（FRP 側板固定在底盤，只有黃銅方塊滑動）；不裝車殼（側制振器與多數車殼干涉，見 P18）
       ['MA 側制振器組 32 mm', { massDamper: 'damper-side-square-32', body: null }],
       // 第七階段（iter-75）：8×8×14 側制振器、球頭連桿擺動式（擺動剛體；不裝車殼）。重型 8.8 g 另見 P17_heavy_damper
-      ['側制振器 8×8×14', { massDamper: 'damper-square-8x8x14', body: null }],
+      // iter-83：8×8×14 的 Σ|v_y| 在落下高度 60–140 mm 掃描中可滑動 / 鎖死 3 勝 4 負（平手，iter-75 那次是剛好有利的高度），
+      // 彈起（0.374–0.378 vs 0.501–0.511 mm）與滯空（6.5–6.8 vs 11.3–12.5 ms）7 個高度都穩定 → 這款不比 Σ|v_y|（理由見 ITERATION_LOG iter-83）
+      ['側制振器 8×8×14', { massDamper: 'damper-square-8x8x14', body: null }, { sumVy: false }],
       ['側制振器 8×8×32（iter-80）', { massDamper: 'damper-square-8x8x32', body: null }],
       ['樽型細制振器 3 g（iter-80）', { rearStay: 'stay-rear-frp', massDamper: 'damper-slim', body: null }],
       ['樽型細制振器 1.5 g（iter-80）', { rearStay: 'stay-rear-frp', massDamper: 'damper-slim-short', body: null }],
       ['AR 側制振器（碗形＋圓筒，iter-80）', { massDamper: 'damper-ar-side', body: null }],
       ['球頭連桿制振器（擺動）', { rearStay: 'stay-rear-frp', massDamper: 'damper-balllink-square', body: null }],
-    ]) {
+    ])) {
       const free = assemble(cfg(over));
       // 對照組：同一顆制振器用螺帽鎖死（locked，PARTS_RESEARCH H 節：官方說明可當固定配重）——質量、位置完全相同，只差能不能滑動
       const locked = assemble(cfg({ ...over, massDamper: { base: over.massDamper, locked: true } }));
@@ -560,7 +563,9 @@ describe('P17 新零件的物理效果（只透過組裝設定替換）', () => 
       console.log(`[P17] ${name} 100 mm 落下：可滑動 彈起 ${f3(df.rebound_mm)} mm、滯空 ${df.air_ms.toFixed(1)} ms、Σ|v_y| ${f3(df.sumVy_mm)} mm；鎖死 彈起 ${f3(dl.rebound_mm)} mm、滯空 ${dl.air_ms.toFixed(1)} ms、Σ|v_y| ${f3(dl.sumVy_mm)} mm`);
       expect(df.rebound_mm).toBeLessThan(dl.rebound_mm);
       expect(df.air_ms).toBeLessThanOrEqual(dl.air_ms);
-      expect(df.sumVy_mm).toBeLessThan(dl.sumVy_mm);
+      if (opt?.sumVy !== false) {
+        expect(df.sumVy_mm).toBeLessThan(dl.sumVy_mm);
+      }
     }
   }, 120000);
 
@@ -645,7 +650,9 @@ describe('P17 新零件的物理效果（只透過組裝設定替換）', () => 
     expect(n98.bbox_mm.size.z).toBeLessThan(A({}).bbox_mm.size.z);
   }, 120000);
 
-  test('P17_audit_L4 物理稽核 L4 修正：馬達被拖到無載轉速以上（τ < 0）時輪上力 = τ·G/(r·η)（反向功率流，損失讓煞車力變大）', () => {
+  test('P17_audit_L2_L4 物理稽核 L2 / L4 修正：實心正六角軸 I = m·(5/12)·a²；馬達被拖到無載轉速以上（τ < 0）時輪上力 = τ·G/(r·η)（反向功率流，損失讓煞車力變大）', () => {
+    // L2：實心 2 mm 六角軸（a = 1 mm）
+    expect(axleInertia({ diameter_mm: 2, mass_g: 1 })).toBeCloseTo((5 / 12) * 1 * 1, 12);
     // L4：同一個轉速點，比較通電時的輪上力與馬達扭力
     const asm = assemble(cfg({}));
     const P = asm.P;
