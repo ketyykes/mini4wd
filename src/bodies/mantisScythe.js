@@ -23,14 +23,16 @@ const XS = [-70, -66, -60, -52, -44, -36, -26, -16, -6, 4, 14, 22, 30, 40, 50, 5
  * 縱向控制表（推估）：
  * - yC：中線高度。腹部 31（後輪上方）→ 座艙段 28.5 → 前胸脊線往前降到 24（底盤齒輪箱頂約 21，殼內面要高過它）→ 頸部 23.1 → 小頭 23 → 鼻尖 14
  * - yF：前擋泥板稜線（前輪上方 29.6，比前胸高 → 擋泥板成為獨立量體，L1-2）；腹部段不用
- * - hw：半寬。後輪上方 38（寬圓腹部）、腰部收到 21.5（俯視沙漏形：前胸 / 腹部分節；|z| < 28 的側壁下緣抬到 22.6，跨在底盤內件之上）、前擋泥板 37、小頭 16.5 → 鼻尖 5.6（俯視倒三角，鼻端小平面）
+ * - hw：半寬。後輪上方 36.5（寬圓腹部）、腰部收到 21.5（俯視沙漏形：前胸 / 腹部分節；|z| < 28 的側壁下緣抬到 22.6，跨在底盤內件之上）、前擋泥板 42.5、小頭 13–14 → 鼻尖 5.6（俯視倒三角，鼻端小平面）
+ *   iter-69：腰部加炭灰側板（俯視外擴到 28.4）後，和 marlin-sail 俯視 IoU 0.85 → 0.88；改成「更寬的前肢擋泥板（37 → 42.5）＋更窄的頸 / 小頭
+ *   （22 → 13）＋往後收尖的腹部末端（x −60 / −66：33 / 22 → 25.5 / 12）＋腹部略收（38 → 36.5）」把俯視平面拉開（螳螂的寬前肢、小頭、尖腹）
  * - yLow：側壁下緣
  * @type {Record<string, (x: number) => number>}
  */
 const P = {
   yC: monoCurve(XS, [20.5, 25.2, 29, 30.6, 31.1, 31.1, 30.6, 29.8, 28.6, 27.6, 26.8, 26.3, 25.9, 25.3, 24.2, 23.4, 23.1, 23, 21.9, 19.6, 17, 14]),
   yF: monoCurve(XS, [20, 24, 27, 28.5, 29, 29, 28.5, 27.5, 26.2, 25, 24.6, 26, 28.4, 29.6, 28.8, 27, 23.5, 21.6, 20.6, 18.8, 16.6, 14.2]),
-  hw: monoCurve(XS, [10, 22, 33, 37, 38, 38, 37, 29, 23, 21.5, 23, 33, 37, 37.2, 37, 35.5, 22, 16.5, 12.8, 9.6, 7.4, 5.6]),
+  hw: monoCurve(XS, [4, 12, 25.5, 36, 36.5, 36.5, 35.5, 29, 23, 21.5, 23, 34.2, 41.5, 42.5, 41.5, 38.8, 13, 14, 12.3, 9.6, 7.4, 5.6]),
   yLow: monoCurve(XS, [19, 17.5, 15.5, 13.6, 13, 13, 13.2, 14.6, 15.2, 15.2, 15, 14.2, 13.6, 13.5, 13.8, 14.2, 14.2, 13.8, 13.4, 13.2, 13.2, 13.2]),
 };
 
@@ -56,9 +58,10 @@ const profile = (x) => {
   // 前段：前胸＋擋泥板
   const k = Math.min(1, (hw - 3) / 34);
   const yF = Math.max(P.yF(x), yC - 1.2);
-  const zF = Math.min(29.5 * k, hw - 2.6);
+  const zF = Math.min(29.5 * k + 0.7 * Math.max(0, hw - 37.2), hw - 2.6);
   // 前胸谷底：x 22–54 的 |z| ≤ 26 範圍內底盤內件最高約 21 mm → 外殼至少 22.4（內面 21.6）
-  const vFloor = x > 22 && x < 55 ? 22.4 : 18.6;
+  // iter-69：原本在 x 55 由 22.4 直接跳到 18.6 → 谷底點在擋泥板前緣斷開 2.4 mm（鼻部 / 頸部的皺褶來源），改成 x 54–59 平滑過渡
+  const vFloor = x > 22 ? lerp(22.4, 18.6, smoothstep(54, 59, x)) : 18.6;
   const yV = Math.max(Math.min(yC - 3.6, yF - 3), Math.min(vFloor, yC - 1.2));
   const yFi = smoothMax(Math.min(yF - 1.2, lerp(yV, yF, 0.7)), Math.min(frontFenderFloor(x), yF - 0.6), 0.6);
   const ySh = Math.min(yF - 3.4, yF - 0.1 * (hw - zF) * 3);
@@ -84,8 +87,12 @@ const profile = (x) => {
   if (h <= 0) {
     return body;
   }
-  const head = fr.map((q) => [q * hw, yC - 3.2 * q * q]);
-  head.push([hw, yC - 3.8], [hw, Math.min(yLow, Math.max(yC - 4.8, 11.6))]);
+  // iter-69（評審 iter-67「鼻部有皺褶」）：鼻尖附近 yC 降到 14，原本肩點 yC − 3.8 會低於下緣 11.6 → 剖面往回折（皺褶）。
+  // 改成依可用高度 (yC − 下緣) 等比縮小圓頂落差與肩點，剖面永遠由上往下單調
+  const yBot = Math.min(yLow, Math.max(yC - 4.8, 11.6));
+  const sHead = Math.min(1, Math.max(0.2, (yC - yBot - 0.6) / 4.8));
+  const head = fr.map((q) => [q * hw, yC - 3.2 * sHead * q * q]);
+  head.push([hw, yC - 3.8 * sHead], [hw, yBot]);
   return body.map((p, i) => [lerp(p[0], head[i][0], h), lerp(p[1], head[i][1], h)]);
 };
 
@@ -251,6 +258,94 @@ const scytheSd = (x, z) => {
   return best;
 };
 
+/**
+ * 腰部炭灰側板（iter-69，評審 iter-67「細腰處整段露出電池與底盤側框」）：前後輪拱之間，從殼面下緣往外伸出一道圓角肩、再往下垂到底盤側框上方，
+ * 側視把電池艙整段遮住；俯視只外擴到 |z| 28.4（電池艙頂蓋外緣 26.5 ＋ 間隙 ≥ 1 mm），萊姆綠的沙漏殼面不變。
+ * 斷面為封閉 L 形薄板（厚 0.9 mm）：腰部 = 肩台（y ≈ 23）＋圓角 R2.5 ＋ 垂直側板；腹部 / 擋泥板段 = 側壁內側 0.4 mm 往下延伸的垂直板。
+ * 下緣 y 10.6（底盤側框禁入區 y ≤ 9.9 之上），前後端以 R4 圓角往上收。
+ * @type {(sg: number) => THREE.BufferGeometry}
+ */
+const buildWaistPanel = (sg) => {
+  const XA = -23;
+  const XB = 22;
+  const T_PANEL = 0.9;
+  const R_CORNER = 2.5;
+  const R_END = 4;
+  const Y_BOTTOM = 10.6;
+  const N_ARC = 6;
+  /** @type {(x: number) => number[][]} 封閉斷面 (z, y)：外側路徑（肩台 → 圓角 → 垂直板）＋內側路徑反向 */
+  const section = (x) => {
+    const edge = profile(x).at(-1);
+    const hwE = edge[0];
+    const yT = edge[1] + 0.35;
+    const zP = Math.max(28.4, hwE - 0.4);
+    const endU = Math.min(x - XA, XB - x);
+    const endRise = R_END - Math.sqrt(Math.max(0, R_END ** 2 - (R_END - Math.min(R_END, endU)) ** 2));
+    const yB = Math.min(Y_BOTTOM + endRise, yT - R_CORNER - 0.6);
+    const z0 = Math.min(hwE - 1.6, zP - R_CORNER);
+    /** @type {(off: number) => number[][]} 偏移 off（0 = 外側，T_PANEL = 內側）的路徑 */
+    const path = (off) => {
+      const pts = [[z0, yT - off]];
+      for (let i = 0; i <= N_ARC; i++) {
+        const a = (Math.PI / 2) * (1 - i / N_ARC);
+        const r = R_CORNER - off;
+        pts.push([zP - R_CORNER + r * Math.cos(a), yT - R_CORNER + r * Math.sin(a)]);
+      }
+      pts.push([zP - off, yB]);
+      return pts;
+    };
+    return [...path(0), ...path(T_PANEL).reverse()];
+  };
+  /** @type {number[][][]} */
+  const rings = [];
+  /** @type {number[]} */
+  const xs = [];
+  for (let x = XA; x < XB - 1e-6; x += 0.5) {
+    xs.push(x);
+  }
+  xs.push(XB);
+  for (const x of xs) {
+    rings.push(section(x).map(([z, y]) => [x, y, sg * z]));
+  }
+  /** @type {number[]} */
+  const pos = [];
+  const n = rings[0].length;
+  /** @type {(a: number[], b: number[], c: number[]) => void} */
+  const tri = (a, b, c) => {
+    if (sg > 0) {
+      pos.push(...a, ...b, ...c);
+    } else {
+      pos.push(...a, ...c, ...b);
+    }
+  };
+  for (let k = 0; k < rings.length - 1; k++) {
+    for (let i = 0; i < n; i++) {
+      const j = (i + 1) % n;
+      tri(rings[k][i], rings[k + 1][i], rings[k + 1][j]);
+      tri(rings[k][i], rings[k + 1][j], rings[k][j]);
+    }
+  }
+  // 兩端封口（斷面為凹多邊形 → 用 ShapeUtils 三角化）
+  for (const [k, flip] of [
+    [0, true],
+    [rings.length - 1, false],
+  ]) {
+    const ring = rings[/** @type {number} */ (k)];
+    const contour = ring.map((p) => new THREE.Vector2(p[2] * sg, p[1]));
+    for (const [a, b, c] of THREE.ShapeUtils.triangulateShape(contour, [])) {
+      if (flip) {
+        tri(ring[a], ring[c], ring[b]);
+      } else {
+        tri(ring[a], ring[b], ring[c]);
+      }
+    }
+  }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  g.computeVertexNormals();
+  return g;
+};
+
 export const mantisScytheBody = makePolyBody({
   id: 'body-mantis-scythe',
   name: '螳螂鐮刀伏擊型',
@@ -313,7 +408,7 @@ export const mantisScytheBody = makePolyBody({
     const ringsDark = [];
     /** @type {THREE.BufferGeometry[]} */
     const ringsLime = [];
-    const EYE = { x: 61.5, z: 14.2, r: 3.7 };
+    const EYE = { x: 61.5, z: 11, r: 3.5 };
     const eyeY = topY(EYE.x, EYE.z) + 0.6;
     for (const sg of [-1, 1]) {
       const g = new THREE.SphereGeometry(EYE.r, 24, 16);
@@ -374,6 +469,8 @@ export const mantisScytheBody = makePolyBody({
       }
     }
     parts.push({ geometry: mergeGeos(veins), mat: 'lime2', name: 'wing-veins' });
+    // 腰部炭灰側板（iter-69）：遮住細腰下方的電池艙（outline：屬於車殼外形，計入輪廓）
+    parts.push({ geometry: mergeGeos([buildWaistPanel(1), buildWaistPanel(-1)]), mat: 'graphite2', solid: true, outline: true, name: 'waist-side-panels' });
     // 擋風片與駕駛
     const ws = buildWindscreen(-0.4, P.yC(-1) - 1.4);
     parts.push({ geometry: ws.glass, mat: 'glass', solid: true, renderOrder: 3, name: 'windscreen' });
@@ -439,7 +536,8 @@ export const mantisScytheBody = makePolyBody({
     geometry: '本檔站位產生器 P（推估，依 HOMAGE_RESEARCH 6-5-2 P2：長約 146、車身約 30、擋風片約 35）；前胸脊為斷面三角（hard 1）、腹部為圓頂剖面',
     wheelArches: '前後 R15.2：只對應 26 mm 輪（半徑 13＋2.2 mm）；31 mm 輪不支援（低車身）',
     cockpit: '開放座艙槽深 5.5 mm（推估）；擋風片煙燻 PC 0.5 mm＋炭灰框 0.9 mm；駕駛人剪影 1.2 倍',
-    wings: '收翅、複眼燈、同心環視為 ABS 實心件（推估），質量 = 封閉體積 × 1.05 g/cm³；鐮刀片為殼面隆起 1.6 mm（以殼面面積 × 壁厚計）',
+    wings: '收翅、複眼燈、同心環、腰部炭灰側板（厚 0.9 mm）視為 ABS 實心件（推估），質量 = 封閉體積 × 1.05 g/cm³；鐮刀片為殼面隆起 1.6 mm（以殼面面積 × 壁厚計）',
+    waistPanels: 'iter-69：側板外面 |z| 28.4（底盤電池艙頂蓋外緣 |z| 26.5 由 carLayout / model.js 推算，內面留 1 mm）、下緣 y 10.6（loft.js CHASSIS_SIDE_RAIL 禁入區 y ≤ 9.9 之上）',
     mounts: '對齊 chassis-midship 的車殼安裝點（SPEC 1.14）',
   },
 });

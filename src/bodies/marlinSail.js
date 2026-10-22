@@ -6,7 +6,7 @@
 import * as THREE from 'three';
 import { makePolyBody, flatPlate, sweepEllipse, airfoilFin } from './polyBody.js';
 import { smoothNormals } from './gazelleLeap.js';
-import { namedMaterial, decalMaterial, sdNumber, sdBar, sdConvexPolygon, sideDecal, topDecal, mergeGeos, lerp } from './loft.js';
+import { namedMaterial, decalMaterial, sdNumber, sdBar, sdConvexPolygon, sideDecal, topDecal, mergeGeos, lerp, smoothstep } from './loft.js';
 
 /**
  * 單調三次內插（Fritsch–Carlson，不過衝）：給節點 tx 與各欄位的值，回傳 f(key, x)
@@ -298,27 +298,52 @@ export const marlinSailBody = makePolyBody({
       /** @type {number[]} */
       const pos = [];
       const n = 40;
-      /** @type {(i: number) => number[][]} 第 i 個取樣角的 [擋泥刃內緣點, 車身肩部點] */
-      // iter-62：導流斜面的刃側邊改成跟著擋泥刃內緣走（伸進刃內 0.5 mm），角度範圍 2° → 0.6° 內縮——
-      // 原本固定在 |z| 23.4，刃兩端收窄（內緣 |z| 24.6）時中間留一道看得到輪胎的暗縫
-      const edge = (i) => {
+      const m = 12;
+      /** @type {(i: number) => number[][]} 第 i 個取樣角的導流圓角斷面（m + 1 點，車身肩部 → 小罩內緣） */
+      // iter-62：導流斜面的刃側邊改成跟著擋泥刃內緣走（伸進刃內 0.5 mm），角度範圍 2° → 0.6° 內縮
+      // iter-69（評審 iter-67：「俯視時小罩和車身之間仍看得到縫」）：直紋斜面改成二次曲線圓角——
+      // 從車身頂面（|z| 16）以二次曲線升起、在小罩中心線高度轉成水平接進小罩（控制點 = (車身與罩之間 30% 處, 小罩高度)），
+      // 俯視看到的是從車身連續長出小罩的受光圓角面，而不是暗色斜縫
+      const section = (i) => {
         const deg = FENDER.a0 + 0.6 + ((FENDER.a1 - FENDER.a0 - 1.2) * i) / n;
         const a = (deg * Math.PI) / 180;
         const x = 40 + FENDER.r * Math.cos(a);
-        const zb = Math.min(T('hw', x) - 1.2, 21);
-        const zBlade = FENDER.zc - bladeHalfW((deg - FENDER.a0) / (FENDER.a1 - FENDER.a0)) + 0.5;
-        return [
-          [x, 13 + FENDER.r * Math.sin(a), sg * zBlade],
-          [x, kit.surf.topY(x, zb) - 0.4, sg * zb],
-        ];
+        // 起點在車身頂面（肩稜內側 |z| ≤ 16，埋入 0.3 mm），終點在小罩中心線（埋在罩內）→ 小罩內半邊被圓角面接住
+        // 圓角寬度沿弧漸變：中段從 |z| 16 起、後端收回肩稜（|z| ≈ 21）→ 俯視圓角面往後收尖，不是方塊；前端保留 70% 寬度，蓋住鼻側與小罩前端之間的縫
+        const sArc = i / n;
+        const wFillet = lerp(0.7, 1, smoothstep(0, 0.3, sArc)) * smoothstep(1, 0.62, sArc);
+        const zb = lerp(Math.min(T('hw', x) - 1.2, 21), Math.min(T('hw', x) - 5, 16), wFillet);
+        const zEnd = FENDER.zc;
+        // 終點取小罩頂面（中心線往外 0.9 倍徑向半厚）→ 圓角面切線接上罩頂，罩內側不再留一道背光的側面
+        const hPod = 0.9 * 1.3 * Math.max(0.35, bladeHalfW((deg - FENDER.a0) / (FENDER.a1 - FENDER.a0)) / 5.2);
+        const yA = 13 + (FENDER.r + hPod) * Math.sin(a);
+        const dxA = hPod * Math.cos(a);
+        const yB = kit.surf.topY(x, zb) - 0.3;
+        const zCtl = lerp(zb, zEnd, 0.3);
+        /** @type {number[][]} */
+        const pts = [];
+        for (let j = 0; j <= m; j++) {
+          const t = j / m;
+          const u = 1 - t;
+          const z = u * u * zb + 2 * u * t * zCtl + t * t * zEnd;
+          const y = u * u * yB + 2 * u * t * yA + t * t * yA;
+          pts.push([x + t * t * dxA, y, sg * z]);
+        }
+        return pts;
       };
       for (let i = 0; i < n; i++) {
-        const [a, b] = edge(i);
-        const [c, d] = edge(i + 1);
-        if (sg > 0) {
-          pos.push(...a, ...c, ...b, ...b, ...c, ...d);
-        } else {
-          pos.push(...a, ...b, ...c, ...b, ...d, ...c);
+        const p0 = section(i);
+        const p1 = section(i + 1);
+        for (let j = 0; j < m; j++) {
+          const a = p0[j + 1];
+          const b = p0[j];
+          const c = p1[j + 1];
+          const d = p1[j];
+          if (sg > 0) {
+            pos.push(...a, ...c, ...b, ...b, ...c, ...d);
+          } else {
+            pos.push(...a, ...b, ...c, ...b, ...d, ...c);
+          }
         }
       }
       const g = new THREE.BufferGeometry();
