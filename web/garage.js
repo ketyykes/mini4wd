@@ -294,14 +294,31 @@ const buildPresetSelect = () => {
   }
 };
 
-/** 建立車殼選單（質量在預先計算後補上） */
+/** @type {{ label: string, pick: (b: import('../src/bodies/types').BodyDef) => boolean }[]} 車殼選單分組（第六階段：比賽型 / 致敬 LG1 / 致敬 LG2） */
+const BODY_GROUPS = [
+  { label: '比賽常用車殼', pick: (b) => b.style === 'race' },
+  { label: '致敬《爆走兄弟》1', pick: (b) => b.style === 'homage' && b.homageSeries === 'lg1' },
+  { label: '致敬《爆走兄弟》2（WGP）', pick: (b) => b.style === 'homage' && b.homageSeries === 'lg2' },
+  { label: '其他', pick: (b) => !(b.style === 'race' || b.homageSeries === 'lg1' || b.homageSeries === 'lg2') },
+];
+
+/** 建立車殼選單（依 BODY_GROUPS 分群；質量在預先計算後補上） */
 const buildBodySelect = () => {
-  for (const b of listBodies()) {
-    const o = document.createElement('option');
-    o.value = b.id;
-    o.textContent = b.name;
-    o.title = `${b.name}（${b.id}，${b.material ?? ''}）`;
-    selBody.appendChild(o);
+  for (const g of BODY_GROUPS) {
+    const members = listBodies().filter(g.pick);
+    if (members.length === 0) {
+      continue;
+    }
+    const group = document.createElement('optgroup');
+    group.label = g.label;
+    for (const b of members) {
+      const o = document.createElement('option');
+      o.value = b.id;
+      o.textContent = b.name;
+      o.title = `${b.name}（${b.id}，${b.material ?? ''}）`;
+      group.appendChild(o);
+    }
+    selBody.appendChild(group);
   }
   const none = document.createElement('option');
   none.value = NONE;

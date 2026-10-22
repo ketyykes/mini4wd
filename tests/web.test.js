@@ -129,6 +129,29 @@ describe('P19 網頁換件', () => {
     }
     // 車殼：目錄中每款車殼＋「不裝車殼」；預設組裝設定：listConfigs()
     expect(await page.locator('select[data-slot="body"] option').count()).toBe(listBodies().length + 1);
+    // 第六階段：車殼選單依三組分群（比賽型 / 致敬 LG1 / 致敬 LG2），每款都在自己那一組
+    /** @type {{ label: string, ids: string[] }[]} */
+    const bodyGroups = await page.locator('select[data-slot="body"] optgroup').evaluateAll((gs) =>
+      gs.map((g) => ({ label: /** @type {HTMLOptGroupElement} */ (g).label, ids: [...g.querySelectorAll('option')].map((o) => o.value) })),
+    );
+    /** @type {Record<string, string>} */
+    const groupOf = {};
+    for (const g of bodyGroups) {
+      for (const id of g.ids) {
+        groupOf[id] = g.label;
+      }
+    }
+    for (const b of listBodies()) {
+      let expected = '其他';
+      if (b.style === 'race') {
+        expected = '比賽常用車殼';
+      } else if (b.homageSeries === 'lg1') {
+        expected = '致敬《爆走兄弟》1';
+      } else if (b.homageSeries === 'lg2') {
+        expected = '致敬《爆走兄弟》2（WGP）';
+      }
+      expect(groupOf[b.id], `${b.id} 的選單分組`).toBe(expected);
+    }
     expect(await page.locator('select[data-slot="config"] option').count()).toBe(A.listConfigs().length);
     await expect.poll(() => page.locator('[data-action="race"]').count()).toBe(1);
     const g = await garageState();

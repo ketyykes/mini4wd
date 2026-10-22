@@ -48,9 +48,9 @@ const monoTable = (tx, tab) => {
 };
 
 /** @type {number} 車尾 x */
-const X_TAIL = -77;
+const X_TAIL = -71;
 /** @type {number} 針尖鼻 x */
-const X_NOSE = 80;
+const X_NOSE = 76;
 
 /**
  * 縱向控制表（推估）：
@@ -60,7 +60,8 @@ const X_NOSE = 80;
  * - yTop：中線高度，鼻尖 15 → 座艙段 25–28 → 後輪上方 31（26 mm 輪胎頂 26，殼內面仍留 ≥ 1 mm）
  * - drop：頂面到肩稜的落差；yLow：側壁下緣
  */
-const T = monoTable([-77, -72, -66, -60, -53, -40, -27, -20, -10, 0, 10, 16, 24, 30, 40, 50, 56, 62, 68, 74, 80], {
+// iter-67（第六階段歸 LG1）：車殼長 157 → 約 148 mm——後懸（後輪之後）與針尖鼻（前輪之前）的站位往內收，前後輪之間不變
+const T = monoTable([-71, -67.5, -63, -59, -53, -40, -27, -20, -10, 0, 10, 16, 24, 30, 40, 50, 56, 61, 66, 71, 76], {
   hw: [8, 17, 26, 32.5, 37.5, 38, 37.5, 36.5, 34.5, 32, 29, 26, 22.5, 22.5, 22.5, 22.5, 20, 16, 12, 8, 4],
   yTop: [28.6, 29.4, 30.2, 30.8, 31.2, 31.6, 31, 30.2, 29, 28, 27.4, 27, 26, 25, 23.4, 21.6, 20.4, 19, 17.6, 16.3, 15],
   drop: [0.8, 1.6, 2.4, 2.8, 3.2, 3.4, 3.2, 3, 3.4, 3.6, 3.6, 3.6, 3.4, 3.2, 3, 2.8, 2.6, 2.2, 1.6, 1, 0.6],
@@ -90,7 +91,7 @@ const STATIONS = (() => {
 })();
 
 /** @type {(x: number) => number} 石油藍綠（上）／銀白（下）分色線：鼻尖低、往後斜升（V13），後輪上方之後整段銀白 */
-const splitY = (x) => 15.5 + 0.17 * (62 - x);
+const splitY = (x) => 15.5 + 0.17 * (60 - x);
 
 /** @type {() => Record<string, THREE.Material>} */
 const materials = () => ({
@@ -173,7 +174,9 @@ export const marlinSailBody = makePolyBody({
   name: '旗魚背帆衝刺型',
   style: 'homage',
   phase: 4,
-  // 第六階段：研究判定 LG1 / LG2 都不像（最接近 MAX 篇）→ iter-68 改短、前輪罩與車身連續後再標 homageSeries
+  // 第六階段：研究判定原版 LG1 / LG2 都不像（最接近 MAX 篇的長箭形）→ iter-67 車殼長 157 → 147 mm（後懸、鼻尖內收）後歸 LG1
+  // （HOMAGE_RESEARCH 第 6 節 P5；前輪罩與車身的連續曲面仍待改）
+  homageSeries: 'lg1',
   form: 'arrow',
   roof: 'canopy',
   wing: 'dorsal-sail',
@@ -229,8 +232,9 @@ export const marlinSailBody = makePolyBody({
     const top = (x) => kit.surf.topY(x, 0);
     // 背帆（V8 鰭的變形，iter-55 改成刀形帆）：從座艙後緣沿背脊升起、前緣長斜線往後上掠到 x −57、y 45.5 的尖端，
     // 後緣往後傾；翼型斷面（根部厚 2.6 mm、尖端收到 40%），根部埋進殼內；藍綠帆面＋珊瑚橘帆尖帶（共用同一外傾支點，接縫對齊）
-    const sailRoot = [-3, -60, 27.4];
-    const sailTip = [-57, -67.5, 45.5];
+    // iter-67：後緣跟著車尾內收（根 −60 → −58、尖 −67.5 → −64.5）
+    const sailRoot = [-3, -58, 27.4];
+    const sailTip = [-55, -64.5, 45.5];
     /** @type {(f: number) => number[]} 弦線在展向比例 f 的 [前緣 x, 後緣 x, y] */
     const sailAt = (f) => [lerp(sailRoot[0], sailTip[0], f), lerp(sailRoot[1], sailTip[1], f), lerp(sailRoot[2], sailTip[2], f)];
     /** @type {(f0: number, f1: number) => THREE.BufferGeometry} */
@@ -240,19 +244,20 @@ export const marlinSailBody = makePolyBody({
     // 背脊整流條：帆根兩側的橢圓斷面肋，讓帆從殼面長出來（不是直接插上去）
     const ridgePts = [];
     for (let i = 0; i <= 10; i++) {
-      const x = lerp(0, -66, i / 10);
+      const x = lerp(0, -62, i / 10);
       ridgePts.push([x, top(x) - 0.2, 0]);
     }
     parts.push({ geometry: sweepEllipse(ridgePts, 48, (t) => [lerp(1.6, 3.4, Math.min(1, t * 2.5)) * (t > 0.9 ? lerp(1, 0.5, (t - 0.9) / 0.1) : 1), 1.4], 16), mat: 'teal2', solid: true, outline: true, name: 'sail-root-fairing' });
     // 新月形一體尾鰭（V6 衝刺型＝貼身尾翼、V7 貼近車身高度；iter-55 改成有厚度的翼型曲面）：
     // 前緣弧往後掠、兩尖端後掠收尖；中央厚 2.8 mm 並埋進船尾殼面（和車尾接成一體），往翼尖上反 3.4 mm（不是平板）
     const span = 31;
-    const yTail = top(-66) - 0.9;
+    const yTail = top(-61) - 0.9;
     const cres = {
       nV: 10,
       span,
-      le: (u) => -58.5 - 18.5 * u * u,
-      te: (u) => -66 - 11 * Math.abs(u) ** 1.6,
+      // iter-67：整片往前移、尖端後掠收短（尖端 x −77 → −71）
+      le: (u) => -54 - 16.5 * u * u,
+      te: (u) => -61 - 10 * Math.abs(u) ** 1.6,
       y: (u, v) => yTail + 3.4 * u * u + 0.5 * Math.sin(Math.PI * v),
       thick: (u) => 0.4 + 2.4 * (1 - u * u),
     };
@@ -271,9 +276,16 @@ export const marlinSailBody = makePolyBody({
     // - 導流斜面：從車身肩部斜斜升到擋泥刃內緣的直紋曲面（車身同色），往前一直接到鼻側，把黑縫補起來
     const blades = [];
     const fairings = [];
-    const FENDER = { a0: 8, a1: 150, r: 15.9, zc: 26.2 };
-    /** @type {(t: number) => number} 擋泥刃 z 向半寬（t = 沿弧 0–1）：中段 3.6，兩端收到 45% */
-    const bladeHalfW = (t) => 3.6 * (0.45 + 0.55 * Math.sin(Math.PI * Math.min(1, Math.max(0, t))) ** 0.5);
+    // iter-67（第六階段歸 LG1，HOMAGE_RESEARCH 第 6 節 P5）：細擋泥刃改成「淚滴形小罩」——只蓋住前輪上前方（角度 6°–118°），
+    // 前端圓、往後上方收尖；罩寬幾乎蓋滿胎面（z 中心 28.4、半寬最大 5.2），徑向半厚 1.3（內面離 26 mm 輪胎約 1.6 mm）
+    const FENDER = { a0: 6, a1: 118, r: 15.9, zc: 28.4 };
+    /** @type {(t: number) => number} 淚滴罩 z 向半寬（t = 沿弧 0–1，0 = 前端）：前 18% 圓頭漲到 5.2，之後往尾端收到 25% */
+    const bladeHalfW = (t) => {
+      const u = Math.min(1, Math.max(0, t));
+      const head = Math.sin((Math.PI / 2) * Math.min(1, u / 0.18)) ** 0.5;
+      const tail = 1 - 0.75 * Math.max(0, (u - 0.18) / 0.82) ** 1.4;
+      return 5.2 * Math.max(0.3, head) * tail;
+    };
     for (const sg of [-1, 1]) {
       /** @type {number[][]} */
       const arc = [];
@@ -281,8 +293,8 @@ export const marlinSailBody = makePolyBody({
         const a = ((FENDER.a0 + ((FENDER.a1 - FENDER.a0) * i) / 24) * Math.PI) / 180;
         arc.push([40 + FENDER.r * Math.cos(a), 13 + FENDER.r * Math.sin(a), sg * FENDER.zc]);
       }
-      // 斷面 [z 向半寬, 徑向半厚]：中段 3.6 × 0.75，兩端收到 45%
-      blades.push(smoothNormals(sweepEllipse(arc, 72, (t) => [bladeHalfW(t), 0.75], 20)));
+      // 斷面 [z 向半寬, 徑向半厚]：前端圓頭 5.2 × 1.3，往尾端一起收（淚滴）
+      blades.push(smoothNormals(sweepEllipse(arc, 72, (t) => [bladeHalfW(t), 1.3 * Math.max(0.35, bladeHalfW(t) / 5.2)], 20)));
       /** @type {number[]} */
       const pos = [];
       const n = 40;
@@ -322,10 +334,10 @@ export const marlinSailBody = makePolyBody({
       canards.push(
         flatPlate(
           [
-            [69, sg * 8],
-            [61.5, sg * 27.5],
-            [57.5, sg * 28],
-            [57, sg * 12],
+            [66.5, sg * 8],
+            [59.5, sg * 27.5],
+            [55.8, sg * 28],
+            [55.3, sg * 12],
           ].map(([x, z]) => [x, z]),
           14.6,
           0.9,
@@ -334,10 +346,10 @@ export const marlinSailBody = makePolyBody({
       canardTips.push(
         flatPlate(
           [
-            [63.2, sg * 23],
-            [61.5, sg * 27.5],
-            [57.5, sg * 28],
-            [57.4, sg * 23],
+            [61.1, sg * 23],
+            [59.5, sg * 27.5],
+            [55.8, sg * 28],
+            [55.7, sg * 23],
           ],
           14.55,
           1.0,
@@ -389,7 +401,7 @@ export const marlinSailBody = makePolyBody({
       name: 'decal-coral',
     });
     // 頭燈（V14）：鼻側一對往後掠的細長菱形燈
-    const lampSd = sdConvexPolygon([[71, 5.2], [64, 11.6], [60.5, 12.6], [66, 6.2]]);
+    const lampSd = sdConvexPolygon([[68, 5.2], [61.5, 11.6], [58.5, 12.6], [63.5, 6.2]]);
     parts.push({ geometry: kit.decal((x, y, z) => -lampSd(x, Math.abs(z)), { offset: 0.1 }), mat: 'lamp', name: 'lamp-head' });
     // 號碼 7：後輪裙板（銀白底）與鼻頂
     parts.push({
@@ -405,7 +417,7 @@ export const marlinSailBody = makePolyBody({
   src: {
     density_g_cm3: 'SPEC 1.14：ABS 約 1.05 g/cm³（推估）',
     wallThickness_mm: '推估：射出 ABS 殼 0.8 mm（同第三階段各款）',
-    geometry: '本檔 T 表與 STATIONS（推估，依 HOMAGE_RESEARCH 4-1：長約 152、背帆頂約 34–38；外框與輪胎間隙用 body-check 掃描）',
+    geometry: '本檔 T 表與 STATIONS（推估，依 HOMAGE_RESEARCH 4-1：長約 152、背帆頂約 34–38；iter-67 依第 6 節 P5 縮短到 147 mm；外框與輪胎間隙用 body-check 掃描）',
     wheels: '只對應 26 mm 輪：前輪外露（車身半寬 22.5）、後輪裙板內面距 26 mm 輪胎外側面 ≥ 2.9 mm；31 mm 輪會頂到後輪上方殼面（設計上不支援）',
     sail: '背帆、背脊整流條、新月平尾視為 ABS 實心件（推估），質量 = 封閉體積 × ABS 1.05 g/cm³',
     mounts: '對齊 chassis-midship 的車殼安裝點（SPEC 1.14）',
