@@ -408,7 +408,8 @@ export const mantisScytheBody = makePolyBody({
     const ringsDark = [];
     /** @type {THREE.BufferGeometry[]} */
     const ringsLime = [];
-    const EYE = { x: 61.5, z: 11, r: 3.5 };
+    // iter-71（評審 iter-69「複眼燈有一半嵌進擋泥板邊緣、旁邊有折痕」）：燈往前移 1.8 mm、半徑 3.5 → 3.3，外環收小，整顆落在小頭上、離開擋泥板前面
+    const EYE = { x: 63.3, z: 10.2, r: 3.3 };
     const eyeY = topY(EYE.x, EYE.z) + 0.6;
     for (const sg of [-1, 1]) {
       const g = new THREE.SphereGeometry(EYE.r, 24, 16);
@@ -417,8 +418,8 @@ export const mantisScytheBody = makePolyBody({
       eyes.push(g);
       // 同心環：繞燈的扁環，往外傾 35°（貼著小頭的斜面）
       for (const [r, tube, list] of [
-        [EYE.r + 0.55, 0.42, ringsDark],
-        [EYE.r + 1.6, 0.3, ringsLime],
+        [EYE.r + 0.5, 0.4, ringsDark],
+        [EYE.r + 1.25, 0.28, ringsLime],
       ]) {
         const ring = new THREE.TorusGeometry(/** @type {number} */ (r), /** @type {number} */ (tube), 8, 36);
         ring.rotateX(Math.PI / 2);
@@ -479,6 +480,13 @@ export const mantisScytheBody = makePolyBody({
     const drv = buildDriver(-13, deck, 1.2);
     parts.push({ geometry: drv.body, mat: 'driver', solid: true, name: 'cockpit-driver' });
     parts.push({ geometry: drv.helmet, mat: 'helmet', solid: true, name: 'cockpit-helmet' });
+    // 頭 / 前胸分件線（iter-71，評審 iter-69「頭與擋泥板的交界做成乾淨的分件線」）：x 58.4 一圈 0.5 mm 炭灰細線，
+    // 把小頭讀成一個獨立的頭殼件
+    parts.push({
+      geometry: kit.decal((x, y) => (y < 12 ? -1 : 0.25 - Math.abs(x - 58.4)), { offset: 0.06 }),
+      mat: 'dGraphite',
+      name: 'decal-head-parting-line',
+    });
     // 小頭頂的自創抽象符號（L1-8 位置）：番茄紅小倒三角＋炭灰外框
     const emblem = sdConvexPolygon([
       [69, 0],

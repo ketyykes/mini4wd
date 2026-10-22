@@ -339,10 +339,11 @@ export const marlinSailBody = makePolyBody({
           const b = p0[j];
           const c = p1[j + 1];
           const d = p1[j];
+          // iter-71：繞序反轉——原本兩側的法線都朝下 / 朝後（殼內側），app 俯視時圓角面比車身頂面暗一階
           if (sg > 0) {
-            pos.push(...a, ...c, ...b, ...b, ...c, ...d);
-          } else {
             pos.push(...a, ...b, ...c, ...b, ...d, ...c);
+          } else {
+            pos.push(...a, ...c, ...b, ...b, ...c, ...d);
           }
         }
       }
