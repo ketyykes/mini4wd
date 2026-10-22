@@ -60,6 +60,19 @@ export function buildStations(x0, x1, step, profile) {
 }
 
 /**
+ * 鼻端下捲係數（iter-59）：x ≤ x0 為 1，往鼻尖 x1 以四分之一橢圓降到 minFrac。
+ * 剖面各點高度以側壁下緣為基準乘上此係數 → 鼻端由垂直平切面 ＋ 大塊斜折面改成圓滑往下捲的曲面
+ * @type {(x: number, x0: number, x1: number, minFrac: number) => number}
+ */
+export const noseRoll = (x, x0, x1, minFrac) => {
+  if (x <= x0) {
+    return 1;
+  }
+  const u = Math.min(1, (x - x0) / (x1 - x0));
+  return minFrac + (1 - minFrac) * Math.sqrt(1 - u * u);
+};
+
+/**
  * 小圓（2D 距離）
  * @type {(cx: number, cy: number, r: number) => (u: number, v: number) => number}
  */
@@ -158,19 +171,27 @@ const profile = (x) => {
   const yValley = smoothMax(yValley0, fenderFloor(x));
   const yShoulder = Math.min(yF - 4.5, yF - 0.12 * (hw - zF) * 3);
   const yLow = Math.min(P.yLow(x), yShoulder - 1);
+  // iter-59：鼻端下捲（x 50 → 64），各點高度以側壁下緣為基準壓低，白色前臉不再是平切立面＋大折面
+  const roll = noseRoll(x, NOSE_ROLL.x0, NOSE_ROLL.x1, NOSE_ROLL.minFrac);
+  /** @type {(y: number) => number} */
+  const r = (y) => yLow + (y - yLow) * roll;
   return [
-    [0, yC],
-    [6.5 * k, yC - 0.25],
-    [8.5 * k, yValley0 + 0.4],
-    [17 * k, yValley],
-    [zF, Math.max(yF, yValley + 1.2)],
-    [Math.max(zF + 0.4, hw - 2.4), yF - 1.6],
-    [hw, yShoulder],
+    [0, r(yC)],
+    [6.5 * k, r(yC - 0.25)],
+    [8.5 * k, r(yValley0 + 0.4)],
+    [17 * k, r(yValley)],
+    [zF, r(Math.max(yF, yValley + 1.2))],
+    [Math.max(zF + 0.4, hw - 2.4), r(yF - 1.6)],
+    [hw, r(yShoulder)],
     [hw, yLow],
   ];
 };
 
-const STATIONS = buildStations(-58, 64, 2, profile);
+/** @type {{ x0: number, x1: number, minFrac: number }} 鼻端下捲範圍（iter-59） */
+const NOSE_ROLL = { x0: 50, x1: 64, minFrac: 0.3 };
+
+// iter-59：鼻端下捲段每 1 mm 一站（曲率大，2 mm 站距會留下折痕）
+const STATIONS = [...buildStations(-58, 48, 2, profile).slice(0, -1), ...buildStations(48, 64, 1, profile)];
 
 /** @type {any} 開放座艙（俯視凸多邊形，深 7 mm 的座艙槽） */
 const COCKPIT = {
@@ -330,8 +351,8 @@ export const gazelleLeapBody = makePolyBody({
   wallThickness_mm: 0.8,
   stations: STATIONS,
   tuck: 1.6,
-  // 平滑剖面，只保留中央脊邊（2）、擋泥板稜線（4）、側壁肩（6）為銳利稜線
-  hard: [2, 3, 4, 6],
+  // 平滑剖面，只保留中央脊邊（2）、擋泥板稜線（4）、側壁肩（6）為銳利稜線（iter-59：拿掉擋泥板內坡 3 的折線，鼻部白色量體不再是大塊折面）
+  hard: [2, 4, 6],
   wheelArches: [
     { x: 40, y: 13, radius: 17.5, cutZFrom: 21 },
     { x: -40, y: 13, radius: 17.5, cutZFrom: 21 },

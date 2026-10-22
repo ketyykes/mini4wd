@@ -5,7 +5,7 @@
 // 塗裝全為自創：翡翠綠＋象牙白＋古銅、六角甲片分格線、號碼「61」；不含任何廠商 / 作品名稱、商標或角色圖像。
 import * as THREE from 'three';
 import { makePolyBody, flatPlate } from './polyBody.js';
-import { namedMaterial, decalMaterial, sdNumber, sdConvexPolygon, sideDecal, topDecal, mergeGeos, lerp, smoothstep, buildRegion, featureSd } from './loft.js';
+import { namedMaterial, decalMaterial, sdNumber, sdConvexPolygon, sideDecal, topDecal, mergeGeos, lerp, smoothstep, buildRegion, featureSd, buildCap } from './loft.js';
 
 /** @typedef {import('./loft.js').KeepFn} KeepFn */
 
@@ -152,6 +152,7 @@ const sweepLine = (x) => {
 /** @type {() => Record<string, THREE.Material>} */
 const materials = () => ({
   jade: namedMaterial('paint-jade-green', { color: 0x14684a, roughness: 0.2, metalness: 0.25, clearcoat: 1.0, clearcoatRoughness: 0.05 }),
+  jade2: namedMaterial('paint-jade-green', { color: 0x14684a, roughness: 0.2, metalness: 0.25, clearcoat: 1.0, side: THREE.DoubleSide }),
   ivory: namedMaterial('paint-ivory', { color: 0xe9dfc4, roughness: 0.3, clearcoat: 0.8, clearcoatRoughness: 0.08 }),
   ivory2: namedMaterial('paint-ivory', { color: 0xe9dfc4, roughness: 0.3, clearcoat: 0.8, side: THREE.DoubleSide }),
   // 金屬古銅（名稱含 brass → Blender 匯出分類為 metal）
@@ -360,6 +361,18 @@ export const tortoiseDomeBody = makePolyBody({
     // 鴨尾唇下方往內縮的車尾面板（iter-55）：中央在 x −60.5、兩側往前彎（俯視弧形），深翡翠綠＋一對琥珀尾燈，
     // 讓鴨尾唇下面是有設計的凹入尾面，不是平切立面
     parts.push({ geometry: curvedPanel(22, 17.6, 31.5, (z) => -60.5 + 3.2 * (z / 22) ** 2, 0.6), mat: 'recessWall', solid: true, outline: true, name: 'tail-panel' });
+    // 鴨尾唇端面（iter-59）：後封口是象牙白（與鼻端共用封口材質），而且內殼在 x −66 被壓扁成貼著封口的面 → 唇頂一條鋸齒白邊。
+    // 在封口後方 0.15 mm 疊一片同輪廓、外擴約 0.35 mm 的翡翠綠端面，唇緣看起來是車身同色的厚邊，蓋掉白邊與鋸齒
+    const tailFace = buildCap(kit.surf, kit.surf.xMin, -1);
+    tailFace.computeBoundingBox();
+    const fb = /** @type {THREE.Box3} */ (tailFace.boundingBox);
+    const fyc = (fb.min.y + fb.max.y) / 2;
+    const fhy = (fb.max.y - fb.min.y) / 2;
+    const fhz = fb.max.z;
+    tailFace.translate(0, -fyc, 0);
+    tailFace.scale(1, (fhy + 0.35) / fhy, (fhz + 0.35) / fhz);
+    tailFace.translate(-0.15, fyc, 0);
+    parts.push({ geometry: tailFace, mat: 'jade2', name: 'tail-lip-face' });
     const tailLamps = [];
     for (const sg of [-1, 1]) {
       const g = new THREE.BoxGeometry(0.8, 2.0, 7.5);

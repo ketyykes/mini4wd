@@ -4,7 +4,8 @@
 // 剖面由本檔的站位函式產生（推估，依 HOMAGE_RESEARCH 第 4 節與外框 / 輪胎間隙掃描）。
 // 塗裝全為自創：石油藍綠＋銀白＋珊瑚橘、側面由密到疏的縱向細斑條、號碼「7」；不含任何廠商 / 作品名稱、商標或角色圖像。
 import * as THREE from 'three';
-import { makePolyBody, finPlate, flatPlate, sweepEllipse, airfoilFin } from './polyBody.js';
+import { makePolyBody, flatPlate, sweepEllipse, airfoilFin } from './polyBody.js';
+import { smoothNormals } from './gazelleLeap.js';
 import { namedMaterial, decalMaterial, sdNumber, sdBar, sdConvexPolygon, sideDecal, topDecal, mergeGeos, lerp } from './loft.js';
 
 /**
@@ -96,8 +97,10 @@ const materials = () => ({
   teal: namedMaterial('paint-petrol-teal', { color: 0x0f7480, roughness: 0.18, metalness: 0.35, clearcoat: 1.0, clearcoatRoughness: 0.05 }),
   teal2: namedMaterial('paint-petrol-teal', { color: 0x0f7480, roughness: 0.18, metalness: 0.35, clearcoat: 1.0, side: THREE.DoubleSide }),
   // iter-55：銀白去灰 → 珍珠白（金屬度 0.35 → 0.05，底色更亮；Blender 以 pearl 類別算珠光）
-  silver: namedMaterial('paint-pearl-white', { color: 0xf5f6f7, roughness: 0.18, metalness: 0.05, clearcoat: 1.0, clearcoatRoughness: 0.04 }),
-  silver2: namedMaterial('paint-pearl-white', { color: 0xf5f6f7, roughness: 0.18, metalness: 0.05, clearcoat: 1.0, side: THREE.DoubleSide }),
+  // iter-59：Blender 的 pearl 類別把底色壓到 0.85 倍、掠射角再往灰紫收，展示圖仍像粉筆灰；
+  // 改用 decal- 開頭的名稱 → Blender 沿用 GLB 原材質（底色 0xf5f6f7 不壓暗）只補清漆，銀白更白更亮
+  silver: namedMaterial('decal-silver-white-body', { color: 0xf5f6f7, roughness: 0.18, metalness: 0.05, clearcoat: 1.0, clearcoatRoughness: 0.04 }),
+  silver2: namedMaterial('decal-silver-white-body', { color: 0xf5f6f7, roughness: 0.18, metalness: 0.05, clearcoat: 1.0, side: THREE.DoubleSide }),
   coral2: namedMaterial('paint-coral-orange', { color: 0xff6a3d, roughness: 0.25, clearcoat: 0.8, side: THREE.DoubleSide }),
   inner: namedMaterial('shell-inner-dark', { color: 0x1a1f22, roughness: 0.85, side: THREE.BackSide }),
   edge: namedMaterial('shell-edge-silver', { color: 0xaab0b6, roughness: 0.45, side: THREE.DoubleSide }),
@@ -162,27 +165,6 @@ const liftSurface = (o) => {
   const g = new THREE.BufferGeometry();
   g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
   g.computeVertexNormals();
-  return g;
-};
-
-/**
- * 前輪擋泥唇（側視圓環扇形，沿 z 擠出）：半徑 r0–r1、角度 a0–a1（度，0 = 車頭方向水平），z 範圍 z0–z1
- * @type {(r0: number, r1: number, a0: number, a1: number, z0: number, z1: number) => THREE.BufferGeometry}
- */
-const arcStrip = (r0, r1, a0, a1, z0, z1) => {
-  /** @type {THREE.Vector2[]} */
-  const pts = [];
-  const n = 24;
-  for (let i = 0; i <= n; i++) {
-    const a = ((a0 + ((a1 - a0) * i) / n) * Math.PI) / 180;
-    pts.push(new THREE.Vector2(40 + r1 * Math.cos(a), 13 + r1 * Math.sin(a)));
-  }
-  for (let i = n; i >= 0; i--) {
-    const a = ((a0 + ((a1 - a0) * i) / n) * Math.PI) / 180;
-    pts.push(new THREE.Vector2(40 + r0 * Math.cos(a), 13 + r0 * Math.sin(a)));
-  }
-  const g = new THREE.ExtrudeGeometry(new THREE.Shape(pts), { depth: z1 - z0, bevelEnabled: false, curveSegments: 1 });
-  g.translate(0, 0, z0);
   return g;
 };
 
@@ -281,27 +263,50 @@ export const marlinSailBody = makePolyBody({
       solid: true,
       name: 'crescent-tips',
     });
-    // 前輪擋泥唇（iter-55，鼻側小翼的後續）：罩住前輪內側上半的圓弧唇（內半徑 15、離 26 mm 輪胎 2 mm），
-    // 下方用一片腹板接回車身側壁（翼根埋入殼面），讓前段不再只有一根細鼻
-    const lips = [];
-    const webs = [];
+    // 前輪擋泥板（iter-55 新增；iter-59 改形）：原本 9 mm 寬平頂圓弧帶＋直立 D 形腹板，看起來像蓋在輪上的厚圓餅，
+    // 擋泥板前端與鼻側之間還露出一道黑縫（看得到輪胎）。改成：
+    // - 擋泥刃：沿輪胎上緣的細長弧（角度 8°–150°，中心半徑 15.9 mm、離 26 mm 輪胎約 2.2 mm），斷面為兩端收尖的扁橢圓（拱起的曲面、不是平頂）
+    // - 導流斜面：從車身肩部斜斜升到擋泥刃內緣的直紋曲面（車身同色），往前一直接到鼻側，把黑縫補起來
+    const blades = [];
+    const fairings = [];
+    const FENDER = { a0: 8, a1: 150, r: 15.9, zc: 26.2 };
     for (const sg of [-1, 1]) {
-      const z0 = sg > 0 ? 21.4 : -30.4;
-      lips.push(arcStrip(15, 16.1, 28, 158, z0, z0 + 9));
-      /** @type {number[][]} 腹板側視輪廓：上緣沿擋泥唇內緣、下緣沿車身頂面往下 1 mm */
-      const web = [];
-      for (let i = 0; i <= 12; i++) {
-        const a = ((28 + (130 * i) / 12) * Math.PI) / 180;
-        web.push([40 + 15.4 * Math.cos(a), 13 + 15.4 * Math.sin(a)]);
+      /** @type {number[][]} */
+      const arc = [];
+      for (let i = 0; i <= 24; i++) {
+        const a = ((FENDER.a0 + ((FENDER.a1 - FENDER.a0) * i) / 24) * Math.PI) / 180;
+        arc.push([40 + FENDER.r * Math.cos(a), 13 + FENDER.r * Math.sin(a), sg * FENDER.zc]);
       }
-      for (let i = 12; i >= 0; i--) {
-        const x = 40 + 15.4 * Math.cos(((28 + (130 * i) / 12) * Math.PI) / 180);
-        web.push([x, kit.surf.topY(x, 21.5) - 1.2]);
+      // 斷面 [z 向半寬, 徑向半厚]：中段 3.6 × 0.75，兩端收到 45%
+      blades.push(smoothNormals(sweepEllipse(arc, 72, (t) => [3.6 * (0.45 + 0.55 * Math.sin(Math.PI * t) ** 0.5), 0.75], 20)));
+      /** @type {number[]} */
+      const pos = [];
+      const n = 40;
+      /** @type {(i: number) => number[][]} 第 i 個取樣角的 [擋泥刃內緣點, 車身肩部點] */
+      const edge = (i) => {
+        const a = ((FENDER.a0 + 2 + ((FENDER.a1 - FENDER.a0 - 4) * i) / n) * Math.PI) / 180;
+        const x = 40 + FENDER.r * Math.cos(a);
+        const zb = Math.min(T('hw', x) - 1.2, 21);
+        return [
+          [x, 13 + FENDER.r * Math.sin(a), sg * 23.4],
+          [x, kit.surf.topY(x, zb) - 0.4, sg * zb],
+        ];
+      };
+      for (let i = 0; i < n; i++) {
+        const [a, b] = edge(i);
+        const [c, d] = edge(i + 1);
+        if (sg > 0) {
+          pos.push(...a, ...c, ...b, ...b, ...c, ...d);
+        } else {
+          pos.push(...a, ...b, ...c, ...b, ...d, ...c);
+        }
       }
-      webs.push(finPlate(web, sg * 22.1, 1.3));
+      const g = new THREE.BufferGeometry();
+      g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+      fairings.push(smoothNormals(g));
     }
-    parts.push({ geometry: mergeGeos(lips), mat: 'teal2', outline: true, solid: true, name: 'front-fender-lips' });
-    parts.push({ geometry: mergeGeos(webs), mat: 'teal2', outline: true, solid: true, name: 'front-fender-webs' });
+    parts.push({ geometry: mergeGeos(blades), mat: 'teal2', outline: true, solid: true, name: 'front-fender-blades' });
+    parts.push({ geometry: mergeGeos(fairings), mat: 'teal2', shell: true, name: 'front-fender-fairings' });
     // 鼻側前翼（鼻部的刃）：前輪前方左右各一片往後掠的薄翼，銀白翼面＋珊瑚橘翼尖，翼根埋入鼻側
     const canards = [];
     const canardTips = [];

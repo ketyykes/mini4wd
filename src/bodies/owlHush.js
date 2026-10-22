@@ -277,7 +277,8 @@ export const owlHushBody = makePolyBody({
     const parts = [];
     const top = (x) => kit.surf.topY(x, 0);
     // 疊羽紋（iter-55，燕麥米細邊，擋泥板與肩部；座艙底與臉盤除外）——羽尖朝後、一片疊一片
-    const scales = featherScales(6.2, 4.6, 4.4, 0.9);
+    // iter-59：羽片放大（間距 6.2 × 4.6 → 9 × 6.4、半徑 4.4 → 6.2）、邊線 0.9 → 1.6 mm，track 遠景也讀得出鱗狀羽
+    const scales = featherScales(9, 6.4, 6.2, 1.6);
     parts.push({
       geometry: kit.decal((x, y, z) => {
         const az = Math.abs(z);
