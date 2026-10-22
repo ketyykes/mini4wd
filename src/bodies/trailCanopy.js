@@ -1,6 +1,6 @@
 // 越野座艙罩殼（body-trail-canopy，第六階段比賽型，raceType 'buggy-canopy'）：
 // 短楔形鈍頭＋下方滑板、前半部大型曲面透明座艙罩（前緣直切的平面擋風）、中後段電池上方的方形側箱（側面散熱鰭紋）、
-// 四輪葉子板頂部開口、尾端單支柱單片低位平板擾流、鼻部下方滑板。只裝 26 mm 輪（輪拱 R15.5）。
+// 四輪葉子板頂部開口、尾端單支柱單片低位平板擾流、鼻部下方滑板；後甲板有散熱格柵、檢修蓋分件線與固定扣（iter-69）。只裝 26 mm 輪（輪拱 R15.5）。
 // 比賽做法：0.5 mm 真空成形 PC 透明殼，座艙罩留透明、車身從內側噴漆（shared/reference/BODY_RACE_RESEARCH.md 4.1、4.5、7.2 (2)）。
 // 設計：shared/design/body-trail-canopy/DESIGN.md。剖面由本檔縱向控制表產生（推估，依外框限制與底盤高度掃描）。
 // 塗裝全為自創：沙丘卡其上身＋炭黑側箱與滑板、螢光橘斜線、號碼「09」；不含任何廠商名稱、商標或真實車名。
@@ -18,21 +18,23 @@ const X_NOSE = 64;
 
 /**
  * 縱向控制表（推估；欄位意義同 fastbackCabin.js 的 cabinStations）：
- * - yC：中線。鼻端 x 64 鈍頭（約 18.3，下緣 12）→ 短引擎蓋 → 平面擋風（x 48 → 36 急升）→ 座艙罩頂 41.6（x 24，車殼最高點）→ 罩尾 x 0 落到引擎蓋 30 → 尾端 24.5
- * - cw / dr：座艙罩頂半寬與弧度（擋風段 dr 小 = 平面；罩中段 dr 6 = 曲面）；罩後的引擎蓋段 cw 14、dr 1（中央微隆的馬達蓋）
+ * - yC：中線。鼻端 x 64 鈍頭（約 18.3，下緣 12）→ 短引擎蓋 → 平面擋風（iter-69：x 48.5 → 31 一直線斜升，約 40°，
+ *   前緣 x 49 與上緣 x 31 兩道折線）→ 座艙罩頂 41.5（x 26–18 幾乎水平）→ 罩尾 x 0 落到引擎蓋 30 → 尾端 24.5
+ * - cw / dr：座艙罩頂半寬與弧度（擋風段 dr ≤ 1 = 平面、往上略收窄成梯形；罩頂 dr 3.2 = 淺曲面，iter-67 為 6 的圓泡）；
+ *   罩後的引擎蓋段 cw 14、dr 1（中央微隆的馬達蓋）
  * - bw / yBelt：座艙罩下緣（= 側箱頂面內緣）
  * - hw / ySh：最寬處與側箱上稜。鼻端半寬 16、前葉子板 30、側箱 37.5（前窄後寬），後輪後方收成半寬 25.5 的短尾
  * 前齒輪箱（y ≤ 21.4、x ≤ 45）、後齒輪箱（y ≤ 21.4）、後導輪架（x −52、|z| 21–24、y 19.6）上方都留 ≥ 2 mm
  */
-const T = monoTable([-71, -66, -60, -52, -42, -30, -18, -6, 2, 10, 18, 26, 34, 40, 46, 52, 58, 62, 66], {
-  yC: [24.5, 26.2, 27.8, 29.0, 29.6, 29.8, 29.8, 30.4, 33.6, 38.4, 41.2, 41.6, 40.2, 36.4, 29.8, 25.2, 22.0, 19.6, 17.0],
-  cw: [10, 11, 12, 13, 13.5, 14, 14, 15, 17, 18.5, 19, 19, 18.5, 18, 16.5, 14.5, 11.5, 9.5, 7.5],
-  dr: [0.4, 0.5, 0.6, 0.8, 0.9, 1.0, 1.0, 1.6, 3.2, 5.0, 6.0, 6.0, 4.6, 2.4, 1.0, 0.7, 0.5, 0.4, 0.3],
-  bw: [16, 18.5, 21.5, 23, 23, 23, 23, 23, 22.5, 22.5, 22.5, 22.5, 22.5, 22, 20.5, 17.5, 14, 12, 10],
-  yBelt: [23.5, 25.0, 26.4, 27.4, 27.8, 27.8, 27.8, 27.6, 27.0, 26.2, 25.6, 25.4, 25.2, 25.0, 24.6, 23.6, 20.8, 18.8, 16.6],
-  hw: [25.5, 31, 35.5, 37.5, 37.5, 37.5, 37, 36, 34.5, 32, 30.5, 30, 30, 30, 28.5, 25, 21, 18.5, 16],
-  ySh: [22.0, 23.5, 24.5, 25.6, 26.0, 26.0, 26.0, 25.8, 24.8, 23.2, 22.6, 22.6, 22.6, 22.6, 22.2, 21.0, 19.0, 17.4, 15.8],
-  yLow: [20.5, 19.0, 17.0, 14.5, 11.5, 10.0, 9.5, 9.5, 9.5, 9.5, 10.0, 10.5, 11.5, 12.0, 12.0, 12.0, 12.0, 12.0, 12.0],
+const T = monoTable([-71, -66, -60, -52, -42, -30, -18, -6, 2, 10, 18, 26, 31, 34, 40, 46, 49, 52, 58, 62, 66], {
+  yC: [24.5, 26.2, 27.8, 29.0, 29.6, 29.8, 29.8, 30.4, 34.0, 39.2, 41.4, 41.5, 41.0, 38.5, 33.6, 28.65, 26.3, 25.2, 22.0, 19.6, 17.0],
+  cw: [10, 11, 12, 13, 13.5, 14, 14, 15, 16, 16.5, 16.5, 16.5, 16.3, 16.5, 17, 17.5, 15.6, 14.5, 11.5, 9.5, 7.5],
+  dr: [0.4, 0.5, 0.6, 0.8, 0.9, 1.0, 1.0, 1.6, 2.4, 3.0, 3.2, 3.2, 2.7, 1.0, 0.8, 0.7, 0.7, 0.7, 0.5, 0.4, 0.3],
+  bw: [16, 18.5, 21.5, 23, 23, 23, 23, 23, 22.5, 22.5, 22.5, 22.5, 22.5, 22.5, 22, 20.5, 19.15, 17.5, 14, 12, 10],
+  yBelt: [23.5, 25.0, 26.4, 27.4, 27.8, 27.8, 27.8, 27.6, 27.0, 26.2, 25.6, 25.4, 25.28, 25.2, 25.0, 24.6, 24.21, 23.6, 20.8, 18.8, 16.6],
+  hw: [25.5, 31, 35.5, 37.5, 37.5, 37.5, 37, 36, 34.5, 32, 30.5, 30, 30, 30, 30, 28.5, 26.95, 25, 21, 18.5, 16],
+  ySh: [22.0, 23.5, 24.5, 25.6, 26.0, 26.0, 26.0, 25.8, 24.8, 23.2, 22.6, 22.6, 22.6, 22.6, 22.6, 22.2, 21.71, 21.0, 19.0, 17.4, 15.8],
+  yLow: [20.5, 19.0, 17.0, 14.5, 11.5, 10.0, 9.5, 9.5, 9.5, 9.5, 10.0, 10.5, 11.13, 11.5, 12.0, 12.0, 12.0, 12.0, 12.0, 12.0, 12.0],
 });
 
 /** @type {{ x: number, pts: number[][] }[]} */
@@ -47,6 +49,17 @@ const beltY = (x) => Math.min(T('yBelt', x), T('yC', x) - T('dr', x) - 0.2);
  */
 const canopyKeep = (x, y, z) => Math.min(47.5 - x - 0.25 * (beltY(x) + 0.8 - y), x - 1.5, y - (beltY(x) + 0.8), T('bw', x) - 0.6 - Math.abs(z));
 
+/**
+ * 擋風玻璃框（iter-69）：上緣橫樑（x 30.2–31.6）＋兩側 A 柱（沿罩頂邊稜線 |z| = cw ± 0.6，x 31 → 47.5），內噴黑；
+ * 讓前緣的平面擋風和後方的曲面罩頂分成兩塊，讀得出「直切平面擋風」
+ * @type {KeepFn}
+ */
+const shieldFrameKeep = (x, y, z) => {
+  const header = Math.min(0.7 - Math.abs(x - 30.9), T('cw', x) + 0.6 - Math.abs(z));
+  const pillar = Math.min(0.6 - Math.abs(Math.abs(z) - T('cw', x)), x - 30.2, 47.5 - x);
+  return Math.min(canopyKeep(x, y, z), Math.max(header, pillar));
+};
+
 /** @type {KeepFn} 馬達上方的透明檢視窗（比賽 PC 殼常見的「留透明窗」）：引擎蓋中央 x −8 → −40 */
 const deckWindowKeep = (x, y, z) => Math.min(-9 - x, x + 40, 9.5 - Math.abs(z), y - 28);
 
@@ -60,8 +73,9 @@ const splitY = (x) => {
 
 /** @type {() => Record<string, THREE.Material>} */
 const materials = () => ({
-  sand: namedMaterial('pc-paint-sand-khaki', { color: 0xc9b48a, roughness: 0.3, clearcoat: 1.0, clearcoatRoughness: 0.06 }),
-  sand2: namedMaterial('pc-paint-sand-khaki', { color: 0xc9b48a, roughness: 0.3, clearcoat: 1.0, side: THREE.DoubleSide }),
+  // iter-69：沙丘卡其加深（iter-67 的 0xc9b48a 在畫面上偏象牙白，改 0x8c7a56）
+  sand: namedMaterial('pc-paint-sand-khaki', { color: 0x8c7a56, roughness: 0.3, clearcoat: 1.0, clearcoatRoughness: 0.06 }),
+  sand2: namedMaterial('pc-paint-sand-khaki', { color: 0x8c7a56, roughness: 0.3, clearcoat: 1.0, side: THREE.DoubleSide }),
   char: namedMaterial('pc-paint-charcoal', { color: 0x24262a, roughness: 0.35, clearcoat: 1.0, clearcoatRoughness: 0.08 }),
   char2: namedMaterial('pc-paint-charcoal', { color: 0x24262a, roughness: 0.35, clearcoat: 1.0, side: THREE.DoubleSide }),
   // 透明座艙罩、檢視窗（淡煙燻透明 PC）
@@ -76,6 +90,7 @@ const materials = () => ({
   orange2: namedMaterial('pc-paint-fluo-orange', { color: 0xff6a00, roughness: 0.2, clearcoat: 1.0, side: THREE.DoubleSide }),
   black: decalMaterial('decal-black', { color: 0x111214, roughness: 0.5 }),
   whiteDecal: decalMaterial('decal-white', { color: 0xf4f4f2, roughness: 0.3 }),
+  clip: namedMaterial('metal-clip-steel', { color: 0x9a9ea4, roughness: 0.3, metalness: 0.85 }),
   tailLamp: namedMaterial('lamp-red', { color: 0xd0142a, emissive: 0x900010, emissiveIntensity: 0.6, roughness: 0.1, clearcoat: 1.0 }),
   mount: namedMaterial('abs-mount-black', { color: 0x222326, roughness: 0.6 }),
 });
@@ -95,8 +110,9 @@ export const trailCanopyBody = makePolyBody({
   wallThickness_mm: 0.5,
   stations: STATIONS,
   tuck: 0.8,
-  // 平滑剖面；座艙罩下緣（第 3 點）與側箱上稜（第 6 點）為稜線
-  hard: [3, 6],
+  // 平滑剖面；罩頂邊（第 2 點）、座艙罩下緣（第 3 點）與側箱上稜（第 6 點）為稜線
+  // （iter-69 加第 2 點：罩頂淺曲面與側窗平面之間有折線，側窗是平面，不再是圓泡）
+  hard: [2, 3, 6],
   wheelArches: [
     { x: 40, y: 13, radius: 15.5, cutZFrom: 23.8 },
     { x: -40, y: 13, radius: 15.5, cutZFrom: 23.8 },
@@ -121,10 +137,29 @@ export const trailCanopyBody = makePolyBody({
       },
       depth: 0.7,
     },
+    {
+      // iter-69 後甲板細節：透明檢視窗兩側的散熱格柵（每側 5 道橫向淺槽，x −15 → −31、|z| 11.5–17.5，深 0.6 mm）
+      id: '後甲板散熱格柵',
+      view: 'top',
+      shape: 'fn',
+      sd: (x, y, z) => {
+        const az = Math.abs(z);
+        if (y < 25 || az < 11.5 || az > 17.5) {
+          return 10;
+        }
+        let d = 10;
+        for (let i = 0; i < 5; i++) {
+          d = Math.min(d, Math.abs(x - (-15 - 4 * i)) - 0.65);
+        }
+        return Math.max(d, 11.5 - az, az - 17.5, -x - 32);
+      },
+      depth: 0.6,
+    },
   ],
   sideZMin: 30,
   innerSkipRecess: true,
   zones: () => [
+    { mat: 'frame', keep: shieldFrameKeep },
     { mat: 'clear', keep: canopyKeep },
     // 座艙罩外圍 0.8 mm 內噴黑框
     { mat: 'frame', keep: (x, y, z, s) => canopyKeep(x, y, z, s) + 0.8 },
@@ -216,6 +251,18 @@ export const trailCanopyBody = makePolyBody({
       mat: 'black',
       name: 'decal-number',
     });
+    // 後甲板檢修蓋（iter-69）：x −43 → −56、|z| ≤ 13 的分件線（黑色 0.35 mm 細線，圓角 2）＋四角固定扣（金屬小圓扣）
+    const hatchSd = (u, v) => Math.abs(sdRoundRect(u, v, -13, 13, -6.5, 6.5, 2)) - 0.175;
+    parts.push({ geometry: kit.decal(topDecal(hatchSd, { x0: -49.5, z0: 0, yMin: 24 })), mat: 'black', name: 'decal-hatch-seam' });
+    const clips = [];
+    for (const cx of [-45, -54]) {
+      for (const cz of [-10.5, 10.5]) {
+        const g = new THREE.CylinderGeometry(0.9, 0.9, 0.7, 16);
+        g.translate(cx, kit.surf.topY(cx, cz) + 0.1, cz);
+        clips.push(g);
+      }
+    }
+    parts.push({ geometry: mergeGeos(clips), mat: 'clip', solid: true, name: 'hatch-clips' });
     // 尾燈：尾板兩側小方燈
     const lampBox = (zc) => {
       const g = new THREE.BoxGeometry(0.5, 1.4, 5);

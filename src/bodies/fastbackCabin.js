@@ -1,8 +1,8 @@
 // 快背雙門座艙殼（body-fastback-cabin，第六階段比賽型，raceType 'coupe-cabin'）：
-// 長引擎蓋、偏後的封閉座艙、車頂平順滑到車尾的快背，尾端一體的低鴨尾唇；前後大輪拱 R17.6 可裝 31 mm 大徑輪。
+// 長引擎蓋、偏後的封閉座艙、車頂平順滑到車尾的快背，尾端一體的低鴨尾唇；前後大輪拱 R17.6 可裝 31 mm 大徑輪（iter-69：前葉子板頂抬到輪拱之上，前輪拱只切側壁）。
 // 比賽做法：0.5 mm 真空成形 PC 透明殼，從內側噴漆、留煙燻車窗（shared/reference/BODY_RACE_RESEARCH.md 4.1、4.7、7.2 (1)）。
 // 設計：shared/design/body-fastback-cabin/DESIGN.md。剖面由本檔縱向控制表產生（推估，依外框限制與底盤高度掃描）。
-// 塗裝全為自創：石墨灰下身＋螢光萊姆上身、白色細分色線、中線兩側雙白寬條紋、白色圓形號碼底「64」；不含任何廠商名稱、商標或真實車名。
+// 塗裝全為自創：石墨灰下身＋金屬銅上身（iter-69 由螢光萊姆換色）、白色細分色線、中線兩側雙白寬條紋、白色圓形號碼底「64」；不含任何廠商名稱、商標或真實車名。
 import * as THREE from 'three';
 import { makePolyBody, buildDriver } from './polyBody.js';
 import { namedMaterial, decalMaterial, sdNumber, sideDecal, topDecal, mergeGeos } from './loft.js';
@@ -110,22 +110,114 @@ export const cabinStations = (tab, xTail, xNose) => {
   });
 };
 
+/**
+ * 前葉子板覆寫表（iter-69，推估）：前輪拱範圍（x 22 → 58）把葉子板頂抬到輪拱圓（R17.6、圓心 y 13）之上，
+ * 輪拱只切開側壁、不再切穿葉子板頂 → 前葉子板和車門、鼻部連成連續殼面，俯視蓋住前輪胎頂（31 mm 輪頂 28.5，殼內面 ≥ 30.5）。
+ * 後葉子板維持 iter-67 的剖面（輪拱切穿葉子板頂）：後葉子板也蓋滿時俯視輪廓會和 halo-orbit / griffin-vane / zeppelin-xtail 太像（IoU 0.85–0.86，P20 門檻 0.85）。
+ * - fk：覆寫權重（0 = 沿用 T 與 cabinStations 的原剖面；x ≤ 16 與鼻端 x ≥ 66 為 0，座艙與鼻端剖面不變）
+ * - yC / dr：引擎蓋中線抬高 2–3 mm（擋風玻璃前緣 28.3 單調降到鼻端，不起伏），和葉子板頂只差約 4 mm，是緩坡而不是深谷
+ * - cw：引擎蓋半寬（收窄到 15，引擎蓋夾在兩側葉子板之間）；bw / yBelt：葉子板內側上緣（引擎蓋兩側的谷壁頂）
+ * - fw / yF：葉子板頂稜；ySh：肩稜（輪拱上方抬高，形成包住輪拱的葉子板鼓包）
+ * 輪拱內的殼面高度門檻：y > 13 + √(17.6² − (x − 40)²)（|z| ≥ 23.3），各欄位在門檻上方留 ≥ 0.5 mm
+ */
+const F = monoTable([16, 26, 32, 40, 48, 54, 60, 66, 74], {
+  fk: [0, 1, 1, 1, 1, 1, 1, 0, 0],
+  yC: [31.7, 28.3, 28.0, 27.5, 26.6, 25.4, 23.4, 18.8, 14.8],
+  dr: [1.8, 1.0, 0.8, 0.8, 0.8, 0.8, 0.8, 0.7, 0.4],
+  cw: [20.4, 18.5, 15, 15, 15, 14.5, 14, 14.5, 8],
+  bw: [32, 25, 23, 23, 23, 22.5, 21.5, 22.2, 13],
+  yBelt: [25.4, 26.5, 30.2, 31.5, 30.2, 27.4, 23.6, 16.9, 13.8],
+  fw: [37.1, 33, 32, 32, 32, 31, 28.5, 25.4, 15.75],
+  yF: [24.2, 27.4, 30.4, 32.3, 30.6, 27.8, 23.8, 16.74, 13.7],
+  ySh: [21.5, 25.0, 29.8, 31.4, 29.8, 25.0, 21.0, 16.4, 13.4],
+});
+
+/**
+ * 合成後的縱向表：fk = 0 的範圍完全等於 T，前葉子板段用 F 覆寫
+ * @type {(key: string, x: number) => number}
+ */
+const TF = (key, x) => {
+  const k = Math.min(1, Math.max(0, F('fk', x)));
+  if (key === 'fw' || key === 'yF') {
+    // 座艙段的葉子板上緣點 = cabinStations 第 4 點的原公式
+    const bw = T('bw', x);
+    const hw = Math.max(T('hw', x), bw + 2);
+    const yBelt = T('yBelt', x);
+    const ySh = Math.min(T('ySh', x), yBelt - 0.4);
+    const auto = key === 'fw' ? bw + 0.55 * (hw - bw) : yBelt - 0.32 * (yBelt - ySh);
+    return auto + (F(key, x) - auto) * k;
+  }
+  if (key === 'yC' || key === 'dr' || key === 'cw' || key === 'bw' || key === 'yBelt' || key === 'ySh') {
+    return T(key, x) + (F(key, x) - T(key, x)) * k;
+  }
+  return T(key, x);
+};
+
+/**
+ * 本款專用站位產生器（8 點，同 cabinStations 的點序；不動共用的 cabinStations，hinge-deck / lowline-flat 不受影響）：
+ * 車頂中線、車頂 1/2、窗框上緣（引擎蓋邊）、腰線（葉子板內側上緣）、葉子板頂稜、肩稜上方、肩稜、側裙下緣
+ * @type {() => { x: number, pts: number[][] }[]}
+ */
+const fastbackStations = () => {
+  const xs = [];
+  for (let x = X_TAIL; x < X_NOSE; x += 2) {
+    xs.push(x);
+  }
+  xs.push(X_NOSE);
+  return xs.map((x) => {
+    const k = Math.min(1, Math.max(0, F('fk', x)));
+    const yC = TF('yC', x);
+    const cw = TF('cw', x);
+    const dr = TF('dr', x);
+    const bw = Math.max(TF('bw', x), cw + 1);
+    // 座艙段：腰線不高於窗框上緣（原規則）；葉子板段：腰線可高於引擎蓋中線（谷壁）
+    let yBelt = TF('yBelt', x);
+    if (k < 0.5) {
+      yBelt = Math.min(yBelt, yC - dr - 0.2);
+    }
+    const hw = Math.max(TF('hw', x), bw + 2);
+    const fw = Math.min(Math.max(TF('fw', x), bw + 0.5), hw - 1);
+    const yF = TF('yF', x);
+    const ySh = Math.min(TF('ySh', x), Math.max(yBelt, yF) - 0.3);
+    const yLow = Math.min(TF('yLow', x), ySh - 0.6);
+    // 肩稜上方點：座艙段沿用原公式，葉子板段取頂稜與肩稜中間
+    const y5a = ySh + 0.35 * (yBelt - ySh) * 0.5;
+    const y5b = ySh + 0.5 * (yF - ySh);
+    const pts = [
+      [0, yC],
+      [0.5 * cw, yC - 0.28 * dr],
+      [cw, yC - dr],
+      [bw, yBelt],
+      [fw, yF],
+      [hw - 0.5, y5a + (y5b - y5a) * k],
+      [hw, ySh],
+      [hw, yLow],
+    ];
+    return { x, pts };
+  });
+};
+
 /** @type {{ x: number, pts: number[][] }[]} */
-const STATIONS = cabinStations(T, X_TAIL, X_NOSE);
+const STATIONS = fastbackStations();
 
 /** @type {(x: number) => number} 窗框上緣高度（車頂邊線） */
-const roofEdgeY = (x) => T('yC', x) - T('dr', x);
+const roofEdgeY = (x) => TF('yC', x) - TF('dr', x);
 /** @type {(x: number) => number} 腰線高度 */
-const beltY = (x) => Math.min(T('yBelt', x), roofEdgeY(x) - 0.2);
+const beltY = (x) => Math.min(TF('yBelt', x), roofEdgeY(x) - 0.2);
 /**
- * 上身螢光萊姆 / 下身石墨灰的分色線（依概念圖：灰色只在下緣）：鼻端 y 12 → 車門 y 14（約側面下 1/3），
- * 後輪拱前方開始往後上掃，到尾端 y 24（尾燈條下方）
+ * 上身金屬銅 / 下身石墨灰的分色線（iter-69 依概念圖加大灰色下身）：
+ * 鼻端與前輪拱段 y 16.5（前下巴灰）→ 前輪拱後方 x 22 → 4 從 y 18.5 斜掃下到車門下緣 y 14（側裙灰）→
+ * 後輪拱前方 x −14 開始急升，到肩稜下 2 mm 後沿肩稜往後（整片後葉子板側壁為灰），尾端約 y 22（尾燈條下方）
  * @type {(x: number) => number}
  */
 const splitY = (x) => {
-  let y = 13.6 - 0.02 * x;
-  if (x < -20) {
-    y = 14.0 + 0.19 * (-20 - x);
+  let y = 16.5;
+  if (x < 22 && x >= 4) {
+    y = 14.0 + (4.5 * (x - 4)) / 18;
+  } else if (x < 4 && x >= -14) {
+    y = 13.8 + (0.2 * (x + 14)) / 18;
+  } else if (x < -14) {
+    y = Math.min(13.8 + 0.85 * (-14 - x), TF('ySh', x) - 2.0);
   }
   return Math.min(beltY(x) - 2.6, y);
 };
@@ -137,7 +229,7 @@ const splitY = (x) => {
  */
 const glassKeep = (x, y, z) => {
   const az = Math.abs(z);
-  const cw = T('cw', x);
+  const cw = TF('cw', x);
   const above = y - (beltY(x) + 0.7);
   // 擋風玻璃：x 23 → 9，車頂邊線內側
   const shield = Math.min(23 - x, x - 9.5, cw - 1.6 - az, above);
@@ -151,21 +243,21 @@ const glassKeep = (x, y, z) => {
 /** @type {() => Record<string, THREE.Material>} */
 const materials = () => ({
   // 透明 PC 殼的內噴漆（Blender 依名稱對應：pc-paint 類為透明殼內噴漆、pc-smoke 類為煙燻透明窗）
-  lime: namedMaterial('pc-paint-fluo-lime', { color: 0xc6f01e, roughness: 0.12, clearcoat: 1.0, clearcoatRoughness: 0.03 }),
-  lime2: namedMaterial('pc-paint-fluo-lime', { color: 0xc6f01e, roughness: 0.12, clearcoat: 1.0, clearcoatRoughness: 0.03, side: THREE.DoubleSide }),
-  graphite: namedMaterial('pc-paint-graphite', { color: 0x2f3338, roughness: 0.25, metalness: 0.35, clearcoat: 1.0, clearcoatRoughness: 0.05 }),
-  graphite2: namedMaterial('pc-paint-graphite', { color: 0x2f3338, roughness: 0.25, metalness: 0.35, clearcoat: 1.0, side: THREE.DoubleSide }),
+  // 主色金屬銅（iter-69 換色：避開陣容已大量使用的萊姆 / 黃綠）；下身石墨灰調亮成看得出的金屬灰
+  copper: namedMaterial('pc-paint-copper-metallic', { color: 0xb4602c, roughness: 0.18, metalness: 0.45, clearcoat: 1.0, clearcoatRoughness: 0.03 }),
+  copper2: namedMaterial('pc-paint-copper-metallic', { color: 0xb4602c, roughness: 0.18, metalness: 0.45, clearcoat: 1.0, clearcoatRoughness: 0.03, side: THREE.DoubleSide }),
+  graphite: namedMaterial('pc-paint-graphite', { color: 0x4a4f56, roughness: 0.25, metalness: 0.45, clearcoat: 1.0, clearcoatRoughness: 0.05 }),
+  graphite2: namedMaterial('pc-paint-graphite', { color: 0x4a4f56, roughness: 0.25, metalness: 0.45, clearcoat: 1.0, side: THREE.DoubleSide }),
   frame: namedMaterial('pc-paint-black', { color: 0x111214, roughness: 0.2, clearcoat: 1.0, clearcoatRoughness: 0.05 }),
-  window: namedMaterial('pc-smoke-window', { color: 0x1c2128, roughness: 0.05, specularIntensity: 0.6, transparent: true, opacity: 0.8, envMapIntensity: 0.5, depthWrite: false }),
+  window: namedMaterial('pc-smoke-window', { color: 0x1c2128, roughness: 0.05, specularIntensity: 0.6, transparent: true, opacity: 0.9, envMapIntensity: 0.5, depthWrite: false }),
   // 透明 PC 的內面與切邊
   inner: namedMaterial('pc-clear-shell-inner', { color: 0x2a2e33, roughness: 0.6, side: THREE.BackSide }),
   edge: namedMaterial('pc-clear-edge', { color: 0xb8c8d8, roughness: 0.1, transparent: true, opacity: 0.6, depthWrite: false, side: THREE.DoubleSide }),
   cockpit: namedMaterial('cockpit-dark', { color: 0x16181b, roughness: 0.6 }),
   driver: namedMaterial('cockpit-driver', { color: 0x3a3d44, roughness: 0.45, clearcoat: 0.4 }),
-  helmet: namedMaterial('cockpit-helmet-lime', { color: 0xc6f01e, roughness: 0.3, clearcoat: 0.8 }),
+  helmet: namedMaterial('cockpit-helmet-white', { color: 0xf2f2ee, roughness: 0.3, clearcoat: 0.8 }),
   whiteDecal: decalMaterial('decal-white', { color: 0xf4f4f2, roughness: 0.3 }),
   black: decalMaterial('decal-black', { color: 0x111214, roughness: 0.5 }),
-  limeDecal: decalMaterial('decal-fluo-lime', { color: 0xc6f01e, roughness: 0.3 }),
   head: decalMaterial('lamp-clear', { color: 0xe8f4ff, emissive: 0x9fc8ff, emissiveIntensity: 0.35, roughness: 0.05, clearcoat: 1.0 }),
   tailLamp: decalMaterial('lamp-red', { color: 0xc4121c, emissive: 0x7a0008, emissiveIntensity: 0.5, roughness: 0.1, clearcoat: 1.0 }),
   tailLampSolid: namedMaterial('lamp-red', { color: 0xd0142a, emissive: 0x900010, emissiveIntensity: 0.6, roughness: 0.1, clearcoat: 1.0 }),
@@ -218,7 +310,7 @@ export const fastbackCabinBody = makePolyBody({
     { mat: 'frame', keep: (x, y, z, s) => glassKeep(x, y, z, s) + 0.9 },
     // 石墨灰下身
     { mat: 'graphite', keep: (x, y) => splitY(x) - y },
-    { mat: 'lime', keep: () => 1 },
+    { mat: 'copper', keep: () => 1 },
   ],
   mats: { inner: 'inner', edge: 'edge', cap: 'graphite2', recess: 'frame', recessWall: 'frame', cockpit: 'cockpit', mount: 'mount' },
   materials,
