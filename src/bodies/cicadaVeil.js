@@ -1,4 +1,4 @@
-// 蟬翼（body-cicada-veil，第六階段 LG1 致敬款）：前段寬而平的「頭」（俯視最寬在前輪後方）、頭部兩側外緣一對突出的複眼燈；
+// 蟬翼（body-cicada-veil，第六階段 LG1 致敬款）：前段寬而平、往前收圓的「頭」（俯視最寬在前輪後方）、頭部外上角一對貼合的扁平多面複眼（iter-70；原為外突圓球燈）、鼻端下緣的下顎前唇；
 // 後段斷面呈 Λ 字（帳篷形）屋脊、往後漸低；後半車頂是兩片煙燻琥珀透明「脈翅」板（沿屋脊斜放、長格翅脈、看得到底盤），
 // 往前延伸蓋住駕駛艙；兩片脈翅尾端超出車尾殼面約 8 mm，在中線收攏成一個低矮尖尾（tent-tail，沒有獨立尾翼）。
 // 設計：shared/design/body-cicada-veil/DESIGN.md（HOMAGE_RESEARCH 第 6 節 P6、LG1 語彙 L1-x、和劇中車 / 市售車殼的差異）。
@@ -33,7 +33,8 @@ const XS = [-59, -54, -49, -40, -30, -20, -8, 4, 12, 18, 24, 30, 40, 46, 50, 54,
 const P = {
   yR: monoCurve(XS, [29, 32.6, 35, 37.8, 39.6, 40.5, 41, 40.7, 39.2, 37, 34.6, 33.6, 33.4, 33.2, 32.8, 31.6, 29.2, 23]),
   yE: monoCurve(XS, [24, 26.8, 29.2, 31.8, 29.4, 27.2, 26.6, 27.4, 29, 30.8, 31.8, 32.3, 32.4, 32.2, 31.7, 30.5, 27.8, 22]),
-  hw: monoCurve([-59, -56, -51, -46, -40, -30, -20, -8, 4, 12, 20, 26, 32, 40, 48, 54, 57, 59, 60], [21, 28, 34, 37, 37.6, 39.5, 42, 44.5, 46, 46, 44, 41, 38.5, 37.2, 37, 36, 34, 30, 27]),
+  // iter-70：頭部前段改成往前收圓的「臉」（x 54 → 60：36 / 34 / 30 / 27 → 33.5 / 29.5 / 25 / 21），不再是方盒；前緣下方另加下顎前唇
+  hw: monoCurve([-59, -56, -51, -46, -40, -30, -20, -8, 4, 12, 20, 26, 32, 40, 48, 54, 57, 59, 60], [21, 28, 34, 37, 37.6, 39.5, 42, 44.5, 46, 46, 44, 41, 38.5, 37.2, 36.6, 33.5, 29.5, 25, 21]),
   yLow: monoCurve(XS, [18, 16, 14, 13, 13, 13.5, 14, 14, 13.8, 13.5, 13.5, 13.5, 13.2, 13.2, 13.3, 13.6, 14.2, 15]),
 };
 
@@ -241,8 +242,9 @@ const materials = () => ({
   inner: namedMaterial('shell-inner-dark', { color: 0x18191b, roughness: 0.85, side: THREE.BackSide }),
   edge: namedMaterial('shell-edge-charcoal', { color: 0x3a3d42, roughness: 0.5, side: THREE.DoubleSide }),
   slot: namedMaterial('plastic-gill-black', { color: 0x08090a, roughness: 0.9, side: THREE.DoubleSide }),
-  // 琥珀煙燻透明脈翅（Blender 依名稱 pc-smoke → 薄殼透光材質）
-  amber: namedMaterial('pc-smoke-amber', { color: 0xd98a1c, roughness: 0.05, specularIntensity: 0.7, transparent: true, opacity: 0.4, envMapIntensity: 0.6, depthWrite: false, side: THREE.DoubleSide }),
+  // 半透明琥珀脈翅（iter-70：pc-smoke-amber → pc-clear-amber。Blender 依名稱 pc-clear → 透明 lens 薄殼材質（不加煙燻灰，
+  // 舊名 pc-smoke 會被當煙燻 PC 而變成黑玻璃）；app 端提高明度、降低不透明度，看得出半透明琥珀而不是不透明橘）
+  amber: namedMaterial('pc-clear-amber', { color: 0xf2b040, roughness: 0.04, specularIntensity: 0.8, transparent: true, opacity: 0.3, envMapIntensity: 0.8, depthWrite: false, side: THREE.DoubleSide }),
   vein: namedMaterial('paint-vein-umber', { color: 0x2b1b0d, roughness: 0.35, clearcoat: 0.6 }),
   mint2: namedMaterial('paint-bright-mint-green', { color: 0x5fe0b0, roughness: 0.22, clearcoat: 1.0, side: THREE.DoubleSide }),
   eye: namedMaterial('lamp-mint', { color: 0x8affd6, emissive: 0x2fd59a, emissiveIntensity: 0.65, roughness: 0.08, clearcoat: 1.0 }),
@@ -260,7 +262,7 @@ export const cicadaVeilBody = makePolyBody({
   form: 'tent-back',
   roof: 'clear',
   wing: 'tent-tail',
-  theme: '寬而平的頭＋兩側複眼燈、後段 Λ 字帳篷屋脊、兩片琥珀透明長格脈翅沿屋脊斜放並在車尾外收攏成低矮尖尾；安靜蟄伏、一出手就很快的對手',
+  theme: '往前收圓的寬頭＋貼合頭角的扁平多面複眼＋下顎前唇、後段 Λ 字帳篷屋脊、兩片琥珀透明長格脈翅沿屋脊斜放並在車尾外收攏成低矮尖尾；安靜蟄伏、一出手就很快的對手',
   material: 'ABS',
   density_g_cm3: 1.05,
   wallThickness_mm: 0.8,
@@ -289,27 +291,35 @@ export const cicadaVeilBody = makePolyBody({
     parts.push({ geometry: mergeGeos([vR.veins, vL.veins]), mat: 'vein', name: 'wing-veins' });
     parts.push({ geometry: mergeGeos([vR.costa, vL.costa]), mat: 'vein', name: 'wing-costa' });
 
-    // 複眼燈：頭部兩側外緣各一顆突出的薄荷綠半球燈（L1-6 對手深色殼＋發光頭燈，改用薄荷綠）
+    // 複眼（iter-70）：由外突圓球燈改成貼合頭部外上角的扁平多面複眼（20 面體細分一次的 80 個平面小眼面，只凸出殼面約 1 mm），
+    // 沿屋簷角往外上傾 29°；和 mantis / dartfrog 的外突圓頂眼燈區隔
     /** @type {THREE.BufferGeometry[]} */
     const eyes = [];
-    /** @type {THREE.BufferGeometry[]} */
-    const rings = [];
-    const EYE = { x: 48.5, r: 4.3 };
-    const eyeZ = P.hw(EYE.x) + 0.2;
-    const eyeY = P.yE(EYE.x) - 0.6;
+    const EYE = { x: 48, rx: 5.6, ry: 3.4, rz: 2.0 };
     for (const sg of [-1, 1]) {
-      const g = new THREE.SphereGeometry(EYE.r, 28, 18);
-      g.scale(1.1, 0.88, 0.95);
-      g.translate(EYE.x, eyeY, sg * eyeZ);
+      const g = new THREE.IcosahedronGeometry(1, 1);
+      g.scale(EYE.rx, EYE.ry, EYE.rz);
+      g.rotateX(-sg * 0.5);
+      g.translate(EYE.x, P.yE(EYE.x) - 1.6, sg * (P.hw(EYE.x) - 1.1));
+      g.computeVertexNormals();
       eyes.push(g);
-      const ring = new THREE.TorusGeometry(EYE.r + 0.35, 0.45, 8, 40);
-      ring.rotateX(Math.PI / 2);
-      ring.scale(1.1, 1, 0.95);
-      ring.translate(EYE.x, eyeY - 0.9, sg * eyeZ);
-      rings.push(ring);
     }
-    parts.push({ geometry: mergeGeos(eyes), mat: 'eye', solid: true, outline: true, name: 'compound-eye-lamps' });
-    parts.push({ geometry: mergeGeos(rings), mat: 'charcoal2', solid: true, name: 'eye-bezels' });
+    parts.push({ geometry: mergeGeos(eyes), mat: 'eye', solid: true, outline: true, name: 'compound-eye-facets' });
+    // 下顎前唇（iter-70）：鼻端下緣往前伸 3.5 mm 的薄板，中央有一道 V 形口器缺口（頭部前緣不再是平切方塊）
+    const lip = new THREE.Shape();
+    lip.moveTo(55, -19);
+    lip.lineTo(60, -15.5);
+    lip.lineTo(63.5, -6.5);
+    lip.lineTo(61.6, -1.4);
+    lip.lineTo(61.6, 1.4);
+    lip.lineTo(63.5, 6.5);
+    lip.lineTo(60, 15.5);
+    lip.lineTo(55, 19);
+    lip.lineTo(55, -19);
+    const lipGeo = new THREE.ExtrudeGeometry(lip, { depth: 1.4, bevelEnabled: false });
+    lipGeo.rotateX(Math.PI / 2);
+    lipGeo.translate(0, 17.0, 0);
+    parts.push({ geometry: lipGeo, mat: 'charcoal2', solid: true, outline: true, name: 'mandible-lip' });
 
     // 輪拱內襯（31 mm 大輪拱）：擋住從側面看進去的殼內空腔
     parts.push({ geometry: mergeGeos(ARCHES.map((a) => buildClippedLiner(a, 3))), mat: 'liner', shell: true, name: 'arch-liners' });
