@@ -135,3 +135,43 @@ export interface PlacedRoller {
   taper: RollerSpec['taper'];
   ring: RollerSpec['ring'];
 }
+
+/** 滑動保桿（第五階段 iter-61）：滑動板相對底盤沿車身 z（左右）1 自由度，彈簧＋預壓＋阻尼，行程端點硬止擋 */
+export interface SlideSpec {
+  /** 單邊行程（mm）：滑動板可從中央往左右各滑這麼多，端點為硬止擋 */
+  stroke_mm: number;
+  /** 彈簧常數（N/mm） */
+  springK_N_per_mm: number;
+  /** 預壓（N）：中央位置時彈簧已壓縮、由中央擋塊承受的力 */
+  preload_N: number;
+  /** 阻尼比（相對彈簧常數與滑動質量） */
+  dampingRatio: number;
+  /** 中央擋塊的接觸變形（mm）：預壓在這段距離內由 0 連續升到 preload_N */
+  seatDeflection_mm: number;
+  /** 滑動板質量（g，由外形推導） */
+  plateMass_g: number;
+  /** 樹脂滑軌（固定在底盤）：底盤座標的方塊 */
+  rail: { xMin_mm: number; xMax_mm: number; halfZ_mm: number; y_mm: number; thickness_mm: number; density_g_cm3: number };
+  railMass_g: number;
+  /** 彈簧、螺絲等小五金（固定在底盤） */
+  hardware_g: number;
+  /** 彈簧外形（3D 用）：x 位置、內外端 |z|、線圈外徑、線徑、圈數、顏色 */
+  spring: { x_mm: number; innerZ_mm: number; outerZ_mm: number; coilDiameter_mm: number; wireDiameter_mm: number; turns: number; color: number };
+}
+
+/** 組裝後的滑動保桿（asm.slider，車體座標）：滑動部分 = 滑動板＋裝在上面的前導輪（與穩定零件） */
+export interface PlacedSlider {
+  slot: 'frontStay';
+  partId: string;
+  /** 滑動部分的零件標籤（asm.parts 的 label） */
+  labels: string[];
+  mass_g: number;
+  com_mm: Vec3;
+  /** 滑動部分對自身質心的主慣性（kg·m²） */
+  inertia_kgm2: Vec3;
+  stroke_mm: number;
+  springK_N_per_mm: number;
+  preload_N: number;
+  dampingRatio: number;
+  seatDeflection_mm: number;
+}

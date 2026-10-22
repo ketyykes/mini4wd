@@ -351,6 +351,10 @@ function makeMaterials() {
     frpEdge: new THREE.MeshStandardMaterial({ name: 'frp-edge', color: 0xc4c9c6, roughness: 0.8, metalness: 0.0 }),
     carbonEdge: new THREE.MeshStandardMaterial({ name: 'carbon-plate-edge', color: 0x5d6166, roughness: 0.75, metalness: 0.05 }),
     aluNut: new THREE.MeshStandardMaterial({ name: 'alu-nut-blue', color: 0x3f6fb8, roughness: 0.3, metalness: 0.85 }),
+    // iter-61：滑動保桿的鋁滑動板（髮絲面霧銀，切口較亮）與樹脂滑軌（黑色低摩擦樹脂）
+    aluPlate: new THREE.MeshStandardMaterial({ name: 'alu-plate', color: 0xc9ced5, roughness: 0.36, metalness: 0.85 }),
+    aluPlateEdge: new THREE.MeshStandardMaterial({ name: 'alu-plate-edge', color: 0xe4e7eb, roughness: 0.25, metalness: 0.9 }),
+    slideRail: new THREE.MeshStandardMaterial({ name: 'plastic-slide-rail', color: 0x1d1f23, roughness: 0.45, metalness: 0.0 }),
     steelWeight: new THREE.MeshStandardMaterial({ name: 'steel-weight', color: 0xc3c8ce, roughness: 0.3, metalness: 0.85, emissive: 0x15171a }),
     // iter-55：煞車海綿改用較大的開孔氣孔貼圖（spongeCellTexture），bump 加深，看得出發泡孔隙
     spongeWhite: new THREE.MeshStandardMaterial({ name: 'sponge-white', color: 0xf8f6ee, map: cachedTexture('sponge-cell', spongeCellTexture), bumpMap: cachedTexture('sponge-cell', spongeCellTexture), bumpScale: 1.2, roughness: 1.0, metalness: 0.0, emissive: 0x2a2a26 }),
@@ -1067,6 +1071,42 @@ const buildRollerStack = (mats, r, opt = {}) => {
 };
 
 /**
+ * 滑動保桿的樹脂滑軌與彈簧（iter-61）：滑軌 = 零件資料 slide.rail 的方塊（鎖在前保桿下方、壓在滑動板上）；
+ * 彈簧 = 沿車身 z 的螺旋線圈，左右各 1 支，從滑軌端面（|z| = innerZ）到滑動板上的彈簧座（|z| = outerZ），座在滑動板頂面
+ * @type {(mats: ReturnType<typeof makeMaterials>, sl: import('./parts/types').SlideSpec, plateTop: number) => THREE.Group}
+ */
+const buildSlideRailAndSprings = (mats, sl, plateTop) => {
+  const g = new THREE.Group();
+  g.name = 'slide-rail';
+  const rl = sl.rail;
+  const rail = new THREE.Mesh(new THREE.BoxGeometry(rl.xMax_mm - rl.xMin_mm, rl.thickness_mm, 2 * rl.halfZ_mm), mats.slideRail);
+  rail.position.set((rl.xMin_mm + rl.xMax_mm) / 2, rl.y_mm + rl.thickness_mm / 2, 0);
+  g.add(rail);
+  const sp = sl.spring;
+  const springMat = new THREE.MeshStandardMaterial({ name: 'steel-spring', color: sp.color, roughness: 0.3, metalness: 0.9 });
+  const rc = (sp.coilDiameter_mm - sp.wireDiameter_mm) / 2;
+  const yc = plateTop + sp.coilDiameter_mm / 2;
+  for (const sz of [-1, 1]) {
+    /** @type {THREE.Vector3[]} 螺旋線（沿 z，從滑軌端面到彈簧座） */
+    const pts = [];
+    const n = sp.turns * 24;
+    for (let k = 0; k <= n; k++) {
+      const f = k / n;
+      const a = f * sp.turns * Math.PI * 2;
+      const z = sz * (sp.innerZ_mm + (sp.outerZ_mm - sp.innerZ_mm) * f);
+      pts.push(new THREE.Vector3(sp.x_mm + rc * Math.cos(a), yc + rc * Math.sin(a), z));
+    }
+    const coil = new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), n * 2, sp.wireDiameter_mm / 2, 6, false), springMat);
+    g.add(coil);
+    // 彈簧座：滑動板上折起的小擋片（鋁，外側端）
+    const tab = new THREE.Mesh(new THREE.BoxGeometry(sp.coilDiameter_mm + 1.2, sp.coilDiameter_mm + 0.6, 0.8), mats.aluPlateEdge);
+    tab.position.set(sp.x_mm, plateTop + (sp.coilDiameter_mm + 0.6) / 2, sz * (sp.outerZ_mm + 0.4));
+    g.add(tab);
+  }
+  return g;
+};
+
+/**
  * FRP / 碳纖導輪板（外形與開孔取自零件資料 plate，與質量、干涉檢查同一份；板厚照資料 1.5 mm，不加倒角）＋導輪柱
  * 導輪柱（iter-47，ref_chevalier-ma_gradeup / ref_aero-avante-ar）：板底的螺絲頭 → 板面墊片 → 鋁墊管撐到導輪底 → 導輪 →
  * （兩層時）鋁墊管撐到上層導輪 → 頂部墊片＋鋁墊管＋尼龍蓋。導輪高度一律取 rollerLayoutOf（assembly.js，與物理碰撞體同一份；前後導輪各自的款式）
@@ -1085,11 +1125,20 @@ const buildStayPlates = (mats) => {
     grp.name = slot;
     grp.userData.part = slot === 'frontStay' ? 'stay-front' : 'stay-rear';
     // 上下面用板材貼圖、側面與孔壁用切口材質（ExtrudeGeometry 群組 0 = 上下面、1 = 側面）；0.25 mm 小倒角，總厚維持 1.5 mm
-    const mat = st.material === 'carbon' ? [mats.carbonPlate, mats.carbonEdge] : [mats.frpPlate, mats.frpEdge];
+    let mat = [mats.frpPlate, mats.frpEdge];
+    if (st.material === 'carbon') {
+      mat = [mats.carbonPlate, mats.carbonEdge];
+    } else if (st.material === 'aluminum') {
+      mat = [mats.aluPlate, mats.aluPlateEdge];
+    }
     const holes = pl.holes.map((h) => circlePts(h.x, h.z, h.r, 16));
     const plate = extrudeXZ(pl.outline, pl.thickness_mm, mat, holes, 0.25);
     plate.position.y = pl.y_mm;
     grp.add(plate);
+    // 滑動保桿（iter-61）：樹脂滑軌＋左右對頂的彈簧（尺寸取自零件資料 slide，與質量同一份）
+    if (st.slide) {
+      grp.add(buildSlideRailAndSprings(mats, st.slide, pl.y_mm + pl.thickness_mm));
+    }
     const plateTop = pl.y_mm + pl.thickness_mm;
     const sx = slot === 'frontStay' ? 1 : -1;
     // 每個導輪位置（同一 x、z 的上下導輪疊成一根柱）

@@ -80,6 +80,76 @@ const REAR_CARBON_HOLES = plateHoles(-1, REAR_CARBON_OUTLINE, 72, 44.5, 57, [
 ]);
 const REAR_CARBON_T = 1.5;
 
+// ---- 前寬滑動保桿（第五階段 iter-61，TW10 / [T15469]）：2 mm 鋁滑動板（裝前導輪）＋樹脂滑軌（鎖在前保桿下方）＋左右對頂的彈簧 ----
+// 滑動板只能相對底盤左右（車身 z）滑動 ±2.5 mm；牆對前導輪的力先經過彈簧再傳到車身（sim.js sliderSpringImpulse / sliderContactImpulses）
+const RHO_ALU = 2.7;
+const RHO_POM = 1.41;
+const SLIDE_PLATE_T = 2.0;
+const SLIDE_RAIL_T = 1.2;
+/** 滑動板外形：橫跨車頭的 12 mm 深長條，兩端包住導輪孔（左右對稱，推估） */
+const SLIDE_OUTLINE = symmetricOutline(
+  [[80, 0], [80, -40], [79, -44.5], [76.5, -47.2], [73, -47.6], [69.8, -45.8], [68, -41], [68, 0]],
+  1,
+);
+/** @type {{ x: number, z: number, r: number }[]} 滑動板的孔：導輪螺絲孔 φ2.2 ＋ 一排 φ3.5 減重孔（間距 6 mm，推估：實車鋁板有成排減重孔） */
+const SLIDE_HOLES = [
+  { x: 74, z: -42.5, r: 1.1 },
+  { x: 74, z: 42.5, r: 1.1 },
+];
+SLIDE_HOLES.push(...holeRow(SLIDE_OUTLINE, [74, 3], [74, 36], 6, 1.75, SLIDE_HOLES));
+/** @type {import('./types').SlideSpec['rail']} 樹脂滑軌（固定在前保桿中央橋接板下方，滑動板在它下面左右滑動；底盤座標，推估尺寸） */
+const SLIDE_RAIL = { xMin_mm: 60, xMax_mm: 72, halfZ_mm: 15, y_mm: BUMPER_BOTTOM_Y - SLIDE_RAIL_T, thickness_mm: SLIDE_RAIL_T, density_g_cm3: RHO_POM };
+const SLIDE_RAIL_MASS = ((SLIDE_RAIL.xMax_mm - SLIDE_RAIL.xMin_mm) * 2 * SLIDE_RAIL.halfZ_mm * SLIDE_RAIL_T * RHO_POM) / 1000;
+/** 彈簧、螺絲、擋片等小五金（固定在底盤側，推估） */
+const SLIDE_HARDWARE_G = 1.9;
+const SLIDE_PLATE_MASS = plateMass(SLIDE_OUTLINE, holeArea(SLIDE_HOLES), SLIDE_PLATE_T, RHO_ALU);
+
+/**
+ * 前滑動保桿零件（金＝軟彈簧、銀＝硬彈簧，同一份幾何）
+ * @type {(o: { id: string, name: string, springK_N_per_mm: number, preload_N: number, springColor: number, springSrc: string }) => import('./types').PartBase}
+ */
+const slideFrontPart = ({ id, name, springK_N_per_mm, preload_N, springColor, springSrc }) => ({
+  id,
+  category: 'stay-front',
+  name,
+  material: 'aluminum',
+  rollerX_mm: 74,
+  rollerZ_mm: 42.5,
+  rollerY_mm: 10,
+  // 滑動板（鋁）：外形同時給質量、干涉檢查（行程中央位置）、3D 模型
+  plate: { outline: SLIDE_OUTLINE, holes: SLIDE_HOLES, y_mm: SLIDE_RAIL.y_mm - SLIDE_PLATE_T, thickness_mm: SLIDE_PLATE_T, density_g_cm3: RHO_ALU },
+  /** @type {import('./types').SlideSpec} */
+  slide: {
+    stroke_mm: 2.5,
+    springK_N_per_mm,
+    preload_N,
+    dampingRatio: 0.3,
+    seatDeflection_mm: 0.05,
+    plateMass_g: SLIDE_PLATE_MASS,
+    rail: SLIDE_RAIL,
+    railMass_g: SLIDE_RAIL_MASS,
+    hardware_g: SLIDE_HARDWARE_G,
+    spring: { x_mm: 70.5, innerZ_mm: SLIDE_RAIL.halfZ_mm, outerZ_mm: 23, coilDiameter_mm: 2.6, wireDiameter_mm: 0.45, turns: 7, color: springColor },
+  },
+  mass_g: SLIDE_PLATE_MASS + SLIDE_RAIL_MASS + SLIDE_HARDWARE_G,
+  /** 裝滑動保桿時前保桿兩側的導輪臂剪掉（同 FRP 板；導輪改由滑動板撐） */
+  chassisTrim: { kind: 'bumper-wings', src: '推估：實車裝滑動保桿時常把原廠保桿的導輪臂剪掉（導輪改由滑動板撐）；切除範圍同 FRP 前寬板' },
+  features: [],
+  src: {
+    structure: 'PARTS_RESEARCH 第五階段 W / AB 節 [T15469] 官方：2 mm 鋁板＋低摩擦樹脂滑軌，鎖在 MA 前保桿；「フェンスにぶつかった時のショックをスムーズに吸収」',
+    rollerZ_mm: '推估：導輪孔位同 stay-front-frp（±42.5 mm）；滑動板在行程端點時 13 mm 導輪外緣跨距 2 ×（42.5 + 2.5 + 6.5）= 103 mm，17 / 19 mm 導輪會超過 105 mm（WIDTH）',
+    stroke_mm: '推估（W 節）：左右各 ±2.5 mm，端點為硬止擋',
+    springK_N_per_mm: springSrc,
+    dampingRatio: '推估（W 節）：官方以滑動阻尼油脂調整，取阻尼比 0.3（以彈簧常數與滑動質量換算阻尼係數 c = 2ζ√(k·m)）',
+    seatDeflection_mm: '推估：預壓由中央擋塊承受；擋塊（樹脂）接觸變形取 0.05 mm（擋塊剛性 = 預壓 / 0.05 mm），彈簧力在 0–0.05 mm 內由 0 連續升到預壓（位能函數連續、不產生能量）',
+    plate: '推估：鋁板約 90 × 12 × 2 mm（W 節「約 90 × 15 × 2 mm」），兩端包住導輪孔；φ3.5 減重孔一排；密度 2.7 g/cm³',
+    rail: '推估：樹脂（POM 1.41 g/cm³）滑軌 12 × 30 × 1.2 mm，鎖在前保桿中央橋接板下方',
+    hardware_g: '推估（W 節「樹脂件與彈簧螺絲約 2.5 g」− 滑軌 0.6 g）：彈簧 2 支、螺絲、擋片約 1.9 g',
+    mass_g: '由滑動板外形 × 厚度 × 密度＋滑軌＋小五金推導，合計約 7.8 g（W 節推估約 8 g）',
+    taiwan: 'TAIWAN_SOURCES TW10（四驅博士學校／露天，15469）',
+  },
+});
+
 /** @type {import('./types').PartBase[]} */
 export const stayParts = [
   {
@@ -219,4 +289,20 @@ export const stayParts = [
       mass_g: '由外形面積扣開孔 × 厚度 × 密度推導；[MYF1] 實測碳纖多用途寬後架 3.31 g',
     },
   },
+  slideFrontPart({
+    id: 'stay-front-slide-soft',
+    name: '前寬滑動保桿（鋁板＋樹脂滑軌，金色軟彈簧）',
+    springK_N_per_mm: 0.5,
+    preload_N: 0.5,
+    springColor: 0xd9b24a,
+    springSrc: '推估（W 節）：軟（金）k ≈ 0.5 N/mm、預壓 0.5 N——滿行程力 0.5 + 0.5 × 2.5 ≈ 1.8 N，遠小於轉彎側向力約 6.5 N（「碰牆就滑」）',
+  }),
+  slideFrontPart({
+    id: 'stay-front-slide-hard',
+    name: '前寬滑動保桿（鋁板＋樹脂滑軌，銀色硬彈簧）',
+    springK_N_per_mm: 2,
+    preload_N: 2,
+    springColor: 0xc8ccd2,
+    springSrc: '推估（W 節）：硬（銀）k ≈ 2 N/mm、預壓 2 N——滿行程力約 7 N，與轉彎側向力同量級（「只有很用力才滑、出彎立刻回彈」）',
+  }),
 ];

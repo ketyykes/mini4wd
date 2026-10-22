@@ -358,7 +358,15 @@ export function assemble(rawConfig) {
   for (const [slot, sx] of [['frontStay', 1], ['rearStay', -1]]) {
     const st = p[slot];
     const label = sx > 0 ? '前導輪架' : '後導輪架';
-    if (st.plate) {
+    if (st.slide) {
+      // 滑動保桿（iter-61）：滑動板（隨導輪左右滑動）、樹脂滑軌與小五金（固定在底盤）分開放，滑動部分另建剛體（見下方 slider）
+      const [cx, cz] = polygonCentroid(st.plate.outline);
+      const rail = st.slide.rail;
+      const railPos = { x: (rail.xMin_mm + rail.xMax_mm) / 2, y: rail.y_mm + rail.thickness_mm / 2, z: 0 };
+      place(slot, SLIDE_PLATE_LABEL, st.slide.plateMass_g, { x: cx, y: st.plate.y_mm + st.plate.thickness_mm / 2, z: cz });
+      place(slot, '前滑動保桿滑軌', st.slide.railMass_g, railPos);
+      place(slot, '前滑動保桿彈簧與螺絲', st.slide.hardware_g, railPos);
+    } else if (st.plate) {
       const [cx, cz] = polygonCentroid(st.plate.outline);
       place(slot, label, st.mass_g, { x: cx, y: st.plate.y_mm + st.plate.thickness_mm / 2, z: cz });
     } else if (sx > 0) {
@@ -406,7 +414,11 @@ export function assemble(rawConfig) {
   // 制振器鎖死（locked = true，用螺帽鎖緊當固定配重）時視為剛體的一部分
   const damperLabels = new Set(opt.dampers.map((d) => d.label));
   const movableParts = p.massDamper && !p.massDamper.locked ? parts.filter((q) => q.slot === 'massDamper' && damperLabels.has(q.label)) : [];
-  const rigid = movableParts.length > 0 ? massProps(parts.filter((q) => !movableParts.includes(q)), ch, bodyProps) : total;
+  // 滑動保桿（iter-61）：滑動板＋裝在上面的前導輪（＋同一支螺絲上的穩定零件）是另一個剛體，不屬於車體剛體
+  const slider = sliderOf(p.frontStay, parts, opt.stabilizers);
+  const sliderParts = slider ? parts.filter((q) => slider.labels.includes(q.label)) : [];
+  const detached = [...movableParts, ...sliderParts];
+  const rigid = detached.length > 0 ? massProps(parts.filter((q) => !detached.includes(q)), ch, bodyProps) : total;
   const movable = movableParts.map((q) => {
     const d = p.massDamper;
     return {
@@ -432,27 +444,40 @@ export function assemble(rawConfig) {
   for (const w of wheels) {
     boxes.push({ min: { x: w.x - R, y: 0, z: w.z - halfTire }, max: { x: w.x + R, y: 2 * R, z: w.z + halfTire } });
   }
+  // 滑動保桿（推估規則，iter-61）：裝在滑動板上的零件（前導輪、滑動板、穩定零件）以行程端點（左右各 ±stroke）的外框計入，車寬檢查較保守
+  const slideZ = slider ? slider.stroke_mm : 0;
+  /** @type {number[]} 每個外框在 z 方向因滑動行程外擴的量（只有滑動板上的零件 > 0；迎風面積用不外擴的寬度） */
+  const boxSlideDz = boxes.map(() => 0);
   for (const r of rollers) {
-    boxes.push({ min: { x: r.x - r.r, y: r.y - r.h / 2 + lift, z: r.z - r.r }, max: { x: r.x + r.r, y: r.y + r.h / 2 + lift, z: r.z + r.r } });
+    const dz = slider && r.slot === 'frontRollers' ? slideZ : 0;
+    boxes.push({ min: { x: r.x - r.r, y: r.y - r.h / 2 + lift, z: r.z - r.r - dz }, max: { x: r.x + r.r, y: r.y + r.h / 2 + lift, z: r.z + r.r + dz } });
+    boxSlideDz.push(dz);
   }
   // 導輪板、選配零件（制振器取整個行程的範圍）
   /** @type {{ min: Vec3, max: Vec3 }[]} */
   const extraBoxes = opt.solids.filter((q) => q.group !== 'tire' && q.group !== 'roller').map((q) => {
     const b = solidBox(q.solid);
-    return { min: lifted(b.min, lift), max: lifted(b.max, lift) };
+    const onSlider = slider && ((q.group === 'stay' && q.slot === 'frontStay') || q.group === 'stabilizer');
+    const dz = onSlider ? slideZ : 0;
+    boxSlideDz.push(dz);
+    return { min: lifted({ ...b.min, z: b.min.z - dz }, lift), max: lifted({ ...b.max, z: b.max.z + dz }, lift) };
   });
   boxes.push(...extraBoxes);
   const min = { x: Infinity, y: Infinity, z: Infinity };
   const max = { x: -Infinity, y: -Infinity, z: -Infinity };
-  for (const b of boxes) {
+  let staticMinZ = Infinity;
+  let staticMaxZ = -Infinity;
+  boxes.forEach((b, i) => {
     for (const k of ['x', 'y', 'z']) {
       min[k] = Math.min(min[k], b.min[k]);
       max[k] = Math.max(max[k], b.max[k]);
     }
-  }
+    staticMinZ = Math.min(staticMinZ, b.min.z + boxSlideDz[i]);
+    staticMaxZ = Math.max(staticMaxZ, b.max.z - boxSlideDz[i]);
+  });
   const bbox_mm = { min, max, size: { x: max.x - min.x, y: max.y - min.y, z: max.z - min.z } };
-  // 迎風面積（SPEC 1.11）：外框寬 × 高 × 填充比例
-  const frontalArea_mm2 = bbox_mm.size.z * bbox_mm.size.y * globalSpec.aero.frontalAreaFill;
+  // 迎風面積（SPEC 1.11）：外框寬 × 高 × 填充比例；寬度取滑動板在行程中央（實際行駛）時的值（沒有滑動保桿時就是外框寬）
+  const frontalArea_mm2 = (staticMaxZ - staticMinZ) * bbox_mm.size.y * globalSpec.aero.frontalAreaFill;
   // 離地高度：輪胎以外的最低點（底盤本體、車殼、導輪）
   // structureClearance_mm：只看底盤本體、車殼、導輪（物理車體碰撞方塊的底面用這個）；groundClearance_mm 另含導輪板與選配零件（規則檢查用）
   const structureClearance_mm = Math.min(...structBoxes.map((b) => b.min.y), ...rollers.map((r) => r.y - r.h / 2 + lift));
@@ -487,6 +512,8 @@ export function assemble(rawConfig) {
     optional: { dampers: opt.dampers, sponge: opt.sponge, ballast: opt.ballast, stabilizers: opt.stabilizers },
     rigid: { mass_g: rigid.mass_g, com_mm: rigid.com_mm, inertia_kgm2: rigid.inertia_kgm2 },
     movable,
+    // 滑動保桿的滑動部分（iter-61）；沒有滑動保桿時為 null
+    slider,
     lift_mm: lift,
     gearRatio: p.gear.ratio,
     driveType: ch.driveType,
@@ -510,6 +537,64 @@ export function assemble(rawConfig) {
           bbox_mm: bodyBox,
         }
       : null,
+  };
+}
+
+/** 滑動保桿的滑動板在零件清單（asm.parts）中的標籤 */
+const SLIDE_PLATE_LABEL = '前滑動板';
+
+/**
+ * 滑動保桿的滑動部分（iter-61）：滑動板＋前導輪（FL / FR）＋前導輪上方的穩定零件（同一支螺絲），質量、質心（車體座標）、對自身質心的慣性。
+ * 慣性：各零件以質點計（平行軸定理），滑動板另加自身外框方塊的慣性。前導輪架不是滑動保桿時回傳 null
+ * @type {(st: Record<string, any>, parts: PlacedPart[], stabilizers: any[]) => import('./parts/types').PlacedSlider | null}
+ */
+function sliderOf(st, parts, stabilizers) {
+  if (!st.slide) {
+    return null;
+  }
+  const stabLabels = new Set(stabilizers.map((s) => s.label));
+  const own = parts.filter((q) => q.label === SLIDE_PLATE_LABEL || q.slot === 'frontRollers' || (q.slot === 'stabilizer' && stabLabels.has(q.label)));
+  let mass_g = 0;
+  const mom = { x: 0, y: 0, z: 0 };
+  for (const q of own) {
+    mass_g += q.mass_g;
+    mom.x += q.mass_g * q.pos.x;
+    mom.y += q.mass_g * q.pos.y;
+    mom.z += q.mass_g * q.pos.z;
+  }
+  const com_mm = { x: mom.x / mass_g, y: mom.y / mass_g, z: mom.z / mass_g };
+  const inertia = { x: 0, y: 0, z: 0 };
+  for (const q of own) {
+    const dx = q.pos.x - com_mm.x;
+    const dy = q.pos.y - com_mm.y;
+    const dz = q.pos.z - com_mm.z;
+    inertia.x += q.mass_g * (dy * dy + dz * dz);
+    inertia.y += q.mass_g * (dx * dx + dz * dz);
+    inertia.z += q.mass_g * (dx * dx + dy * dy);
+  }
+  // 滑動板自身（外框方塊）的慣性
+  const xs = st.plate.outline.map((/** @type {number[]} */ v) => v[0]);
+  const zs = st.plate.outline.map((/** @type {number[]} */ v) => v[1]);
+  const lx = Math.max(...xs) - Math.min(...xs);
+  const lz = Math.max(...zs) - Math.min(...zs);
+  const ly = st.plate.thickness_mm;
+  const mp = st.slide.plateMass_g;
+  inertia.x += (mp / 12) * (ly * ly + lz * lz);
+  inertia.y += (mp / 12) * (lx * lx + lz * lz);
+  inertia.z += (mp / 12) * (lx * lx + ly * ly);
+  const sl = st.slide;
+  return {
+    slot: 'frontStay',
+    partId: st.id,
+    labels: own.map((q) => q.label),
+    mass_g,
+    com_mm,
+    inertia_kgm2: { x: inertia.x * 1e-9, y: inertia.y * 1e-9, z: inertia.z * 1e-9 },
+    stroke_mm: sl.stroke_mm,
+    springK_N_per_mm: sl.springK_N_per_mm,
+    preload_N: sl.preload_N,
+    dampingRatio: sl.dampingRatio,
+    seatDeflection_mm: sl.seatDeflection_mm,
   };
 }
 

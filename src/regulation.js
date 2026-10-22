@@ -94,7 +94,9 @@ export function validateAssembly(asm) {
     fail('LENGTH', `全長 ${f1(size.x)} mm，規則須 < ${r.maxLength_mm} mm`);
   }
   if (!(size.z < r.maxWidth_mm)) {
-    fail('WIDTH', `全寬 ${f1(size.z)} mm，規則須 < ${r.maxWidth_mm} mm`);
+    // 滑動保桿（iter-61）：外框取滑動板在行程端點時的最大範圍（推估規則：官方條文沒寫可動零件怎麼量，取較保守的量法）
+    const slideNote = asm.slider ? `（含前滑動保桿行程端點 ±${asm.slider.stroke_mm} mm 的外框，推估規則）` : '';
+    fail('WIDTH', `全寬 ${f1(size.z)} mm${slideNote}，規則須 < ${r.maxWidth_mm} mm`);
   }
   if (!(size.y < r.maxHeight_mm)) {
     fail('HEIGHT', `全高 ${f1(size.y)} mm，規則須 < ${r.maxHeight_mm} mm`);

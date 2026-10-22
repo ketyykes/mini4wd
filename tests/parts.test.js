@@ -1300,3 +1300,213 @@ describe('P18 干涉與安裝相容性', () => {
     }
   }, 600000);
 });
+
+// ---------------------------------------------------------------------------
+// 第五階段 iter-61：前寬滑動保桿（TW10 / 15469）——滑動板＋前導輪是相對車體左右滑動的剛體（彈簧＋預壓＋阻尼，行程端點硬止擋）
+// ---------------------------------------------------------------------------
+
+/**
+ * 撞直牆：直線賽道上，車頭朝 +z 側牆偏 psi 度、以速度 V（沿車頭方向，傳動系 ω·r = V）斷電滑行，右前導輪離牆面 1 mm 起步，跑 0.1 s。
+ * 量測：車體剛體的峰值側向（世界 z）力 m_車體·|Δv_z|/dt、能量 E = 動能（車體＋滑動板＋制振器＋傳動系）＋滑動保桿彈簧位能
+ * @type {(asm: any, psiDeg: number, V: number) => { peakF: number, E0: number, Emax: number, Eend: number, uMax: number, springMax: number, dampingWork: number }}
+ */
+function slideWallImpact(asm, psiDeg, V) {
+  const track = buildStraight(4);
+  const env = sim.createWorld(track);
+  const car = sim.createCar(env, { assembly: asm, s: 0.5, lane: 0, powered: false });
+  // 先走一步讓 Rapier 套用組裝的質量與慣性
+  env.world.step();
+  const psi = (psiDeg * Math.PI) / 180;
+  const q = { x: 0, y: Math.sin(-psi / 2), z: 0, w: Math.cos(-psi / 2) };
+  const fr = car.rollers.find((r) => r.id === 'FR');
+  const face = track.wallsAt(0)[0].d - track.dims.wallT / 2;
+  const t0 = car.chassis.translation();
+  const zFR = (fr.x * Math.sin(psi) + fr.z * Math.cos(psi)) / 1000;
+  const vel = { x: V * Math.cos(psi), y: 0, z: V * Math.sin(psi) };
+  car.chassis.setTranslation({ x: t0.x, y: t0.y, z: face - 0.001 - fr.r / 1000 - zFR }, true);
+  car.chassis.setRotation(q, true);
+  car.chassis.setLinvel(vel, true);
+  car.chassis.setAngvel({ x: 0, y: 0, z: 0 }, true);
+  // 制振器、滑動板剛體跟著車體擺到同一個姿勢（滑動板在行程中央）
+  const attached = [...car.dampers.map((d) => ({ body: d.body, a: d.anchor })), ...(car.slider ? [{ body: car.slider.body, a: car.slider.anchor }] : [])];
+  for (const b of attached) {
+    b.body.setTranslation(sim.localToWorld(car, b.a), true);
+    b.body.setRotation(q, true);
+    b.body.setLinvel(vel, true);
+    b.body.setAngvel({ x: 0, y: 0, z: 0 }, true);
+  }
+  car.spin.omega = V / car.P.wheelRadius;
+  const dt = env.world.timestep;
+  const m = car.chassis.mass();
+  const energy = () => sim.carKineticEnergy(car) + (sim.sliderState(car)?.springEnergy ?? 0);
+  const E0 = energy();
+  let Emax = E0;
+  let E = E0;
+  let peakF = 0;
+  let uMax = 0;
+  let springMax = 0;
+  let vz = car.chassis.linvel().z;
+  for (let i = 0; i < 0.1 / dt; i++) {
+    sim.stepCar(env, car);
+    const vzNow = car.chassis.linvel().z;
+    peakF = Math.max(peakF, (m * Math.abs(vzNow - vz)) / dt);
+    vz = vzNow;
+    const st = sim.sliderState(car);
+    if (st) {
+      uMax = Math.max(uMax, Math.abs(st.u));
+      springMax = Math.max(springMax, Math.abs(st.force));
+    }
+    E = energy();
+    Emax = Math.max(Emax, E);
+  }
+  return { peakF, E0, Emax, Eend: E, uMax, springMax, dampingWork: sim.sliderState(car)?.dampingWork ?? 0 };
+}
+
+describe('P17 / P18 / P11 第五階段前寬滑動保桿（iter-61）', () => {
+  test('P17_slide_bumper 滑動保桿：撞牆時車身峰值側向力比固定 FRP 前導輪板小、撞擊前後（動能＋彈簧位能）不增加；平地直線極速與同質量 FRP 板相同；主賽道一圈不穿牆、不翻車、跑完', () => {
+    const frpAsm = assemble(cfg({ frontStay: 'stay-front-frp', body: null }));
+    const soft = assemble(cfg({ frontStay: 'stay-front-slide-soft', body: null }));
+    const hard = assemble(cfg({ frontStay: 'stay-front-slide-hard', body: null }));
+    for (const a of [frpAsm, soft, hard]) {
+      expect(validateAssembly(a).ok, JSON.stringify(validateAssembly(a).violations)).toBe(true);
+    }
+    // 組裝：滑動部分 = 滑動板＋前導輪 FL / FR，從車體剛體扣掉（總質量不變）
+    expect([...soft.slider.labels].sort()).toEqual(['前滑動板', '導輪 FL', '導輪 FR'].sort());
+    expect(Math.abs(soft.rigid.mass_g + soft.slider.mass_g - soft.mass_g)).toBeLessThan(1e-9);
+    expect(frpAsm.slider).toBe(null);
+
+    // (1)(2) 撞直牆：兩種角度 / 速度（輕擦牆、較大角度正撞）
+    for (const [psi, V] of [[10, 1.5], [20, 2]]) {
+      const rF = slideWallImpact(frpAsm, psi, V);
+      for (const [name, a] of [['軟（金）', soft], ['硬（銀）', hard]]) {
+        const r = slideWallImpact(a, psi, V);
+        console.log(`[P17] 滑動保桿${name} 撞牆 ${psi}° ${V} m/s：車體峰值側向力 ${f3(r.peakF)} N（FRP 板 ${f3(rF.peakF)} N，比 ${f3(r.peakF / rF.peakF)}），最大滑動 ${f3(r.uMax * 1000)} mm、彈簧＋阻尼最大力 ${f3(r.springMax)} N；能量 撞前 ${f3(r.E0 * 1000)} mJ → 最大 ${f3(r.Emax * 1000)} → 0.1 s 後 ${f3(r.Eend * 1000)} mJ（FRP ${f3(rF.E0 * 1000)} → ${f3(rF.Eend * 1000)} mJ），阻尼耗能 ${f3(r.dampingWork * 1000)} mJ`);
+        // 牆對前導輪的力經過彈簧才到車身 → 峰值側向力較小
+        expect(r.peakF).toBeLessThan(rF.peakF);
+        // 滑動板確實有滑動、不超過行程（容許 0.02 mm：Rapier joint 限位是速度層級約束，撞到端點的那一步會有微米級的超越，實測 ≤ 0.01 mm）
+        expect(r.uMax).toBeGreaterThan(0);
+        expect(r.uMax).toBeLessThanOrEqual(a.slider.stroke_mm / 1000 + 2e-5);
+        // 能量不增加：E 不含輪胎懸吊（射線輪彈簧）與重力位能，容許 E0 的 0.1%（實測最大值就是撞前的 E0；
+        // 0.1% ≈ 0.15 mJ，遠小於軟彈簧滿行程位能約 2.8 mJ，所以彈簧若憑空放出能量會被抓到）
+        expect(r.Emax).toBeLessThanOrEqual(r.E0 * 1.001);
+        expect(r.Eend).toBeLessThan(r.E0);
+        expect(r.dampingWork).toBeGreaterThan(0);
+      }
+    }
+
+    // (3) 平地直線全速 5 s（不碰牆）：滑動板不滑動、極速與「同質量的 FRP 板」相同（質量差的影響用同質量對照排除）
+    const frpSameMass = assemble(cfg({ frontStay: { base: 'stay-front-frp', mass_g: soft.partsBySlot.frontStay.mass_g }, body: null }));
+    expect(Math.abs(frpSameMass.mass_g - soft.mass_g)).toBeLessThan(1e-9);
+    const env = sim.createWorld(buildStraight(100));
+    const car = sim.createCar(env, { assembly: soft, s: 0.2, lane: 0, drain: false });
+    const dt = env.world.timestep;
+    const n = Math.round(5 / dt);
+    const tail = Math.round(0.5 / dt);
+    let sum = 0;
+    let uFlat = 0;
+    for (let i = 0; i < n; i++) {
+      sim.stepCar(env, car);
+      uFlat = Math.max(uFlat, Math.abs(sim.sliderState(car).u));
+      if (i >= n - tail) {
+        sum += sim.forwardSpeed(car);
+      }
+    }
+    const vSlide = sum / tail;
+    const vFrp = flatTopSpeed(frpSameMass, 5).vSteady;
+    const rel = Math.abs(vSlide - vFrp) / vFrp;
+    console.log(`[P17] 平地 5 s：滑動保桿 ${f3(vSlide)} m/s、同質量 FRP 板 ${f3(vFrp)} m/s（差 ${(rel * 100).toFixed(3)}%），滑動板最大位移 ${(uFlat * 1000).toFixed(4)} mm`);
+    // 容許 0.2%：總質量相同，只剩重心 x 差約 0.1 mm（滑動板較重、在車頭）造成的前後輪荷重差異；
+    // 滑動板在中央擋塊內（|u| < 擋塊變形 0.05 mm），沒有和車身交換能量
+    expect(rel).toBeLessThan(0.002);
+    expect(uFlat).toBeLessThan(0.05 / 1000);
+
+    // P05 / P06 / P07 類條件：主賽道一圈（從內側車道出發，含換道器），不穿牆 ≤ 1 mm（幾何與 Rapier 接觸）、不翻車、跑完、彎道外側導輪貼牆比例 ≥ 50%
+    for (const [name, a] of [['軟（金）', assemble(cfg({ frontStay: 'stay-front-slide-soft' }))], ['硬（銀）', assemble(cfg({ frontStay: 'stay-front-slide-hard' }))]]) {
+      const track = buildCircuit();
+      const env2 = sim.createWorld(track);
+      const s0 = 0.15;
+      const c2 = sim.createCar(env2, { assembly: a, s: s0, lane: 0 });
+      const L = track.path.length;
+      let progress = 0;
+      let lastS = s0;
+      let maxPen = -Infinity;
+      let minDist = Infinity;
+      let minUp = 1;
+      let maxY = -Infinity;
+      let arcSteps = 0;
+      let arcContact = 0;
+      let uLap = 0;
+      for (let i = 0; i < Math.round(10 / dt) && progress < L + 0.05; i++) {
+        sim.stepCar(env2, c2);
+        const t = c2.chassis.translation();
+        const c = track.path.project(t.x, t.z);
+        let ds = c.s - lastS;
+        if (ds < -L / 2) {
+          ds += L;
+        }
+        if (ds > L / 2) {
+          ds -= L;
+        }
+        progress += ds;
+        lastS = c.s;
+        maxPen = Math.max(maxPen, sim.wallPenetration(env2, c2));
+        for (const r of c2.rollers) {
+          minDist = Math.min(minDist, sim.minWallContactDist(env2, r.collider));
+        }
+        minUp = Math.min(minUp, sim.upAxis(c2).y);
+        maxY = Math.max(maxY, t.y);
+        uLap = Math.max(uLap, Math.abs(sim.sliderState(c2).u));
+        if (c.seg.type === 'arc') {
+          arcSteps++;
+          // 外側（d 較小）導輪的碰撞體貼牆（同 P05：接觸距離 ≤ 0.5 mm）；導輪位置取碰撞體實際位置（滑動板上的導輪會跟著滑動）
+          const touching = c2.rollers.some((r) => {
+            const w = r.collider.translation();
+            return track.path.project(w.x, w.z).d < c.d && sim.minWallContactDist(env2, r.collider) <= 0.0005;
+          });
+          if (touching) {
+            arcContact++;
+          }
+        }
+      }
+      const pen = Math.max(maxPen, -minDist);
+      console.log(`[P17] 滑動保桿${name} 主賽道一圈：進度 ${f3(progress)} / ${f3(L)} m、最大穿牆 ${(pen * 1000).toFixed(3)} mm、最小 up.y ${f3(minUp)}、車體最高 ${(maxY * 1000).toFixed(2)} mm、彎道貼牆 ${((100 * arcContact) / arcSteps).toFixed(1)}%、最大滑動 ${(uLap * 1000).toFixed(3)} mm`);
+      expect(progress).toBeGreaterThanOrEqual(L);
+      expect(pen).toBeLessThanOrEqual(0.001);
+      expect(minUp).toBeGreaterThan(0.8);
+      expect(maxY).toBeLessThan(spec.track.wallHeight_mm * 0.001);
+      expect(arcContact / arcSteps).toBeGreaterThanOrEqual(0.5);
+      expect(uLap).toBeLessThanOrEqual(a.slider.stroke_mm / 1000 + 2e-5);
+    }
+  }, 600000);
+
+  test('P18_slide_bumper_width 滑動保桿：外框以滑動板在行程端點（±2.5 mm）時計（推估規則）——13 mm 導輪 103 mm 合法；17 / 19 mm 導輪或導輪外移時端點超過 105 mm → WIDTH；與前導輪架同一 slot（互斥）', () => {
+    const ok = assemble(cfg({ frontStay: 'stay-front-slide-soft' }));
+    expect(validateAssembly(ok).ok, JSON.stringify(validateAssembly(ok).violations)).toBe(true);
+    // 13 mm 導輪：2 ×（42.5 + 2.5 + 6.5）= 103 mm
+    expect(ok.bbox_mm.size.z).toBeCloseTo(103, 6);
+    expect(SLOTS.frontStay).toBe('stay-front');
+    expect(listParts('stay-front').map((q) => q.id)).toEqual(expect.arrayContaining(['stay-front-frp', 'stay-front-slide-soft', 'stay-front-slide-hard']));
+    for (const over of [
+      { frontStay: 'stay-front-slide-soft', frontRollers: 'roller-17-alu' },
+      { frontStay: 'stay-front-slide-hard', frontRollers: 'roller-19' },
+      // 中央位置 2 ×（45 + 6.5）= 103 mm 合法，但行程端點 108 mm
+      { frontStay: { base: 'stay-front-slide-soft', rollerZ_mm: 45 } },
+    ]) {
+      const res = validateAssembly(assemble(cfg(over)));
+      const codes = res.violations.map((v) => v.code);
+      console.log(`[P18] ${JSON.stringify(over)} → ${JSON.stringify(res.violations.map((v) => v.message))}`);
+      expect(codes).toEqual(['WIDTH']);
+      expect(res.violations[0].message).toContain('行程端點');
+      expect(res.violations[0].message).toContain('推估規則');
+    }
+    // 對照：同樣的 19 mm 導輪裝在固定 FRP 板上 104 mm 合法（差別只在滑動行程）
+    expect(validateAssembly(assemble(cfg({ frontStay: 'stay-front-frp', frontRollers: 'roller-19' }))).ok).toBe(true);
+  });
+
+  test('P11_slide_bumper 滑動保桿組裝合法；配重裝前方時鎖在滑動板下 → 離地不足（GROUND_CLEARANCE）', () => {
+    expect(validateAssembly(assemble(cfg({ frontStay: 'stay-front-slide-hard' }))).ok).toBe(true);
+    const res = validateAssembly(assemble(cfg({ frontStay: 'stay-front-slide-soft', ballast: 'ballast-hex-1g@front' })));
+    console.log(`[P11] 滑動保桿＋前配重 → ${JSON.stringify(res.violations.map((v) => v.message))}`);
+    expect(res.violations.map((v) => v.code)).toEqual(['GROUND_CLEARANCE']);
+  });
+});
