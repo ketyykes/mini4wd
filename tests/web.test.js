@@ -421,6 +421,67 @@ describe('P19 網頁換件', () => {
     await p2.close();
   }, 180000);
 
+  test('P19_第七階段新零件網頁切換後數值與 assemble() 一致、URL 可還原', async () => {
+    await page.selectOption('select[data-slot="config"]', 'default');
+    /** @type {[string, string][]} */
+    const changes = [
+      // 制振器 7 款（球頭連桿 / 重型 / 細型需要 FRP 後板的制振座 → 預設後架違規 MOUNT_COMPAT，網頁也要一致）
+      ['massDamper', 'damper-heavy'],
+      ['massDamper', 'damper-balllink-square'],
+      ['massDamper', 'damper-slim'],
+      ['massDamper', 'damper-slim-short'],
+      ['massDamper', 'damper-square-8x8x14'],
+      ['massDamper', 'damper-square-8x8x32'],
+      ['massDamper', 'damper-ar-side'],
+      // 導輪 4 款
+      ['frontRollers', 'roller-13-12-alu-double'],
+      ['frontRollers', 'roller-13-12-alu-double-rubber'],
+      ['rearRollers', 'roller-9-8-alu-double'],
+      ['frontRollers', 'roller-19-19-plastic-double'],
+      // 穩定頭 2 款（φ15 配 19 mm 前導輪）
+      ['stabilizer', 'stabilizer-head-15'],
+      ['stabilizer', 'stabilizer-head-11'],
+      // 輪胎 4 款、煞車海綿 3 款、培林
+      ['wheels', 'wheel-31-hard-slick'],
+      ['wheels', 'wheel-31-soft-slick'],
+      ['wheels', 'wheel-31-sponge-lowrebound'],
+      ['wheels', 'wheel-26-oneway'],
+      ['brakeSponge', 'sponge-3type-a'],
+      ['brakeSponge', 'sponge-3type-b'],
+      ['brakeSponge', 'sponge-3type-c'],
+      ['bearings', 'bearing-620-hg'],
+    ];
+    for (const [slot, value] of changes) {
+      const ms = await changeSlot(slot, value);
+      const g = await garageState();
+      console.log(`[P19] ${slot}=${value}：${ms} ms，總重 ${g.asm.mass_g.toFixed(2)} g，全寬 ${g.asm.bbox.z.toFixed(1)} mm，規則 ${g.validation.ok ? '合法' : g.validation.codes.join(',')}`);
+      expect(ms, `${slot}=${value} 更新時間`).toBeLessThan(UPDATE_LIMIT_MS);
+      expect(g.config[slot]).toBe(value);
+      expectMatchesNode(g);
+    }
+    for (const [slot, value] of [['massDamper', '__none__'], ['frontRollers', 'roller-13'], ['rearRollers', 'roller-13'], ['stabilizer', '__none__'], ['wheels', 'wheel-26-lowprofile'], ['brakeSponge', '__none__'], ['bearings', 'bearing-620']]) {
+      await changeSlot(slot, value);
+    }
+    // URL 還原：第七階段兩組示範設定的零件
+    for (const query of [
+      'rearStay=stay-rear-frp&massDamper=damper-balllink-square&wheels=wheel-26-oneway&bearings=bearing-620-hg&frontRollers=roller-11-bearing&rearRollers=roller-19-rubber&body=body-pc-box',
+      'frontRollers=roller-19-19-plastic-double&stabilizer=stabilizer-head-15&rearRollers=roller-9-8-alu-double&rearStay=stay-rear-carbon-wide&wheels=wheel-31-hard-slick&massDamper=damper-slim&brakeSponge=sponge-3type-b&body=body-pc-box',
+    ]) {
+      const p2 = await browser.newPage({ viewport: { width: 1600, height: 900 } });
+      await p2.goto(`${baseUrl}/web/garage.html?${query}`);
+      await p2.waitForFunction(() => window.__garage?.ready === true, null, { timeout: 90000 });
+      const g2 = await p2.evaluate(() => JSON.parse(JSON.stringify(window.__garage)));
+      for (const kv of query.split('&')) {
+        const [slot, value] = kv.split('=');
+        expect(g2.config[slot]).toBe(value);
+        expect(await p2.locator(`select[data-slot="${slot}"]`).inputValue()).toBe(value);
+      }
+      expect(g2.validation.ok).toBe(true);
+      expectMatchesNode(g2);
+      await p2.close();
+    }
+  }, 240000);
+
   test('P19_URL 參數可還原組裝', async () => {
     const p2 = await browser.newPage({ viewport: { width: 1600, height: 900 } });
     await p2.goto(`${baseUrl}/web/garage.html?motor=motor-high-rev&body=body-skeleton`);

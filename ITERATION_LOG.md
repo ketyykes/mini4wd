@@ -3015,3 +3015,13 @@
   - → **只有 8×8×14 不比 Σ|v_y|**，保留彈起與滯空兩項（測試加 `{ sumVy: false }`，註解附數據）。這是有掃描數據支持的期望值修正，不是放寬容許誤差；其他制振器照舊比三項。
 - `P17_audit_L2_L4` 加回 L2 斷言（實心六角軸 I = (5/12)·m·a²）。P17 全部 35 項通過。
 - `node scripts/score.mjs`：**20/20**（05:29）。外觀沿用 7.75 → 88.75。
+
+## iter-84（完成條件補齊：網頁測試、每款能量測試、推估規則標示；Blender 胎壁修正）
+### 執行
+- `tests/web.test.js` 新增「P19_第七階段新零件網頁切換後數值與 assemble() 一致、URL 可還原」：網頁上逐一切換 21 款新零件（制振器 7、導輪 4、穩定頭 2、輪胎 4、海綿 3、培林 1），數值與 Node 端 `assemble()` / `validateAssembly()` 一致；兩組示範組裝（p7-demo、p7-parts 的零件）用網址還原，選單、設定、合法性都一致。
+- `tests/parts.test.js` 新增 `P17_phase7_energy`：每款新零件的合法組裝（21 組）通電 1.5 s 後斷電滑行 1.5 s，整車動能每步回升 ≤ 1e-7 J，且最後比斷電時低。
+- `regulation.js`：`STABILIZER_ROLLER_SIZE` 的「外徑 ≥ 前導輪」分支不是官方條文 → 訊息與代碼說明加註「推估規則，非官方條文」。
+- Blender：iter-81 的淺色胎判斷（GLB 顏色 max > 0.3）把胎壁貼片也當成白胎——胎壁用 canvas 貼圖上色，材質底色是預設白。改成只認具名的 `tire-hard`（slick 胎面）材質；p7-demo / p7-parts 重新出圖。
+- 指定測試：`P17_phase7_energy`、`P18_known_cases`、網頁第七階段測試都通過。
+- `node scripts/score.mjs`：**20/20**（05:47）。Blender p7-demo / p7-parts 重出（06:00）：p7-demo 胎壁白環消失，p7-parts 白色 slick 胎仍為白色。
+- 評審 iter-81 說 slick 胎「輪框 / 外徑約 0.65，太厚」：模型的輪框外徑是 24.2 mm（由 [ROU] 實測胎重反推，比值 0.78，接近評審引用的 0.81），幾何有依據 → 不改；目測偏厚是胎壁貼片的深色環造成的。

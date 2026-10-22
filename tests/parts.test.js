@@ -839,6 +839,55 @@ describe('P17 新零件的物理效果（只透過組裝設定替換）', () => 
     }
   }, 60000);
 
+  test('P17_phase7_energy 第七階段每款新零件的合法組裝：通電 1.5 s 後斷電滑行 1.5 s，整車動能（含制振器 / 擺臂 / 傳動系 / 單向輪）單調不增（每步回升 ≤ 1e-7 J）', () => {
+    const cases = [
+      { rearStay: 'stay-rear-frp', massDamper: 'damper-balllink-square' },
+      { rearStay: 'stay-rear-frp', massDamper: 'damper-heavy' },
+      { massDamper: 'damper-square-8x8x14', body: 'body-hinge-deck' },
+      { frontRollers: 'roller-13-12-alu-double' },
+      { frontRollers: 'roller-13-12-alu-double-rubber' },
+      { frontRollers: 'roller-9-8-alu-double', rearRollers: 'roller-9-8-alu-double' },
+      { frontRollers: 'roller-19-19-plastic-double', body: 'body-pc-box' },
+      { wheels: 'wheel-31-hard-slick', body: 'body-pc-box' },
+      { wheels: 'wheel-31-soft-slick', body: 'body-pc-box' },
+      { wheels: 'wheel-31-sponge-lowrebound', body: 'body-pc-box' },
+      { stabilizer: 'stabilizer-head-11' },
+      { stabilizer: 'stabilizer-head-15', rollers: 'roller-19', body: 'body-pc-box' },
+      { brakeSponge: 'sponge-3type-a' },
+      { brakeSponge: 'sponge-3type-b' },
+      { brakeSponge: 'sponge-3type-c' },
+      { bearings: 'bearing-620-hg' },
+      { wheels: 'wheel-26-oneway' },
+      { massDamper: 'damper-square-8x8x32', body: 'body-hinge-deck' },
+      { rearStay: 'stay-rear-frp', massDamper: 'damper-slim' },
+      { rearStay: 'stay-rear-frp', massDamper: 'damper-slim-short' },
+      { massDamper: 'damper-ar-side', body: 'body-hinge-deck' },
+    ];
+    for (const over of cases) {
+      const asm = assemble(cfg(over));
+      expect(validateAssembly(asm).ok, JSON.stringify(over)).toBe(true);
+      const env = sim.createWorld(buildStraight(100));
+      const car = sim.createCar(env, { assembly: asm, s: 0.2, lane: 0, drain: false });
+      const dt = env.world.timestep;
+      for (let i = 0; i < 1.5 / dt; i++) {
+        sim.stepCar(env, car);
+      }
+      car.powered = false;
+      let prev = sim.carKineticEnergy(car);
+      const e0 = prev;
+      let maxRise = 0;
+      for (let i = 0; i < 1.5 / dt; i++) {
+        sim.stepCar(env, car);
+        const e = sim.carKineticEnergy(car);
+        maxRise = Math.max(maxRise, e - prev);
+        prev = e;
+      }
+      console.log(`[P17] 能量 ${JSON.stringify(over)}：斷電時 ${(e0 * 1000).toFixed(2)} mJ → 1.5 s 後 ${(prev * 1000).toFixed(2)} mJ，最大單步回升 ${maxRise.toExponential(2)} J`);
+      expect(maxRise).toBeLessThanOrEqual(1e-7);
+      expect(prev).toBeLessThan(e0);
+    }
+  }, 300000);
+
   test('P17_phase7_laps 第七階段每款新零件至少 1 組合法完整組裝：主賽道跑完官方 3 圈、不穿牆（≤ 1 mm）、不翻車（球頭連桿見 P17_p7_demo）', () => {
     const cases = [
       { rearStay: 'stay-rear-frp', massDamper: 'damper-heavy' },
