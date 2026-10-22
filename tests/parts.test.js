@@ -613,7 +613,7 @@ describe('P17 第四階段接觸零件（穩定零件、錐形導輪）', () => 
     const tapered = assemble(cfg({ rollers: 'roller-13-tapered', body: null }, 'race-frp'));
     const plain = assemble(cfg({ rollers: 'roller-13-alu', body: null }, 'race-frp'));
     expect(validateAssembly(tapered).ok, JSON.stringify(validateAssembly(tapered).violations)).toBe(true);
-    const taper = tapered.partsBySlot.rollers.taper;
+    const taper = tapered.partsBySlot.frontRollers.taper;
     const betaExpect = Math.atan2((13 - taper.bottomDiameter_mm) / 2, taper.coneHeight_mm);
     /**
      * 擺姿勢：直立、右前導輪（FR）中心橫向離牆面 = 錐形段在牆頂高度的半徑 − 0.3 mm；高度讓牆頂落在 FR 錐形段中間；朝牆速度 0.2 m/s
@@ -969,6 +969,15 @@ describe('P18 干涉與安裝相容性', () => {
       { over: { stabilizer: 'stabilizer-head-17', body: null }, codes: ['STABILIZER_ROLLER_SIZE'] },
       { over: { rollers: 'roller-13-tapered', body: null }, codes: ['ROLLER_TAPER_MOUNT'] },
       { over: { stabilizer: 'stabilizer-head-17', rollers: 'roller-19', body: 'body-aero-wing' }, codes: ['STABILIZER_BODY_CLEARANCE'] },
+      // ---- 第五階段（iter-56）：前後導輪分開選 ----
+      { over: { frontRollers: 'roller-19-tapered', rearRollers: 'roller-13-alu', frontStay: 'stay-front-frp', rearStay: 'stay-rear-frp' }, codes: ['LENGTH'] },
+      { over: { frontRollers: 'roller-19-tapered', rearRollers: 'roller-13-alu' }, codes: ['ROLLER_TAPER_MOUNT'] },
+      { over: { rearRollers: 'roller-13-tapered', frontStay: 'stay-front-frp' }, codes: ['ROLLER_TAPER_MOUNT'] },
+      { over: { rearRollers: 'roller-13-12-double' }, codes: ['ROLLER_ROLLER_CLEARANCE'] },
+      { over: { rearStay: 'stay-rear-carbon-wide', rearRollers: 'roller-19' }, codes: ['WIDTH'] },
+      { over: { stabilizer: 'stabilizer-head-17', frontRollers: 'roller-13', rearRollers: 'roller-19', body: null }, codes: ['STABILIZER_ROLLER_SIZE'] },
+      // 舊欄位 rollers 視為前後同款
+      { over: { rollers: 'roller-19-tapered' }, codes: ['ROLLER_TAPER_MOUNT'] },
     ];
     for (const c of cases) {
       const res = validateAssembly(assemble(cfg(c.over)));
@@ -982,7 +991,7 @@ describe('P18 干涉與安裝相容性', () => {
       }
     }
     // 合法的對照：雙層導輪＋單層的碳纖寬後板、FRP 後板＋後制振器
-    for (const over of [{ rollers: 'roller-13-12-double', rearStay: 'stay-rear-carbon-wide' }, { rearStay: 'stay-rear-frp', massDamper: 'damper-rear-cylinder' }, { stabilizer: 'stabilizer-head-17', rollers: 'roller-19', body: null }, { rollers: 'roller-13-tapered', frontStay: 'stay-front-frp', rearStay: 'stay-rear-frp', body: null }]) {
+    for (const over of [{ rollers: 'roller-13-12-double', rearStay: 'stay-rear-carbon-wide' }, { rearStay: 'stay-rear-frp', massDamper: 'damper-rear-cylinder' }, { stabilizer: 'stabilizer-head-17', rollers: 'roller-19', body: null }, { rollers: 'roller-13-tapered', frontStay: 'stay-front-frp', rearStay: 'stay-rear-frp', body: null }, { frontRollers: 'roller-19-tapered', rearRollers: 'roller-13-alu', frontStay: 'stay-front-frp' }, { frontRollers: 'roller-13-12-double' }, { rearStay: 'stay-rear-carbon-wide', frontRollers: 'roller-19' }]) {
       const res = validateAssembly(assemble(cfg(over)));
       expect(res.ok, JSON.stringify(res.violations)).toBe(true);
     }

@@ -2429,3 +2429,39 @@
 1. A 組（tortoise-dome / marlin-sail / owl-hush）與 B 組（gazelle-leap / halo-orbit / dartfrog-hop）：首要修正退步的「比例」「材質」——車尾平切收成曲面、前輪拱補側裙 / 內襯、dartfrog 檸檬黃、halo 光環 app / Blender 一致、marlin 去灰；其次把招牌造型件做到概念圖份量（光環、角、蹼翼、眼泡、背帆、新月尾、鋸齒翼）、貼紙改立體（甲片、眼燈）。各款用 Blender 32 samples 預覽確認材質。
 2. 零件 subagent：輕量輪框鏤空、中空軸中孔、煞車海綿質感（只改外觀，物理不變）。
 - 預期：比例、材質回到 ≥ 7，設計完成度提升；零件細節 ≥ 8。
+- 04:20 左右所有 subagent 因 API 登入失敗（authentication_failed）中斷；10:04 主 agent 接手，A / B 組的工作區狀態 body-check 全合法、20/20 → 暫定提交 `fbaeed7`，外觀 A/B 留到第五階段工作 B。
+
+---
+
+# 第五階段（2026-10-22 10:48 起，截止 17:30，見根目錄 GOAL.md）
+做完前後導輪分開選（20/20 才提交）→ iter-55 車殼 A/B 收尾 → 台灣買得到的比賽零件調查與實作。不得違反物理定律、遵循比賽規則。
+
+## iter-56（10:48 起）：前後導輪分開選
+### 規劃
+1. 接手 iter-55 中斷時留在工作區的半成品（slot `frontRollers` / `rearRollers`、`normalizeConfig` 舊欄位相容、`rollerLayoutOf`、規則前 / 後各自判定、網頁兩個選單）；檢查網頁部分是否完整。
+2. 補測試：P11 / P18 前後不同導輪的違規與合法對照，P14 前後各自的質量 / 重心，P19 網頁分別切換前、後導輪＋URL 還原（含舊參數 `rollers=`）。
+- 預期：20/20；同一個零件裝前面或後面結果不同（例如雙層導輪裝前面合法、裝上下兩層的後導輪架才互相穿透）。
+
+### 執行
+- 半成品在低負載下重跑 **20/20**（上次 10/20 是 Blender 同時在跑造成的逾時，不是程式錯誤）。網頁部分檢查後是完整的：選單由 SLOTS 自動產生、URL 寫入用 SLOT_KEYS、舊參數 `rollers=` 展開成前後同款（同時有新參數時新參數覆寫該端）、`ROLLER_TAPER_MOUNT` 只標紅出問題的那一端。
+- 規則（前 / 後各自判定，`assemble` + `validateAssembly` 實測）：
+  | 組合 | 結果 |
+  | --- | --- |
+  | 前 roller-19-tapered＋後 roller-13-alu＋stay-front-frp | 合法，全長 161.5 mm |
+  | 同上＋stay-rear-frp | LENGTH（166.0 mm） |
+  | 前 roller-19-tapered＋標準前保桿 | ROLLER_TAPER_MOUNT（推估規則）|
+  | 後 roller-13-tapered＋標準後導輪架 | ROLLER_TAPER_MOUNT（只標後端）|
+  | 17 mm 穩定頭＋前 13 / 後 19 | STABILIZER_ROLLER_SIZE；前 19 / 後 13 合法 |
+  | 後 roller-13-12-double（上下兩層後架）| ROLLER_ROLLER_CLEARANCE；裝前面合法 |
+  | 碳纖寬後板＋後 19 mm | WIDTH（108 mm）；前 19 mm 合法 |
+- 新測試（只新增案例，沒有放寬或改既有期望值）：
+  - P11：上表 6 個違規＋4 個合法對照，錐形違規說明必須含「推估」。
+  - P14：前導輪 2 顆、後導輪 4 顆；前換 19 mm → 質量差 = 2 × 單顆差、重心往前；後換 19 mm → 4 × 單顆差、重心往後；前 19＋後鋁 13 混裝的質量差與重心加權一致。
+  - P18 known_cases：前後分開的 6 個違規＋舊欄位 `rollers` 錐形；合法對照多 3 組。P18_pairwise 因為 slot 分開，自動涵蓋前 × 後兩兩組合。
+  - P19：網頁依序切前錐形（違規、只標紅前導輪＋前導輪架、停用上賽道）→ FRP 前板（合法）→ 後鋁 13；網址列有 `frontRollers` / `rearRollers`；新參數、舊參數 `rollers=`、舊＋新混用的 URL 都能還原且與 `assemble()` 一致。
+- 新 P19 第一次跑失敗：切到 FRP 前板要 1298 ms（上限 1000 ms，**未放寬**）。查證：FRP / 碳纖板第一次裝上時 `bumperTrim()`（保桿切除幾何 0.1 mm 格點積分）約 1.1 s，之後走快取 72 ms；這是 fbaeed7 就存在的首次卡頓，舊 P19 沒切導輪架所以沒測到。修正：網頁背景預先計算（`warmBodies`）除了 9 款車殼，也把前 / 後導輪架每個選項組裝一次；物理與幾何數值不變。
+- 截圖：`renders/iter-56-rollers_garage.png`、`iter-56-rollers_garage_race.png`（前 19 mm 錐形＋FRP 前板、後 13 mm 鋁導輪）。
+
+### 驗證
+- `node scripts/score.mjs`：**20/20**（10:55，低負載）。外觀不受影響（只多一個選單，車殼與預設車未變）→ 沿用第五階段基準評分前不計外觀。
+- 決策：**保留**（GOAL 第五階段工作 A 的硬性要求，測試 20/20）。

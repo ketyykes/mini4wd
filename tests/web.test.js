@@ -285,6 +285,69 @@ describe('P19 網頁換件', () => {
     await p2.close();
   }, 180000);
 
+  test('P19_前後導輪分開切換後數值與 assemble() 一致、錐形違規只標紅出問題的一端、URL 可還原（含舊參數 rollers=）', async () => {
+    // 先切到 19 mm 錐形前導輪（標準前保桿 → ROLLER_TAPER_MOUNT），再換 FRP 前板（合法），最後後導輪換鋁 13 mm
+    /** @type {[string, string, boolean][]} [slot, 零件, 預期合法] */
+    const changes = [
+      ['frontRollers', 'roller-19-tapered', false],
+      ['frontStay', 'stay-front-frp', true],
+      ['rearRollers', 'roller-13-alu', true],
+    ];
+    for (const [slot, value, legal] of changes) {
+      const ms = await changeSlot(slot, value);
+      const g = await garageState();
+      console.log(`[P19] ${slot}=${value}：${ms} ms，總重 ${g.asm.mass_g.toFixed(2)} g，全長 ${g.asm.bbox.x.toFixed(1)} mm，規則 ${g.validation.ok ? '合法' : g.validation.codes.join(',')}`);
+      expect(ms, `${slot}=${value} 更新時間`).toBeLessThan(UPDATE_LIMIT_MS);
+      expect(g.config[slot]).toBe(value);
+      expect(g.validation.ok).toBe(legal);
+      expectMatchesNode(g);
+      if (!legal) {
+        // 錐形違規：只標紅前導輪與前導輪架，後導輪 / 後導輪架不標；說明標「推估」
+        expect(g.validation.codes).toEqual(['ROLLER_TAPER_MOUNT']);
+        expect(g.validation.messages[0]).toContain('推估');
+        const badSlots = await page.evaluate(() => [...document.querySelectorAll('.field.is-bad select[data-slot]')].map((s) => /** @type {HTMLSelectElement} */ (s).dataset.slot).sort());
+        expect(badSlots).toEqual(['frontRollers', 'frontStay']);
+        expect(g.raceEnabled).toBe(false);
+      }
+    }
+    // 網頁網址列即時反映前後兩個參數
+    const url = new URL(page.url());
+    expect(url.searchParams.get('frontRollers')).toBe('roller-19-tapered');
+    expect(url.searchParams.get('rearRollers')).toBe('roller-13-alu');
+    expect(url.searchParams.has('rollers')).toBe(false);
+    for (const [slot, value] of [['frontRollers', 'roller-13'], ['rearRollers', 'roller-13'], ['frontStay', 'stay-front-standard']]) {
+      await changeSlot(slot, value);
+    }
+
+    // 新參數還原
+    const p2 = await browser.newPage({ viewport: { width: 1600, height: 900 } });
+    await p2.goto(`${baseUrl}/web/garage.html?frontRollers=roller-19-tapered&rearRollers=roller-13-alu&frontStay=stay-front-frp`);
+    await p2.waitForFunction(() => window.__garage?.ready === true, null, { timeout: 90000 });
+    const g2 = await p2.evaluate(() => JSON.parse(JSON.stringify(window.__garage)));
+    expect(g2.config.frontRollers).toBe('roller-19-tapered');
+    expect(g2.config.rearRollers).toBe('roller-13-alu');
+    expect(await p2.locator('select[data-slot="frontRollers"]').inputValue()).toBe('roller-19-tapered');
+    expect(await p2.locator('select[data-slot="rearRollers"]').inputValue()).toBe('roller-13-alu');
+    expect(g2.validation.ok).toBe(true);
+    expectMatchesNode(g2);
+
+    // 舊分享連結 rollers=<id> → 前後同款；同時給新參數時新參數覆寫該端
+    await p2.goto(`${baseUrl}/web/garage.html?rollers=roller-19`);
+    await p2.waitForFunction(() => window.__garage?.ready === true, null, { timeout: 90000 });
+    const g3 = await p2.evaluate(() => JSON.parse(JSON.stringify(window.__garage)));
+    expect(g3.config.frontRollers).toBe('roller-19');
+    expect(g3.config.rearRollers).toBe('roller-19');
+    expectMatchesNode(g3);
+    expect(Math.abs(g3.asm.mass_g - assemble({ ...g3.config, rollers: 'roller-19' }).mass_g)).toBeLessThan(TOL);
+    await p2.goto(`${baseUrl}/web/garage.html?rollers=roller-19&rearRollers=roller-13-alu`);
+    await p2.waitForFunction(() => window.__garage?.ready === true, null, { timeout: 90000 });
+    const g4 = await p2.evaluate(() => JSON.parse(JSON.stringify(window.__garage)));
+    expect(g4.config.frontRollers).toBe('roller-19');
+    expect(g4.config.rearRollers).toBe('roller-13-alu');
+    expectMatchesNode(g4);
+    await p2.close();
+  }, 180000);
+
   test('P19_URL 參數可還原組裝', async () => {
     const p2 = await browser.newPage({ viewport: { width: 1600, height: 900 } });
     await p2.goto(`${baseUrl}/web/garage.html?motor=motor-high-rev&body=body-skeleton`);

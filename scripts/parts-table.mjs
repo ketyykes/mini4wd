@@ -76,6 +76,6 @@ for (const name of listConfigs()) {
   const a = assemble(c);
   const v = validateAssembly(a);
   const s = a.bbox_mm.size;
-  lines.push(`| \`${name}\` | ${c.body} | ${c.motor} / ${c.gear} / ${c.wheels} / ${c.rollers} / ${c.bearings} / ${c.frontStay}, ${c.rearStay} / ${[c.massDamper, c.brakeSponge, c.ballast].filter(Boolean).join(', ') || '—'} | ${a.mass_g.toFixed(1)} | (${a.com_mm.x.toFixed(1)}, ${a.com_mm.y.toFixed(1)}) | ${s.x.toFixed(1)} × ${s.z.toFixed(1)} × ${s.y.toFixed(1)} | ${v.ok ? '合法' : v.violations.map((x) => x.code).join(', ')} | ${v.warnings.map((x) => x.code).join(', ') || '—'} |`);
+  lines.push(`| \`${name}\` | ${c.body} | ${c.motor} / ${c.gear} / ${c.wheels} / ${c.frontRollers === c.rearRollers ? c.frontRollers : `前 ${c.frontRollers}、後 ${c.rearRollers}`} / ${c.bearings} / ${c.frontStay}, ${c.rearStay} / ${[c.massDamper, c.brakeSponge, c.ballast].filter(Boolean).join(', ') || '—'} | ${a.mass_g.toFixed(1)} | (${a.com_mm.x.toFixed(1)}, ${a.com_mm.y.toFixed(1)}) | ${s.x.toFixed(1)} × ${s.z.toFixed(1)} × ${s.y.toFixed(1)} | ${v.ok ? '合法' : v.violations.map((x) => x.code).join(', ')} | ${v.warnings.map((x) => x.code).join(', ') || '—'} |`);
 }
 console.log(lines.join('\n'));

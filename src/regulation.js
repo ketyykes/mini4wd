@@ -65,7 +65,7 @@ export const VIOLATION_CODES = {
   STAY_BODY_CLEARANCE: '導輪板與車殼干涉',
   TERMINAL_MOD: '電池 / 馬達端子改裝（疊加、焊接）違規',
   STABILIZER_ROLLER_SIZE: '穩定零件與前導輪尺寸不搭配（例如 17 mm 穩定頭只能配 19 mm 導輪）',
-  ROLLER_TAPER_MOUNT: '錐形導輪必須用螺絲＋墊片鎖在 FRP / 碳纖導輪板上（錐面朝下）',
+  ROLLER_TAPER_MOUNT: '（推估規則，非官方條文）錐形導輪必須用螺絲＋墊片鎖在 FRP / 碳纖導輪板上（錐面朝下）；前後導輪各自依所裝的導輪架判定',
   STABILIZER_ROLLER_CLEARANCE: '穩定零件與導輪干涉',
   STABILIZER_TIRE_CLEARANCE: '穩定零件與輪胎干涉',
   STABILIZER_STAY_CLEARANCE: '穩定零件與導輪板干涉',
@@ -133,21 +133,26 @@ export function validateAssembly(asm) {
     fail('TERMINAL_MOD', `${sw.name}：端子疊了 ${sw.terminalLayers ?? 1} 片${sw.terminalSoldered ? '且有焊接' : ''}；規則只允許套件或 Grade-Up 端子，疊加或焊接端子禁止（Tamiya 規則 Sec.6-5）`);
   }
   // 第四階段：穩定零件只能配指定直徑的前導輪（17 mm 穩定頭 ↔ 19 mm 導輪）；穩定零件外徑不得 ≥ 導輪外徑（否則它變成主要接觸面，等於換了導輪）
+  // iter-56：穩定零件裝在前導輪正上方（同一支螺絲），所以看的是前導輪（frontRollers）
   const stab = p.stabilizer;
   if (stab) {
-    const rd = p.rollers.diameter_mm;
+    const rd = p.frontRollers.diameter_mm;
     if (stab.requiresRollerDiameter_mm !== undefined && Math.abs(stab.requiresRollerDiameter_mm - rd) > EPS) {
-      fail('STABILIZER_ROLLER_SIZE', `${stab.name} 只能配 ${stab.requiresRollerDiameter_mm} mm 前導輪，目前導輪 ${rd} mm`);
+      fail('STABILIZER_ROLLER_SIZE', `${stab.name} 只能配 ${stab.requiresRollerDiameter_mm} mm 前導輪，目前前導輪 ${rd} mm`);
     } else if (stab.diameter_mm >= rd - EPS) {
-      fail('STABILIZER_ROLLER_SIZE', `${stab.name} 外徑 ${stab.diameter_mm} mm ≥ 導輪 ${rd} mm，會取代導輪成為碰牆面`);
+      fail('STABILIZER_ROLLER_SIZE', `${stab.name} 外徑 ${stab.diameter_mm} mm ≥ 前導輪 ${rd} mm，會取代前導輪成為碰牆面`);
     }
   }
-  // 第四階段：錐形導輪要鎖在 FRP / 碳纖導輪板（有 plate 的導輪架）上；塑膠一體保桿 / 標準後導輪架擋下（PARTS_RESEARCH T 節，推估規則）
-  if (p.rollers.taper) {
-    const bad = [['frontStay', '前'], ['rearStay', '後']].filter(([slot]) => !p[slot].plate).map(([slot, label]) => `${label}（${p[slot].name}）`);
-    if (bad.length > 0) {
-      fail('ROLLER_TAPER_MOUNT', `${p.rollers.name} 必須用螺絲＋墊片鎖在 FRP / 碳纖導輪板、錐面朝下才有作用；${bad.join('、')}不是導輪板`);
-    }
+  // 第四階段：錐形導輪要鎖在 FRP / 碳纖導輪板（有 plate 的導輪架）上；塑膠一體保桿 / 標準後導輪架擋下。
+  // ※ 這是推估規則，不是官方條文：Tamiya 官方規則沒有限制錐形導輪的安裝方式。依據是 PARTS_RESEARCH 第四階段 T 節
+  //   [T95436] 官方商品說明（錐面在導輪下方、騎上牆頂時才把車推回車道）與 [FTAP]「tapered underside…mounted underneath the stay」：
+  //   錐面要朝下、用螺絲＋墊片鎖在平板上才有作用；塑膠一體保桿 / 標準後導輪架的導輪座是固定的凸台，推估裝不上或錐面方向不對。
+  // iter-56：前後導輪分開選 → 前 / 後各自檢查：前導輪是錐形才看前導輪架、後導輪是錐形才看後導輪架；兩端都不合時合併成一筆違規
+  /** @type {[string, string, string][]} [導輪 slot, 導輪架 slot, 中文] */
+  const taperEnds = [['frontRollers', 'frontStay', '前'], ['rearRollers', 'rearStay', '後']];
+  const badTaper = taperEnds.filter(([rs, ss]) => p[rs].taper && !p[ss].plate).map(([rs, ss, label]) => `${label}導輪 ${p[rs].name} 裝在 ${p[ss].name}`);
+  if (badTaper.length > 0) {
+    fail('ROLLER_TAPER_MOUNT', `（推估規則，非官方條文）錐形導輪必須用螺絲＋墊片鎖在 FRP / 碳纖導輪板、錐面朝下才有作用；${badTaper.join('、')}，不是導輪板`);
   }
   // SPEC 1.14：車殼與輪胎 / 導輪間隙必須 ≥ 1 mm。兩個實體零件不能重疊（< 0 mm 是互相穿透，0–1 mm 是會摩擦的干涉），
   // 這種組合實際上裝不起來或輪胎會磨車殼 → 判為違規（2026-10-21 使用者要求：零件替換要符合物理，原本只是警告）

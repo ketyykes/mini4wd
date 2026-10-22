@@ -2,8 +2,8 @@
 // 單位 mm；車體座標 x 向前、y 向上、z 向右，原點在前後軸中點的地面上
 // 第二階段：所有尺寸來自組裝結果（assembly.js 的 asm.spec，由零件資料組成）與 carLayout.js（與物理共用）
 import * as THREE from 'three';
-import { rollerLayout, wheelLayout, componentLayout } from './carLayout.js';
-import { assemble, loadConfig } from './assembly.js';
+import { wheelLayout, componentLayout } from './carLayout.js';
+import { assemble, loadConfig, rollerLayoutOf } from './assembly.js';
 import { getPart } from './parts/index.js';
 import { bumperGeometry } from './parts/bumperGeom.js';
 
@@ -805,7 +805,8 @@ function gearTrainLayout() {
  * Lathe 截面＝上下輪緣（含倒角）＋中段腰身＋頂底面內凹環；培林分外環（鋼，凸起）／黑色密封蓋（內凹）／內環（鋼）三層；
  * 導輪與臂之間有墊片間隙，頂部墊片＋十字頭螺絲，底部六角螺帽。物理接觸半徑不變（r.r）
  * opt.bare = true：裝在導輪板的導輪柱上（下方的墊片 / 螺帽由 buildStayPlates 的導輪柱負責），不畫底部墊片、螺帽、螺絲尾端
- * @type {(mats: ReturnType<typeof makeMaterials>, r: { x: number, y: number, z: number, r: number, h: number }, opt?: { bare?: boolean }) => THREE.Group}
+ * iter-56：前後導輪可不同款，材質（r.finish）與錐形輪廓（r.taper）取自這顆導輪自己的零件資料（rollerLayoutOf）
+ * @type {(mats: ReturnType<typeof makeMaterials>, r: { x: number, y: number, z: number, r: number, h: number, finish?: string, taper?: import('./parts/types').RollerSpec['taper'] }, opt?: { bare?: boolean }) => THREE.Group}
  */
 const buildRoller = (mats, r, opt = {}) => {
   const g = new THREE.Group();
@@ -833,7 +834,7 @@ const buildRoller = (mats, r, opt = {}) => {
     [brgR, -H + recessDepth],
   ];
   // 第四階段：錐形導輪（零件 taper）：上段圓柱 h_c、下段截錐縮到底面半徑 R_b（錐面朝下，與 sim.js rollerWallContacts 同一份幾何）
-  const tp = spec.chassis.rollerTaper;
+  const tp = r.taper ?? null;
   if (tp) {
     const Rb = tp.bottomDiameter_mm / 2;
     const yc = H - tp.cylinderHeight_mm;
@@ -854,7 +855,7 @@ const buildRoller = (mats, r, opt = {}) => {
   }
   const bodyGeo = new THREE.LatheGeometry(prof.map(([a, b]) => new THREE.Vector2(a, b)).reverse(), 48);
   // 導輪本體材質依零件：塑膠（黑）或鋁合金（亮銀）
-  const body = new THREE.Mesh(bodyGeo, spec.chassis.rollerFinish === 'aluminum' ? mats.rollerAlu : mats.rollerBody);
+  const body = new THREE.Mesh(bodyGeo, r.finish === 'aluminum' ? mats.rollerAlu : mats.rollerBody);
   g.add(body);
   for (const sy of [-1, 1]) {
     const faceRot = sy > 0 ? -Math.PI / 2 : Math.PI / 2;
@@ -918,22 +919,22 @@ const buildRoller = (mats, r, opt = {}) => {
 
 /**
  * 導輪（可能是雙層）：每一片接觸面各建一顆 buildRoller（尺寸取該片的直徑與高度），整組放在導輪中心
- * @type {(mats: ReturnType<typeof makeMaterials>, r: { x: number, y: number, z: number, r: number, h: number, tiers?: { y: number, r: number, h: number }[] }, opt?: { bare?: boolean }) => THREE.Group}
+ * @type {(mats: ReturnType<typeof makeMaterials>, r: { x: number, y: number, z: number, r: number, h: number, tiers?: { y: number, r: number, h: number }[], finish?: string, taper?: import('./parts/types').RollerSpec['taper'] }, opt?: { bare?: boolean }) => THREE.Group}
  */
 const buildRollerStack = (mats, r, opt = {}) => {
   const tiers = r.tiers ?? [{ y: 0, r: r.r, h: r.h }];
   if (tiers.length === 1) {
-    return buildRoller(mats, { x: r.x, y: r.y + tiers[0].y, z: r.z, r: tiers[0].r, h: tiers[0].h }, opt);
+    return buildRoller(mats, { x: r.x, y: r.y + tiers[0].y, z: r.z, r: tiers[0].r, h: tiers[0].h, finish: r.finish, taper: r.taper }, opt);
   }
   const g = new THREE.Group();
   tiers.forEach((t, i) => {
     // 雙層導輪是一體成形：只有最下層保留底部五金
-    g.add(buildRoller(mats, { x: r.x, y: r.y + t.y, z: r.z, r: t.r, h: t.h }, { bare: opt.bare || i > 0 }));
+    g.add(buildRoller(mats, { x: r.x, y: r.y + t.y, z: r.z, r: t.r, h: t.h, finish: r.finish, taper: r.taper }, { bare: opt.bare || i > 0 }));
   });
   // 兩片之間的縮腰（同材質的短圓柱）
   const ys = tiers.map((t) => r.y + t.y);
   const waistH = Math.max(...ys) - Math.min(...ys);
-  const waist = new THREE.Mesh(new THREE.CylinderGeometry(Math.min(...tiers.map((t) => t.r)) - 1.6, Math.min(...tiers.map((t) => t.r)) - 1.6, waistH, 32), spec.chassis.rollerFinish === 'aluminum' ? mats.rollerAlu : mats.rollerBody);
+  const waist = new THREE.Mesh(new THREE.CylinderGeometry(Math.min(...tiers.map((t) => t.r)) - 1.6, Math.min(...tiers.map((t) => t.r)) - 1.6, waistH, 32), r.finish === 'aluminum' ? mats.rollerAlu : mats.rollerBody);
   waist.position.set(r.x, (Math.max(...ys) + Math.min(...ys)) / 2, r.z);
   g.add(waist);
   return g;
@@ -942,12 +943,12 @@ const buildRollerStack = (mats, r, opt = {}) => {
 /**
  * FRP / 碳纖導輪板（外形與開孔取自零件資料 plate，與質量、干涉檢查同一份；板厚照資料 1.5 mm，不加倒角）＋導輪柱
  * 導輪柱（iter-47，ref_chevalier-ma_gradeup / ref_aero-avante-ar）：板底的螺絲頭 → 板面墊片 → 鋁墊管撐到導輪底 → 導輪 →
- * （兩層時）鋁墊管撐到上層導輪 → 頂部墊片＋鋁墊管＋尼龍蓋。導輪高度一律取 rollerLayout（與物理碰撞體同一份）
+ * （兩層時）鋁墊管撐到上層導輪 → 頂部墊片＋鋁墊管＋尼龍蓋。導輪高度一律取 rollerLayoutOf（assembly.js，與物理碰撞體同一份；前後導輪各自的款式）
  * @type {(mats: ReturnType<typeof makeMaterials>) => THREE.Group}
  */
 const buildStayPlates = (mats) => {
   const g = new THREE.Group();
-  const layout = rollerLayout(spec);
+  const layout = rollerLayoutOf(spec);
   for (const slot of ['frontStay', 'rearStay']) {
     const st = asmCur.partsBySlot[slot];
     const pl = st.plate;
@@ -1837,7 +1838,7 @@ function buildChassis(mats) {
     g.add(buildRearStay(mats, c.rearRollerX_mm, c.rearRollerZ_mm, bumperY + bt, c.rearUpperRollerHeight_mm - 4.4));
   }
   g.add(buildStayPlates(mats));
-  for (const r of rollerLayout(spec)) {
+  for (const r of rollerLayoutOf(spec)) {
     const onPlate = r.x > 0 ? !!asmCur.partsBySlot.frontStay.plate : !!asmCur.partsBySlot.rearStay.plate;
     g.add(buildRollerStack(mats, r, { bare: onPlate }));
   }

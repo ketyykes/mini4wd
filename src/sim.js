@@ -204,8 +204,9 @@ export function createCar(env, opt = {}) {
     chassis,
   );
 
-  const rollerPart = asm.partsBySlot.rollers;
   const rollers = asm.layout.rollers.map((r) => {
+    // iter-56：前後導輪分開選，每顆導輪依自己的 slot（frontRollers / rearRollers）取零件資料（摩擦、恢復係數、錐形輪廓）
+    const rollerPart = asm.partsBySlot[r.slot];
     // 導輪碰撞體用球：圓柱對 trimesh 的接觸在 Rapier 中會卡住（見 ITERATION_LOG iter-00）
     // 雙層導輪每一片接觸面各一顆球（單層導輪 tiers 只有 1 片、y = 0，和第二階段相同）
     const tiers = r.tiers ?? [{ y: 0, r: r.r, h: r.h }];

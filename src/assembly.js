@@ -28,7 +28,9 @@ export const SLOTS = {
   gear: 'gear',
   wheels: 'wheel',
   bearings: 'bearing',
-  rollers: 'roller',
+  // iter-56：前後導輪分開選（原本單一 rollers slot 前後共用；舊欄位由 normalizeConfig 相容）
+  frontRollers: 'roller',
+  rearRollers: 'roller',
   frontStay: 'stay-front',
   rearStay: 'stay-rear',
   battery: 'battery',
@@ -46,6 +48,36 @@ export const SLOTS = {
 /** 選配 slot：值可為 null（不裝）；組裝設定沒寫這個 slot 時也視為 null */
 export const OPTIONAL_SLOTS = ['massDamper', 'brakeSponge', 'ballast', 'stabilizer'];
 
+/**
+ * 舊組裝設定欄位 → 新 slot（相容層）：iter-56 起導輪拆成 frontRollers / rearRollers，
+ * 只寫 `rollers` 的設定（舊分享連結、舊測試）視為前後都裝同一款
+ * @type {Record<string, string[]>}
+ */
+export const LEGACY_SLOT_ALIASES = {
+  rollers: ['frontRollers', 'rearRollers'],
+};
+
+/**
+ * 組裝設定正規化（相容層）：舊欄位 `rollers` 展開成 frontRollers 與 rearRollers，並移除舊欄位
+ * 舊欄位與新欄位同時出現時以舊欄位為準：舊程式常用 `{ ...loadConfig(), rollers: 'x' }` 覆寫導輪，
+ * 而 loadConfig() 已帶新欄位，若新欄位優先，這種覆寫會被悄悄忽略（網頁 URL 另外處理：URL 的新欄位優先，見 web/garage.js readUrl）
+ * @type {(config: Record<string, any>) => Record<string, any>}
+ */
+export function normalizeConfig(config) {
+  /** @type {Record<string, any>} */
+  const out = { ...config };
+  for (const [legacy, slots] of Object.entries(LEGACY_SLOT_ALIASES)) {
+    if (out[legacy] === undefined) {
+      continue;
+    }
+    for (const slot of slots) {
+      out[slot] = out[legacy];
+    }
+    delete out[legacy];
+  }
+  return out;
+}
+
 /** 配重安裝點的中文名稱 */
 const MOUNT_LABELS = { front: '前', center: '中央', rear: '後' };
 
@@ -55,7 +87,8 @@ const MOUNT_LABELS = { front: '前', center: '中央', rear: '後' };
  * @type {(slot: string) => { value: string | null, label: string }[]}
  */
 export function slotChoices(slot) {
-  const category = SLOTS[slot];
+  // 舊 slot 名稱（rollers）：選項與新 slot 相同
+  const category = SLOTS[slot] ?? SLOTS[LEGACY_SLOT_ALIASES[slot]?.[0] ?? ''];
   if (!category) {
     throw new Error(`未知的 slot：${slot}`);
   }
@@ -89,7 +122,7 @@ export function loadConfig(name = 'default') {
     throw new Error(`未知的組裝設定：${name}`);
   }
   const { _readme, ...rest } = c;
-  return structuredClone(rest);
+  return normalizeConfig(structuredClone(rest));
 }
 
 /**
@@ -98,7 +131,6 @@ export function loadConfig(name = 'default') {
  */
 function buildSpec(p) {
   const ch = p.chassis;
-  const ro = p.rollers;
   const fs = p.frontStay;
   const rs = p.rearStay;
   const g = p.gear;
@@ -134,12 +166,9 @@ function buildSpec(p) {
       refWheelDiameter_mm: ch.refWheelDiameter_mm,
       groundClearance_mm: ch.groundClearanceRef_mm,
       plateThickness_mm: ch.plateThickness_mm,
-      rollerDiameter_mm: ro.diameter_mm,
-      rollerHeight_mm: ro.height_mm,
-      rollerFinish: ro.finish,
-      rollerTiers: ro.tiers ?? null,
-      // 第四階段：錐形導輪的輪廓（上段圓柱＋下段截錐），3D 模型與 sim.js 接觸幾何用同一份
-      rollerTaper: ro.taper ?? null,
+      // iter-56：前 / 後導輪各自的款式（直徑、高度、材質、疊層、錐形輪廓）；位置由 rollerLayoutOf() 依前後分別推導
+      frontRoller: rollerSpec(p.frontRollers),
+      rearRoller: rollerSpec(p.rearRollers),
       rollerCenterHeight_mm: fs.rollerY_mm,
       frontRollerX_mm: fs.rollerX_mm,
       frontRollerZ_mm: fs.rollerZ_mm,
@@ -151,14 +180,50 @@ function buildSpec(p) {
   };
 }
 
+/**
+ * 導輪零件 → 整車規格用的導輪欄位
+ * @type {(ro: Record<string, any>) => import('./parts/types').RollerSpec}
+ */
+const rollerSpec = (ro) => ({
+  id: ro.id,
+  diameter_mm: ro.diameter_mm,
+  height_mm: ro.height_mm,
+  finish: ro.finish,
+  tiers: ro.tiers ?? null,
+  // 第四階段：錐形導輪的輪廓（上段圓柱＋下段截錐），3D 模型與 sim.js 接觸幾何用同一份
+  taper: ro.taper ?? null,
+});
+
+/**
+ * 導輪配置（底盤座標）：前導輪（FL / FR）用 frontRoller 的款式、後導輪（RL / RR / RUL / RUR）用 rearRoller 的款式。
+ * 位置計算沿用 carLayout.js 的 rollerLayout（導輪架座面、較高導輪往上長的規則都相同），只是前後各帶自己的導輪尺寸；
+ * 每顆導輪另帶 slot（frontRollers / rearRollers）、finish、taper，給質量、干涉、3D 模型、物理接觸使用
+ * @type {(s: any) => import('./parts/types').PlacedRoller[]}
+ */
+export function rollerLayoutOf(s) {
+  /** @type {(rs: import('./parts/types').RollerSpec) => any} 只帶一端導輪尺寸的整車規格（給 rollerLayout） */
+  const withRoller = (rs) => ({
+    ...s,
+    chassis: { ...s.chassis, rollerDiameter_mm: rs.diameter_mm, rollerHeight_mm: rs.height_mm, rollerTiers: rs.tiers },
+  });
+  const isFront = (/** @type {{ id: string }} */ r) => r.id === 'FL' || r.id === 'FR';
+  const fr = s.chassis.frontRoller;
+  const rr = s.chassis.rearRoller;
+  const front = rollerLayout(withRoller(fr)).filter(isFront).map((r) => ({ ...r, slot: 'frontRollers', partId: fr.id, finish: fr.finish, taper: fr.taper }));
+  const rear = rollerLayout(withRoller(rr)).filter((r) => !isFront(r)).map((r) => ({ ...r, slot: 'rearRollers', partId: rr.id, finish: rr.finish, taper: rr.taper }));
+  return [...front, ...rear];
+}
+
 /** @type {(v: Vec3, dy: number) => Vec3} */
 const lifted = (v, dy) => ({ x: v.x, y: v.y + dy, z: v.z });
 
 /**
- * 組裝整車
- * @type {(config: Record<string, any>) => any}
+ * 組裝整車（設定可用舊欄位 rollers，會先經 normalizeConfig 展開；asm.config 是正規化後的設定）
+ * @type {(rawConfig: Record<string, any>) => any}
  */
-export function assemble(config) {
+export function assemble(rawConfig) {
+  // 相容層：舊欄位 rollers → frontRollers / rearRollers
+  const config = normalizeConfig(rawConfig);
   /** @type {Record<string, any>} */
   const p = {};
   for (const [slot, category] of Object.entries(SLOTS)) {
@@ -184,7 +249,7 @@ export function assemble(config) {
   // ---- 零件擺放（底盤座標，最後統一加 lift）----
   const comp = componentLayout(s);
   const wheels = wheelLayout(s);
-  const rollers = rollerLayout(s);
+  const rollers = rollerLayoutOf(s);
   const hw = ch.wheelbase_mm / 2;
   const axleY = ch.refWheelDiameter_mm / 2;
   // 中間齒輪位置：中間齒輪小齒與輪軸齒輪中心距 = 小齒 + 輪軸齒輪節圓半徑；中間齒輪軸與馬達軸同高（與 model.js gearTrainLayout 相同）
@@ -244,7 +309,7 @@ export function assemble(config) {
     place('bearings', `中間齒輪軸承 ${sx > 0 ? '前' : '後'}`, p.bearings.counterMass_g, { x: sx * counterX, y: comp.motor.y, z: 0 });
   }
   for (const r of rollers) {
-    place('rollers', `導輪 ${r.id}`, p.rollers.mass_g, { x: r.x, y: r.y, z: r.z });
+    place(r.slot, `導輪 ${r.id}`, p[r.slot].mass_g, { x: r.x, y: r.y, z: r.z });
   }
   // 導輪架質心：板件 = 俯視外形面積形心、板厚中央；塑膠標準件 = 導輪座與底盤端之間（推估：導輪軸往內 8 mm、導輪中心往下 3.5 mm）
   for (const [slot, sx] of [['frontStay', 1], ['rearStay', -1]]) {
@@ -601,7 +666,7 @@ function interferenceChecks(body, bodyProps, wheels, rollers, solids) {
   /** @type {PlacedSolid[]} */
   const all = [
     ...wheels.map((w) => ({ group: 'tire', slot: 'wheels', label: `輪胎 ${w.id}`, solid: /** @type {Solid} */ ({ kind: 'cyl', axis: 'z', c: { x: w.x, y: w.y, z: w.z }, r: w.r, halfLen: w.width / 2 }) })),
-    ...rollers.map((r) => ({ group: 'roller', slot: 'rollers', label: `導輪 ${r.id}`, solid: /** @type {Solid} */ ({ kind: 'cyl', axis: 'y', c: { x: r.x, y: r.y, z: r.z }, r: r.r, halfLen: r.h / 2 }) })),
+    ...rollers.map((r) => ({ group: 'roller', slot: r.slot, label: `導輪 ${r.id}`, solid: /** @type {Solid} */ ({ kind: 'cyl', axis: 'y', c: { x: r.x, y: r.y, z: r.z }, r: r.r, halfLen: r.h / 2 }) })),
     ...solids,
   ];
   /** @type {Map<string, { code: string, a: string, b: string, gap_mm: number }>} 每種代碼只留最小間隙那一組 */

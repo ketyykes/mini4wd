@@ -16,6 +16,9 @@ import { startRace } from './garageRace.js';
 
 const { SLOTS, listConfigs, loadConfig, assemble } = Assembly;
 
+/** @type {Record<string, string[]>} 舊 URL 參數 → 新 slot（iter-56：rollers → 前 / 後導輪；src/assembly.js 若尚未匯出則為空） */
+const LEGACY_SLOT_ALIASES = /** @type {any} */ (Assembly).LEGACY_SLOT_ALIASES ?? {};
+
 /** @type {string[]} 可以「不裝」的選配 slot（src/assembly.js 若尚未匯出 OPTIONAL_SLOTS 則為空） */
 const OPTIONAL_SLOTS = Array.isArray(/** @type {any} */ (Assembly).OPTIONAL_SLOTS) ? /** @type {any} */ (Assembly).OPTIONAL_SLOTS : [];
 
@@ -32,7 +35,8 @@ const SLOT_LABELS = {
   gear: '齒輪組',
   wheels: '輪胎＋輪框',
   bearings: '軸承',
-  rollers: '導輪',
+  frontRollers: '前導輪',
+  rearRollers: '後導輪',
   frontStay: '前導輪架',
   rearStay: '後導輪架',
   battery: '電池',
@@ -62,7 +66,7 @@ const PRESET_LABELS = {
 /** @type {Record<string, string[]>} 違規代碼 → 相關 slot（用來把選單標紅） */
 const CODE_SLOTS = {
   BODY_TIRE_CLEARANCE: ['wheels', 'body'],
-  BODY_ROLLER_CLEARANCE: ['rollers', 'body'],
+  BODY_ROLLER_CLEARANCE: ['frontRollers', 'rearRollers', 'body'],
   TIRE_DIAMETER: ['wheels'],
   TIRE_WIDTH: ['wheels'],
   GEAR_RATIO: ['gear'],
@@ -71,14 +75,16 @@ const CODE_SLOTS = {
   BATTERY: ['battery'],
   DRIVE_4WD: ['chassis'],
   TERMINAL_MOD: ['switch'],
-  STABILIZER_ROLLER_SIZE: ['stabilizer', 'rollers'],
-  ROLLER_TAPER_MOUNT: ['rollers', 'frontStay', 'rearStay'],
+  // 穩定零件裝在前導輪上方，只和前導輪有關
+  STABILIZER_ROLLER_SIZE: ['stabilizer', 'frontRollers'],
+  // 錐形導輪的安裝（推估規則）：實際標紅哪一端由 taperMountSlots 依目前組裝判斷，這裡是保底
+  ROLLER_TAPER_MOUNT: ['frontRollers', 'rearRollers', 'frontStay', 'rearStay'],
 };
 
 /** @type {Record<string, string[]>} 干涉代碼（X_Y_CLEARANCE）的零件群組 → slot */
 const GROUP_SLOTS = {
   TIRE: ['wheels'],
-  ROLLER: ['rollers'],
+  ROLLER: ['frontRollers', 'rearRollers'],
   STAY: ['frontStay', 'rearStay'],
   DAMPER: ['massDamper'],
   SPONGE: ['brakeSponge'],
@@ -187,7 +193,7 @@ const SLOT_KEYS = [...Object.keys(SLOTS), 'body'];
 /**
  * @typedef {object} GarageState
  * @property {boolean} ready 首次組裝與模型完成
- * @property {boolean} warmed 所有車殼的幾何已預先計算（之後換車殼不會卡頓）
+ * @property {boolean} warmed 所有車殼與導輪架的幾何已預先計算（之後換車殼 / 導輪架不會卡頓）
  * @property {string} preset 目前的預設組裝設定名稱
  * @property {AssemblyConfig} config 目前組裝設定（body 為 null 表示不裝車殼）
  * @property {{ mass_g: number, com_mm: { x: number, y: number, z: number }, bbox: { x: number, y: number, z: number }, groundClearance_mm: number, topSpeed_ms: number, bodyMass_g: number, spinInertia_gmm2: number, circuitResistance_ohm: number } | null} asm 組裝摘要
@@ -444,6 +450,20 @@ const readUrl = () => {
     preset = DEFAULT_PRESET;
   }
   const config = presetConfig(preset);
+  // 舊分享連結（iter-56 以前）：rollers=<id> 視為前後導輪同一款；同時有新參數（frontRollers / rearRollers）時由下面的迴圈覆寫該端
+  for (const [legacy, slots] of Object.entries(LEGACY_SLOT_ALIASES)) {
+    const v = params.get(legacy);
+    if (v === null) {
+      continue;
+    }
+    if (slots.every((slot) => isKnownId(slot, v))) {
+      for (const slot of slots) {
+        config[slot] = v;
+      }
+    } else {
+      garage.notices.push(`URL 參數 ${legacy}=${v} 無法辨識，已忽略`);
+    }
+  }
   for (const slot of SLOT_KEYS) {
     const v = params.get(slot);
     if (v === null) {
@@ -585,12 +605,30 @@ const renderRules = (violations, notes) => {
   }
 };
 
+/**
+ * 錐形導輪安裝違規（ROLLER_TAPER_MOUNT）只標紅出問題的那一端：錐形導輪裝在沒有導輪板的導輪架上（前 / 後各自判定，同 src/regulation.js）
+ * @type {(asm: any) => string[]}
+ */
+const taperMountSlots = (asm) => {
+  /** @type {string[]} */
+  const out = [];
+  for (const [rollerSlot, staySlot] of [['frontRollers', 'frontStay'], ['rearRollers', 'rearStay']]) {
+    const roller = asm.partsBySlot[rollerSlot];
+    const stay = asm.partsBySlot[staySlot];
+    if (roller?.taper && stay && !stay.plate) {
+      out.push(rollerSlot, staySlot);
+    }
+  }
+  return out.length > 0 ? out : CODE_SLOTS.ROLLER_TAPER_MOUNT;
+};
+
 /** @type {(violations: Violation[]) => void} 把違規相關的選單標紅 */
 const markBadFields = (violations) => {
   /** @type {Set<string>} */
   const bad = new Set();
   for (const v of violations) {
-    for (const s of slotsForCode(v.code)) {
+    const related = v.code === 'ROLLER_TAPER_MOUNT' && currentAsm ? taperMountSlots(currentAsm) : slotsForCode(v.code);
+    for (const s of related) {
       bad.add(s);
     }
     if (v.code === 'MOUNT_COMPAT') {
@@ -844,22 +882,38 @@ const updateHud = () => {
 
 const warmBodies = () => {
   const ids = listBodies().map((b) => b.id);
+  // iter-56：導輪架也預先組裝一次——FRP / 碳纖板第一次裝上時要積分保桿切除幾何（parts/bumperGeom.js bumperTrim，約 1 s），
+  // 先在背景算好，使用者第一次換導輪架才不會卡頓
+  /** @type {[string, string][]} [slot, 零件 id] */
+  const stays = [];
+  for (const slot of ['frontStay', 'rearStay']) {
+    const sel = selects.get(slot);
+    for (const opt of sel ? [...sel.options] : []) {
+      stays.push([slot, opt.value]);
+    }
+  }
+  const total = ids.length + stays.length;
   let i = 0;
   const next = () => {
-    if (i >= ids.length) {
+    if (i >= total) {
       garage.warmed = true;
       warmHint.textContent = '';
       return;
     }
-    const id = ids[i];
+    const k = i;
     i += 1;
-    warmHint.textContent = `背景預先計算車殼幾何 ${i}/${ids.length}…`;
+    warmHint.textContent = `背景預先計算車殼與導輪架幾何 ${i}/${total}…`;
     try {
-      // 用目前的輪胎 / 導輪組裝一次：建立車殼幾何快取、質量與間隙快取
-      assemble({ ...garage.config, body: id });
-      labelBodyMass(id);
+      if (k < ids.length) {
+        // 用目前的輪胎 / 導輪組裝一次：建立車殼幾何快取、質量與間隙快取
+        assemble({ ...garage.config, body: ids[k] });
+        labelBodyMass(ids[k]);
+      } else {
+        const [slot, id] = stays[k - ids.length];
+        assemble({ ...garage.config, [slot]: id });
+      }
     } catch {
-      // 個別車殼失敗不影響其他車殼
+      // 個別車殼 / 導輪架失敗不影響其他項目
     }
     setTimeout(next, 30);
   };

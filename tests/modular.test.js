@@ -334,6 +334,18 @@ describe('第二階段：零件組裝 / 規則 / 車殼（P04、P08、P09、P11�
       { code: 'ROLLER_TAPER_MOUNT', over: { rollers: 'roller-13-tapered', body: null } },
       // 17 mm 穩定頭（高 3 mm，在 19 mm 前導輪上方）碰到 body-aero-wing 的車頭
       { code: 'STABILIZER_BODY_CLEARANCE', over: { stabilizer: 'stabilizer-head-17', rollers: 'roller-19', body: 'body-aero-wing' } },
+      // ---- 第五階段（iter-56）：前後導輪分開選，前 / 後各自判定 ----
+      // 19 mm 錐形前導輪＋FRP 前板合法（全長 161.5 mm），後導輪架也換 FRP 就超長
+      { code: 'LENGTH', over: { frontRollers: 'roller-19-tapered', rearRollers: 'roller-13-alu', frontStay: 'stay-front-frp', rearStay: 'stay-rear-frp' } },
+      // 錐形導輪只在沒有導輪板的那一端違規（推估規則）
+      { code: 'ROLLER_TAPER_MOUNT', over: { frontRollers: 'roller-19-tapered', rearRollers: 'roller-13-alu' } },
+      { code: 'ROLLER_TAPER_MOUNT', over: { frontRollers: 'roller-13', rearRollers: 'roller-13-tapered' } },
+      // 17 mm 穩定頭看前導輪：後面裝 19 mm 不算
+      { code: 'STABILIZER_ROLLER_SIZE', over: { stabilizer: 'stabilizer-head-17', frontRollers: 'roller-13', rearRollers: 'roller-19', body: null } },
+      // 雙層導輪只在上下兩層的後導輪架才互相穿透
+      { code: 'ROLLER_ROLLER_CLEARANCE', over: { rearRollers: 'roller-13-12-double' } },
+      // 寬後板＋後面 19 mm → 全寬 108 mm
+      { code: 'WIDTH', over: { rearStay: 'stay-rear-carbon-wide', rearRollers: 'roller-19' } },
     ];
     for (const c of cases) {
       const res = validateAssembly(assemble(cfgWith(c.over)));
@@ -342,6 +354,22 @@ describe('第二階段：零件組裝 / 規則 / 車殼（P04、P08、P09、P11�
       expect(res.ok).toBe(false);
       expect(codes).toEqual(c.codes ?? [c.code]);
     }
+
+    // 前後導輪分開選的合法對照：同一個零件換到另一端就合法，證明前 / 後各自判定
+    for (const over of [
+      { frontRollers: 'roller-19-tapered', rearRollers: 'roller-13-alu', frontStay: 'stay-front-frp' },
+      { stabilizer: 'stabilizer-head-17', frontRollers: 'roller-19', rearRollers: 'roller-13', body: null },
+      { frontRollers: 'roller-13-12-double' },
+      { rearStay: 'stay-rear-carbon-wide', frontRollers: 'roller-19' },
+    ]) {
+      const asm = assemble(cfgWith(over));
+      const res = validateAssembly(asm);
+      console.log(`[P11] 合法對照 ${JSON.stringify(over)}：ok=${res.ok}，全長 ${f3(asm.bbox_mm.size.x)} mm、全寬 ${f3(asm.bbox_mm.size.z)} mm`);
+      expect(res.ok, JSON.stringify(res.violations)).toBe(true);
+    }
+    // 錐形違規說明必須標「推估」（非官方條文）
+    const taper = validateAssembly(assemble(cfgWith({ frontRollers: 'roller-19-tapered' })));
+    expect(taper.violations.find((v) => v.code === 'ROLLER_TAPER_MOUNT')?.message).toContain('推估');
   });
 
   test('P12_motor_swap 只換組裝設定成 motor-high-rev：模擬極速 > 預設，且與自身理論極速誤差 < 10%', () => {
@@ -428,6 +456,36 @@ describe('第二階段：零件組裝 / 規則 / 車殼（P04、P08、P09、P11�
     }
     // 電池較重（在底盤低處兩側）→ 重心降低
     expect(assemble(cfgWith({ battery: 'battery-aa-nimh-2500' })).com_mm.y).toBeLessThan(asm.com_mm.y);
+
+    // 第五階段（iter-56）前後導輪分開選：質量差 = 前導輪顆數 × 前款差 + 後導輪顆數 × 後款差；
+    // 前面換較重的 19 mm、後面不變 → 重心往前（+x）；後面換較重的 19 mm、前面不變 → 重心往後
+    const nFront = asm.layout.rollers.filter((r) => r.slot === 'frontRollers').length;
+    const nRear = asm.layout.rollers.filter((r) => r.slot === 'rearRollers').length;
+    expect(nFront + nRear).toBe(asm.layout.rollers.length);
+    const dRoller = getPart('roller-19').mass_g - getPart('roller-13').mass_g;
+    const front19 = assemble(cfgWith({ frontRollers: 'roller-19' }));
+    const rear19 = assemble(cfgWith({ rearRollers: 'roller-19' }));
+    const mixed = assemble(cfgWith({ frontRollers: 'roller-19', rearRollers: 'roller-13-alu' }));
+    const dMixed = nFront * dRoller + nRear * (getPart('roller-13-alu').mass_g - getPart('roller-13').mass_g);
+    console.log(`[P14] 前導輪 ${nFront} 顆、後導輪 ${nRear} 顆；前 19 mm：${f3(front19.mass_g)} g、重心 x ${f3(front19.com_mm.x)}；後 19 mm：${f3(rear19.mass_g)} g、重心 x ${f3(rear19.com_mm.x)}；前 19＋後鋁 13：${f3(mixed.mass_g)} g（預期差 ${f3(dMixed)} g）`);
+    expect(Math.abs(front19.mass_g - asm.mass_g - nFront * dRoller)).toBeLessThan(0.1);
+    expect(Math.abs(rear19.mass_g - asm.mass_g - nRear * dRoller)).toBeLessThan(0.1);
+    expect(Math.abs(mixed.mass_g - asm.mass_g - dMixed)).toBeLessThan(0.1);
+    expect(front19.com_mm.x).toBeGreaterThan(asm.com_mm.x);
+    expect(rear19.com_mm.x).toBeLessThan(asm.com_mm.x);
+    for (const a of [front19, rear19, mixed]) {
+      let sumR = 0;
+      const momR = { x: 0, y: 0, z: 0 };
+      for (const q of a.parts) {
+        sumR += q.mass_g;
+        for (const k of ['x', 'y', 'z']) {
+          momR[k] += q.mass_g * q.pos[k];
+        }
+      }
+      for (const k of ['x', 'y', 'z']) {
+        expect(Math.abs(momR[k] / sumR - a.com_mm[k])).toBeLessThan(0.1);
+      }
+    }
 
     // 物理引擎實際使用的值
     for (const a of [asm, asm31]) {

@@ -88,3 +88,35 @@ export interface SpinInertia {
   /** J_eq / r²（g）：縱向運動多出來的等效質量 */
   equivalentMass_g: number;
 }
+
+/** 整車規格（asm.spec.chassis.frontRoller / rearRoller）中一端導輪的款式（iter-56：前後導輪分開選） */
+export interface RollerSpec {
+  id: string;
+  /** 最大接觸直徑（mm） */
+  diameter_mm: number;
+  height_mm: number;
+  /** 'plastic' | 'aluminum'（3D 材質） */
+  finish: string;
+  /** 疊放的接觸片（雙層導輪）；單層為 null */
+  tiers: { diameter_mm: number; height_mm: number; y_mm: number }[] | null;
+  /** 錐形導輪輪廓；一般導輪為 null */
+  taper: { cylinderHeight_mm: number; coneHeight_mm: number; bottomDiameter_mm: number } | null;
+}
+
+/** 擺好位置的一顆導輪（底盤座標，assembly.js rollerLayoutOf；asm.layout.rollers 另加 lift） */
+export interface PlacedRoller {
+  /** FL、FR、RL、RR、RUL、RUR */
+  id: string;
+  x: number;
+  y: number;
+  z: number;
+  /** 最大接觸半徑、總高（mm） */
+  r: number;
+  h: number;
+  tiers: { y: number; r: number; h: number }[];
+  /** 所屬 slot：frontRollers 或 rearRollers */
+  slot: 'frontRollers' | 'rearRollers';
+  partId: string;
+  finish: string;
+  taper: RollerSpec['taper'];
+}
