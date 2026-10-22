@@ -5,6 +5,8 @@ import { aeroWingBody } from './aeroWing.js';
 import { pcBoxBody } from './pcBox.js';
 import { homageBodiesA } from './homageA.js';
 import { homageBodiesB } from './homageB.js';
+import { mantisScytheBody } from './mantisScythe.js';
+import { hydroplaneSponsonBody } from './hydroplaneSponson.js';
 
 /** @typedef {import('./types').BodyDef} BodyDef */
 /** @typedef {import('./types').BodyMassProps} BodyMassProps */
@@ -13,7 +15,7 @@ import { homageBodiesB } from './homageB.js';
 // 分別註冊在 homageA.js / homageB.js）＋常見比賽車殼型式 3 款（skeleton / aero-wing / pc-box）。
 // 第三階段的致敬款 wedge / beast / fork 已退役（程式碼保留在 git 歷史，設計說明在 shared/design/ 標註已退役）
 /** @type {BodyDef[]} */
-const bodies = [...homageBodiesA, ...homageBodiesB, skeletonBody, aeroWingBody, pcBoxBody];
+const bodies = [...homageBodiesA, ...homageBodiesB, skeletonBody, aeroWingBody, pcBoxBody, mantisScytheBody, hydroplaneSponsonBody];
 
 /** @type {() => BodyDef[]} */
 export const listBodies = () => bodies.slice();
