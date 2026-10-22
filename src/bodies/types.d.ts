@@ -19,6 +19,12 @@ export interface BodyDef {
   roof?: 'closed' | 'canopy' | 'open-cockpit' | 'clear' | 'skeleton';
   /** 尾翼型式（P20 第四階段：新致敬款兩兩比較用，例如 'none'、'twin-fin'、'forked'、'grille'、'high-wing'、'duck-tail'） */
   wing?: string;
+  /** 致敬哪一部作品（第六階段 P20）：'lg1' = 第一部、'lg2' = 續作 WGP；只有 style 'homage' 需要 */
+  homageSeries?: 'lg1' | 'lg2';
+  /** 比賽車殼型態代號（第六階段 P20，定義見 shared/reference/BODY_RACE_RESEARCH.md）；只有 style 'race' 需要 */
+  raceType?: string;
+  /** 車身型態代號（第六階段 P20：同組兩兩比較、每組至少 3 種），例如 'full-cowl'、'wedge'、'open-wheel' */
+  form?: string;
   name: string;
   /** 'ABS' | 'PC' 等，決定密度 */
   material: string;

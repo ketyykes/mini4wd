@@ -365,6 +365,11 @@ export const aeroWingBody = {
   id: 'body-aero-wing',
   category: 'body',
   style: 'race',
+  // 第六階段分組（shared/reference/BODY_RACE_RESEARCH.md）
+  raceType: 'big-wing',
+  form: 'teardrop',
+  roof: 'canopy',
+  wing: 'high-wing',
   theme: '大尾翼下壓力殼：水滴座艙、鵝頸支柱高位尾翼、前分流板',
   name: '流線大尾翼款',
   material: 'ABS',

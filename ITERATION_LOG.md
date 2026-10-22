@@ -2639,3 +2639,18 @@
 ### 驗證
 - `node scripts/score.mjs`：**20/20**（14:14，已取得共用高負載鎖、單獨執行）。外觀：只改資料，不影響畫面。
 - 決策：**保留**。新零件累計 19 款 / 7 類（導輪架 / 保桿 6）。
+
+---
+
+# 第六階段：車殼多元化——比賽常用車殼＋致敬《爆走兄弟》1 / 2（2026-10-22 14:29 起，截止 23:00，見 GOAL.md）
+
+## iter-66（14:29 起）：第 0 輪——第五階段收尾（車殼第二輪 A/B）、LG1 / LG2 研究分組、比賽常用車殼研究、P20 第六階段定義
+### 規劃
+1. 第五階段收尾：車殼第二輪 subagent 分支（`1b7f986`，5 款）cherry-pick 到暫時 worktree `/tmp/wt66`（app repo，基底 `2fff729`）→ 計分 → app 截圖＋Blender 64 samples → reviewer 逐款 A/B（對照 iter-61 本輪），任何一項「差」就 revert 該款。
+2. 研究 subagent 2 個（只寫文件、不跑重運算）：`HOMAGE_RESEARCH.md` 第 6 節（LG1 / LG2 分組、語彙、黑名單、現有 6 款歸組、新款提案）；新檔 `shared/reference/BODY_RACE_RESEARCH.md`（比賽常用車殼 ≥ 6 種型態、新款提案）。
+3. 主 agent：BodyDef 加 `homageSeries` / `raceType` / `form`（`types.d.ts`）；P20 第六階段測試草稿（`/tmp/p20-phase6/bodies.test.js`，陣容達標前不換進主線——主線每輪仍須 20/20，舊 P20 仍有效）；`shared/REVIEWER_BRIEF.md` 改為第六階段版本（三組、LG1 / LG2 風格感、比賽型也判原創性、第 4 項改「車殼多樣性與完成度」）。
+- 高負載工作一律先取得共用鎖 `/tmp/heavy-lock.sh`（與同機器另一個 session 約定）。
+
+### 執行（第五階段收尾）
+- `/tmp/wt66` 計分 **20/20**（14:32，低負載、單獨執行；subagent 回報的 9/20 是過載逾時）。
+- body-check（`npx vite-node scripts/body-check.mjs`）：5 款合法；31 mm 輪 tortoise / gazelle / dartfrog 合法、owl / marlin BODY_TIRE_CLEARANCE（與修改前相同）；gazelle 導輪間隙 1.72 → 3.10 mm。

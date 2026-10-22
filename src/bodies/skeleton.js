@@ -394,6 +394,11 @@ export const skeletonBody = {
   id: 'body-skeleton',
   category: 'body',
   style: 'race',
+  // 第六階段分組（shared/reference/BODY_RACE_RESEARCH.md）
+  raceType: 'lightened-cut',
+  form: 'skeleton-flat',
+  roof: 'skeleton',
+  wing: 'none',
   theme: '低趴鏤空輕量殼：煙燻 PC、大型多邊形開口看得到馬達與電池',
   name: '鏤空輕量款',
   material: 'PC',

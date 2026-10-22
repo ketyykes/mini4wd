@@ -104,6 +104,11 @@ export const pcBoxBody = makePolyBody({
   id: 'body-pc-box',
   name: 'PC 透明平頂短尾殼',
   style: 'race',
+  // 第六階段分組（shared/reference/BODY_RACE_RESEARCH.md）
+  raceType: 'clear-pc',
+  form: 'box',
+  roof: 'clear',
+  wing: 'none',
   theme: '真空成形透明 PC 薄殼、平頂、斷尾、大輪拱（可裝 31 mm 輪）的比賽殼',
   material: 'PC',
   density_g_cm3: 1.2,

@@ -17,6 +17,9 @@ import { makeLoftKit, createPolySurface, cachedBuild, buildRegion, buildMountTab
  * @property {number} [phase] 上線階段（第四階段新致敬款 = 4）
  * @property {import('./types').BodyDef['roof']} [roof] 車頂型態
  * @property {string} [wing] 尾翼型式
+ * @property {import('./types').BodyDef['homageSeries']} [homageSeries] 致敬哪一部作品（第六階段）
+ * @property {string} [raceType] 比賽車殼型態代號（第六階段）
+ * @property {string} [form] 車身型態代號（第六階段）
  * @property {'ABS' | 'PC'} material
  * @property {number} density_g_cm3
  * @property {number} wallThickness_mm
@@ -425,6 +428,9 @@ export function makePolyBody(cfg) {
     phase: cfg.phase,
     roof: cfg.roof,
     wing: cfg.wing,
+    homageSeries: cfg.homageSeries,
+    raceType: cfg.raceType,
+    form: cfg.form,
     name: cfg.name,
     material: cfg.material,
     density_g_cm3: cfg.density_g_cm3,
