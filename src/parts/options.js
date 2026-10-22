@@ -199,3 +199,42 @@ export const ballastParts = [
     },
   },
 ];
+
+/**
+ * 煞車架（第五階段 iter-60，slot brakePlate）：海綿貼在煞車架下，煞車架鎖在後導輪架的煞車座下方；只有裝煞車海綿時才裝。
+ * padHalfZ_mm：海綿貼片的半寬（null = 依導輪架煞車座的大小）；板 = 貼片外擴 margin_mm；質量 = 面積 × 厚度 × 密度（組裝時計算）
+ * @type {import('./types').PartBase[]}
+ */
+export const brakePlateParts = [
+  {
+    id: 'brake-plate-frp',
+    category: 'brake-plate',
+    name: 'FRP 煞車架 1.5 mm（貼片同煞車座大小）',
+    ...BRAKE_PLATE,
+    padHalfZ_mm: null,
+    mass_g: 0,
+    src: {
+      plate: BRAKE_PLATE.src,
+      mass_g: '依貼片面積計算（組裝時）',
+    },
+  },
+  {
+    id: 'brake-plate-carbon',
+    category: 'brake-plate',
+    name: 'HG 碳纖煞車架 1.5 mm（大面積，15550）',
+    material: 'carbon',
+    thickness_mm: 1.5,
+    density_g_cm3: 1.6,
+    margin_mm: 0.6,
+    padHalfZ_mm: 12,
+    mass_g: 0,
+    src: {
+      grade: 'PARTS_RESEARCH 第五階段 AE 節 [T15550] 官方：1.5 mm 碳纖煞車架「ブレーキスポンジを貼る面積が大きく」，ME / MA / MS 等適用（台灣賣場說明同）',
+      density_g_cm3: 'PARTS_RESEARCH 第三階段 E 節 [RSCF]：碳纖積層板 1.6 g/cm³',
+      padHalfZ_mm: '推估：官方只說面積較大、沒有尺寸；長度（x）受車長限制維持煞車座 13 mm，寬度由 FRP 煞車座 14 mm 加到 24 mm（AE 節估板約 40 × 25 mm，取保守值，貼片仍在後輪內側之外不干涉）',
+      margin_mm: '同 FRP 煞車架 0.6 mm（推估）',
+      mass_g: '依貼片面積計算（組裝時）：(13 + 1.2) × (24 + 1.2) × 1.5 × 1.6 ≈ 0.86 g（AE 節估整片約 1.7 g）',
+      taiwan: 'TAIWAN_SOURCES TW15（四驅博士學校／露天，15550；另有新莊超音速陽明賣場）',
+    },
+  },
+];

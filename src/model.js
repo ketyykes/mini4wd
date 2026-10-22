@@ -1236,7 +1236,11 @@ const buildOptionalParts = (mats) => {
     // iter-50：煞車板（1.5 mm FRP 小板，鎖在導輪架煞車座下）＋貼在板下的海綿；尺寸取組裝結果（與質量、干涉同一份）
     if (o.sponge.plate) {
       const pb = o.sponge.plate.box;
-      const plateMesh = new THREE.Mesh(new THREE.BoxGeometry(pb.max.x - pb.min.x, pb.max.y - pb.min.y, pb.max.z - pb.min.z), [mats.frpEdge, mats.frpEdge, mats.frpPlate, mats.frpPlate, mats.frpEdge, mats.frpEdge]);
+      // iter-60：煞車架材質依零件（FRP / 碳纖）
+      const isCarbon = o.sponge.plate.material === 'carbon';
+      const face = isCarbon ? mats.carbonPlate : mats.frpPlate;
+      const edge = isCarbon ? mats.carbonEdge : mats.frpEdge;
+      const plateMesh = new THREE.Mesh(new THREE.BoxGeometry(pb.max.x - pb.min.x, pb.max.y - pb.min.y, pb.max.z - pb.min.z), [edge, edge, face, face, edge, edge]);
       plateMesh.position.set((pb.min.x + pb.max.x) / 2, (pb.min.y + pb.max.y) / 2, (pb.min.z + pb.max.z) / 2);
       plateMesh.name = 'brake-plate';
       plateMesh.userData.part = 'brake-sponge';

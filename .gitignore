@@ -5,3 +5,6 @@ dist/
 *.log
 tmp/
 exports/
+
+# subagent 的暫時 worktree（Agent isolation）
+.claude/

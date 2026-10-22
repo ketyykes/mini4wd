@@ -43,6 +43,8 @@ export const SLOTS = {
   hardware: 'hardware',
   massDamper: 'mass-damper',
   brakeSponge: 'brake-sponge',
+  // iter-60：煞車架（FRP / 碳纖大面積），只在裝煞車海綿時有作用；舊設定沒有時用 FRP（SLOT_DEFAULTS）
+  brakePlate: 'brake-plate',
   ballast: 'ballast',
   stabilizer: 'stabilizer',
 };
@@ -65,6 +67,7 @@ export const LEGACY_SLOT_ALIASES = {
  */
 export const SLOT_DEFAULTS = {
   counterShaft: 'counter-shaft-standard',
+  brakePlate: 'brake-plate-frp',
 };
 
 /**
@@ -619,12 +622,16 @@ function optionalLayout(p, comp, rollers) {
   const sp = p.brakeSponge;
   if (sp) {
     const m = p.rearStay.brakeMount ?? { xMin_mm: 62, xMax_mm: 73, halfZ_mm: 8, y_mm: ch.bumperBottomY_mm };
+    // 煞車板（iter-50）：海綿貼在煞車板下，煞車板鎖在導輪架煞車座下方。iter-60 起由 brakePlate slot 決定（舊資料：海綿零件自帶的 brakePlate；都沒有時厚度 0）
+    const bp = p.brakePlate ?? sp.brakePlate ?? { thickness_mm: 0, density_g_cm3: 0, margin_mm: 0 };
     const lx = m.xMax_mm - m.xMin_mm;
-    const lz = 2 * m.halfZ_mm;
+    // 貼片寬：煞車架有指定（大面積碳纖架）就用它，否則同煞車座
+    let lz = 2 * m.halfZ_mm;
+    if (bp.padHalfZ_mm !== null && bp.padHalfZ_mm !== undefined) {
+      lz = 2 * bp.padHalfZ_mm;
+    }
     const t = sp.thickness_mm;
     const cx = -(m.xMin_mm + m.xMax_mm) / 2;
-    // 煞車板（iter-50）：海綿貼在煞車板下，煞車板鎖在導輪架煞車座下方（零件資料 brakePlate；沒有時厚度 0）
-    const bp = sp.brakePlate ?? { thickness_mm: 0, density_g_cm3: 0, margin_mm: 0 };
     const tp = bp.thickness_mm;
     const plateBox = boxAt(cx, 0, m.y_mm - tp, lx + 2 * bp.margin_mm, lz + 2 * bp.margin_mm, tp);
     const spongeBox = boxAt(cx, 0, m.y_mm - tp - t, lx, lz, t);

@@ -215,6 +215,40 @@ describe('P17 新零件的物理效果（只透過組裝設定替換）', () => 
     expect(ra.minUp).toBeGreaterThan(0.8);
   }, 180000);
 
+  test('P17_brake_plate_carbon 碳纖大面積煞車架（台灣買得到）：海綿貼片面積大 → 接觸剛性 k = E·A/t 大；平地仍不接觸、極速不變；下坡坡底同樣接觸、摩擦做負功，坡底後速度不高於 FRP 架', () => {
+    const frp = assemble(cfg({}, 'race-frp'));
+    const carbon = assemble(cfg({ brakePlate: 'brake-plate-carbon' }, 'race-frp'));
+    expect(validateAssembly(frp).ok).toBe(true);
+    expect(validateAssembly(carbon).ok).toBe(true);
+    const sf = frp.optional.sponge;
+    const sc = carbon.optional.sponge;
+    // 質量 = 面積 × 厚度 × 密度（煞車架與海綿都由同一份貼片尺寸推導）
+    const plateMass = (s, bp) => ((s.length_mm + 2 * bp.margin_mm) * (s.width_mm + 2 * bp.margin_mm) * bp.thickness_mm * bp.density_g_cm3) / 1000;
+    console.log(`[P17] 煞車架：FRP 貼片 ${sf.area_mm2} mm²、架 ${sf.plate.mass_g.toFixed(3)} g；碳纖 貼片 ${sc.area_mm2} mm²、架 ${sc.plate.mass_g.toFixed(3)} g；離地 ${f3(frp.groundClearance_mm)} / ${f3(carbon.groundClearance_mm)} mm`);
+    expect(sc.area_mm2).toBeGreaterThan(sf.area_mm2);
+    expect(Math.abs(sc.plate.mass_g - plateMass(sc, carbon.partsBySlot.brakePlate))).toBeLessThan(1e-9);
+    expect(Math.abs(sf.plate.mass_g - plateMass(sf, frp.partsBySlot.brakePlate))).toBeLessThan(1e-9);
+    // 煞車架只改面積不改高度 → 離地相同
+    expect(carbon.groundClearance_mm).toBeCloseTo(frp.groundClearance_mm, 9);
+    // 平地：不接觸，極速差只來自質量（< 0.5 g），容許 0.5%（同 P17_brake_sponge）
+    const fa = flatTopSpeed(carbon, 5);
+    const fb = flatTopSpeed(frp, 5);
+    const rel = Math.abs(fa.vSteady - fb.vSteady) / fb.vSteady;
+    console.log(`[P17] 平地 5 s：碳纖 ${f3(fa.vSteady)}（接觸 ${fa.spongeContactSteps} 步）、FRP ${f3(fb.vSteady)} m/s，差 ${(rel * 100).toFixed(3)}%`);
+    expect(fa.spongeContactSteps).toBe(0);
+    expect(rel).toBeLessThan(0.005);
+    // 下坡：兩者都接觸、摩擦都做負功
+    const ra = rampRun(carbon, 2.5);
+    const rb = rampRun(frp, 2.5);
+    console.log(`[P17] 下坡 5°、初速 2.5 m/s：碳纖 坡底後 ${f3(ra.vAfter)} m/s（接觸 ${ra.spongeSteps} 步、摩擦功 ${(ra.spongeWork * 1000).toFixed(2)} mJ）、FRP ${f3(rb.vAfter)} m/s（${rb.spongeSteps} 步、${(rb.spongeWork * 1000).toFixed(2)} mJ）`);
+    expect(ra.spongeSteps).toBeGreaterThan(0);
+    expect(ra.spongeWork).toBeGreaterThan(0);
+    expect(ra.minUp).toBeGreaterThan(0.8);
+    // 接觸剛性較大 → 同樣的壓入量法向力較大 → 摩擦功較多、坡底後速度不高於 FRP（差異很小，PARTS_RESEARCH AE 節已預期）
+    expect(ra.spongeWork).toBeGreaterThan(rb.spongeWork);
+    expect(ra.vAfter).toBeLessThanOrEqual(rb.vAfter);
+  }, 180000);
+
   test('P17_roller19 19 mm 導輪 → 外框變寬、導輪接觸點外移（模擬碰撞體同一份資料）', () => {
     const a13 = assemble(cfg());
     const a19 = assemble(cfg({ rollers: 'roller-19' }));

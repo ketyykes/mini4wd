@@ -362,6 +362,8 @@ describe('P19 網頁換件', () => {
       ['counterShaft', 'gear-shaft-ptfe'],
       ['counterShaft', 'counter-bearing-520'],
       ['rearRollers', 'roller-9-bearing'],
+      // iter-60：碳纖大面積煞車架（沒裝海綿時只是選項，不影響數值）
+      ['brakePlate', 'brake-plate-carbon'],
     ];
     for (const [slot, value] of changes) {
       const ms = await changeSlot(slot, value);
@@ -371,10 +373,10 @@ describe('P19 網頁換件', () => {
       expect(g.config[slot]).toBe(value);
       expectMatchesNode(g);
     }
-    for (const [slot, value] of [['frontRollers', 'roller-13'], ['rearRollers', 'roller-13'], ['motor', 'motor-standard'], ['wheels', 'wheel-26-lowprofile'], ['massDamper', '__none__'], ['counterShaft', 'counter-shaft-standard']]) {
+    for (const [slot, value] of [['frontRollers', 'roller-13'], ['rearRollers', 'roller-13'], ['motor', 'motor-standard'], ['wheels', 'wheel-26-lowprofile'], ['massDamper', '__none__'], ['counterShaft', 'counter-shaft-standard'], ['brakePlate', 'brake-plate-frp']]) {
       await changeSlot(slot, value);
     }
-    const query = 'frontRollers=roller-19-rubber&rearRollers=roller-19-plastic-ring&motor=motor-rev&wheels=wheel-31-lowfriction&massDamper=damper-side-square-32&body=body-pc-box&counterShaft=counter-bearing-520';
+    const query = 'frontRollers=roller-19-rubber&rearRollers=roller-19-plastic-ring&motor=motor-rev&wheels=wheel-31-lowfriction&massDamper=damper-side-square-32&body=body-pc-box&counterShaft=counter-bearing-520&brakePlate=brake-plate-carbon';
     const p2 = await browser.newPage({ viewport: { width: 1600, height: 900 } });
     await p2.goto(`${baseUrl}/web/garage.html?${query}`);
     await p2.waitForFunction(() => window.__garage?.ready === true, null, { timeout: 90000 });
