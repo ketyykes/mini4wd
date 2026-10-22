@@ -91,8 +91,9 @@ const STATIONS = buildStations(X_TAIL, X_FRONT, 1.5, profile);
 
 /** @type {() => Record<string, THREE.Material>} */
 const materials = () => ({
-  yellow: namedMaterial('paint-bright-chrome-yellow', { color: 0xffc414, roughness: 0.18, clearcoat: 1.0, clearcoatRoughness: 0.05 }),
-  yellow2: namedMaterial('paint-bright-chrome-yellow', { color: 0xffc414, roughness: 0.18, clearcoat: 1.0, side: THREE.DoubleSide }),
+  // iter-73：鉻黃拉飽和（0xffc414 → 0xd6ac00：色相 45° → 48°，不往橘走；降低明度與清漆反射，色調映射後不再洗成奶油黃）
+  yellow: namedMaterial('paint-bright-chrome-yellow', { color: 0xd6ac00, roughness: 0.32, specularIntensity: 0.45, clearcoat: 0.3, clearcoatRoughness: 0.12 }),
+  yellow2: namedMaterial('paint-bright-chrome-yellow', { color: 0xd6ac00, roughness: 0.32, specularIntensity: 0.45, clearcoat: 0.3, side: THREE.DoubleSide }),
   navy: namedMaterial('paint-midnight-blue', { color: 0x16224a, roughness: 0.24, metalness: 0.2, clearcoat: 1.0, clearcoatRoughness: 0.06 }),
   navy2: namedMaterial('paint-midnight-blue', { color: 0x16224a, roughness: 0.24, metalness: 0.2, clearcoat: 1.0, side: THREE.DoubleSide }),
   white: namedMaterial('paint-bright-white', { color: 0xf5f6f4, roughness: 0.2, clearcoat: 1.0, clearcoatRoughness: 0.05 }),
@@ -291,15 +292,19 @@ export const hydroplaneSponsonBody = makePolyBody({
       mat: 'dWhite',
       name: 'decal-keel-line',
     });
-    // 浮筒號碼圓牌（L2-6 自創號碼）：浮筒頂、前輪上方的白色圓＋午夜藍「14」
+    // 浮筒號碼圓牌（L2-6 自創號碼）：浮筒頂、前輪上方的大白圓（iter-73：R6.2 → R8.4，接近概念圖份量）
+    // 外圍一圈午夜藍細框（R9.4）讓白圓和鉻黃分開；圓內午夜藍「14」放大
     /** @type {KeepFn} */
-    const disc = (x, y, z) => (y < 26 ? -1 : 6.2 - Math.hypot(x - 40, Math.abs(z) - Z_SPONSON));
-    parts.push({ geometry: kit.decal(disc), mat: 'dWhite', name: 'decal-number-disc' });
-    const num = sdNumber('14', { h: 6.4, w: 3.2, gap: 0.8 });
+    const discRing = (x, y, z) => (y < 24.5 ? -1 : 9.4 - Math.hypot(x - 40, Math.abs(z) - Z_SPONSON));
+    parts.push({ geometry: kit.decal(discRing, { offset: 0.06 }), mat: 'dNavy', name: 'decal-number-ring' });
+    /** @type {KeepFn} */
+    const disc = (x, y, z) => (y < 24.5 ? -1 : 8.4 - Math.hypot(x - 40, Math.abs(z) - Z_SPONSON));
+    parts.push({ geometry: kit.decal(disc, { offset: 0.09 }), mat: 'dWhite', name: 'decal-number-disc' });
+    const num = sdNumber('14', { h: 8.6, w: 4.2, gap: 1.0 });
     parts.push({
       geometry: kit.decal(
         (x, y, z) => {
-          if (y < 26 || Math.abs(Math.abs(z) - Z_SPONSON) > 6) {
+          if (y < 24.5 || Math.abs(Math.abs(z) - Z_SPONSON) > 8) {
             return -1;
           }
           // 從該側車外往內看可讀（字頭朝車身中線）
@@ -308,7 +313,7 @@ export const hydroplaneSponsonBody = makePolyBody({
           }
           return -num(40 - x, z + Z_SPONSON);
         },
-        { offset: 0.12 },
+        { offset: 0.14 },
       ),
       mat: 'dNavy',
       name: 'decal-number',

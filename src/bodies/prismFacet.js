@@ -1,9 +1,9 @@
 // 稜鏡刻面（body-prism-facet，第六階段 LG2 致敬款）：低多邊形楔形全罩，全身由大平面刻面組成、左右完全對稱；
 // 鼻端是寬箭頭鼻＋中線稜（iter-70；原為水平刀口刻面）；座艙置中，上面是多刻面無色透明「水晶」座艙罩（看得到駕駛人）；
-// 車尾一根架高的三角柱斷面「分流稜鏡」橫桿（L2-1 外露機能件，淡青透明外殼＋內部發光分光芯），兩端由兩片黑色支柱承托，沒有外伸翼端片。
+// 車尾一根架高的三角柱斷面「分流稜鏡」橫桿（L2-1 外露機能件，淡青透明外殼＋內部發光分光芯），兩端由兩片黑色三角側板承托（iter-73；原為內側兩根支柱），沒有外伸翼端片。
 // 設計：shared/design/body-prism-facet/DESIGN.md（HOMAGE_RESEARCH 第 6 節 P7、LG2 語彙 L2-x、和劇中車 / 市售車殼的差異）。
 // 剖面為本檔的折線站位表（推估）：站間直線內插（每 1 mm 一站）→ 每個刻面都是平面，稜線銳利。
-// 塗裝全為自創：白殼＋細黑刻面線＋從尾部稜鏡往前散開的冷色分光漸層帶（青 → 粉 7 色、不等寬，iter-70 起不用紅橙黃綠藍紫）；不含任何廠商 / 作品名稱、商標、隊徽、國旗或角色圖像。
+// 塗裝全為自創：白殼＋少數大刻面分件線＋從尾部稜鏡往前散開的冷色分光色塊（青 → 粉 6 塊、黑分隔線、不等寬，iter-70 起不用紅橙黃綠藍紫）；不含任何廠商 / 作品名稱、商標、隊徽、國旗或角色圖像。
 import * as THREE from 'three';
 import { ConvexGeometry } from 'three/examples/jsm/geometries/ConvexGeometry.js';
 import { makePolyBody, finPlate, sweepEllipse, buildDriver } from './polyBody.js';
@@ -114,13 +114,14 @@ const materials = () => ({
   dBlack: decalMaterial('decal-black', { color: 0x141518, roughness: 0.4 }),
   // iter-70：光譜帶改成「冷色分光」連續漸層（青 → 天藍 → 藍 → 靛 → 紫 → 洋紅 → 粉），相鄰色帶緊貼、不等寬；
   // 不再是紅橙黃綠藍紫六色等寬（評審：和六色彩虹旗排列相同）
-  dS0: decalMaterial('decal-spectrum-cyan', { color: 0x22d3ee, roughness: 0.3, clearcoat: 0.6 }),
-  dS1: decalMaterial('decal-spectrum-sky', { color: 0x38a6f6, roughness: 0.3, clearcoat: 0.6 }),
-  dS2: decalMaterial('decal-spectrum-blue', { color: 0x3c6ef0, roughness: 0.3, clearcoat: 0.6 }),
-  dS3: decalMaterial('decal-spectrum-indigo', { color: 0x5b4ee6, roughness: 0.3, clearcoat: 0.6 }),
-  dS4: decalMaterial('decal-spectrum-violet', { color: 0x8a40de, roughness: 0.3, clearcoat: 0.6 }),
-  dS5: decalMaterial('decal-spectrum-magenta', { color: 0xc23cc4, roughness: 0.3, clearcoat: 0.6 }),
-  dS6: decalMaterial('decal-spectrum-pink', { color: 0xf0508e, roughness: 0.3, clearcoat: 0.6 }),
+  // iter-73：色帶改成 6 塊高飽和、有黑色分隔線的刻面色塊（不再是 7 條細帶的柔和漸層）；
+  // 色相仍是冷色範圍（青 → 藍 → 靛 → 紫 → 洋紅 → 粉），但藍系寬度比例下降、紫 / 洋紅 / 粉加寬（不往更藍走）
+  dS0: decalMaterial('decal-spectrum-cyan', { color: 0x00c2e8, roughness: 0.25, clearcoat: 0.8 }),
+  dS2: decalMaterial('decal-spectrum-blue', { color: 0x1f4fff, roughness: 0.25, clearcoat: 0.8 }),
+  dS3: decalMaterial('decal-spectrum-indigo', { color: 0x4a1fe0, roughness: 0.25, clearcoat: 0.8 }),
+  dS4: decalMaterial('decal-spectrum-violet', { color: 0x8c10e0, roughness: 0.25, clearcoat: 0.8 }),
+  dS5: decalMaterial('decal-spectrum-magenta', { color: 0xdc0cae, roughness: 0.25, clearcoat: 0.8 }),
+  dS6: decalMaterial('decal-spectrum-pink', { color: 0xff1f6e, roughness: 0.25, clearcoat: 0.8 }),
   // 稜鏡橫桿：淡青透明 PC 外殼（Blender 依名稱 pc-clear → 透明 lens）＋內部發光的分光芯（lamp-* → 自發光，Blender 也看得到）
   prism: namedMaterial('pc-clear-prism', { color: 0xd8f6ff, roughness: 0.02, specularIntensity: 1.0, transparent: true, opacity: 0.42, envMapIntensity: 1.2, depthWrite: false, side: THREE.DoubleSide }),
   core0: namedMaterial('lamp-prism-cyan', { color: 0x7ff0ff, emissive: 0x18c8e8, emissiveIntensity: 0.9, roughness: 0.1 }),
@@ -130,9 +131,11 @@ const materials = () => ({
   mount: namedMaterial('abs-mount-black', { color: 0x222326, roughness: 0.6 }),
 });
 
-/** 冷色分光帶（由上往下 / 由內往外）：材質鍵＋相對寬度（不等寬：中間的藍、靛較寬，兩端的青、粉較窄） */
-const SPECTRUM = ['dS0', 'dS1', 'dS2', 'dS3', 'dS4', 'dS5', 'dS6'];
-const SPECTRUM_W = [0.7, 0.9, 1.25, 1.35, 1.1, 0.9, 0.8];
+/** 冷色分光色塊（由後往前，靠近尾部稜鏡的是青）：材質鍵＋相對寬度（iter-73：6 塊，藍系 43%、紫紅系 57%） */
+const SPECTRUM = ['dS0', 'dS2', 'dS3', 'dS4', 'dS5', 'dS6'];
+const SPECTRUM_W = [0.8, 0.9, 0.9, 1.1, 1.2, 1.1];
+/** @type {number} 色塊之間的黑色分隔線半寬（mm） */
+const BLOCK_GAP = 0.3;
 /** @type {number[]} 每條色帶在 [0, 1] 內的起訖（累積寬度正規化） */
 const SPECTRUM_EDGES = (() => {
   const total = SPECTRUM_W.reduce((a, b) => a + b, 0);
@@ -247,7 +250,7 @@ export const prismFacetBody = makePolyBody({
     parts.push({ geometry: drv.body, mat: 'driver', solid: true, name: 'cockpit-driver' });
     parts.push({ geometry: drv.helmet, mat: 'helmet', solid: true, name: 'cockpit-helmet' });
 
-    // 分流稜鏡（prism-bar，L2-1 外露機能件）：架高的淡青透明三角柱橫桿＋兩片黑色支柱（無外伸翼端片）
+    // 分流稜鏡（prism-bar，L2-1 外露機能件）：架高的淡青透明三角柱橫桿＋兩端黑色三角側板（無外伸翼端片）
     parts.push({ geometry: buildPrismBar(33), mat: 'prism', solid: true, outline: true, renderOrder: 3, name: 'prism-bar' });
     // 內部分光芯（iter-70）：縮小 0.5 倍的三角柱，沿 z 分段、從中央青往兩端藍 → 紫 → 洋紅（左右對稱）；外觀件，不計質量
     const CORE = [
@@ -260,18 +263,23 @@ export const prismFacetBody = makePolyBody({
       const segs = [buildPrismBar(c.z1, 0.5, c.z0), buildPrismBar(-c.z0, 0.5, -c.z1)];
       parts.push({ geometry: mergeGeos(segs), mat: c.mat, name: `prism-core-${c.mat}` });
     }
+    // iter-73：承托改成兩端的三角側板（iter-70 評審：內側兩根黑支柱讓它讀成一般 GT 翼）；
+    // 側板在橫桿兩端（|z| 31.5，橫桿伸出側板外 1 mm），上緣就是稜鏡三角斷面，不高過稜鏡頂；下緣埋進尾段肩刻面
     /** @type {THREE.BufferGeometry[]} */
     const plates = [];
     for (const sg of [-1, 1]) {
-      const zc = sg * 25;
-      const yDeck = kit.surf.topY(-55.5, 25) - 0.6;
+      const zc = sg * 31.5;
+      // 下緣沿尾段肩刻面往後斜降（前 28.2 → 後 22.7），再往下 0.6 mm 埋進殼面
+      const yFront = kit.surf.topY(-49.5, 31.5) - 0.6;
+      const yRear = kit.surf.topY(-61.5, 31.5) - 0.6;
       plates.push(
         finPlate(
           [
-            [-49.5, yDeck],
-            [-61.5, yDeck],
-            [-59.4, 38.6],
-            [-52, 38.6],
+            [-49.5, yFront],
+            [-61.5, yRear],
+            [PRISM_TRI[1][0], PRISM_TRI[1][1]],
+            [PRISM_TRI[2][0], PRISM_TRI[2][1]],
+            [PRISM_TRI[0][0], PRISM_TRI[0][1]],
           ],
           zc,
           1.2,
@@ -280,62 +288,72 @@ export const prismFacetBody = makePolyBody({
     }
     parts.push({ geometry: mergeGeos(plates), mat: 'black2', solid: true, outline: true, name: 'prism-supports' });
 
-    // 細黑刻面線：頂面稜（z1）、肩稜（z2）、側面最寬稜（y3）、關鍵站的橫向轉折線
+    // 刻面分件線（iter-73：拿掉滿佈的細黑格線，只留大刻面的主要分件稜線，約 24 面）：
+    // 縱向：鼻 / 尾中線稜、頂面平台邊（p1）、肩稜（p2）、側面最寬稜（y p4）；橫向：只在前後軸（x ±40）與鼻部箭頭轉折（x 62）
     parts.push({
       geometry: kit.decal((x, y, z) => {
         const az = Math.abs(z);
         const p = profileAt(x);
         // 中線稜只畫在座艙槽前後（座艙段是平頂）
         const dRidge = x > 26 || x < -24 ? az : 9;
-        const dTop = Math.min(Math.abs(az - p[1][0]), Math.abs(az - p[2][0]), Math.abs(az - p[3][0]), dRidge);
-        const dSide = az > p[3][0] + 1 ? Math.abs(y - p[4][1]) : 9;
+        const dTop = Math.min(Math.abs(az - p[1][0]), Math.abs(az - p[2][0]), dRidge);
+        const dSide = az > p[4][0] - 1.5 ? Math.abs(y - p[4][1]) : 9;
         let dKey = 9;
-        for (const kx of [-54, -40, -20, 0, 22, 40, 54, 62, 67]) {
+        for (const kx of [-40, 40, 62]) {
           dKey = Math.min(dKey, Math.abs(x - kx));
         }
-        return 0.2 - Math.min(dTop, dSide, dKey);
+        return 0.26 - Math.min(dTop, dSide, dKey);
       }),
       mat: 'dBlack',
       name: 'decal-facet-lines',
     });
-    // 六色光譜帶（肩刻面，俯視從尾部稜鏡往前散開）：尾端窄（z 17–22）→ 前端寬（z 13.5–29）
-    // iter-70：色帶相鄰緊貼（連續漸層），總寬尾端 5.1 → 前端 17.4
+    // 分光色塊（肩刻面，俯視從尾部稜鏡往前散開的帶狀區）：區內以斜切線分成 6 塊單色色塊，色塊之間與外框是黑色分隔線
+    /** @type {(x: number, az: number) => number} 肩刻面色帶區的有號距離（> 0 在區內） */
+    const topRegion = (x, az) => {
+      const t = (x + 49) / 85;
+      return Math.min(az - lerp(17.4, 13.4, t), lerp(22.5, 30.8, t) - az, x + 49, 36 - x);
+    };
+    /** @type {(x: number, az: number) => number} 肩刻面色塊的斜切座標（往前、往外增加）→ 正規化到 [0, 1] */
+    const topS = (x, az) => (x + 49 + 0.9 * (az - 13.4)) / (85 + 0.9 * 17.4);
+    /** @type {(x: number, y: number) => number} 側刻面色帶區的有號距離 */
+    const sideRegion = (x, y) => {
+      const t = (x + 24) / 49;
+      return Math.min(lerp(27.7, 27.6, t) - y, y - lerp(23.2, 14.6, t), x + 24, 25 - x);
+    };
+    /** @type {(x: number, y: number) => number} 側刻面色塊的斜切座標（往前、往下增加） */
+    const sideS = (x, y) => (x + 24 + 1.1 * (27.7 - y)) / (49 + 1.1 * 13.1);
+    // 黑底（外框＋分隔線）：比色帶區外擴一條分隔線寬
+    parts.push({
+      geometry: kit.decal((x, y, z) => (topRegion(x, Math.abs(z)) + BLOCK_GAP), { offset: 0.07 }),
+      mat: 'dBlack',
+      name: 'decal-spectrum-frame',
+    });
+    parts.push({
+      geometry: kit.decal((x, y, z) => (Math.abs(z) < 32 ? -1 : sideRegion(x, y) + BLOCK_GAP), { offset: 0.07 }),
+      mat: 'dBlack',
+      name: 'decal-side-spectrum-frame',
+    });
+    // 每塊色塊：區內、且斜切座標落在該塊起訖之間（兩側各內縮分隔線半寬）
     SPECTRUM.forEach((mat, i) => {
       const e0 = SPECTRUM_EDGES[i];
       const e1 = SPECTRUM_EDGES[i + 1];
       parts.push({
         geometry: kit.decal((x, y, z) => {
-          if (x < -49 || x > 36) {
-            return -1;
-          }
-          const t = (x + 49) / 85;
-          const za = lerp(17.4, 13.4, t);
-          const zb = lerp(22.5, 30.8, t);
-          const z0 = lerp(za, zb, e0);
-          const z1 = lerp(za, zb, e1);
           const az = Math.abs(z);
-          return Math.min(az - z0, z1 - az);
-        }, { offset: 0.08 + i * 0.002 }),
+          const s = topS(x, az) * 100;
+          return Math.min(topRegion(x, az), s - e0 * 100 - BLOCK_GAP, e1 * 100 - BLOCK_GAP - s);
+        }, { offset: 0.09 + i * 0.002 }),
         mat,
         name: `decal-spectrum-${i}`,
       });
-    });
-    // 側面光譜帶（兩輪之間的側刻面）：六色細線從後往前往下散開
-    SPECTRUM.forEach((mat, i) => {
-      const e0 = SPECTRUM_EDGES[i];
-      const e1 = SPECTRUM_EDGES[i + 1];
       parts.push({
         geometry: kit.decal((x, y, z) => {
-          if (Math.abs(z) < 32 || x < -24 || x > 25) {
+          if (Math.abs(z) < 32) {
             return -1;
           }
-          const t = (x + 24) / 49;
-          const ya = lerp(27.7, 27.6, t);
-          const yb = lerp(23.2, 14.6, t);
-          const y0 = lerp(ya, yb, e0);
-          const y1 = lerp(ya, yb, e1);
-          return Math.min(y0 - y, y - y1);
-        }, { offset: 0.08 + i * 0.002 }),
+          const s = sideS(x, y) * 60;
+          return Math.min(sideRegion(x, y), s - e0 * 60 - BLOCK_GAP, e1 * 60 - BLOCK_GAP - s);
+        }, { offset: 0.09 + i * 0.002 }),
         mat,
         name: `decal-side-spectrum-${i}`,
       });
