@@ -49,10 +49,11 @@ export const wheelParts = [
     rimBaseMass_g: 1.3,
     mass_g: 4.0,
     src: {
-      diameter_mm: 'SPEC 1.7：大徑 31 mm（iter-58 更正：原本寫 Tamiya 15544，查證後 15544 是低摩擦款 → 改由 wheel-31-lowfriction 引用；標準摩擦 31 mm 單售品料號未查到，PARTS_RESEARCH AC / AI 節）',
+      grade: '2026-10-22 查證：標準（キット標準）大徑胎單售品 = 官方 [T15511]「大径ローハイトタイヤ&6本スポークホイール」——「大径ローハイトタイヤ（ブラック）を組み合わせました」、適用底盤含 MA；沒有硬度 / 低摩擦標示 → 套件標準橡膠胎。（iter-58 前誤引 15544，15544 是低摩擦款 wheel-31-lowfriction）',
+      diameter_mm: 'SPEC 1.7：大徑 31 mm（同系列 [T15544] 官方標「大径ローハイトタイヤ(31mm)」）',
       width_mm: 'PARTS_RESEARCH：約 10 mm（只見於搜尋摘要）',
       rimDiameter_mm: 'PARTS_RESEARCH [ROU] 玩家實測：輪框外徑 24.8 mm',
-      frictionCoeff: '同 wheel-26（推估）',
+      frictionCoeff: '同 wheel-26 套件標準橡膠胎 0.7（推估，官方沒有數值）；方向有官方依據：[T15544] 低摩擦款「キット標準タイプに比べて硬くローグリップ」→ 標準款 μ 必須高於低摩擦款 0.4',
       rollingResistanceCoeff: '同 wheel-26（推估）',
       mass_g: 'PARTS_RESEARCH [ROU] 玩家實測：輪框 1.3 g＋胎 2.7 g = 4.0 g/顆',
       rimBaseMass_g: `PARTS_RESEARCH [ROU] 玩家實測輪框 1.3 g；${RIM_SRC}`,

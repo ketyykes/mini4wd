@@ -43,18 +43,19 @@ export const rollerParts = [
   {
     id: 'roller-19',
     category: 'roller',
-    name: '19 mm 鋁合金導輪（內含培林）',
+    name: '19 mm 全鋁培林導輪（平面，內含培林）',
     finish: 'aluminum',
     diameter_mm: 19.0,
     height_mm: 5.0,
     wallFriction: 0.05,
     restitution: 0.1,
-    mass_g: 1.9,
+    mass_g: 1.3,
     src: {
+      grade: '平面款 HG 19mm オールアルミベアリングローラー（15464，RINGLESS）；官方頁面沒有寫重量與高度',
       diameter_mm: 'SPEC 1.8：19 mm',
-      height_mm: 'PARTS_RESEARCH [T95609] 官方：外徑 19 mm、高 5 mm',
+      height_mm: '推估：同系列錐形款 [T95609] 官方「外径19ｍｍ、高さ5ｍｍ」',
       wallFriction: '同 roller-13（推估）',
-      mass_g: 'PARTS_RESEARCH [T95609] 官方：1.9 g（含 520 培林）',
+      mass_g: '2026-10-22 使用者要求多方查證後更正（原 1.9 g 是錐形款 [T95609] 的官方值，不是平面款）：平面款玩家整理 1.3 g（[SAGANO] 表、ameblo jun1nie「19mmオールアルミベアリングローラーは一個1.3g」兩個獨立來源一致）；旁證：同表 13 mm 全鋁 0.8 g 與官方 [T15437]「2個で約1.7g」= 0.85 g 吻合 → 該表可信；幾何上限：φ19×φ5×5 mm 實心鋁環 3.6 g，實物為大幅挖空的薄輻板，1.3 g 合理',
     },
   },
   {
@@ -96,7 +97,7 @@ export const rollerParts = [
     src: {
       grade: 'PARTS_RESEARCH 第四階段 T 節 [T95436] 官方：「HG 19mmオールアルミベアリングローラー（テーパータイプ）」「すり鉢（テーパー）形状により、マシンがコースフェンスに乗り上げた時にコース内へ復帰しやすい」「外径19ｍｍ、高さ5ｍｍ…重さは1.9g」',
       taper: '推估（T 節）：圓柱 2 mm＋錐形 3 mm（φ19 → φ15），錐面與水平夾 atan(2/3) ≈ 34°；官方與玩家都沒有錐角數值',
-      mass_g: '[T95436] 官方「重さは1.9g」（含 520 培林）',
+      mass_g: '[T95436] / [T95609] 官方「重さは1.9g」（含 520 培林）；玩家實測 1.7 g／顆（ameblo jun1nie，2 顆 3.4 g）→ 採官方值',
       mount: 'T 節 [FTAP]「tapered underside…mounted underneath the stay」：要用螺絲＋墊片鎖在 FRP / 碳纖導輪板上、錐面朝下才有作用 → 塑膠一體保桿 / 標準後導輪架擋下（ROLLER_TAPER_MOUNT，推估規則）',
       wallFriction: '同 roller-19（推估）',
     },
