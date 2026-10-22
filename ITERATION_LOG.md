@@ -2698,3 +2698,26 @@
 
 ### 驗證
 - `node scripts/score.mjs`：**20/20**（16:01，合併 zeppelin 修正後）。
+- reviewer（`shared/reviews/iter-67/REVIEW.md`，7 款：6 新款首次上線＋marlin A/B）：錨點 7 / 5 / 6 / 7 / 7 / 7 = 6.50；本輪 6 / 6.5 / 7.5 / 6 / 6.5 / 6.5 = **6.50** → 20/20 × 50 ＋ 6.50 × 5 = **82.50**（比第六階段基準 83.75 低：新款首次上線、完成度不足）。原創性 7 款全「否」；LG2 國際代表隊檢查通過（griffin 鷹頭、zeppelin 硬式飛船只有低風險聯想；畫面不得出現「Zeppelin」字樣）。
+- marlin A/B：風格感好、其餘持平 → **保留**；評審認為改完「有一點」像 LG1，長箭形＋高背帆仍帶 MAX 篇味道。
+- 每款最需要改：fastback 殼面開口＋石墨灰下身＋避開萊姆綠；trail 座艙罩應為前緣直切平面擋風、後甲板細節；mantis 細腰露出底盤、鼻部皺褶；griffin 羽片小翼太小、輪拱邊白漆破碎；zeppelin 斷面太扁、號碼貼圖變形、X 舵貼近後保桿；hydroplane 防浪條穿過前輪（穿插）；marlin 小罩與車身肩部之間的縫。→ iter-69 精修。
+- 決策：**保留**新款（GOAL：新款首次上線不以 A/B revert，原創性沒有被否決）；外觀分數低於基準 → 接下來以逐款精修拉回，最後一輪必須 6 項都不比基準差。
+
+## iter-68（15:28 起）：新車殼 4 款（2 個 subagent）、P20 換成第六階段定義
+### 規劃
+1. subagent race68（`/tmp/wt68-race`）：比賽型 `body-hinge-deck`（body-pivot，ボディ提灯：PC 殼＋FRP 尾板＋黃銅配重；必要——比賽型第 6 款）、`body-lowline-flat`（low-flat，31 mm）。
+2. subagent lg68（`/tmp/wt68-lg`）：LG1 `body-cicada-veil`（tent-back / clear / tent-tail，31 mm）、LG2 `body-prism-facet`（faceted / clear / prism-bar）。
+3. 主 agent：陣容達標後把 `tests/bodies.test.js` 換成第六階段 P20（草稿 `/tmp/p20-phase6/bodies.test.js`）。
+- iter-67 查到的車殼長度限制（> 約 155 mm 會在立體橋卡住）已告知兩個 subagent；共同規則加入「必跑 P16 單項」。
+
+### 執行
+- hinge-deck：車殼 11.22 g（PC 殼 3.45＋FRP 尾板 2.77＋黃銅配重 3.62＋鋼螺絲 / 樞軸），長 132.0 / 高 35.6，26 / 31 mm 合法；物理中車殼是剛體，提灯只以質量與重心呈現（DESIGN.md 寫明）。
+- lowline-flat：9.31 g，長 150.4 / 高 29.4，26 / 31 mm 合法（初版與 fastback 俯視 IoU 0.856 → 加寬＋甲板開口後 0.707）。
+- cicada-veil：13.48 g，長 127 / 高 41.1，26 / 31 mm 合法（初版 × tortoise 俯視 0.888 → 收窄頭部、移動最寬處後 0.825）。
+- prism-facet：14.19 g，長 131.2 / 高 38.0，26 mm 合法（初版 × tortoise 0.851 → 0.822）。
+- 4 款 P16 單項都通過（穿透 0.12–0.46 mm）。合併 `src/bodies/index.js` 衝突手動整合。
+- 陣容 19 款：比賽型 7（raceType 7 種、form 7、roof 5、wing 4）、LG1 6（form 6、roof 4、wing 6）、LG2 6（form 6、roof 4、wing 6）。
+- P20 換成第六階段定義（`tests/bodies.test.js`）：最大 IoU 側視 0.692、俯視 **0.8498（marlin-sail × mantis-scythe）**、次高 0.8482（halo-orbit × dartfrog-hop）——都在門檻內但餘裕極小；新增 `scripts/diag/iou-top.mjs` 列最高配對，iter-69 精修要求這一對降到 ≤ 0.83。
+
+### 驗證
+- `node scripts/score.mjs`：**20/20**（16:08，P20 為第六階段定義）。外觀評審待 Blender 出圖後做（`shared/reviews/iter-68/`）。
