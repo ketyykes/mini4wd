@@ -7,6 +7,26 @@ import { assemble, loadConfig } from './assembly.js';
 
 const MM = 0.001;
 
+// 碰撞群組（第七階段 iter-77，物理稽核 H1）：Rapier 的 collision groups = (成員 << 16) | 過濾，兩個碰撞體都在對方的過濾裡才會碰撞。
+// 導輪與穩定零件的碰撞體只代表「碰牆的那一圈」：導輪用球近似（圓柱對 trimesh 會卡住，見 iter-00），球的垂直範圍（± 半徑）比實際導輪高度大很多，
+// 19 mm 導輪的球底只離地 0.5 mm、配 24 mm 輪時球底低於地面 → 整台車架在導輪球上、四輪法向力 0（實車導輪不會碰地）。
+// 所以導輪 / 穩定零件只和牆碰撞；地板、換道器路面、車體方塊照舊互相碰撞
+const GROUP_GROUND = 0x0001;
+const GROUP_WALL = 0x0002;
+const GROUP_CAR = 0x0004;
+const GROUP_ROLLER = 0x0008;
+const ALL_GROUPS = 0xffff;
+/** @type {(member: number, filter: number) => number} */
+const collisionGroups = (member, filter) => ((member << 16) | filter) >>> 0;
+/** 地板、路面：成員 GROUND，和所有群組碰撞（導輪那邊的過濾不含 GROUND，所以實際不碰導輪） */
+const GROUND_GROUPS = collisionGroups(GROUP_GROUND, ALL_GROUPS);
+/** 牆：成員 WALL，和所有群組碰撞 */
+const WALL_GROUPS = collisionGroups(GROUP_WALL, ALL_GROUPS);
+/** 車體方塊：成員 CAR */
+const CAR_GROUPS = collisionGroups(GROUP_CAR, ALL_GROUPS);
+/** 導輪、穩定零件：成員 ROLLER，只和牆碰撞 */
+const ROLLER_GROUPS = collisionGroups(GROUP_ROLLER, GROUP_WALL);
+
 let initPromise = null;
 
 /** 初始化 Rapier WASM（只做一次） */
@@ -56,7 +76,8 @@ export function createWorld(track) {
   const floor = world.createCollider(
     RAPIER.ColliderDesc.cuboid((b.maxX - b.minX) / 2 + 1, 0.01, (b.maxZ - b.minZ) / 2 + 1)
       .setTranslation(cx, -0.01, cz)
-      .setFriction(0.3),
+      .setFriction(0.3)
+      .setCollisionGroups(GROUND_GROUPS),
     ground,
   );
 
@@ -64,7 +85,7 @@ export function createWorld(track) {
   const flags = RAPIER.TriMeshFlags.FIX_INTERNAL_EDGES;
   for (const m of track.wallMeshes) {
     const col = world.createCollider(
-      RAPIER.ColliderDesc.trimesh(m.vertices, m.indices, flags).setFriction(spec.track.wallFriction),
+      RAPIER.ColliderDesc.trimesh(m.vertices, m.indices, flags).setFriction(spec.track.wallFriction).setCollisionGroups(WALL_GROUPS),
       ground,
     );
     wallHandles.add(col.handle);
@@ -72,7 +93,7 @@ export function createWorld(track) {
   // 路面（換道器的橋板與引道）：和地板一樣是路面，不列入牆（P06 只量牆）
   const roadHandles = new Set();
   for (const m of track.roadMeshes ?? []) {
-    const col = world.createCollider(RAPIER.ColliderDesc.trimesh(m.vertices, m.indices, flags).setFriction(0.3), ground);
+    const col = world.createCollider(RAPIER.ColliderDesc.trimesh(m.vertices, m.indices, flags).setFriction(0.3).setCollisionGroups(GROUND_GROUPS), ground);
     roadHandles.add(col.handle);
   }
   return { world, floor, wallHandles, roadHandles, track };
@@ -200,7 +221,8 @@ export function createCar(env, opt = {}) {
     RAPIER.ColliderDesc.cuboid(box.hx * MM, box.hy * MM, box.hz * MM)
       .setTranslation(box.cx * MM, box.cy * MM, 0)
       .setDensity(0)
-      .setFriction(0.3),
+      .setFriction(0.3)
+      .setCollisionGroups(CAR_GROUPS),
     chassis,
   );
 
@@ -233,7 +255,8 @@ export function createCar(env, opt = {}) {
           // 第七階段（iter-76）：雙層導輪每一片可有自己的摩擦 / 恢復係數（例如 15418 上層橡膠環），沒有時用零件層級的值
           .setFriction(t.wallFriction ?? rollerPart.wallFriction)
           .setFrictionCombineRule(RAPIER.CoefficientCombineRule.Min)
-          .setRestitution(t.restitution ?? rollerPart.restitution),
+          .setRestitution(t.restitution ?? rollerPart.restitution)
+          .setCollisionGroups(ROLLER_GROUPS),
         parent,
       ),
     );
@@ -256,7 +279,8 @@ export function createCar(env, opt = {}) {
         .setDensity(0)
         .setFriction(st.part.wallFriction)
         .setFrictionCombineRule(RAPIER.CoefficientCombineRule.Min)
-        .setRestitution(st.part.restitution),
+        .setRestitution(st.part.restitution)
+        .setCollisionGroups(ROLLER_GROUPS),
       onSlider ? slider.body : chassis,
     );
     // 局部座標（m）：圓柱軸的上下端點與半徑，給 stabilizerWallContacts 用；mu = 對牆滑動摩擦（不轉動）

@@ -2895,3 +2895,19 @@
 - 新測試：`P17_phase7_rollers_tires`（硬 / 軟 slick 理論極速與起步、海綿胎質量 / 慣量 / 起步 / 極速、15418 兩片碰撞體摩擦 = 各自資料、9-8 外框較窄）、`P17_phase7_laps`（第七階段每款新零件 1 組合法組裝跑完 3 圈，9 組）；`P18_known_cases` 加 4 個（後 13-12 雙層 → ROLLER_ROLLER_CLEARANCE、前 19-19 雙層 × owl → BODY_ROLLER_CLEARANCE、硬 slick × owl → BODY_TIRE_CLEARANCE、海綿胎 × FRP 後板 → STAY_TIRE_CLEARANCE）＋4 個合法對照。
 - 指定測試 7 項通過。
 - `node scripts/score.mjs`：**20/20**（03:38）。外觀沿用 7.75（預設車不變）→ 88.75。worktree `/tmp/wt-p7a` 與分支 `p7-rollers-tires` 已移除。
+
+## iter-77（物理稽核 H1：導輪 / 穩定零件碰撞體只碰牆）
+### 計畫
+- 稽核 H1（高）：導輪碰撞體是球（圓柱對 trimesh 會卡住），垂直範圍 ±r。19 mm 導輪配 24 mm 輪（合法組裝）時球底低於地面 → 整台車架在導輪球上、四輪法向力 0、車速 0。
+- 修法：Rapier collision groups。成功標準：該組合會前進、四輪法向力總和 ≈ 車重；既有測試 20/20 不變。
+
+### 執行
+- `sim.js`：群組 GROUND（地板、換道器路面）、WALL（牆 trimesh）、CAR（車體方塊）、ROLLER（導輪每片、穩定零件），ROLLER 的過濾只含 WALL。射線輪 / 煞車海綿探測射線沒有群組過濾，行為不變。
+- 新測試 `P17_roller_no_ground_contact`：roller-19 × wheel-24-narrow / wheel-24-sponge。**用修正前的 sim.js 跑會失敗**（車速 0、四輪法向力 0），修正後 2 s 車速 3.51 / 3.43 m/s。
+- 測試檔 `rampRun` 自建的坡道碰撞體仍是預設群組（導輪會碰到坡面）：沒有改測試幾何，記在 PHYSICS_AUDIT。
+
+### 更正 iter-76 的推測
+- iter-76 寫「示範設定換前雙層導輪會翻車，疑與 H1 有關」——H1 修正後重測仍翻車；再拆開測：**單層 `roller-13-alu` 裝在 p7-demo 前方也一樣翻車**（s ≈ 4.4 m 換道器橋面），換標準馬達（3 圈、穿牆 0.09 mm）或標準前導輪架（3 圈、0.26 mm）就正常 → 是「Rev 高速馬達＋前滑動保桿＋13 mm 前導輪」組合的行為，與雙層導輪、H1 都無關。示範設定維持前 11 mm 培林導輪。
+
+### 驗證
+- `node scripts/score.mjs`：**20/20**（03:46，H1 測試加入前；新測試另外單獨跑通過）。外觀沿用 7.75 → 88.75。

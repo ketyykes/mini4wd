@@ -745,6 +745,24 @@ describe('P17 新零件的物理效果（只透過組裝設定替換）', () => 
     expect(minUp).toBeGreaterThan(0.8);
   }, 180000);
 
+  test('P17_roller_no_ground_contact 物理稽核 H1：導輪 / 穩定零件碰撞體只碰牆——19 mm 導輪配 24 mm 輪（合法組裝）四輪都著地、會前進（修正前整台車架在導輪球上、車速 0）', () => {
+    for (const wheels of ['wheel-24-narrow', 'wheel-24-sponge']) {
+      const asm = assemble(cfg({ rollers: 'roller-19', wheels }));
+      expect(validateAssembly(asm).ok, wheels).toBe(true);
+      const env = sim.createWorld(buildStraight(10));
+      const car = sim.createCar(env, { assembly: asm, s: 0.2, lane: 0 });
+      for (let i = 0; i < Math.round(2 / env.world.timestep); i++) {
+        sim.stepCar(env, car);
+      }
+      const normals = car.wheels.map((/** @type {any} */ w) => w.normalForce);
+      console.log(`[P17] H1：roller-19 × ${wheels}：2 s 車速 ${f3(car.chassis.linvel().x)} m/s、四輪法向力 ${normals.map(f3).join(' / ')} N`);
+      // 四輪法向力總和 ≈ 車重（容許 10%：懸吊仍有小幅振動）
+      const sumN = normals.reduce((a, b) => a + b, 0);
+      expect(Math.abs(sumN - asm.P.massTotal * 9.81) / (asm.P.massTotal * 9.81)).toBeLessThan(0.1);
+      expect(car.chassis.linvel().x).toBeGreaterThan(2);
+    }
+  }, 60000);
+
   test('P17_phase7_laps 第七階段每款新零件至少 1 組合法完整組裝：主賽道跑完官方 3 圈、不穿牆（≤ 1 mm）、不翻車（球頭連桿見 P17_p7_demo）', () => {
     const cases = [
       { rearStay: 'stay-rear-frp', massDamper: 'damper-heavy' },
