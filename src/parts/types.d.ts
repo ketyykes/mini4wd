@@ -98,11 +98,23 @@ export interface RollerSpec {
   /** 'plastic' | 'aluminum'（3D 材質） */
   finish: string;
   /** 疊放的接觸片（雙層導輪）；單層為 null */
-  tiers: { diameter_mm: number; height_mm: number; y_mm: number }[] | null;
+  tiers: RollerTier[] | null;
   /** 錐形導輪輪廓；一般導輪為 null */
   taper: { cylinderHeight_mm: number; coneHeight_mm: number; bottomDiameter_mm: number } | null;
   /** 外環（第五階段：橡膠 O 環 / 塑膠環，環的外緣就是接觸直徑）；沒有外環為 null */
   ring: RollerRing | null;
+}
+
+/** 雙層導輪的一片接觸面（由下而上；y_mm = 相對導輪中心的高度） */
+export interface RollerTier {
+  diameter_mm: number;
+  height_mm: number;
+  y_mm: number;
+  /** 第七階段（iter-76）：這片自己的牆面摩擦 / 恢復係數（沒有時用零件層級的值） */
+  wallFriction?: number;
+  restitution?: number;
+  /** 第七階段（iter-76）：這片自己的外環（例如 15418 上層橡膠環）；沒有時無外環 */
+  ring?: RollerRing;
 }
 
 /** 導輪外環（第五階段）：只影響 3D 外形；接觸直徑、摩擦、恢復係數、質量仍取零件本身的欄位 */
