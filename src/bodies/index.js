@@ -5,6 +5,8 @@ import { aeroWingBody } from './aeroWing.js';
 import { pcBoxBody } from './pcBox.js';
 import { fastbackCabinBody } from './fastbackCabin.js';
 import { trailCanopyBody } from './trailCanopy.js';
+import { hingeDeckBody } from './hingeDeck.js';
+import { lowlineFlatBody } from './lowlineFlat.js';
 import { homageBodiesA } from './homageA.js';
 import { homageBodiesB } from './homageB.js';
 import { griffinVaneBody } from './griffinVane.js';
@@ -18,9 +20,9 @@ import { hydroplaneSponsonBody } from './hydroplaneSponson.js';
 // 第四階段（iter-54）：全新 6 款致敬《爆走兄弟》風格車殼（A 組 tortoise-dome / marlin-sail / owl-hush、B 組 gazelle-leap / halo-orbit / dartfrog-hop，
 // 分別註冊在 homageA.js / homageB.js）＋常見比賽車殼型式 3 款（skeleton / aero-wing / pc-box）。
 // 第三階段的致敬款 wedge / beast / fork 已退役（程式碼保留在 git 歷史，設計說明在 shared/design/ 標註已退役）
-// 第六階段（iter-67 起）：比賽型 fastback-cabin / trail-canopy、致敬 LG2 griffin-vane / zeppelin-xtail / hydroplane-sponson、LG1 mantis-scythe（分組欄位 homageSeries / raceType / form）
+// 第六階段（iter-67 起）：比賽型 fastback-cabin / trail-canopy（iter-68 加 hinge-deck / lowline-flat）、致敬 LG2 griffin-vane / zeppelin-xtail / hydroplane-sponson、LG1 mantis-scythe（分組欄位 homageSeries / raceType / form）
 /** @type {BodyDef[]} */
-const bodies = [...homageBodiesA, ...homageBodiesB, skeletonBody, aeroWingBody, pcBoxBody, fastbackCabinBody, trailCanopyBody, griffinVaneBody, zeppelinXtailBody, mantisScytheBody, hydroplaneSponsonBody];
+const bodies = [...homageBodiesA, ...homageBodiesB, skeletonBody, aeroWingBody, pcBoxBody, fastbackCabinBody, trailCanopyBody, hingeDeckBody, lowlineFlatBody, griffinVaneBody, zeppelinXtailBody, mantisScytheBody, hydroplaneSponsonBody];
 
 /** @type {() => BodyDef[]} */
 export const listBodies = () => bodies.slice();
