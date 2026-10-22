@@ -188,9 +188,10 @@ export const griffinVaneBody = makePolyBody({
   ],
   recesses: [
     // 前輪後方的「羽狀側鰓」：三道往後上斜、由短到長的平行四邊形凹槽（V10）
-    { id: '羽鰓-1', view: 'side', shape: 'poly', pts: [[19.5, 15], [22, 15], [18.5, 22.5], [16, 22.5]], depth: 1.8 },
-    { id: '羽鰓-2', view: 'side', shape: 'poly', pts: [[14.5, 14], [17, 14], [13, 24], [10.5, 24]], depth: 1.8 },
-    { id: '羽鰓-3', view: 'side', shape: 'poly', pts: [[9.5, 13], [12, 13], [7.5, 25.5], [5, 25.5]], depth: 1.8 },
+    // iter-71：三道整體往後移 1.5 mm（第一道原本離前輪拱圓只有 0.6 mm，在輪拱後端露出一顆黑點）
+    { id: '羽鰓-1', view: 'side', shape: 'poly', pts: [[18, 15], [20.5, 15], [17, 22.5], [14.5, 22.5]], depth: 1.8 },
+    { id: '羽鰓-2', view: 'side', shape: 'poly', pts: [[13, 14], [15.5, 14], [11.5, 24], [9, 24]], depth: 1.8 },
+    { id: '羽鰓-3', view: 'side', shape: 'poly', pts: [[8, 13], [10.5, 13], [6, 25.5], [3.5, 25.5]], depth: 1.8 },
   ],
   sideZMin: 36,
   innerSkipRecess: true,
@@ -295,8 +296,7 @@ export const griffinVaneBody = makePolyBody({
       name: 'arch-liners',
     });
     // 輪拱外緣珍珠白飾邊（強調高聳大輪拱）
-    // iter-69：改用到輪拱圓的解析距離（固定 1.8 mm 寬的連續帶），不再用 |z| > 30 截斷（舊版在腰部收窄處被切成碎片）
-    parts.push({ geometry: kit.decal((x, y, z) => (Math.abs(z) > 22 ? Math.min(1.8 - archRingDist(x, y), archRingDist(x, y) + 0.6) : -1)), mat: 'dPearl', name: 'decal-arch-trim' });
+    // iter-71：拿掉輪拱白飾邊貼紙——珍珠白塗裝區已涵蓋輪拱圓外 3 mm，同色貼紙疊在漆面上會 z-fighting，形成白紫碎點
 
     // 兩道平行金色「儀仗飾帶」：從鼻側起，越過前擋泥板上掃，沿腰線到後擋泥板羽座
     const sash = SASH;
@@ -323,11 +323,12 @@ export const griffinVaneBody = makePolyBody({
     const plateSd = (u, v) => sdRoundRect(u, v, -7, 7, -4.2, 4.2, 1.6);
     const numSd = sdNumber('36', { h: 5.6, w: 3.0, gap: 0.8 });
     parts.push({
-      geometry: kit.decal(sideDecal((u, v) => Math.max(plateSd(u, v), -numSd(u, v)), { x0: -60.5, y0: 26, zMin: 26 })),
+      geometry: kit.decal(sideDecal((u, v) => Math.max(plateSd(u, v), -numSd(u, v)), { x0: -60.5, y0: 26, zMin: 26 }), { offset: 0.1 }),
       mat: 'dViolet',
       name: 'decal-number-plate',
+      // iter-71：號碼板墊高到 0.1、號碼 0.15（原本號碼板和肌肉線、飾帶同為 0.06，下緣交疊處 z-fighting 出白紫碎點）
     });
-    parts.push({ geometry: kit.decal(sideDecal(numSd, { x0: -60.5, y0: 26, zMin: 26 }), { offset: 0.1 }), mat: 'dPearl', name: 'decal-number' });
+    parts.push({ geometry: kit.decal(sideDecal(numSd, { x0: -60.5, y0: 26, zMin: 26 }), { offset: 0.15 }), mat: 'dPearl', name: 'decal-number' });
     // 鷹勾喙（上喙）：從鼻樑隆起、越過鼻尖往前下勾的金色實心件
     const beakPath = [
       [62, 23.6, 0],
@@ -366,7 +367,8 @@ export const griffinVaneBody = makePolyBody({
     /** @type {(u: number, v: number) => number} */
     const haunch = (u, v) => {
       const yy = 27 + 0.004 * (u + 40) ** 2;
-      return Math.max(Math.abs(v - yy) - 0.35, u + 22, -58 - u);
+      // iter-71：後端收在 x −51.5（原本 −58 會伸進號碼板，在號碼板前緣露出一小段深紫碎線）
+      return Math.max(Math.abs(v - yy) - 0.35, u + 22, -51.5 - u);
     };
     parts.push({
       geometry: mergeGeos([

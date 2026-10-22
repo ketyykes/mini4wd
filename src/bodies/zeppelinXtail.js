@@ -3,7 +3,7 @@
 // 設計：shared/design/body-zeppelin-xtail/DESIGN.md（HOMAGE_RESEARCH 第 6 節 LG2 語彙、和劇中車 / 市售車殼的差異）。剖面為本檔站位產生器（推估）。
 // 塗裝全為自創：錫灰＋奶油白＋訊號橘、環向骨架分節線、縱向鉚釘點列、號碼「75」；不含任何廠商 / 作品名稱、商標、隊徽、國旗或角色圖像。
 import * as THREE from 'three';
-import { makePolyBody, airfoilFin } from './polyBody.js';
+import { makePolyBody, airfoilFin, sweepEllipse } from './polyBody.js';
 import { namedMaterial, decalMaterial, sdNumber, sdRoundRect, sideDecal, mergeGeos, buildRegion, buildRim } from './loft.js';
 import { monoCurve, buildStations, sdCircle } from './gazelleLeap.js';
 
@@ -68,7 +68,8 @@ const materials = () => ({
   dOrange: decalMaterial('decal-signal-orange', { color: 0xff5a14, roughness: 0.4 }),
   dCream: decalMaterial('decal-cream', { color: 0xf3ead6, roughness: 0.4 }),
   mount: namedMaterial('abs-mount-black', { color: 0x222326, roughness: 0.6 }),
-  liner: namedMaterial('shell-inner-dark', { color: 0x1c1d20, roughness: 0.85, side: THREE.DoubleSide }),
+  // iter-71：輪拱內襯改成深錫灰（原為近黑），從輪拱切口看進去是灰色輪弧，不再是黑色殼內面
+  liner: namedMaterial('shell-wheelwell-pewter', { color: 0x4b4f56, roughness: 0.6, side: THREE.DoubleSide }),
 });
 
 /**
@@ -120,6 +121,33 @@ const buildHullLiner = (arch, depth) => {
   g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
   g.computeVertexNormals();
   return g;
+};
+
+/**
+ * 輪拱擋泥唇（iter-71）：沿輪拱切口上半圈、半埋在雪茄殼面上的圓斷面細唇（半徑 0.75），往外凸出約 0.7 mm；
+ * 只沿殼面真的被切開的那一段（殼面 |z| > 21.5），且只在軸線上方（俯視不變寬）
+ * @type {(arch: { x: number, y: number, radius: number }, sg: number) => THREE.BufferGeometry}
+ */
+const buildArchLip = (arch, sg) => {
+  const pts = [];
+  const r = arch.radius + 0.5;
+  for (let i = 0; i <= 60; i++) {
+    const t = 0.05 + ((Math.PI - 0.1) * i) / 60;
+    const x = arch.x + r * Math.cos(t);
+    const y = arch.y + r * Math.sin(t);
+    const q = (y - P.yA(x)) / Math.max(0.5, P.ry(x));
+    // 只做軸線上方 0.25 ry 以上的上半圈（軸線附近是殼面最寬處，唇會讓俯視輪廓變寬）
+    if (q < 0.25 || q > 0.98) {
+      continue;
+    }
+    const zH = P.hw(x) * Math.sqrt(1 - q * q);
+    // 唇的外緣不超出該站殼面最寬處（俯視輪廓不變寬，不往 prism-facet 靠近）
+    if (zH < 21.5 || zH + 0.7 > P.hw(x) - 0.25) {
+      continue;
+    }
+    pts.push([x, y, sg * (zH - 0.05)]);
+  }
+  return sweepEllipse(pts, 80, () => [0.75, 0.75], 10);
 };
 
 export const zeppelinXtailBody = makePolyBody({
@@ -180,6 +208,14 @@ export const zeppelinXtailBody = makePolyBody({
       mat: 'liner',
       shell: true,
       name: 'arch-liners',
+    });
+    // 輪拱擋泥唇（iter-71）：石墨灰細唇沿四個輪拱切口邊緣，收住切口、框出車輪（評審：車身變窄後四輪外側外露、看得到黑色殼內面）
+    parts.push({
+      geometry: mergeGeos([-1, 1].flatMap((sg) => [buildArchLip({ x: 40, y: 13, radius: 17.5 }, sg), buildArchLip({ x: -40, y: 13, radius: 17.5 }, sg)])),
+      mat: 'frame',
+      solid: true,
+      outline: true,
+      name: 'arch-lips',
     });
     // X 形尾舵（L2-1 外露機能件「穩定舵」）：上兩片外上 45°、下兩片外下 45°（下片較短，保持離地與導輪間隙），後緣不超出車尾
     // iter-69：圓錐尾軸線抬高到 27.5、下片 11.5 → 9 mm，下舵尖離開後保桿（舵尖約 y 21）
