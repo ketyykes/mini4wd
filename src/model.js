@@ -1126,6 +1126,15 @@ const buildOptionalParts = (mats) => {
       grp.add(groove);
     }
     grp.add(w);
+    // 第五階段：托架（零件資料 bracket，例如 MA 側制振器組的 FRP 側板）：貼在配重內側的直立板，位置與 assembly.js 托架質量的位置相同
+    if (part.bracket && part.shape === 'box') {
+      const t = part.bracket.thickness_mm;
+      const side = Math.sign(d.seat.z) || 1;
+      const plateH = h + part.stroke_mm + 1.0;
+      const plate = new THREE.Mesh(new THREE.BoxGeometry(part.length_mm + 3, plateH, t), [mats.frpEdge, mats.frpEdge, mats.frpEdge, mats.frpEdge, mats.frpPlate, mats.frpPlate]);
+      plate.position.set(d.seat.x, d.seat.y + plateH / 2, d.seat.z - side * (part.width_mm / 2 + t / 2));
+      grp.add(plate);
+    }
     // 長螺絲：板底的螺絲頭 → 穿過制振器 → 行程上端的墊片＋防鬆螺帽＋露出的螺絲尾（每個螺絲孔一支）
     const screwXs = part.shape === 'box' ? [-part.length_mm / 4, part.length_mm / 4] : [0];
     for (const dx of screwXs) {

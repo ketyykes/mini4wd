@@ -294,10 +294,76 @@ describe('P17 新零件的物理效果（只透過組裝設定替換）', () => 
     expect(w({ rollers: 'roller-17-alu' })).toBeLessThan(w({ rollers: 'roller-19' }));
   }, 180000);
 
+  test('P17_phase5_motor_tire_damper 第五階段（台灣買得到）：Rev-Tuned 2 PRO 高轉速低扭力；31 mm 低摩擦胎直線同標準 31 mm、過彎側滑損失較小；MA 側制振器組只有配重會滑動', () => {
+    // 不裝 iter-55 會變動的致敬車殼：用比賽型 pc-box（31 mm 輪合法）
+    const base = { body: 'body-pc-box' };
+    /** @type {(over: Record<string, any>) => any} */
+    const A = (over) => {
+      const asm = assemble(cfg({ ...base, ...over }));
+      expect(validateAssembly(asm).ok, JSON.stringify(over)).toBe(true);
+      return asm;
+    };
+    const std = A({});
+    const rev = A({ motor: 'motor-rev' });
+    const hr = A({ motor: 'motor-high-rev' });
+    const th = (asm) => theoreticalTopSpeed({ assembly: asm }).vTheory;
+    const v03 = (asm) => launch(asm, 0.3).vEnd;
+    console.log(`[P17] 馬達：理論極速 標準 ${f3(th(std))} / Rev ${f3(th(rev))} / 高轉速 ${f3(th(hr))} m/s；0.3 s 起步 標準 ${f3(v03(std))} / Rev ${f3(v03(rev))} / 高轉速 ${f3(v03(hr))} m/s`);
+    // 無載轉速高 → 理論極速遠高於標準馬達；堵轉扭力（3.50 mN·m）比高轉速型（5.3 mN·m）低 → 起步比高轉速型慢
+    expect(th(rev)).toBeGreaterThan(th(std) * 1.5);
+    expect(v03(rev)).toBeLessThan(v03(hr));
+
+    // 31 mm 低摩擦胎 vs 標準 31 mm：直徑、質量相同 → 理論極速相同、直線極速相同；只差 μ（0.4 vs 0.7）
+    const w31 = A({ wheels: 'wheel-31-large' });
+    const w31lf = A({ wheels: 'wheel-31-lowfriction' });
+    expect(Math.abs(w31lf.mass_g - w31.mass_g)).toBeLessThan(1e-9);
+    const s31 = flatTopSpeed(w31, 4).vSteady;
+    const s31lf = flatTopSpeed(w31lf, 4).vSteady;
+    // 主賽道 4 s：彎道中輪胎側滑的摩擦損失 ∝ μ → 低摩擦胎前進較遠
+    /** @type {(asm: any) => number} */
+    const dist4 = (asm) => {
+      const track = buildCircuit();
+      const env = sim.createWorld(track);
+      const car = sim.createCar(env, { assembly: asm, s: 0.15, lane: 0 });
+      const L = track.path.length;
+      let last = 0.15;
+      let d = 0;
+      for (let i = 0; i < Math.round(4 / env.world.timestep); i++) {
+        sim.stepCar(env, car);
+        const t = car.chassis.translation();
+        const c = track.path.project(t.x, t.z);
+        let ds = c.s - last;
+        if (ds < -L / 2) {
+          ds += L;
+        }
+        d += ds;
+        last = c.s;
+      }
+      return d;
+    };
+    const d31 = dist4(w31);
+    const d31lf = dist4(w31lf);
+    console.log(`[P17] 31 mm：直線極速 標準 ${f3(s31)} / 低摩擦 ${f3(s31lf)} m/s；主賽道 4 s 前進 標準 ${f3(d31)} / 低摩擦 ${f3(d31lf)} m`);
+    // 容許 0.5%：直線上兩者只差 μ，輪胎未打滑時與 μ 無關
+    expect(Math.abs(s31lf - s31) / s31).toBeLessThan(0.005);
+    expect(d31lf).toBeGreaterThan(d31);
+
+    // MA 側制振器組：總質量多 2 ×（8.3 黃銅＋0.9 FRP 側板）；可滑動的只有 2 顆黃銅（側板鎖在底盤）
+    const noD = assemble(cfg({ body: null }));
+    const d32 = assemble(cfg({ body: null, massDamper: 'damper-side-square-32' }));
+    const movable = d32.movable.reduce((sum, m) => sum + m.mass_g, 0);
+    console.log(`[P17] 側制振器組：總重 ${f3(noD.mass_g)} → ${f3(d32.mass_g)} g，可滑動 ${f3(movable)} g（${d32.movable.length} 顆）`);
+    expect(Math.abs(d32.mass_g - noD.mass_g - 2 * (8.3 + 0.9))).toBeLessThan(1e-6);
+    expect(d32.movable.length).toBe(2);
+    expect(Math.abs(movable - 2 * 8.3)).toBeLessThan(1e-9);
+  }, 240000);
+
   test('P17_mass_damper 制振器可上下滑動 → 落地後垂直彈跳衰減較快（對照：同一顆鎖死當固定配重）', () => {
     for (const [name, over] of [
       ['後制振器', { rearStay: 'stay-rear-frp', massDamper: 'damper-rear-cylinder' }],
       ['側制振器', { massDamper: 'damper-side-square' }],
+      // 第五階段（iter-58）：MA 側制振器組 6×6×32 mm（FRP 側板固定在底盤，只有黃銅方塊滑動）；不裝車殼（側制振器與多數車殼干涉，見 P18）
+      ['MA 側制振器組 32 mm', { massDamper: 'damper-side-square-32', body: null }],
     ]) {
       const free = assemble(cfg(over));
       // 對照組：同一顆制振器用螺帽鎖死（locked，PARTS_RESEARCH H 節：官方說明可當固定配重）——質量、位置完全相同，只差能不能滑動
@@ -1042,6 +1108,11 @@ describe('P18 干涉與安裝相容性', () => {
       // ---- 第五階段（iter-57）：台灣買得到的導輪 ----
       { over: { stabilizer: 'stabilizer-head-17', frontRollers: 'roller-17-alu', body: null }, codes: ['STABILIZER_ROLLER_SIZE'] },
       { over: { rearStay: 'stay-rear-carbon-wide', rearRollers: 'roller-19-rubber' }, codes: ['WIDTH'] },
+      // ---- 第五階段（iter-58）----
+      // 側制振器加長到 60 mm（自訂）→ 伸進前 / 後輪的輪胎外側禁裝區（官方 Sec.3 腳註）且碰到輪胎
+      { over: { massDamper: { base: 'damper-side-square-32', length_mm: 60 }, body: null }, codes: ['SIDE_PART_TIRE_ZONE', 'DAMPER_TIRE_CLEARANCE'] },
+      // 32 mm 側制振器比 14 mm 長 → 碰到 aero-wing 車殼側裙（14 mm 款合法，見下方合法對照）
+      { over: { massDamper: 'damper-side-square-32', body: 'body-aero-wing' }, codes: ['DAMPER_BODY_CLEARANCE'] },
     ];
     for (const c of cases) {
       const res = validateAssembly(assemble(cfg(c.over)));
@@ -1055,7 +1126,7 @@ describe('P18 干涉與安裝相容性', () => {
       }
     }
     // 合法的對照：雙層導輪＋單層的碳纖寬後板、FRP 後板＋後制振器
-    for (const over of [{ rollers: 'roller-13-12-double', rearStay: 'stay-rear-carbon-wide' }, { rearStay: 'stay-rear-frp', massDamper: 'damper-rear-cylinder' }, { stabilizer: 'stabilizer-head-17', rollers: 'roller-19', body: null }, { rollers: 'roller-13-tapered', frontStay: 'stay-front-frp', rearStay: 'stay-rear-frp', body: null }, { frontRollers: 'roller-19-tapered', rearRollers: 'roller-13-alu', frontStay: 'stay-front-frp' }, { frontRollers: 'roller-13-12-double' }, { rearStay: 'stay-rear-carbon-wide', frontRollers: 'roller-19' }]) {
+    for (const over of [{ rollers: 'roller-13-12-double', rearStay: 'stay-rear-carbon-wide' }, { rearStay: 'stay-rear-frp', massDamper: 'damper-rear-cylinder' }, { stabilizer: 'stabilizer-head-17', rollers: 'roller-19', body: null }, { rollers: 'roller-13-tapered', frontStay: 'stay-front-frp', rearStay: 'stay-rear-frp', body: null }, { frontRollers: 'roller-19-tapered', rearRollers: 'roller-13-alu', frontStay: 'stay-front-frp' }, { frontRollers: 'roller-13-12-double' }, { rearStay: 'stay-rear-carbon-wide', frontRollers: 'roller-19' }, { massDamper: 'damper-side-square', body: 'body-aero-wing' }, { massDamper: 'damper-side-square-32', body: 'body-pc-box' }, { wheels: 'wheel-31-lowfriction', body: 'body-pc-box' }, { motor: 'motor-rev' }]) {
       const res = validateAssembly(assemble(cfg(over)));
       expect(res.ok, JSON.stringify(res.violations)).toBe(true);
     }

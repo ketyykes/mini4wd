@@ -2490,3 +2490,32 @@
 - `node scripts/score.mjs`：**20/20**（11:19，Blender 已結束、低負載）。
 - 外觀：只新增零件選項，預設車與 6 款車殼未變 → 外觀評分併入 iter-55 評審後的第五階段基準。
 - 決策：**保留**（新零件物理方向正確、全部測試通過）。
+
+## iter-55 外觀評審收尾（第五階段工作 B，11:18–11:25）
+- Blender 64 samples：6 款 × front34 / side / rear34 / bottom / track 共 30 張（10:56–11:17，主線程式碼；車殼程式與 `fbaeed7` 相同，`/tmp/wt55` 已移除）→ `shared/reviews/iter-55/本輪/blender/`。
+- reviewer（`shared/reviews/iter-55/REVIEW.md`）：錨點 5.83；對照（iter-54 版）6 / 7 / 8 / 6 / 6 / 7 = 6.67；本輪 6.5 / 7.5 / 8 / 7 / 6.5 / 7 = **7.08** → **85.42**（20/20）。原創性 6 款全判「否」、無商標。
+- 逐款嚴格 A/B（比例 / 風格感 / 原創性 / 設計 / 材質）：tortoise 好 / 持平 / 持平 / 好 / 持平；marlin 好 / 好 / 持平 / 好 / 持平；owl 持平 / 好 / 持平 / 好 / 好；gazelle 好 / 好 / 持平 / 好 / 持平；halo 持平 / 好 / 持平 / 好 / 好；dartfrog 持平 / 好 / 持平 / 好 / 持平。**沒有任何一款、任何一項「差」→ 6 款 iter-55 改動全部保留**。
+- 仍待改（評審）：dartfrog 主色偏橄欖暗黃（不是檸檬黃）、蹼翼太細；marlin 銀白偏灰、前輪罩像厚圓餅且與鼻部有黑縫；gazelle / dartfrog 鼻部折面粗；tortoise 車尾頂端鋸齒白邊；owl 羽紋太細。第五階段以零件為主，這些列為下一步。
+
+## iter-58（11:20 起）：台灣買得到的馬達、輪胎、側制振器＋官方輪胎外側禁裝區規則
+### 規劃
+1. `motor-rev`（Rev-Tuned 2 PRO，TW19）、`wheel-31-lowfriction`（TW22）、`damper-side-square-32`（MA 側制振器組 6×6×32＋FRP 側板，TW20）。
+2. 官方規則 [REG6] Sec.3 腳註「前輪中心→前輪後緣、後輪中心→後輪前緣的輪胎外側不可裝零件」→ 新違規代碼 `SIDE_PART_TIRE_ZONE`（官方條文）。
+3. 更正 `wheel-31-large` 的來源文字（15544 是低摩擦款）。
+- 預期：Rev 極速遠高於標準、起步比高轉速型慢（扭力低）；31 mm 低摩擦胎直線同標準、過彎損失較小；側制振器組只有黃銅會滑動。完成後新零件 6 款、4 類（導輪、馬達、輪胎、制振）。
+
+### 執行
+- 零件資料：三款 `src` 皆有規格來源 / 推估依據＋`taiwan` 指向 TAIWAN_SOURCES 列。`motor-rev` 線性模型 k 0.966×10⁻³、R 0.775 Ω → ω0 27,700 rpm、τ_stall 3.50 mN·m（AG 節推估）。
+- 制振器托架（新欄位 `bracket`）：FRP 側板每側 0.9 g 鎖在底盤 → 質量計入剛體；`movable` 只收配重本身（以 label 區分），不跟著滑動。3D 畫成貼在配重內側的直立 FRP 板（與質量位置同一處）。
+- 干涉（既有檢查，未改）：32 mm 側制振器與 tortoise / marlin / owl / halo / skeleton / aero-wing 車殼側裙干涉（DAMPER_BODY_CLEARANCE），gazelle / dartfrog / pc-box / 不裝車殼合法；14 mm 款 halo、aero-wing 合法 → 長度差造成的真實干涉。31 mm 低摩擦胎與 31 mm 標準胎的車殼相容性相同。
+- 規則 `SIDE_PART_TIRE_ZONE`（`regulation.js` `sidePartTireZone`）：側面零件（目前是側制振器，用含行程的掃掠範圍）外緣超出輪胎外側面、且 x 範圍進入禁區 → 違規。32 mm 款 x ∈ [−16, 16]，禁區前 [27, 40]、後 [−40, −27] → 合法；自訂加長 60 mm → 違規（同時 DAMPER_TIRE_CLEARANCE）。
+- 測試（只新增案例）：
+  - P17_phase5_motor_tire_damper：理論極速 標準 4.170 / Rev 8.584 / 高轉速 8.865 m/s；0.3 s 起步 標準 1.191 / Rev 1.196 / 高轉速 1.654 m/s（Rev 起步明顯慢於高轉速型）；31 mm 直線極速 4.592 / 4.592 m/s，主賽道 4 s 前進 標準 11.624 / 低摩擦 11.725 m；側制振器組總重 +18.4 g、可滑動 16.6 g（2 顆）。
+  - P17_mass_damper 加一組：MA 側制振器組 100 mm 落下 可滑動 彈起 0.352 mm、滯空 4.8 ms vs 鎖死 0.503 mm、12.0 ms。
+  - P11：SIDE_PART_TIRE_ZONE 案例；P18 known_cases：SIDE_PART_TIRE_ZONE、32 mm 側制振器＋aero-wing → DAMPER_BODY_CLEARANCE，合法對照 4 組（14 mm＋aero-wing、32 mm＋pc-box、31 低摩擦＋pc-box、motor-rev）。
+  - P19：網頁切換 motor-rev、wheel-31-lowfriction（預設車殼違規也與 Node 一致）、damper-side-square-32，URL 還原 6 個參數。
+- 截圖 `renders/iter-58-parts_garage.png`。
+
+### 驗證
+- `node scripts/score.mjs`：**20/20**（11:28）。外觀：只新增選項，預設車與車殼未變 → 沿用第五階段基準 7.08。
+- 決策：**保留**。

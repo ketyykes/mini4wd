@@ -346,6 +346,8 @@ describe('第二階段：零件組裝 / 規則 / 車殼（P04、P08、P09、P11�
       { code: 'ROLLER_ROLLER_CLEARANCE', over: { rearRollers: 'roller-13-12-double' } },
       // 寬後板＋後面 19 mm → 全寬 108 mm
       { code: 'WIDTH', over: { rearStay: 'stay-rear-carbon-wide', rearRollers: 'roller-19' } },
+      // ---- 第五階段（iter-58）：官方 Sec.3 腳註——輪胎外側禁裝區（側制振器加長到 60 mm 時進入，且碰到輪胎）----
+      { code: 'SIDE_PART_TIRE_ZONE', codes: ['SIDE_PART_TIRE_ZONE', 'DAMPER_TIRE_CLEARANCE'], over: { massDamper: { base: 'damper-side-square-32', length_mm: 60 }, body: null } },
     ];
     for (const c of cases) {
       const res = validateAssembly(assemble(cfgWith(c.over)));

@@ -69,6 +69,7 @@ export const VIOLATION_CODES = {
   STABILIZER_ROLLER_CLEARANCE: '穩定零件與導輪干涉',
   STABILIZER_TIRE_CLEARANCE: '穩定零件與輪胎干涉',
   STABILIZER_STAY_CLEARANCE: '穩定零件與導輪板干涉',
+  SIDE_PART_TIRE_ZONE: '輪胎外側禁裝區：前輪中心到前輪後緣、後輪中心到後輪前緣之間，輪胎外側不可裝零件（官方規則 Sec.3 腳註）',
   STABILIZER_BODY_CLEARANCE: '穩定零件與車殼干涉',
   BALLAST_STABILIZER_CLEARANCE: '配重與穩定零件干涉',
   DAMPER_STABILIZER_CLEARANCE: '制振器與穩定零件干涉',
@@ -154,6 +155,12 @@ export function validateAssembly(asm) {
   if (badTaper.length > 0) {
     fail('ROLLER_TAPER_MOUNT', `（推估規則，非官方條文）錐形導輪必須用螺絲＋墊片鎖在 FRP / 碳纖導輪板、錐面朝下才有作用；${badTaper.join('、')}，不是導輪板`);
   }
+  // 第五階段（iter-58）：官方規則 [REG6] Sec.3 腳註——「前輪中心 → 前輪後緣」「後輪中心 → 後輪前緣」這兩段，輪胎外側不可裝零件
+  // （PARTS_RESEARCH 第五階段 AD 節；官方條文，非推估）。目前會裝在底盤側面的零件只有側制振器：以它的行程掃掠範圍（swept）檢查
+  const sideZone = sidePartTireZone(asm);
+  if (sideZone) {
+    fail('SIDE_PART_TIRE_ZONE', sideZone);
+  }
   // SPEC 1.14：車殼與輪胎 / 導輪間隙必須 ≥ 1 mm。兩個實體零件不能重疊（< 0 mm 是互相穿透，0–1 mm 是會摩擦的干涉），
   // 這種組合實際上裝不起來或輪胎會磨車殼 → 判為違規（2026-10-21 使用者要求：零件替換要符合物理，原本只是警告）
   if (asm.fit && asm.fit.tire_mm < 1) {
@@ -195,4 +202,34 @@ export function validateAssembly(asm) {
   /** @type {Violation[]} 目前沒有非違規的提醒；保留欄位給之後的相容性提示 */
   const warnings = [];
   return { ok: violations.length === 0, violations, warnings };
+}
+
+/**
+ * 輪胎外側禁裝區檢查（官方規則 Sec.3 腳註）：側面零件的外框若同時（1）伸到輪胎外側面以外、（2）x 範圍進入
+ * 前輪 [x_F − R, x_F] 或後輪 [x_R, x_R + R]，回傳違規說明；否則回傳 null
+ * @type {(asm: any) => string | null}
+ */
+function sidePartTireZone(asm) {
+  const wheels = asm.layout.wheels;
+  const R = wheels[0].r;
+  const tireOuterZ = Math.max(...wheels.map((w) => Math.abs(w.z) + w.width / 2));
+  const xF = Math.max(...wheels.map((w) => w.x));
+  const xR = Math.min(...wheels.map((w) => w.x));
+  for (const d of asm.optional?.dampers ?? []) {
+    if (d.part.mount !== 'side' || d.swept.kind !== 'box') {
+      continue;
+    }
+    const b = d.swept;
+    const outer = Math.max(Math.abs(b.min.z), Math.abs(b.max.z));
+    if (outer <= tireOuterZ) {
+      continue;
+    }
+    const inFront = b.max.x > xF - R && b.min.x < xF;
+    const inRear = b.min.x < xR + R && b.max.x > xR;
+    if (inFront || inRear) {
+      const where = inFront ? '前輪中心到前輪後緣' : '後輪中心到後輪前緣';
+      return `${d.label}（${d.part.name}）伸到輪胎外側（外緣 ${outer.toFixed(1)} mm > 輪胎外側面 ${tireOuterZ.toFixed(1)} mm），且進入${where}之間（x ${b.min.x.toFixed(1)}–${b.max.x.toFixed(1)} mm）；官方規則 Sec.3 腳註禁止`;
+    }
+  }
+  return null;
 }

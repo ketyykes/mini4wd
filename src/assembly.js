@@ -338,6 +338,10 @@ export function assemble(rawConfig) {
   for (const d of opt.dampers) {
     place('massDamper', d.label, d.mass_g, d.pos);
   }
+  // 第五階段：制振器托架（例如 MA 側制振器的 FRP 側板）鎖死在底盤上，質量計入剛體，不跟配重一起滑動
+  for (const b of opt.damperBrackets) {
+    place('massDamper', b.label, b.mass_g, b.pos);
+  }
   if (opt.sponge) {
     if (opt.sponge.plate) {
       place('brakeSponge', '煞車板', opt.sponge.plate.mass_g, opt.sponge.plate.pos);
@@ -359,7 +363,8 @@ export function assemble(rawConfig) {
   const { mass_g, com_mm } = total;
   const inertia_kgm2 = total.inertia_kgm2;
   // 制振器鎖死（locked = true，用螺帽鎖緊當固定配重）時視為剛體的一部分
-  const movableParts = p.massDamper && !p.massDamper.locked ? parts.filter((q) => q.slot === 'massDamper') : [];
+  const damperLabels = new Set(opt.dampers.map((d) => d.label));
+  const movableParts = p.massDamper && !p.massDamper.locked ? parts.filter((q) => q.slot === 'massDamper' && damperLabels.has(q.label)) : [];
   const rigid = movableParts.length > 0 ? massProps(parts.filter((q) => !movableParts.includes(q)), ch, bodyProps) : total;
   const movable = movableParts.map((q) => {
     const d = p.massDamper;
@@ -527,7 +532,7 @@ const boxAt = (cx, cz, y0, lx, lz, ly) => ({
  * 制振器：靜止在行程下止點；干涉檢查用「整個行程掃過的範圍」
  * 煞車海綿：貼在後導輪架的煞車座下方；配重：依安裝點（前 / 後鎖在保桿或導輪板下方，中央貼在齒輪蓋頂面）
  * 穩定零件（第四階段）：前導輪（FL / FR）正上方，底面 = 導輪頂面 + spacer_mm，與導輪同軸（同一支螺絲）
- * @type {(p: Record<string, any>, comp: any, rollers: any[]) => { dampers: any[], sponge: any, ballast: any, stabilizers: any[], solids: PlacedSolid[] }}
+ * @type {(p: Record<string, any>, comp: any, rollers: any[]) => { dampers: any[], damperBrackets: { label: string, mass_g: number, pos: Vec3 }[], sponge: any, ballast: any, stabilizers: any[], solids: PlacedSolid[] }}
  */
 function optionalLayout(p, comp, rollers) {
   const ch = p.chassis;
@@ -542,6 +547,8 @@ function optionalLayout(p, comp, rollers) {
 
   /** @type {any[]} */
   const dampers = [];
+  /** @type {{ label: string, mass_g: number, pos: Vec3 }[]} 制振器托架（固定在底盤，第五階段） */
+  const damperBrackets = [];
   const d = p.massDamper;
   if (d) {
     /** @type {{ x: number, y: number, z: number }[]} 制振器底面中心（下止點） */
@@ -561,6 +568,12 @@ function optionalLayout(p, comp, rollers) {
       const label = seats.length > 1 ? `制振器 ${s.z < 0 ? '左' : '右'}` : '制振器';
       dampers.push({ label, mass_g: d.mass_g, pos: { x: s.x, y: s.y + h / 2, z: s.z }, seat: s, part: d, swept, index: i });
       solids.push({ group: 'damper', slot: 'massDamper', label, solid: /** @type {Solid} */ (swept) });
+      // 托架（零件資料 bracket：固定在底盤側面的板，與配重同一個 x 範圍、貼在配重內側；只計質量，干涉沿用配重的行程範圍）
+      if (d.bracket) {
+        const b = d.bracket;
+        const side = Math.sign(s.z) || 1;
+        damperBrackets.push({ label: `${label}托架`, mass_g: b.mass_g, pos: { x: s.x, y: s.y + h / 2, z: s.z - side * (d.width_mm / 2 + b.thickness_mm / 2) } });
+      }
     });
   }
 
@@ -633,7 +646,7 @@ function optionalLayout(p, comp, rollers) {
       solids.push({ group: 'stabilizer', slot: 'stabilizer', label, solid });
     }
   }
-  return { dampers, sponge, ballast, stabilizers, solids };
+  return { dampers, damperBrackets, sponge, ballast, stabilizers, solids };
 }
 
 /** @type {Map<string, number>} 車殼頂點 → 實體間隙的快取（key：車殼 id＋實體） */

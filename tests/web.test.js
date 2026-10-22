@@ -354,6 +354,10 @@ describe('P19 網頁換件', () => {
       ['frontRollers', 'roller-19-rubber'],
       ['rearRollers', 'roller-19-plastic-ring'],
       ['frontRollers', 'roller-17-alu'],
+      // iter-58：Rev-Tuned 2 PRO、31 mm 低摩擦胎（預設車殼 owl-hush 的輪拱放不下 31 mm → 違規，網頁也要一致）、MA 側制振器組
+      ['motor', 'motor-rev'],
+      ['wheels', 'wheel-31-lowfriction'],
+      ['massDamper', 'damper-side-square-32'],
     ];
     for (const [slot, value] of changes) {
       const ms = await changeSlot(slot, value);
@@ -363,10 +367,10 @@ describe('P19 網頁換件', () => {
       expect(g.config[slot]).toBe(value);
       expectMatchesNode(g);
     }
-    for (const [slot, value] of [['frontRollers', 'roller-13'], ['rearRollers', 'roller-13']]) {
+    for (const [slot, value] of [['frontRollers', 'roller-13'], ['rearRollers', 'roller-13'], ['motor', 'motor-standard'], ['wheels', 'wheel-26-lowprofile'], ['massDamper', '__none__']]) {
       await changeSlot(slot, value);
     }
-    const query = 'frontRollers=roller-19-rubber&rearRollers=roller-19-plastic-ring';
+    const query = 'frontRollers=roller-19-rubber&rearRollers=roller-19-plastic-ring&motor=motor-rev&wheels=wheel-31-lowfriction&massDamper=damper-side-square-32&body=body-pc-box';
     const p2 = await browser.newPage({ viewport: { width: 1600, height: 900 } });
     await p2.goto(`${baseUrl}/web/garage.html?${query}`);
     await p2.waitForFunction(() => window.__garage?.ready === true, null, { timeout: 90000 });

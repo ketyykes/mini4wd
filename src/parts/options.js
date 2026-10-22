@@ -58,6 +58,36 @@ export const massDamperParts = [
       mount: '底盤兩側托架（chassis-midship.sideDamperMount，推估位置）',
     },
   },
+  // ---- 第五階段（iter-58）：台灣買得到的 MA 側制振器組（台灣來源見 shared/reference/TAIWAN_SOURCES.md）----
+  {
+    id: 'damper-side-square-32',
+    category: 'mass-damper',
+    name: 'MA 側制振器組（黃銅方塊 6×6×32 mm，左右各 1 顆＋FRP 側板，可上下滑動）',
+    material: 'brass',
+    mount: 'side',
+    count: 2,
+    shape: 'box',
+    length_mm: 32,
+    width_mm: 6,
+    height_mm: 6,
+    stroke_mm: 2,
+    mass_g: 8.3,
+    seatDeflection_mm: 0.3,
+    seatDampingRatio: 0.5,
+    slideFriction_Nspm: 0.02,
+    /** 固定在底盤側面的 FRP 側板（每側 1 片）：只計質量（鎖死在底盤，不滑動） */
+    bracket: { material: 'frp', thickness_mm: 1.5, mass_g: 0.9 },
+    compat: { requires: ['side-damper-mount'] },
+    src: {
+      mass_g: 'PARTS_RESEARCH 第五階段 AD 節 [T15490] 官方：黃銅 6×6×32 mm、1 顆 8.3 g',
+      dims: 'AD 節 [T15490] 官方 6×6×32 mm',
+      stroke_mm: '推估（AD 節）：同 damper-side-square 2 mm',
+      bracket: '推估（AD 節）：MA 專用 FRP 側板約 35×12×1.5 mm 扣孔 ≈ 500 mm³ × 1.85 g/cm³ ≈ 0.9 g／片',
+      seat: '座墊剛性、阻尼、滑動摩擦同 damper-side-square（推估）',
+      rule: '[REG6] Sec.3：旋轉 / 制振器位置不限；腳註禁止在「前輪中心→前輪後緣」「後輪中心→後輪前緣」的輪胎外側裝零件（SIDE_PART_TIRE_ZONE，官方條文）；32 mm 長、中心 x = 0 → x ∈ [−16, 16]，不進入禁區',
+      taiwan: 'TAIWAN_SOURCES TW20（四驅博士學校／露天，15490）',
+    },
+  },
 ];
 
 /**
