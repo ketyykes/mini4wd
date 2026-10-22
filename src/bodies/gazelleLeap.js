@@ -345,6 +345,9 @@ export const gazelleLeapBody = makePolyBody({
   name: '瞪羚角拉力型',
   style: 'homage',
   phase: 4,
+  // 第六階段分組（shared/design/HOMAGE_RESEARCH.md 第 6 節）
+  homageSeries: 'lg2',
+  form: 'rally',
   roof: 'open-cockpit',
   wing: 'lyre-horns',
   theme: '短車頭短車尾的拉力型：四輪高聳輪拱、開放座艙＋低擋風片、往後上彎尖端內收的豎琴形角鰭',

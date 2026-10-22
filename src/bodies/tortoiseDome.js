@@ -251,6 +251,9 @@ export const tortoiseDomeBody = makePolyBody({
   name: '陸龜圓頂重甲型',
   style: 'homage',
   phase: 4,
+  // 第六階段分組（shared/design/HOMAGE_RESEARCH.md 第 6 節）
+  homageSeries: 'lg1',
+  form: 'dome',
   roof: 'closed',
   wing: 'duck-tail',
   theme: '高聳龜甲圓頂＋四個獨立大輪拱、圓頂前緣裝甲觀察縫、無尾翼的一體鴨尾唇；慢熱但打不倒的守門員',

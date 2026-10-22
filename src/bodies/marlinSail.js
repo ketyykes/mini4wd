@@ -173,6 +173,8 @@ export const marlinSailBody = makePolyBody({
   name: '旗魚背帆衝刺型',
   style: 'homage',
   phase: 4,
+  // 第六階段：研究判定 LG1 / LG2 都不像（最接近 MAX 篇）→ iter-68 改短、前輪罩與車身連續後再標 homageSeries
+  form: 'arrow',
   roof: 'canopy',
   wing: 'dorsal-sail',
   theme: '長低箭形車身＋針尖鼻、前輪外露、窄座艙接低長背帆與新月平尾；只為直線而生的驕傲衝刺手',

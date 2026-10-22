@@ -130,6 +130,9 @@ export const haloOrbitBody = makePolyBody({
   name: '行星環',
   style: 'homage',
   phase: 4,
+  // 第六階段分組（shared/design/HOMAGE_RESEARCH.md 第 6 節）
+  homageSeries: 'lg2',
+  form: 'pebble',
   roof: 'canopy',
   wing: 'halo-ring',
   theme: '卵石形中高車身＋後輪側裙、環繞一圈的煙燻玻璃帶、車尾直立的封閉光環翼',

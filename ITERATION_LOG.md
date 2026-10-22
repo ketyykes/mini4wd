@@ -2654,3 +2654,17 @@
 ### 執行（第五階段收尾）
 - `/tmp/wt66` 計分 **20/20**（14:32，低負載、單獨執行；subagent 回報的 9/20 是過載逾時）。
 - body-check（`npx vite-node scripts/body-check.mjs`）：5 款合法；31 mm 輪 tortoise / gazelle / dartfrog 合法、owl / marlin BODY_TIRE_CLEARANCE（與修改前相同）；gazelle 導輪間隙 1.72 → 3.10 mm。
+- Blender 64 samples 5 款 × 5 視角＋app 截圖 6 視角（14:33–14:53，已取得共用鎖）；評分資料夾 `shared/reviews/iter-66/`（對照 = iter-61 本輪）。
+
+### 執行（第六階段準備）
+- 研究 subagent：`HOMAGE_RESEARCH.md` 第 6 節（LG1 19 台、LG2 13 台＋變體；兩部差異：LG2 主角車大徑輪、車身較長、特殊機能做在外形上、國家隊配色；**研究不支持「LG2 一定更尖銳」**；LG2 國際代表隊禁用表）；現有款歸組：tortoise / owl / dartfrog → LG1，gazelle / halo → LG2，**marlin 兩邊都不像（最接近 MAX 篇）→ 先不標 homageSeries，iter-68 改短後歸 LG1**；新款提案 9 款。年份更正：WGP TV 版 1997（GOAL 原寫 1998）。
+- 研究 subagent：`shared/reference/BODY_RACE_RESEARCH.md`（7 種型態，T1 PC 透明殼最主流：2025 Japan Cup 官方大會報告 25 台優勝車的車殼全是クリヤーボディ）；「碳纖 / FRP 上蓋式」查證後不成立（官方規則禁止自作車殼）；現有 skeleton = lightened-cut、aero-wing = big-wing、pc-box = clear-pc；新款提案 5 款。
+- 研究 subagent 回報：查日文維基 API 時曾有一次把使用者 email 放進 curl 的 User-Agent 送出（之後已改），已向使用者報告。
+- 第六階段 P20 草稿量基準（主線 34622d0，暫時複製成單檔測試、量完刪除）：失敗（致敬款缺 homageSeries、比賽型只有 3 款）→ 第六階段基準測試 **19/20**。
+
+### 驗證
+- reviewer（`shared/reviews/iter-66/REVIEW.md`）：錨點 6.17；對照 7 / 7 / 8 / 7 / 7 / 6.5 = 7.08；本輪 7 / 7.5 / 8 / 7.5 / 7 / 6.5 = **7.25**。A/B：風格感、設計好，其餘持平；原創性 5 款都「否」。
+- 逐款 A/B：dartfrog（風格感 / 設計好；黃色仍偏灰橄欖，材質持平）、gazelle（設計好）、owl（風格感 / 設計好）、tortoise（設計好）、marlin（全持平）→ **5 款全保留**，cherry-pick 到 main（`d14fe48`）。
+- 現有致敬款標 `homageSeries` / `form`（marlin 只標 form）。主線 `node scripts/score.mjs`：**20/20**（15:06）。
+- 第五階段收尾分數：19/20（第六階段 P20 定義）× 50 ＋ 7.25 × 5 = **83.75**（第六階段基準）；舊 P20 定義下 20/20 → 86.25。
+- 決策：**保留**。

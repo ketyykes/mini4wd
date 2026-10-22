@@ -222,6 +222,9 @@ export const owlHushBody = makePolyBody({
   name: '夜梟靜翼策略型',
   style: 'homage',
   phase: 4,
+  // 第六階段分組（shared/design/HOMAGE_RESEARCH.md 第 6 節）
+  homageSeries: 'lg1',
+  form: 'teardrop',
   roof: 'canopy',
   wing: 'serrated-wing',
   theme: '寬 U 形臉盤鼻＋淚滴快背、大型深煙燻泡泡座艙、後緣鋸齒的低位寬翼；冷靜的夜間策略家',

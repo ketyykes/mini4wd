@@ -254,6 +254,9 @@ export const dartfrogHopBody = makePolyBody({
   name: '箭毒蛙',
   style: 'homage',
   phase: 4,
+  // 第六階段分組（shared/design/HOMAGE_RESEARCH.md 第 6 節）
+  homageSeries: 'lg1',
+  form: 'crouch-wedge',
   roof: 'closed',
   wing: 'web-fan',
   theme: '前低後高的蹲伏楔形：寬低圓鼻、後腿肌肉般的後輪拱、車頂一對半球眼泡、車尾低位扇形蹼翼',
