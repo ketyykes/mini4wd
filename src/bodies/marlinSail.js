@@ -98,9 +98,9 @@ const materials = () => ({
   teal2: namedMaterial('paint-petrol-teal', { color: 0x0f7480, roughness: 0.18, metalness: 0.35, clearcoat: 1.0, side: THREE.DoubleSide }),
   // iter-55：銀白去灰 → 珍珠白（金屬度 0.35 → 0.05，底色更亮；Blender 以 pearl 類別算珠光）
   // iter-59：Blender 的 pearl 類別把底色壓到 0.85 倍、掠射角再往灰紫收，展示圖仍像粉筆灰；
-  // 改用 decal- 開頭的名稱 → Blender 沿用 GLB 原材質（底色 0xf5f6f7 不壓暗）只補清漆，銀白更白更亮
-  silver: namedMaterial('decal-silver-white-body', { color: 0xf5f6f7, roughness: 0.18, metalness: 0.05, clearcoat: 1.0, clearcoatRoughness: 0.04 }),
-  silver2: namedMaterial('decal-silver-white-body', { color: 0xf5f6f7, roughness: 0.18, metalness: 0.05, clearcoat: 1.0, side: THREE.DoubleSide }),
+  // iter-61：改用 paint-bright- 開頭 → Blender 以 paint_bright（較高明度上限的亮面實色漆）算，銀白更白更亮
+  silver: namedMaterial('paint-bright-silver-white-body', { color: 0xf5f6f7, roughness: 0.18, metalness: 0.05, clearcoat: 1.0, clearcoatRoughness: 0.04 }),
+  silver2: namedMaterial('paint-bright-silver-white-body', { color: 0xf5f6f7, roughness: 0.18, metalness: 0.05, clearcoat: 1.0, side: THREE.DoubleSide }),
   coral2: namedMaterial('paint-coral-orange', { color: 0xff6a3d, roughness: 0.25, clearcoat: 0.8, side: THREE.DoubleSide }),
   inner: namedMaterial('shell-inner-dark', { color: 0x1a1f22, roughness: 0.85, side: THREE.BackSide }),
   edge: namedMaterial('shell-edge-silver', { color: 0xaab0b6, roughness: 0.45, side: THREE.DoubleSide }),

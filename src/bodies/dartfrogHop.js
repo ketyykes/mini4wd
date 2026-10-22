@@ -82,11 +82,10 @@ const EYE = { x: 14, z: 13, r: 6 };
 const materials = () => ({
   // 檸檬黃主色（iter-59）：
   // - app：ACES 色調映射會把高亮黃色洗成奶油淺黃 → 底色略壓並偏綠（#dcd200，檸檬黃色相）、清漆 1.0 → 0.4、環境反射 0.4，保留飽和度
-  // - Blender：名稱若以 paint- 開頭會被分到 paint_gloss，showcase.py 把明度上限壓到 0.45，黃色只能變暗成橄欖 / 芥末色；
-  //   改用 decal- 開頭 → Blender 沿用 GLB 原材質（底色不壓暗）只補清漆，亮度比 paint_gloss 高、色相是檸檬黃；
-  //   但展示圖的 AgX 色調映射在這個亮度會把黃色往白收（實測受光面約 #c7bc65），要更飽和需在 render/ 端處理
-  yellow: namedMaterial('decal-lemon-yellow-body', { color: 0xdcd200, roughness: 0.3, clearcoat: 0.4, clearcoatRoughness: 0.05, envMapIntensity: 0.4 }),
-  yellow2: namedMaterial('decal-lemon-yellow-body', { color: 0xdcd200, roughness: 0.3, clearcoat: 0.4, envMapIntensity: 0.4, side: THREE.DoubleSide }),
+  // - Blender：一般 paint- 會被分到 paint_gloss，showcase.py 把明度上限壓到 0.45（防螢光色自發光感），黃色只能變暗成橄欖 / 芥末色；
+  //   iter-61 起用 paint-bright- 開頭 → web/export.js 分到 paint_bright，showcase.py 以較高的明度上限算亮面漆（真正的高明度實色漆）
+  yellow: namedMaterial('paint-bright-lemon-yellow-body', { color: 0xdcd200, roughness: 0.3, clearcoat: 0.4, clearcoatRoughness: 0.05, envMapIntensity: 0.4 }),
+  yellow2: namedMaterial('paint-bright-lemon-yellow-body', { color: 0xdcd200, roughness: 0.3, clearcoat: 0.4, envMapIntensity: 0.4, side: THREE.DoubleSide }),
   black: namedMaterial('paint-gloss-black', { color: 0x121316, roughness: 0.28, clearcoat: 0.9 }),
   black2: namedMaterial('paint-gloss-black', { color: 0x121316, roughness: 0.28, clearcoat: 0.9, side: THREE.DoubleSide }),
   // 蹼翼膜面（iter-59）：深土耳其藍緞面（原本淺藍綠 1 mm 薄片讀成半透明；黑色在灰色攝影棚背景前也讀不出來）

@@ -132,6 +132,8 @@ const categoryFromName = (name, mat) => {
     [/pearl/, 'paint_pearl'],
     // iter-50：槍灰（paint-gunmetal）是緞面金屬感塑膠，不用金屬漆的金屬片（小面積件上金屬片法線擾動讀成砂紙 / 海綿顆粒）
     [/^paint-gunmetal/, 'metallic_plastic'],
+    // iter-61：高明度實色漆（檸檬黃、珍珠白）：亮面漆但明度上限較高（render/showcase.py paint_bright），不被壓成橄欖 / 粉筆灰
+    [/^paint-bright-/, 'paint_bright'],
     [/metallic|^paint-.*metal/, 'paint'],
     [/^paint-/, 'paint_gloss'],
     // iter-50：PC 殼內噴的黑框（pc-paint-black）當深色煙燻 PC——不透明黑會讓 pc-box 側面整片黑，讀不出透明殼與內部零件
