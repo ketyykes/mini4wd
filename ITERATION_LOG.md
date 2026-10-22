@@ -2575,3 +2575,19 @@
 - reviewer（`shared/reviews/iter-61/REVIEW.md`）：錨點 6.17；對照 7 / 7 / 8 / 6.5 / 6.5 / 7.5 = 7.08；本輪 7 / 7.5 / 8 / 7 / 7 / 7.5 = **7.33** → **86.67**。A/B：風格感、設計、材質好，其餘持平。
 - 逐款 A/B：dartfrog（蹼翼好；黃色判持平，仍偏芥末）、marlin、gazelle、tortoise、owl 都沒有任何一項「差」→ **5 款全保留**。滑動保桿只是新選項 → 保留。
 - 仍待改（評審）：dartfrog 黃色再提亮＋黑色座艙罩與藍綠流線面；gazelle 鼻部白擋泥板下緣黑缺口、鼻面黑虛線像接縫；owl 羽紋改粗人字形。
+
+## iter-62（12:55 起）：第五階段示範設定 p5-taiwan、改裝零件 Blender 圖；車殼修正第二輪（subagent，worktree）
+### 規劃
+1. 主 agent：`configs/p5-taiwan.json`——台灣買得到的零件組合（前硬彈簧滑動保桿＋11 mm 培林導輪、後 19 mm 橡膠環導輪、Rev-Tuned 2 PRO＋3.7:1、31 mm 低摩擦胎、中間齒輪培林組、MA 側制振器組、1 mm 海綿＋碳纖煞車架，車殼 pc-box 透明殼）；網頁預設選單加 p4-tech / p5-taiwan 標籤；Blender 改裝零件圖。
+2. 車殼 subagent 第二輪：dartfrog 黃色再提亮＋黑色座艙罩＋藍綠流線面、gazelle 鼻部缺口與虛線、owl 人字羽紋、tortoise / marlin 小缺角。
+- 預期：「底盤與改裝零件細節」有新的改裝零件圖可評。
+
+### 執行
+- 選組合時的真實限制：FRP 後導輪板＋31 mm 輪 → STAY_TIRE_CLEARANCE（既有）→ 後導輪架用標準件；滑動保桿行程端點外框只容得下 13 mm 以下前導輪 → 前導輪用 11 mm 培林導輪。合法：154.3 g、全長 161.0、全寬 103.0、離地 4.50 mm、理論極速 9.04 m/s。
+- 新測試 P17_p5_taiwan_demo：合法、主賽道跑完官方 3 圈（19.814 / 19.813 m、5.74 s）、最大穿牆 0.303 mm、最小 up.y 0.955。（對照：同組合換 motor-torque 會在 4.65 s 飛出，示範設定沒選它。）
+- 網頁選單：軟 / 硬滑動保桿去掉括號後同名「前寬滑動保桿」分不出來 → 名稱改成「前寬滑動保桿・軟彈簧 / 硬彈簧（…）」；全部零件已檢查沒有其他同名選項。
+- Blender `render/out/config-p5-taiwan/{front34,rear34,bottom,chassis}.png`（64 samples）：滑動板＋彈簧、黃銅側制振器＋FRP 側板、後橡膠環導輪清楚可見。截圖 `renders/iter-62-p5_garage.png`。
+
+### 驗證
+- `node scripts/score.mjs`：**20/20**（12:58）。外觀評分與車殼第二輪一起做。
+- 決策：**保留**（示範設定與選單名稱）。

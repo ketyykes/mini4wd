@@ -291,7 +291,7 @@ export const stayParts = [
   },
   slideFrontPart({
     id: 'stay-front-slide-soft',
-    name: '前寬滑動保桿（鋁板＋樹脂滑軌，金色軟彈簧）',
+    name: '前寬滑動保桿・軟彈簧（鋁板＋樹脂滑軌，金色彈簧）',
     springK_N_per_mm: 0.5,
     preload_N: 0.5,
     springColor: 0xd9b24a,
@@ -299,7 +299,7 @@ export const stayParts = [
   }),
   slideFrontPart({
     id: 'stay-front-slide-hard',
-    name: '前寬滑動保桿（鋁板＋樹脂滑軌，銀色硬彈簧）',
+    name: '前寬滑動保桿・硬彈簧（鋁板＋樹脂滑軌，銀色彈簧）',
     springK_N_per_mm: 2,
     preload_N: 2,
     springColor: 0xc8ccd2,

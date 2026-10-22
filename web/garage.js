@@ -62,6 +62,8 @@ const PRESET_LABELS = {
   light: '輕量型',
   'race-frp': '比賽型（FRP 導輪板）',
   'carbon-damper': '比賽型（碳纖＋制振器）',
+  'p4-tech': '第四階段示範（錐形導輪＋穩定柱）',
+  'p5-taiwan': '第五階段示範（台灣買得到的零件）',
 };
 
 /** @type {Record<string, string[]>} 違規代碼 → 相關 slot（用來把選單標紅） */

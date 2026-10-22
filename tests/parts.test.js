@@ -249,6 +249,41 @@ describe('P17 新零件的物理效果（只透過組裝設定替換）', () => 
     expect(ra.vAfter).toBeLessThanOrEqual(rb.vAfter);
   }, 180000);
 
+  test('P17_p5_taiwan_demo 第五階段示範設定（台灣買得到的零件組合）合法，主賽道跑完官方 3 圈、不穿牆（≤ 1 mm，同 P06）、不翻車', () => {
+    const asm = assemble(loadConfig('p5-taiwan'));
+    const v = validateAssembly(asm);
+    expect(v.ok, JSON.stringify(v.violations)).toBe(true);
+    const track = buildCircuit();
+    const env = sim.createWorld(track);
+    const car = sim.createCar(env, { assembly: asm, s: 0.15, lane: 0 });
+    const L = track.path.length;
+    let last = 0.15;
+    let dist = 0;
+    let maxPen = 0;
+    let minUp = 1;
+    let steps = 0;
+    for (; steps < Math.round(12 / env.world.timestep) && dist < 3 * L; steps++) {
+      sim.stepCar(env, car);
+      const t = car.chassis.translation();
+      const c = track.path.project(t.x, t.z);
+      let ds = c.s - last;
+      if (ds < -L / 2) {
+        ds += L;
+      }
+      if (ds > L / 2) {
+        ds -= L;
+      }
+      dist += ds;
+      last = c.s;
+      maxPen = Math.max(maxPen, sim.wallPenetration(env, car));
+      minUp = Math.min(minUp, sim.upAxis(car).y);
+    }
+    console.log(`[P17] p5-taiwan：${f3(asm.mass_g)} g，3 圈 ${f3(dist)} / ${f3(3 * L)} m、${(steps * env.world.timestep).toFixed(2)} s，最大穿牆 ${(maxPen * 1000).toFixed(3)} mm、最小 up.y ${f3(minUp)}`);
+    expect(dist).toBeGreaterThanOrEqual(3 * L);
+    expect(maxPen).toBeLessThanOrEqual(0.001);
+    expect(minUp).toBeGreaterThan(0.8);
+  }, 180000);
+
   test('P17_roller19 19 mm 導輪 → 外框變寬、導輪接觸點外移（模擬碰撞體同一份資料）', () => {
     const a13 = assemble(cfg());
     const a19 = assemble(cfg({ rollers: 'roller-19' }));
