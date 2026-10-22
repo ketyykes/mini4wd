@@ -364,6 +364,9 @@ describe('P19 網頁換件', () => {
       ['rearRollers', 'roller-9-bearing'],
       // iter-60：碳纖大面積煞車架（沒裝海綿時只是選項，不影響數值）
       ['brakePlate', 'brake-plate-carbon'],
+      // iter-61：前滑動保桿（軟彈簧；前導輪 17 mm 時行程端點全寬 107 mm → WIDTH，網頁也要一致）
+      ['frontStay', 'stay-front-slide-soft'],
+      ['frontRollers', 'roller-13'],
     ];
     for (const [slot, value] of changes) {
       const ms = await changeSlot(slot, value);
@@ -373,10 +376,10 @@ describe('P19 網頁換件', () => {
       expect(g.config[slot]).toBe(value);
       expectMatchesNode(g);
     }
-    for (const [slot, value] of [['frontRollers', 'roller-13'], ['rearRollers', 'roller-13'], ['motor', 'motor-standard'], ['wheels', 'wheel-26-lowprofile'], ['massDamper', '__none__'], ['counterShaft', 'counter-shaft-standard'], ['brakePlate', 'brake-plate-frp']]) {
+    for (const [slot, value] of [['frontRollers', 'roller-13'], ['rearRollers', 'roller-13'], ['motor', 'motor-standard'], ['wheels', 'wheel-26-lowprofile'], ['massDamper', '__none__'], ['counterShaft', 'counter-shaft-standard'], ['brakePlate', 'brake-plate-frp'], ['frontStay', 'stay-front-standard']]) {
       await changeSlot(slot, value);
     }
-    const query = 'frontRollers=roller-19-rubber&rearRollers=roller-19-plastic-ring&motor=motor-rev&wheels=wheel-31-lowfriction&massDamper=damper-side-square-32&body=body-pc-box&counterShaft=counter-bearing-520&brakePlate=brake-plate-carbon';
+    const query = 'frontRollers=roller-19-rubber&rearRollers=roller-19-plastic-ring&motor=motor-rev&wheels=wheel-31-lowfriction&massDamper=damper-side-square-32&body=body-pc-box&counterShaft=counter-bearing-520&brakePlate=brake-plate-carbon&frontStay=stay-front-slide-hard';
     const p2 = await browser.newPage({ viewport: { width: 1600, height: 900 } });
     await p2.goto(`${baseUrl}/web/garage.html?${query}`);
     await p2.waitForFunction(() => window.__garage?.ready === true, null, { timeout: 90000 });
