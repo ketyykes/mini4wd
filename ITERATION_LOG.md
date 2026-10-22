@@ -2764,3 +2764,28 @@
 ### 驗證
 - `node scripts/score.mjs`：**20/20**（17:2x，含 glass_tint 改動）。Blender 4 款（17:24–17:39）。
 - 17:4x 起帳號 session 用量上限（20:10 重置）：iter-71 三個 subagent 中斷（進度保留在 worktree），iter-70 評審延後到 20:1x。
+- reviewer（`shared/reviews/iter-70/REVIEW.md`，4 款逐款 A/B，對照 = iter-68 版；20:1x 完成）：錨點 6.25；對照 6.5 / 6 / 7 / 6.5 / 6 / 7 = 6.50；本輪 7 / 6.5 / 7 / 7 / 6.5 / 7 = **6.83**（只評 4 款修改款）→ 20/20 × 50 ＋ 6.83 × 5 = 84.17。整體 A/B：比例、風格感、設計、材質好，原創性、零件持平。
+- 逐款 A/B：lowline（比例、風格感、設計好）、hinge（風格感、設計好）、prism（風格感、設計、材質好）、cicada（風格感、設計、材質好）——**4 款沒有任何一項「差」→ 全保留**。原創性 4 款全「否」；prism LG2 國際代表隊禁用項通過（附帶：白殼＋偏藍色帶＋架高尾翼往 White Night 靠近兩項，之後不要再更藍或加大尾翼）。
+- 仍需改進：lowline 甲板中段仍平、車尾像薄板；hinge 折線太淡；prism 稜鏡尾翼像 GT 翼（改兩端三角側板承托）；cicada Blender 複眼像薄荷色果凍。
+
+## iter-71（20:1x 重啟）：依 iter-69 評審精修 8 款（3 個 subagent，iter-70 期間開始、用量上限中斷後續跑）
+### 規劃
+- iter-71-a（race）：fastback 鼻端到前葉子板殼面凹凸；trail Blender 側窗反光成白色長方形。
+- iter-71-b（LG2）：zeppelin 輪拱切口露黑色殼內面；griffin 號碼板 / 輪拱碎點；hydroplane 側面上緣波浪。
+- iter-71-c（LG1）：mantis 複眼燈與擋泥板之間折痕；marlin 俯視圓角面深一階色帶；**dartfrog × halo 俯視 IoU 0.8482 → ≤ 0.83**（餘裕護欄）。
+- 同 `/tmp/polish-brief.md`：只改評審指出的問題，逐款嚴格 A/B，有「差」整款 revert。
+
+### 執行
+- fastback：鼻端剖面覆寫表延伸到鼻尖、單調收斂（凹凸消失）；後輪頂俯視外露因 IoU 不動。
+- trail：側窗外凸 0.7 mm 微弧、材質 `pc-smoke-side-window`（淡煙燻）、一道分格窗框。
+- zeppelin：輪拱擋泥唇＋錫灰內襯 0x4b4f56。griffin：號碼板與輪拱碎點清掉。hydroplane：側面上緣與腰線部分順平。
+- mantis：複眼燈前移＋頭殼分件線；胸部波紋未修好 → 該部分 subagent 自行 revert。
+- marlin：`front-fender-fairings` 法線方向反轉（俯視不再是深色帶）。
+- dartfrog：後腿半寬 46.5 → 44.5、腰部收窄；× halo 0.8482 → 0.829。
+- 合併 `b3fbf6d`；合併後最高 IoU：cicada × prism 0.8476、zeppelin × prism 0.8463、fastback × lowline 0.8439（全部 < 0.85）。
+
+### 驗證
+- `node scripts/score.mjs`：**20/20**（20:18）。Blender 8 款（20:19–20:45）。
+- reviewer（`shared/reviews/iter-71/REVIEW.md`，8 款逐款 A/B，對照 = iter-69 版、dartfrog 對照 = iter-66 版）：錨點 6.25；對照 7 / 6.5 / 7 / 6.5 / 6 / 7 = 6.67；本輪 7 / 6.5 / 7 / 7 / 6.5 / 7 = **6.83**（只評 8 款修改款）→ 20/20 × 50 ＋ 6.83 × 5 = 84.17。整體 A/B：設計、材質好，其餘持平。
+- 逐款 A/B：fastback（設計、材質好）、trail（設計好；Blender 側窗後半格仍白色反光 → 材質持平）、griffin（持平，碎點消失但改善小）、zeppelin（設計好）、hydroplane（設計、材質好）、mantis（設計好）、marlin（設計好）、dartfrog（全持平，只有 IoU 效果）——**8 款沒有任何一項「差」→ 全保留**。原創性 8 款全「否」；LG2 國際代表隊禁用項通過（提醒：hydroplane 黃＋紺不要做成十字 / 上下分色；zeppelin 不要加深灰＋紅或黑＋黃細線）。
+- 仍需改進：trail Blender 側窗反光；mantis 前胸波浪反光；fastback 鼻部正面太寬平。dartfrog 不要再收窄（蹲伏後腿感會消失）。
