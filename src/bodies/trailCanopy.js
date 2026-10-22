@@ -38,7 +38,30 @@ const T = monoTable([-71, -66, -60, -52, -42, -30, -18, -6, 2, 10, 18, 26, 31, 3
 });
 
 /** @type {{ x: number, pts: number[][] }[]} */
-const STATIONS = cabinStations(T, X_TAIL, X_NOSE);
+/**
+ * 側窗微弧（iter-71）：在第 2 點（罩頂邊）與第 3 點（罩下緣）之間插入一點，沿外法線鼓出 0.7 mm（x 4 → 28 全量，前後各 4 mm 漸收）。
+ * iter-69 的側窗是兩個稜線點之間的直線 → 平面，Blender 側視把燈光整片反射成白色長方形；微弧讓反光縮成一道漸層帶。
+ * 共用的 cabinStations 不動，只在本檔對它的結果插點（第 3 點以後的索引 +1）
+ * @type {(x: number) => number}
+ */
+const sideBulge = (x) => {
+  if (x < 0 || x > 32) {
+    return 0;
+  }
+  const w = Math.min(1, x / 4, (32 - x) / 4);
+  return 0.7 * w;
+};
+
+/** @type {{ x: number, pts: number[][] }[]} */
+const STATIONS = cabinStations(T, X_TAIL, X_NOSE).map(({ x, pts }) => {
+  const [z2, y2] = pts[2];
+  const [z3, y3] = pts[3];
+  const len = Math.hypot(z3 - z2, y3 - y2) || 1;
+  const b = sideBulge(x);
+  // 外法線（朝外、朝上）：(−dy, dz) / len
+  const mid = [(z2 + z3) / 2 + (b * -(y3 - y2)) / len, (y2 + y3) / 2 + (b * (z3 - z2)) / len];
+  return { x, pts: [...pts.slice(0, 3), mid, ...pts.slice(3)] };
+});
 
 /** @type {(x: number) => number} 座艙罩下緣高度 */
 const beltY = (x) => Math.min(T('yBelt', x), T('yC', x) - T('dr', x) - 0.2);
@@ -60,6 +83,19 @@ const shieldFrameKeep = (x, y, z) => {
   return Math.min(canopyKeep(x, y, z), Math.max(header, pillar));
 };
 
+/**
+ * 側窗（iter-71）：擋風上緣橫樑之後、罩頂邊稜線外側的座艙罩側面，改用淡煙燻 PC（Blender 依名稱 pc-smoke → glass 薄殼煙燻材質），
+ * 和透明的擋風、罩頂分開；回傳 > 0 = 在側窗內
+ * @type {KeepFn}
+ */
+const sideWindowKeep = (x, y, z) => Math.min(canopyKeep(x, y, z), Math.abs(z) - T('cw', x) - 0.6, 30.2 - x);
+
+/**
+ * 側窗分格窗框（iter-71）：x 14 一道 1 mm 寬的直框，把側窗分成前後兩格（內噴黑）
+ * @type {KeepFn}
+ */
+const sideMullionKeep = (x, y, z) => Math.min(sideWindowKeep(x, y, z) + 0.6, 0.5 - Math.abs(x - 14));
+
 /** @type {KeepFn} 馬達上方的透明檢視窗（比賽 PC 殼常見的「留透明窗」）：引擎蓋中央 x −8 → −40 */
 const deckWindowKeep = (x, y, z) => Math.min(-9 - x, x + 40, 9.5 - Math.abs(z), y - 28);
 
@@ -79,6 +115,8 @@ const materials = () => ({
   char: namedMaterial('pc-paint-charcoal', { color: 0x24262a, roughness: 0.35, clearcoat: 1.0, clearcoatRoughness: 0.08 }),
   char2: namedMaterial('pc-paint-charcoal', { color: 0x24262a, roughness: 0.35, clearcoat: 1.0, side: THREE.DoubleSide }),
   // 透明座艙罩、檢視窗（淡煙燻透明 PC）
+  // 側窗淡煙燻 PC（iter-71）：app 裡比擋風略深，Blender 走 glass（煙燻薄殼、反射色 0.7、粗糙 0.1），不會整片反白
+  sideGlass: namedMaterial('pc-smoke-side-window', { color: 0x6f7c88, roughness: 0.08, specularIntensity: 0.4, transparent: true, opacity: 0.42, envMapIntensity: 0.3, depthWrite: false }),
   clear: namedMaterial('pc-clear-shell', { color: 0xdbe6ef, roughness: 0.04, specularIntensity: 0.5, transparent: true, opacity: 0.2, envMapIntensity: 0.4, depthWrite: false }),
   frame: namedMaterial('pc-paint-black', { color: 0x111214, roughness: 0.2, clearcoat: 1.0, clearcoatRoughness: 0.05 }),
   inner: namedMaterial('pc-clear-shell-inner', { color: 0x2a2c30, roughness: 0.6, side: THREE.BackSide }),
@@ -110,9 +148,9 @@ export const trailCanopyBody = makePolyBody({
   wallThickness_mm: 0.5,
   stations: STATIONS,
   tuck: 0.8,
-  // 平滑剖面；罩頂邊（第 2 點）、座艙罩下緣（第 3 點）與側箱上稜（第 6 點）為稜線
-  // （iter-69 加第 2 點：罩頂淺曲面與側窗平面之間有折線，側窗是平面，不再是圓泡）
-  hard: [2, 3, 6],
+  // 平滑剖面；罩頂邊（第 2 點）、座艙罩下緣（第 4 點）與側箱上稜（第 7 點）為稜線（iter-71 插入側窗微弧點後索引 +1）
+  // （iter-69 加罩頂邊稜線：罩頂淺曲面與側窗之間有折線，不再是圓泡；iter-71 側窗由平面改成 0.7 mm 微弧）
+  hard: [2, 4, 7],
   wheelArches: [
     { x: 40, y: 13, radius: 15.5, cutZFrom: 23.8 },
     { x: -40, y: 13, radius: 15.5, cutZFrom: 23.8 },
@@ -160,6 +198,8 @@ export const trailCanopyBody = makePolyBody({
   innerSkipRecess: true,
   zones: () => [
     { mat: 'frame', keep: shieldFrameKeep },
+    { mat: 'frame', keep: sideMullionKeep },
+    { mat: 'sideGlass', keep: sideWindowKeep },
     { mat: 'clear', keep: canopyKeep },
     // 座艙罩外圍 0.8 mm 內噴黑框
     { mat: 'frame', keep: (x, y, z, s) => canopyKeep(x, y, z, s) + 0.8 },
