@@ -10,7 +10,7 @@ import { monoCurve, buildStations, sdCircle } from './gazelleLeap.js';
 /** @typedef {import('./loft.js').BodyPart} BodyPart */
 
 /** 站位參數表（x 由後到前，前後軸 x = ±40） */
-const XS = [-75, -68, -60, -50, -40, -28, -14, 0, 14, 28, 40, 50, 58, 65, 71, 76, 79, 80.5];
+const XS = [-72, -66, -60, -50, -40, -28, -14, 0, 14, 28, 40, 50, 58, 65, 70.5, 75.3, 78.2, 79.6];
 /** @type {Record<string, (x: number) => number>} */
 const P = {
   // 雪茄軸線高度：圓錐尾往上收（後上導輪之上），前段保持 21.5
@@ -39,7 +39,7 @@ const profile = (x) => {
 };
 
 // 圓鼻、圓錐尾段每 1 mm 一站（曲率大）
-const STATIONS = [...buildStations(-75, -60, 1, profile).slice(0, -1), ...buildStations(-60, 64, 2, profile).slice(0, -1), ...buildStations(64, 80.5, 0.75, profile)];
+const STATIONS = [...buildStations(-72, -60, 1, profile).slice(0, -1), ...buildStations(-60, 64, 2, profile).slice(0, -1), ...buildStations(64, 79.6, 0.75, profile)];
 
 /** 觀景窗帶（俯視圓角長條，中線兩側各 7 mm） */
 const WINDOW = { x0: -36, x1: 30, hz: 7 };
@@ -73,7 +73,7 @@ const materials = () => ({
 
 /**
  * X 形尾舵（單片）：以尾部軸線 (x, yA) 為支點，鰭從軸線往上（dir = 1）或往下（dir = −1）伸出 span，再繞 x 軸傾 tiltDeg
- * root / tip 為 [x前緣, x後緣]（後緣不超出車尾 x = −75）
+ * root / tip 為 [x前緣, x後緣]（後緣不超出車尾 x = −72）
  * @type {(root: number[], tip: number[], span: number, dir: number, tiltDeg: number) => THREE.BufferGeometry}
  */
 const buildRudder = (root, tip, span, dir, tiltDeg) => {
@@ -147,7 +147,7 @@ export const zeppelinXtailBody = makePolyBody({
   sideZMin: 36,
   zones: () => [
     // 奶油白鼻帽（半球形圓鼻）
-    { mat: 'cream', keep: (x) => x - 74.5 },
+    { mat: 'cream', keep: (x) => x - 73.8 },
     // 訊號橘鼻環
     { mat: 'orange', keep: (x) => x - 70.5 },
     // 奶油白下半船身：軸線以下（飛船吊艙側的分色）
@@ -169,9 +169,9 @@ export const zeppelinXtailBody = makePolyBody({
     const bars = buildRegion(kit.surf, [(x, y, z) => Math.min(0.6 - Math.min(Math.abs(x + 14), Math.abs(x - 8)), 0.5 - windowSd(x, y, z))], { offset: 0.35 });
     parts.push({ geometry: bars.geometry, mat: 'frame', name: 'window-bars' });
     // 鼻尖繫留錐（石墨灰金屬小圓錐，往前尖出）
-    const cone = new THREE.ConeGeometry(2.4, 3.6, 24);
+    const cone = new THREE.ConeGeometry(2.0, 1.6, 24);
     cone.rotateZ(-Math.PI / 2);
-    cone.translate(80.5 + 1.6, P.yA(80.5), 0);
+    cone.translate(79.6 + 0.8, P.yA(79.6), 0);
     parts.push({ geometry: cone, mat: 'frame', solid: true, outline: true, name: 'mooring-cone' });
 
     // 輪拱內襯（前後，31 mm 大輪拱）：擋住從側面看進去的殼內空腔
@@ -183,10 +183,10 @@ export const zeppelinXtailBody = makePolyBody({
     });
     // X 形尾舵（L2-1 外露機能件「穩定舵」）：上兩片外上 45°、下兩片外下 45°（下片較短，保持離地與導輪間隙），後緣不超出車尾
     const rudders = [
-      buildRudder([-56, -74], [-67, -74.5], 21, 1, -45),
-      buildRudder([-56, -74], [-67, -74.5], 21, 1, 45),
-      buildRudder([-60, -74], [-68, -74.5], 11.5, -1, -45),
-      buildRudder([-60, -74], [-68, -74.5], 11.5, -1, 45),
+      buildRudder([-55, -71.5], [-65, -72], 21, 1, -45),
+      buildRudder([-55, -71.5], [-65, -72], 21, 1, 45),
+      buildRudder([-58, -71.5], [-66, -72], 11.5, -1, -45),
+      buildRudder([-58, -71.5], [-66, -72], 11.5, -1, 45),
     ];
     parts.push({ geometry: mergeGeos(rudders), mat: 'orange2', solid: true, outline: true, name: 'x-tail-rudders' });
 
@@ -214,7 +214,7 @@ export const zeppelinXtailBody = makePolyBody({
     });
     // 分色線上的訊號橘細帶（從鼻環沿軸線拉到圓錐尾）
     parts.push({
-      geometry: kit.decal((x, y, z) => (Math.abs(z) > 16 ? Math.min(0.6 - Math.abs(y - (P.yA(x) + 0.2)), 70.5 - x, x + 70) : -1)),
+      geometry: kit.decal((x, y, z) => (Math.abs(z) > 16 ? Math.min(0.6 - Math.abs(y - (P.yA(x) + 0.2)), 70.5 - x, x + 67.5) : -1)),
       mat: 'dOrange',
       name: 'decal-axis-stripe',
     });
@@ -224,7 +224,7 @@ export const zeppelinXtailBody = makePolyBody({
     parts.push({ geometry: kit.decal(sideDecal(numSd, { x0: NUM.x0, y0: NUM.y0, zMin: 30 }), { offset: 0.1 }), mat: 'dOrange', name: 'decal-number' });
     // 鼻帽兩側一對圓形探照燈（V14）
     parts.push({
-      geometry: kit.decal((x, y, z) => (y > 20 ? -sdCircle(76.5, 4.2, 1.5)(x, Math.abs(z)) : -1), { offset: 0.1 }),
+      geometry: kit.decal((x, y, z) => (y > 20 ? -sdCircle(75.8, 4.2, 1.5)(x, Math.abs(z)) : -1), { offset: 0.1 }),
       mat: 'lamp',
       name: 'lamp-searchlights',
     });
@@ -232,13 +232,13 @@ export const zeppelinXtailBody = makePolyBody({
     parts.push({ geometry: kit.decal((x) => 1.6 - Math.abs(x + 52)), mat: 'dOrange', name: 'decal-tail-ring' });
     parts.push({ geometry: kit.decal((x) => 0.5 - Math.abs(Math.abs(x + 52) - 2.3)), mat: 'dCream', name: 'decal-tail-ring-trim' });
     // 圓錐尾端紅色尾燈環
-    parts.push({ geometry: kit.decal((x) => Math.min(-72.5 - x, x + 74.2)), mat: 'tail', name: 'lamp-tail' });
+    parts.push({ geometry: kit.decal((x) => Math.min(-69.8 - x, x + 71.4)), mat: 'tail', name: 'lamp-tail' });
     return parts;
   },
   src: {
     density_g_cm3: 'SPEC 1.14：ABS 約 1.05 g/cm³（推估）',
     wallThickness_mm: '推估：射出 ABS 殼 0.8 mm（同其他致敬款）；觀景窗片同厚度，以殼面積計入質量',
-    geometry: '本檔站位產生器 P（推估）：長約 155、殼頂約 38、上舵尖約 40（HOMAGE_RESEARCH 6-5-2 P3）；前後輪拱 R17.5（31 mm 輪胎半徑 15.5 + 2 mm）',
+    geometry: '本檔站位產生器 P（推估）：長約 154（iter-67 修正卡橋：車尾 −75 → −72、繫留錐縮短；物理碰撞方塊長度 = 車殼外框長）、殼頂約 38、上舵尖約 40（HOMAGE_RESEARCH 6-5-2 P3）；前後輪拱 R17.5（31 mm 輪胎半徑 15.5 + 2 mm）',
     rudders: 'X 形尾舵為實心 ABS 件（厚 1.6 mm 翼型），質量 = 封閉體積 × 1.05 g/cm³（推估）',
     mounts: '對齊 chassis-midship 的車殼安裝點（SPEC 1.14）',
   },
