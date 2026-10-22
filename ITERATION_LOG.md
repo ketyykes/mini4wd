@@ -2524,7 +2524,7 @@
 ### 規劃
 1. 主 agent（零件）：新 slot `counterShaft`（中間齒輪軸 / 培林）——`counter-shaft-standard`、`gear-shaft-ptfe`（15390，TW18）、`counter-bearing-520`（15347，TW17）；中間齒輪軸承的 μ 與輪軸軸承分開。`roller-9-bearing`（15344，TW07）、`roller-11-bearing`（15345，TW08）。
 2. 車殼 subagent（獨立 worktree，只准改 5 款車殼檔）：依 iter-55 評審修 dartfrog 主色與蹼翼、marlin 銀白與前輪罩、gazelle / dartfrog 鼻部折面、tortoise 車尾白邊、owl 羽紋。
-- 預期：塑膠軸承時 含氟軸 / 培林組 → 中間齒輪損失 k_c 變小、極速略高、斷電減速較少；輪軸用培林時含氟軸無作用。新零件累計 11 款、5 類（加傳動）。
+- 預期：塑膠軸承時 含氟軸 / 培林組 → 中間齒輪損失 k_c 變小、極速略高、斷電減速較少；輪軸用培林時含氟軸無作用。新零件累計 10 款、5 類（加傳動）（13:10 更正：原寫 11 款）。
 
 ### 執行（零件）
 - `src/parts/counterShafts.js`：中間齒輪軸承 μ 的規則寫在 `assembly.js counterBearingFriction`（自帶培林 → 培林 μ；否則跟輪軸軸承 slot：培林 → 培林 μ、塑膠軸承 → 軸對塑膠軸承的 μ）；`spec.bearings.counterFrictionCoeff` → `P.counterBearingMu` → `powertrain.counterGearLossFraction`。物理公式本身不變，只是 μ 改用中間齒輪自己的值（不是倍率捷徑）。
@@ -2554,7 +2554,7 @@
 
 ### 驗證（煞車架）
 - `node scripts/score.mjs`：**20/20**（12:19）。外觀：只新增選項，預設車不變。
-- 決策：**保留**（煞車架部分）；新零件累計 12 款、6 類（導輪、馬達、輪胎、制振、傳動、煞車）。滑動保桿等 subagent 回報後另行合併。
+- 決策：**保留**（煞車架部分）；新零件累計 11 款、6 類（13:10 更正：原寫 12 款）（導輪、馬達、輪胎、制振、傳動、煞車）。滑動保桿等 subagent 回報後另行合併。
 
 ## iter-61（12:10 起）：車殼修正 5 款（subagent）＋前滑動保桿（subagent）合併、逐款 A/B
 ### 規劃
