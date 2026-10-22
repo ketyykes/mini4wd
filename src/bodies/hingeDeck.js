@@ -7,7 +7,7 @@
 import * as THREE from 'three';
 import { makePolyBody, buildDriver, finPlate } from './polyBody.js';
 import { namedMaterial, decalMaterial, sdNumber, topDecal, sideDecal, sdRoundRect, mergeGeos } from './loft.js';
-import { monoTable, cabinStations } from './fastbackCabin.js';
+import { monoTable } from './fastbackCabin.js';
 
 /** @typedef {import('./loft.js').KeepFn} KeepFn */
 
@@ -56,8 +56,45 @@ const T = monoTable([-46, -42, -36, -28, -20, -14, -8, 0, 6, 12, 18, 24, 30, 38,
   yLow: [24.0, 23.0, 21.5, 20.5, 20.0, 19.8, 19.6, 19.6, 19.6, 19.6, 19.6, 19.8, 19.0, 18.0, 17.0, 16.0, 15.5, 14.6, 14.0],
 });
 
-/** @type {{ x: number, pts: number[][] }[]} */
-const STATIONS = cabinStations(T, X_TAIL, X_NOSE);
+/** @type {number} 甲板外側斜面的額外落差（iter-70：肩稜比原表再低 1.4 mm，甲板外側成為一道斜切面） */
+const CHAMFER_DROP = 1.4;
+
+/**
+ * 半剖面站位（每 2 mm 一站，8 點；點的意義同 fastbackCabin.js 的 cabinStations）。
+ * iter-70（評審 iter-68「殼面平順泛用，和概念圖的折面造型差很多」）：第 4 點（甲板寬度 55% 處）改成幾乎和甲板內緣等高，
+ * 之後到肩稜一口氣斜切下去（肩稜再低 CHAMFER_DROP），第 4 點設為硬稜 → 甲板左右各多一道從鼻端到殼尾的縱向折線
+ * @type {{ x: number, pts: number[][] }[]}
+ */
+const STATIONS = (() => {
+  const xs = [];
+  for (let x = X_TAIL; x < X_NOSE; x += 2) {
+    xs.push(x);
+  }
+  xs.push(X_NOSE);
+  return xs.map((x) => {
+    const yC = T('yC', x);
+    const cw = T('cw', x);
+    const dr = T('dr', x);
+    const bw = Math.max(T('bw', x), cw + 1);
+    const yBelt = Math.min(T('yBelt', x), yC - dr - 0.2);
+    const hw = Math.max(T('hw', x), bw + 2);
+    const ySh = Math.min(T('ySh', x) - CHAMFER_DROP, yBelt - 1.2);
+    const yLow = Math.min(T('yLow', x), ySh - 0.6);
+    const zCrease = bw + 0.55 * (hw - bw);
+    const yCrease = yBelt - 0.1 * (yBelt - ySh);
+    const pts = [
+      [0, yC],
+      [0.5 * cw, yC - 0.28 * dr],
+      [cw, yC - dr],
+      [bw, yBelt],
+      [zCrease, yCrease],
+      [hw - 0.5, ySh + 0.12 * (yCrease - ySh)],
+      [hw, ySh],
+      [hw, yLow],
+    ];
+    return { x, pts };
+  });
+})();
 
 /** @type {(x: number) => number} 甲板高度（座艙下緣） */
 const deckY = (x) => Math.min(T('yBelt', x), T('yC', x) - T('dr', x) - 0.2);
@@ -160,15 +197,19 @@ const buildWeight = () => {
   return holedPlate(outline, [circle(x, z - holeZ, holeR), circle(x, z + holeZ, holeR)], PLATE_Y + PLATE_T, h);
 };
 
-/** @type {() => THREE.BufferGeometry} 2 組 M2 螺絲（圓頭＋桿＋板下六角螺帽，推估尺寸） */
+/**
+ * 2 組 M2 沉頭螺絲（iter-70，評審：「配重頂上兩顆圓頭像積木凸點」）：頭部是倒錐（頂 Ø3.8 → 底 Ø2.0、高 1.0），
+ * 頂面只比配重頂面高 0.05 mm（沉進配重的錐形沉孔）；桿＋板下六角螺帽同前。內六角孔另外做成黑色件（buildScrewSockets）
+ * @type {() => THREE.BufferGeometry}
+ */
 const buildScrews = () => {
   const geos = [];
   const yTop = PLATE_Y + PLATE_T + WEIGHT.h;
   for (const zc of [WEIGHT.z - WEIGHT.holeZ, WEIGHT.z + WEIGHT.holeZ]) {
-    const head = new THREE.CylinderGeometry(1.9, 1.9, 1.2, 20);
-    head.translate(WEIGHT.x, yTop + 0.6, zc);
+    const head = new THREE.CylinderGeometry(1.9, 1.0, 1.0, 24);
+    head.translate(WEIGHT.x, yTop - 0.45, zc);
     const shank = new THREE.CylinderGeometry(1.0, 1.0, yTop - PLATE_Y, 12);
-    shank.translate(WEIGHT.x, (yTop + PLATE_Y) / 2, zc);
+    shank.translate(WEIGHT.x, (yTop + PLATE_Y) / 2 - 0.5, zc);
     const nut = new THREE.CylinderGeometry(2.0, 2.0, 1.6, 6);
     nut.translate(WEIGHT.x, PLATE_Y - 0.8, zc);
     geos.push(head, shank, nut);
@@ -176,46 +217,77 @@ const buildScrews = () => {
   return mergeGeos(geos);
 };
 
-/** @type {number} 樞軸中心 x（殼前端，前卡座之前） */
-const PIVOT_X = 58.5;
-/** @type {number} 樞軸中心 y */
-const PIVOT_Y = 15.4;
+/** @type {(x: number, y: number, z: number, axis: 'y' | 'z') => THREE.BufferGeometry} 內六角孔（黑色六角薄片，對邊 1.5 mm） */
+const hexSocket = (x, y, z, axis) => {
+  const g = new THREE.CylinderGeometry(0.87, 0.87, 0.12, 6);
+  if (axis === 'z') {
+    g.rotateX(Math.PI / 2);
+  }
+  g.translate(x, y, z);
+  return g;
+};
 
-/** @type {() => THREE.BufferGeometry} 鉸接耳（左右各一片 1.2 mm 立板：從側裙內側往下延伸，下端圓頭包住樞軸） */
+/** @type {() => THREE.BufferGeometry} 配重沉頭螺絲頂面的內六角孔 */
+const buildScrewSockets = () => {
+  const yTop = PLATE_Y + PLATE_T + WEIGHT.h;
+  return mergeGeos([WEIGHT.z - WEIGHT.holeZ, WEIGHT.z + WEIGHT.holeZ].map((zc) => hexSocket(WEIGHT.x, yTop + 0.06, zc, 'y')));
+};
+
+/** @type {number} 樞軸中心 x（殼前端，前卡座之前；iter-70：58.5 → 59.5） */
+const PIVOT_X = 59.5;
+/** @type {number} 樞軸中心 y（iter-70：15.4 → 14.2，鉸接耳往下伸出側裙，側視看得到圓頭） */
+const PIVOT_Y = 14.2;
+/** @type {number} 鉸接耳板厚（mm，ABS） */
+const LUG_T = 1.8;
+/** @type {number} 鉸接耳下端圓頭半徑（iter-70：2.4 → 3.6） */
+const LUG_R = 3.6;
+/** @type {() => number} 鉸接耳中心面 |z|：貼在殼外側（iter-70：原本在側裙內側 hw − 0.9，從外面幾乎看不到） */
+const lugZ = () => T('hw', PIVOT_X) + LUG_T / 2 + 0.1;
+
+/**
+ * 鉸接耳（左右各一片 1.8 mm ABS 立板，iter-70 移到殼外側並放大）：上緣貼著側裙外側往上蓋 2.2 mm，
+ * 下端以 R3.6 圓頭包住樞軸（側視圓頭整個在側裙下方）
+ * @type {() => THREE.BufferGeometry}
+ */
 const buildHingeLugs = () => {
   const geos = [];
-  const hw = T('hw', PIVOT_X);
   const pts = [];
-  // 側視外形：上緣貼著側裙（重疊 1.5 mm），下端以 R2.4 圓頭包住樞軸
-  const top = T('yLow', PIVOT_X) + 1.5;
-  pts.push([PIVOT_X - 3.2, top], [PIVOT_X + 2.6, top]);
-  for (let i = 0; i <= 10; i++) {
-    const a = (Math.PI * i) / 10;
-    pts.push([PIVOT_X + 2.4 * Math.cos(a), PIVOT_Y - 2.4 * Math.sin(a)]);
+  const top = T('yLow', PIVOT_X) + 2.2;
+  pts.push([PIVOT_X - 4.6, top], [PIVOT_X + 3.8, top]);
+  for (let i = 0; i <= 14; i++) {
+    const a = (Math.PI * i) / 14;
+    pts.push([PIVOT_X + LUG_R * Math.cos(a), PIVOT_Y - LUG_R * Math.sin(a)]);
   }
   for (const s of [-1, 1]) {
-    geos.push(finPlate(pts, s * (hw - 0.9), 1.2));
+    geos.push(finPlate(pts, s * lugZ(), LUG_T));
   }
   return mergeGeos(geos);
 };
 
-/** @type {() => THREE.BufferGeometry} 樞軸銷（左右各一支 Ø1.6 短鋼銷穿過鉸接耳、插進底盤前端的銷座；外側 Ø3 圓頭外露） */
+/**
+ * 樞軸銷（左右各一支 Ø2.4 鋼銷穿過鉸接耳、插進底盤前端的銷座；外側 Ø5.2 × 1.2 圓頭外露，頭上有內六角孔）
+ * @type {() => THREE.BufferGeometry}
+ */
 const buildPivotPin = () => {
-  const hw = T('hw', PIVOT_X);
+  const zl = lugZ();
   const geos = [];
   for (const s of [-1, 1]) {
-    const pin = new THREE.CylinderGeometry(0.8, 0.8, 3.2, 12);
+    const pin = new THREE.CylinderGeometry(1.2, 1.2, 5.0, 14);
     pin.rotateX(Math.PI / 2);
-    pin.translate(PIVOT_X, PIVOT_Y, s * (hw - 1.4));
+    pin.translate(PIVOT_X, PIVOT_Y, s * (zl - 1.6));
     geos.push(pin);
-  }
-  for (const s of [-1, 1]) {
-    const cap = new THREE.CylinderGeometry(1.5, 1.5, 0.8, 16);
+    const cap = new THREE.CylinderGeometry(2.6, 2.6, 1.2, 24);
     cap.rotateX(Math.PI / 2);
-    cap.translate(PIVOT_X, PIVOT_Y, s * (hw + 0.1));
+    cap.translate(PIVOT_X, PIVOT_Y, s * (zl + LUG_T / 2 + 0.6));
     geos.push(cap);
   }
   return mergeGeos(geos);
+};
+
+/** @type {() => THREE.BufferGeometry} 樞軸銷頭外側的內六角孔 */
+const buildPinSockets = () => {
+  const z = lugZ() + LUG_T / 2 + 1.2 + 0.06;
+  return mergeGeos([-1, 1].map((s) => hexSocket(PIVOT_X, PIVOT_Y, s * z, 'z')));
 };
 
 /** @type {() => Record<string, THREE.Material>} */
@@ -260,8 +332,8 @@ export const hingeDeckBody = makePolyBody({
   wallThickness_mm: 0.4,
   stations: STATIONS,
   tuck: 0.6,
-  // 平滑剖面；脊線根部（第 2 點）、甲板內緣（第 3 點）、肩稜（第 6 點）為銳利稜線
-  hard: [2, 3, 6],
+  // 平滑剖面；脊線根部（第 2 點）、甲板內緣（第 3 點）、甲板折線（第 4 點，iter-70）、肩稜（第 6 點）為銳利稜線
+  hard: [2, 3, 4, 6],
   // 殼半寬在輪胎段 ≤ 23.5，不需要輪拱
   wheelArches: [],
   sideZMin: 18,
@@ -288,7 +360,9 @@ export const hingeDeckBody = makePolyBody({
     parts.push({ geometry: buildScrews(), mat: 'steel', solid: { density_g_cm3: RHO_STEEL }, name: 'pivot-weight-screws' });
     // 前端鉸接耳（ABS）＋樞軸銷（鋼）
     parts.push({ geometry: buildHingeLugs(), mat: 'hinge', solid: { density_g_cm3: RHO_ABS }, outline: true, name: 'hinge-lugs' });
-    parts.push({ geometry: buildPivotPin(), mat: 'steel', solid: { density_g_cm3: RHO_STEEL }, name: 'hinge-pin' });
+    parts.push({ geometry: buildPivotPin(), mat: 'steel', solid: { density_g_cm3: RHO_STEEL }, outline: true, name: 'hinge-pin' });
+    // 內六角孔（黑色薄片，視覺件，不計質量）
+    parts.push({ geometry: mergeGeos([buildScrewSockets(), buildPinSockets()]), mat: 'hinge', name: 'screw-sockets' });
     // 甲板外緣黑色細線（鈷藍側裙內側，沿全長）
     parts.push({
       geometry: kit.decal((x, y, z) => Math.min(0.35 - Math.abs(Math.abs(z) - (T('hw', x) - 2.2)), x + 44, 62 - x, -(glassKeep(x, y, z, 0) + 0.8))),

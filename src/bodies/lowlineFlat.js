@@ -5,37 +5,88 @@
 // 設計：shared/design/body-lowline-flat/DESIGN.md。剖面由本檔縱向控制表產生（推估，依外框限制與底盤高度掃描）。
 // 塗裝全為自創：深紅甲板＋石墨灰側裙、白色雙細線、白色圓形號碼底「88」；不含任何廠商名稱、商標或真實車名。
 import * as THREE from 'three';
-import { makePolyBody, buildDriver } from './polyBody.js';
+import { makePolyBody, buildDriver, sweepEllipse } from './polyBody.js';
 import { namedMaterial, decalMaterial, sdNumber, sdRoundRect, sideDecal, topDecal, mergeGeos } from './loft.js';
-import { monoTable, cabinStations } from './fastbackCabin.js';
+import { monoTable } from './fastbackCabin.js';
 
 /** @typedef {import('./loft.js').KeepFn} KeepFn */
 
-/** @type {number} 車尾 x */
-const X_TAIL = -75;
-/** @type {number} 鼻端 x */
-const X_NOSE = 75;
+/** @type {number} 車尾 x（iter-70：−75 → −71，車尾往內收、不蓋在後導輪正上方） */
+const X_TAIL = -71;
+/** @type {number} 鼻端 x（iter-70：75 → 72，鼻部收斂成圓鼻、不蓋在前導輪正上方） */
+const X_NOSE = 72;
 
 /**
- * 縱向控制表（推估；欄位意義同 fastbackCabin.js 的 cabinStations）：
- * - yC：甲板中線。尾端 25.4 平直 → 座艙段 25.6 → 前甲板 25.0（前齒輪箱 y ≤ 21.4 上方留 ≥ 3 mm）→ 鼻端斜降到 16.8
- * - cw / dr：甲板中央平坦區半寬與微拱；bw / yBelt：甲板外側（肩部圓角起點）
- * - hw / ySh：最寬處與肩稜；yLow：側裙下緣（中段 y 10.5 一直線；前後輪後方抬高，避開前導輪頂 12.5、後上導輪頂 20.5）
- * 平面：鼻端半寬 38 → x 68 處 45.5 → 全長大部分 46（等寬，全寬 92）→ 尾端 43（方正的圓角長方形）
+ * 縱向控制表（推估）：
+ * - yC：甲板中線。尾端 24.8 → 座艙段 25.6 → 前甲板 25.0（前齒輪箱 y ≤ 21.4 上方留 ≥ 3 mm）→ 鼻端斜降到 17
+ * - hw / ySh：最寬處與肩稜；yLow：側裙下緣（中段 y 10.5 一直線；後輪後方抬高，避開後上導輪頂 20.5）
+ * iter-70（評審 iter-68「等寬長方形平板、前後看不出方向、像托盤」）：平面改成
+ * 鼻端圓鼻（x 56 → 72 半寬 44.5 → 21，鼻尖收在前導輪 |z| 36 以內）、車尾收斂（x −62 → −71 半寬 44 → 33）、
+ * 前葉子板 46、前後輪之間 44、後葉子板 45（後段略窄於前段，和 halo-orbit 的寬後段拉開俯視 IoU）——仍是全組最寬（92）最低的平甲板，但看得出車頭和車尾
  */
-const T = monoTable([-75, -72, -68, -64, -60, -54, -44, -30, -14, 0, 14, 30, 44, 54, 62, 68, 72, 75], {
-  yC: [25.4, 25.5, 25.6, 25.6, 25.6, 25.6, 25.6, 25.6, 25.6, 25.6, 25.6, 25.4, 25.0, 24.2, 22.6, 20.6, 18.8, 16.8],
-  cw: [16, 17, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 17, 16, 14, 11, 8],
-  dr: [0.3, 0.3, 0.3, 0.3, 0.3, 0.3, 0.3, 0.3, 0.3, 0.3, 0.3, 0.3, 0.3, 0.3, 0.3, 0.3, 0.3, 0.3],
-  bw: [36, 39, 40, 40, 40, 40, 40, 40, 40, 40, 40, 40, 40, 40, 40, 39, 36, 30],
-  yBelt: [24.8, 24.9, 25.0, 25.0, 25.0, 25.0, 25.0, 25.0, 25.0, 25.0, 25.0, 24.8, 24.4, 23.6, 22.0, 20.0, 18.2, 16.3],
-  hw: [43, 45.5, 46, 46, 46, 46, 46, 46, 46, 46, 46, 46, 46, 46, 46, 45.5, 43.5, 38],
-  ySh: [23.4, 23.4, 23.4, 23.4, 23.4, 23.4, 23.4, 23.4, 23.4, 23.4, 23.4, 23.2, 22.8, 22.0, 20.4, 18.6, 17.0, 15.6],
-  yLow: [22.2, 22.2, 22.0, 21.6, 16.0, 11.5, 10.5, 10.5, 10.5, 10.5, 10.5, 10.5, 10.5, 11.5, 13.5, 14.0, 14.5, 15.0],
+const T = monoTable([-71, -69, -66, -62, -58, -52, -44, -30, -14, 0, 14, 30, 44, 52, 58, 62, 66, 69, 72], {
+  yC: [24.8, 25.3, 25.5, 25.6, 25.6, 25.6, 25.6, 25.6, 25.6, 25.6, 25.6, 25.4, 25.0, 24.6, 23.9, 23.0, 21.4, 19.6, 17.0],
+  hw: [33, 38, 41.5, 44, 45, 45, 45, 44.5, 44, 44, 44.5, 45.5, 46, 46, 44.5, 41.5, 36, 30, 21],
+  ySh: [22.8, 23.2, 23.4, 23.4, 23.4, 23.4, 23.4, 23.4, 23.4, 23.4, 23.4, 23.2, 22.8, 22.4, 21.8, 21.0, 19.6, 17.9, 15.8],
+  yLow: [22.2, 22.2, 22.0, 21.6, 16.0, 11.5, 10.5, 10.5, 10.5, 10.5, 10.5, 10.5, 10.5, 11.5, 13.0, 13.5, 14.0, 14.5, 15.0],
 });
 
-/** @type {{ x: number, pts: number[][] }[]} */
-const STATIONS = cabinStations(T, X_TAIL, X_NOSE);
+/** @type {number[]} 前後輪軸 x */
+const AXLES = [40, -40];
+/** @type {number} 葉子板隆起高度（輪軸正上方，比甲板高 4.2 mm） */
+const FENDER_RISE = 4.2;
+
+/**
+ * 葉子板隆起係數：輪軸正上方 1，離輪軸 19 mm 以外 0（餘弦過渡）
+ * @type {(x: number) => number}
+ */
+const fenderFactor = (x) => {
+  let f = 0;
+  for (const ax of AXLES) {
+    const u = Math.abs(x - ax) / 19;
+    if (u < 1) {
+      f = Math.max(f, (Math.cos(Math.PI * u) + 1) / 2);
+    }
+  }
+  return f;
+};
+
+/**
+ * 半剖面站位（每 2 mm 一站，8 點）：甲板中線、甲板 1/2、甲板平坦區外緣、葉子板內坡、葉子板頂（|z| 31，輪胎中心面）、
+ * 葉子板外坡、肩稜、側裙下緣。輪軸附近葉子板頂隆起 FENDER_RISE，前後輪之間回到甲板高度（平甲板）。
+ * 鼻端變窄時各點 z 依半寬等比內縮（維持由內往外單調）
+ * @type {{ x: number, pts: number[][] }[]}
+ */
+const STATIONS = (() => {
+  const xs = [];
+  for (let x = X_TAIL; x < X_NOSE; x += 2) {
+    xs.push(x);
+  }
+  xs.push(X_NOSE);
+  return xs.map((x) => {
+    const yC = T('yC', x);
+    const hw = T('hw', x);
+    const ySh = Math.min(T('ySh', x), yC - 1);
+    const yLow = Math.min(T('yLow', x), ySh - 0.6);
+    const f = fenderFactor(x);
+    const cw = Math.min(17, 0.37 * hw);
+    const zIn = Math.min(21.5, 0.5 * hw);
+    const zCr = Math.min(31, 0.7 * hw);
+    const zOut = hw - 1.6;
+    const yCr = yC - 0.4 + FENDER_RISE * f;
+    const pts = [
+      [0, yC],
+      [0.5 * cw, yC - 0.08],
+      [cw, yC - 0.3],
+      [zIn, yC - 0.3 + 0.9 * f],
+      [zCr, yCr],
+      [zOut, ySh + 0.62 * (yCr - ySh)],
+      [hw, ySh],
+      [hw, yLow],
+    ];
+    return { x, pts };
+  });
+})();
 
 /**
  * 開放座艙（甲板上的凹槽，深 3.5 mm：槽底 y ≈ 22，在齒輪蓋頂約 21.2 之上）：俯視圓角梯形，前寬後窄
@@ -63,7 +114,7 @@ const COCKPIT = {
 const splitY = (x) => Math.min(17.2, T('ySh', x) - 2.2);
 
 /**
- * 低擋風片：座艙前緣一片後傾的煙燻 PC 片＋黑框（底寬 21，頂到 y ≈ 29）
+ * 擋風片：座艙前緣一片後傾的煙燻 PC 片＋黑框（底寬 22，頂到 y ≈ 31）
  * @type {(x0: number, y0: number) => { glass: THREE.BufferGeometry, frame: THREE.BufferGeometry }}
  */
 const buildWindscreen = (x0, y0) => {
@@ -77,8 +128,9 @@ const buildWindscreen = (x0, y0) => {
     pth.quadraticCurveTo(-hwT - 0.6, dy + h * 0.9, -hwB, dy);
     return pth;
   };
-  const outer = outline(10.5, 8.6, 6.4, 0);
-  outer.holes.push(outline(9.5, 7.6, 5.3, 0.5));
+  // iter-70（評審：擋風片只是一條細片）：高 6.4 → 9.6、底寬 21 → 22
+  const outer = outline(11, 9.2, 9.6, 0);
+  outer.holes.push(outline(10, 8.2, 8.4, 0.6));
   /** @type {(g: THREE.BufferGeometry) => THREE.BufferGeometry} shape 在 (z, y) 平面 → x 為厚度方向，再往後傾 */
   const place = (g) => {
     g.rotateY(Math.PI / 2);
@@ -88,7 +140,7 @@ const buildWindscreen = (x0, y0) => {
   };
   return {
     frame: place(new THREE.ExtrudeGeometry(outer, { depth: 0.8, bevelEnabled: false, curveSegments: 10 })),
-    glass: place(new THREE.ExtrudeGeometry(outline(9.55, 7.65, 5.35, 0.45), { depth: 0.5, bevelEnabled: false, curveSegments: 10 })),
+    glass: place(new THREE.ExtrudeGeometry(outline(10.05, 8.25, 8.45, 0.55), { depth: 0.5, bevelEnabled: false, curveSegments: 10 })),
   };
 };
 
@@ -163,8 +215,21 @@ export const lowlineFlatBody = makePolyBody({
     const ws = buildWindscreen(13.2, T('yC', 13) - 0.6);
     parts.push({ geometry: ws.glass, mat: 'glass', solid: true, outline: true, renderOrder: 3, name: 'windscreen' });
     parts.push({ geometry: ws.frame, mat: 'frame', solid: true, outline: true, name: 'windscreen-frame' });
+    // 座艙圍邊（iter-70，評審：座艙太小、幾乎看不見）：沿座艙槽外緣 0.9 mm 一圈黑色橢圓斷面圍邊（高 1.3 mm）
+    /** @type {number[][]} */
+    const rimPts = [];
+    const half = COCKPIT.pts.slice(0, -1);
+    const loop = [...half, ...half.slice(1).reverse().map(([x, z]) => [x, -z]), [-17, 0]].reverse();
+    for (const [x, z] of [...loop.map(([px, pz]) => [px, pz]), loop[0]]) {
+      const cx = -2.5;
+      const len = Math.hypot(x - cx, z) || 1;
+      const ox = x + ((x - cx) / len) * 0.9;
+      const oz = z + (z / len) * 0.9;
+      rimPts.push([ox, kit.surf.topY(ox, oz) + 0.2, oz]);
+    }
+    parts.push({ geometry: sweepEllipse(rimPts, 120, () => [0.9, 1.3], 12), mat: 'frame', solid: true, name: 'cockpit-rim' });
     const floor = kit.innerYAt(-6) - COCKPIT.depth + kit.t + 0.2;
-    const drv = buildDriver(-4, floor, 1.0);
+    const drv = buildDriver(-4, floor, 1.15);
     parts.push({ geometry: drv.body, mat: 'driver', solid: true, name: 'cockpit-driver' });
     parts.push({ geometry: drv.helmet, mat: 'helmet', solid: true, name: 'cockpit-helmet' });
     // 白色雙細線（自創）：甲板上沿中線兩側 |z| 5.0 / 7.4 由鼻端延伸到車尾，遇座艙中斷
@@ -173,20 +238,20 @@ export const lowlineFlatBody = makePolyBody({
         const az = Math.abs(z);
         const line = Math.max(0.45 - Math.abs(az - 5.0), 0.45 - Math.abs(az - 7.4));
         const outCab = Math.max(x - 13.5, -18.5 - x, az - 10.8);
-        return Math.min(line, outCab, 73.5 - x, x + 74.5, y - 20);
+        return Math.min(line, outCab, 69 - x, x + 70.2, y - 20);
       }),
       mat: 'whiteDecal',
       name: 'decal-twin-pinstripes',
     });
     // 側面白色細分色線（沿石墨灰 / 深紅分色線）
     parts.push({ geometry: kit.decal((x, y, z) => (Math.abs(z) < 30 ? -1 : 0.3 - Math.abs(y - splitY(x) - 0.1))), mat: 'whiteDecal', name: 'decal-side-pinstripe' });
-    // 號碼 88：側面白色圓形號碼底＋黑字（前後輪拱之間）；前甲板黑字（雙細線外側）
+    // 號碼 42（iter-70：88 和 aero-wing 重號 → 42）：側面白色圓形號碼底＋黑字（前後輪拱之間）；前甲板黑字（雙細線外側）
     const roundel = (u, v) => Math.hypot(u, v) - 3.4;
     parts.push({ geometry: kit.decal(sideDecal(roundel, { x0: 0, y0: 19.8, zMin: 30 })), mat: 'whiteDecal', name: 'decal-number-roundel' });
     parts.push({
       geometry: mergeGeos([
-        kit.decal(sideDecal(sdNumber('88', { h: 3.8, w: 2.2, gap: 0.6 }), { x0: 0, y0: 19.8, zMin: 30 }), { offset: 0.12 }),
-        kit.decal(topDecal(sdNumber('88', { h: 6.0, w: 3.4, gap: 0.9 }), { x0: 54, z0: -17, yMin: 20 }), { offset: 0.12 }),
+        kit.decal(sideDecal(sdNumber('42', { h: 3.8, w: 2.2, gap: 0.6 }), { x0: 0, y0: 19.8, zMin: 30 }), { offset: 0.12 }),
+        kit.decal(topDecal(sdNumber('42', { h: 6.0, w: 3.4, gap: 0.9 }), { x0: 54, z0: -17, yMin: 20 }), { offset: 0.12 }),
       ]),
       mat: 'black',
       name: 'decal-number',
@@ -199,17 +264,17 @@ export const lowlineFlatBody = makePolyBody({
     });
     // 鼻端頭燈（貼紙式透明燈片，左右各一條細長燈片）
     parts.push({
-      geometry: kit.decal((x, y, z) => Math.min(4.2 - Math.abs(Math.abs(z) - 24), 0.9 - Math.abs(x - 69.2), y - 15)),
+      geometry: kit.decal((x, y, z) => Math.min(3.6 - Math.abs(Math.abs(z) - 21), 0.9 - Math.abs(x - 66.4), y - 15)),
       mat: 'head',
       name: 'decal-headlamps',
     });
     // 平直斷尾的尾燈條（左右兩段）
     const lampBar = (z0, z1) => {
       const g = new THREE.BoxGeometry(0.5, 1.2, z1 - z0);
-      g.translate(X_TAIL - 0.15, 24.0, (z0 + z1) / 2);
+      g.translate(X_TAIL - 0.15, 23.6, (z0 + z1) / 2);
       return g;
     };
-    parts.push({ geometry: mergeGeos([lampBar(-34, -12), lampBar(12, 34)]), mat: 'tailLamp', solid: true, name: 'lamp-tail' });
+    parts.push({ geometry: mergeGeos([lampBar(-24, -10), lampBar(10, 24)]), mat: 'tailLamp', solid: true, name: 'lamp-tail' });
     return parts;
   },
   src: {
