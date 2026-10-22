@@ -147,7 +147,7 @@ const slideFrontPart = ({ id, name, springK_N_per_mm, preload_N, springColor, sp
     plate: '推估：鋁板約 90 × 12 × 2 mm（W 節「約 90 × 15 × 2 mm」），兩端包住導輪孔；φ3.5 減重孔一排；密度 2.7 g/cm³',
     rail: '推估：樹脂（POM 1.41 g/cm³）滑軌 12 × 30 × 1.2 mm，鎖在前保桿中央橋接板下方',
     hardware_g: '推估（W 節「樹脂件與彈簧螺絲約 2.5 g」− 滑軌 0.6 g）：彈簧 2 支、螺絲、擋片約 1.9 g',
-    mass_g: '由滑動板外形 × 厚度 × 密度＋滑軌＋小五金推導，合計約 7.8 g（W 節推估約 8 g）',
+    mass_g: carbonPlate ? '由滑動板外形 × 厚度 × 碳纖密度＋滑軌＋小五金推導，合計約 5.6 g（AB 節推估約 5.8 g）' : '由滑動板外形 × 厚度 × 密度＋滑軌＋小五金推導，合計約 7.8 g（W 節推估約 8 g）',
     taiwan: 'TAIWAN_SOURCES TW10（四驅博士學校／露天，15469）',
     ...(carbonPlate
       ? {
