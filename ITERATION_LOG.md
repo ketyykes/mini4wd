@@ -2827,3 +2827,11 @@
 - 附帶提醒：陣容圖 `lineup_lg1` / `lineup_lg2` 的標題列寫了作品名（展示說明文字，不是車殼設計，不扣分）；若陣容圖要對外使用，建議標題改成「LG1 致敬組 / LG2 致敬組」→ 記入 PROGRESS 待決事項。
 - hydroplane Blender 黃色偏芥末（iter-73 評審）：查 `showcase.py`，0xd6ac00 的線性亮度約 0.44，沒有被 `paint_bright` 的 0.75 上限截掉，是顏色本身為了 app 調暗所致，不是匯出 bug；22:00 後不改材質，列為待改。
 - **第六階段最終分數：20/20、外觀 7.58（全陣容）、總分 87.92**（基準 83.75）。
+
+## 22:00 後收尾（只做出圖、文件、驗證；Stop hook 指出要做到 23:00）
+- Blender 新增 `top` 俯視視角（`render/showcase.py` `VIEW_SPECS`，相機方向 (0, −0.12, 1)、135 mm；預設視角清單不變）——評審多輪指出 Blender 缺俯視；19 款補出 `render/out/<body-id>/top.png`（22:05–22:19），全陣容俯視總圖 `render/out/lineup_top.png`。
+- 19 款 DESIGN.md 依目前程式與 SPEC 1.14a 修正過時數值（文件整理 subagent；18 份有改，aero-wing 本來一致；歷史段落不改寫）。
+- 查證 subagent 標出的疑點：dartfrog 31 mm 整車 138.43 g 超出 SPEC 1.12「預期範圍 105–135 g」——那是推估範圍、不是規則上限（規則只有 ≥ 90 g），P08 只檢查 26 mm 預設組裝 → 組裝合法無誤，記入 FINAL_REPORT 6.4；halo × griffin 車高差 2.6 mm < 3 mm，但 roof / wing / form 三項不同 → P20 成立。
+- `griffinVane.js` 檔頭與 `theme` 文字「三片羽片」→「四片」（程式本來就是每側四片；只改文字）。
+- SPEC 1.14 間隙列的 31 mm 合法清單改成第六階段 10 款。
+- `node scripts/score.mjs`：**20/20**（22:26，最終版本）。

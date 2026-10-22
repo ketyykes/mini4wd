@@ -1,5 +1,5 @@
 // 獅鷲（body-griffin-vane，第六階段 LG2 致敬款）：高姿態全罩、四個高聳大輪拱（31 mm 輪為造型重點）、往下勾的鷹勾鼻、
-// 中線一列鋸齒「頸羽脊」、不透明珍珠白面罩座艙、左右後擋泥板頂上各一組三片羽片小翼（可調下壓力的外露機能件，沒有中央尾翼）。
+// 中線一列鋸齒「頸羽脊」、不透明珍珠白面罩座艙、左右後擋泥板頂上各一組四片羽片小翼（可調下壓力的外露機能件，沒有中央尾翼）。
 // 設計：shared/design/body-griffin-vane/DESIGN.md（HOMAGE_RESEARCH 第 6 節 LG2 語彙、和劇中車 / 市售車殼的差異）。剖面為本檔站位產生器（推估）。
 // 塗裝全為自創：薰衣草紫＋珍珠白＋金細線、兩道平行金色儀仗飾帶、號碼「36」；不含任何廠商 / 作品名稱、商標、隊徽、國旗或角色圖像。
 import * as THREE from 'three';
@@ -174,7 +174,7 @@ export const griffinVaneBody = makePolyBody({
   form: 'high-cowl',
   roof: 'closed',
   wing: 'fender-winglets',
-  theme: '高姿態全罩＋四個高聳大輪拱、鷹勾鼻與頸羽脊、珍珠白面罩座艙、後擋泥板頂左右各一組三片羽片小翼（無中央尾翼）',
+  theme: '高姿態全罩＋四個高聳大輪拱、鷹勾鼻與頸羽脊、珍珠白面罩座艙、後擋泥板頂左右各一組四片羽片小翼（無中央尾翼）',
   material: 'ABS',
   density_g_cm3: 1.05,
   wallThickness_mm: 0.8,
