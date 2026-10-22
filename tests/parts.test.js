@@ -382,6 +382,13 @@ describe('P17 新零件的物理效果（只透過組裝設定替換）', () => 
     console.log(`[P17] 全寬：13 mm ${f3(w({}))}、17 mm ${f3(w({ rollers: 'roller-17-alu' }))}、19 mm ${f3(w({ rollers: 'roller-19' }))} mm`);
     expect(w({ rollers: 'roller-17-alu' })).toBeGreaterThan(w({}));
     expect(w({ rollers: 'roller-17-alu' })).toBeLessThan(w({ rollers: 'roller-19' }));
+
+    // iter-64：另外兩款塑膠環導輪（同 μ 0.03）：17 mm 塑膠環外框同 17 mm 全鋁；19 mm 碟形塑膠環與 19 mm 塑膠環同直徑同 μ、較輕 → 過彎不比鋁 19 mm 慢
+    expect(w({ rollers: 'roller-17-plastic-ring' })).toBe(w({ rollers: 'roller-17-alu' }));
+    const dish = corner({ rollers: 'roller-19-plastic-ring-dish' });
+    console.log(`[P17] 19 mm 碟形塑膠環：4 s 前進 ${f3(dish.dist)} m、彎道均速 ${f3(dish.arcV)} m/s`);
+    expect(dish.dist).toBeGreaterThan(alu.dist);
+    expect(dish.arcV).toBeGreaterThan(alu.arcV);
   }, 180000);
 
   test('P17_phase5_motor_tire_damper 第五階段（台灣買得到）：Rev-Tuned 2 PRO 高轉速低扭力；31 mm 低摩擦胎直線同標準 31 mm、過彎側滑損失較小；MA 側制振器組只有配重會滑動', () => {

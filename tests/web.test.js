@@ -369,6 +369,9 @@ describe('P19 網頁換件', () => {
       ['frontRollers', 'roller-13'],
       // iter-63：滑動保桿換 HG 碳纖前寬板 2 mm
       ['frontStay', 'stay-front-slide-hard-carbon'],
+      // iter-64：另外兩款塑膠環導輪
+      ['rearRollers', 'roller-19-plastic-ring-dish'],
+      ['rearRollers', 'roller-17-plastic-ring'],
     ];
     for (const [slot, value] of changes) {
       const ms = await changeSlot(slot, value);
