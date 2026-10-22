@@ -66,6 +66,14 @@ const headKeep = (x, z) => {
   return x - (49 + 0.15 * az + saw);
 };
 
+/** @type {{ x: number, y: number, radius: number }[]} 前後輪拱圓（側視） */
+const ARCHES = [
+  { x: 40, y: 13, radius: 17.5 },
+  { x: -40, y: 13, radius: 17.5 },
+];
+/** @type {(x: number, y: number) => number} 側視到最近輪拱圓周的距離（正值 = 在輪拱切口外） */
+const archRingDist = (x, y) => Math.min(...ARCHES.map((a) => Math.hypot(x - a.x, y - a.y) - a.radius));
+
 /** 面罩座艙（俯視橢圓） */
 const FACE = { cx: -1, a: 23, b: 14.5 };
 /** @type {(x: number, z: number) => number} 正規化橢圓距離（< 1 在面罩內） */
@@ -82,7 +90,8 @@ const materials = () => ({
   violet: namedMaterial('paint-deep-violet', { color: 0x3a2560, roughness: 0.3, clearcoat: 0.8 }),
   violet2: namedMaterial('paint-deep-violet', { color: 0x3a2560, roughness: 0.3, clearcoat: 0.8, side: THREE.DoubleSide }),
   inner: namedMaterial('shell-inner-dark', { color: 0x1d1a22, roughness: 0.85, side: THREE.BackSide }),
-  edge: namedMaterial('shell-edge-violet', { color: 0x5e3f99, roughness: 0.5, side: THREE.DoubleSide }),
+  // iter-69：切口厚度面改珍珠白（輪拱邊緣和白飾邊連成一圈，不再露出紫色碎邊）
+  edge: namedMaterial('shell-edge-pearl', { color: 0xe9e4ee, roughness: 0.4, side: THREE.DoubleSide }),
   recess: namedMaterial('plastic-gill-black', { color: 0x07060a, roughness: 0.9, side: THREE.DoubleSide }),
   recessWall: namedMaterial('paint-deep-violet', { color: 0x3a2560, roughness: 0.4, side: THREE.DoubleSide }),
   lamp: namedMaterial('lamp-amber', { color: 0xffc94a, emissive: 0xff9d00, emissiveIntensity: 0.7, roughness: 0.1, clearcoat: 1.0 }),
@@ -193,7 +202,8 @@ export const griffinVaneBody = makePolyBody({
     // 珍珠白鷹頭（鼻部到鋸齒羽毛領）
     { mat: 'pearl', keep: (x, y, z) => headKeep(x, z) },
     // 珍珠白下半車身（獅身腹部）：分色線在金色飾帶下方 3.2 mm，跟著飾帶從鼻側上掃到後擋泥板
-    { mat: 'pearl', keep: (x, y, z) => (Math.abs(z) > 20 ? SASH(x) - 3.2 - y : -1) },
+    // iter-69：輪拱圓外 3 mm 內一律珍珠白（白飾邊和白色下身連成一片，分色線不再從輪拱邊上穿過而破碎）
+    { mat: 'pearl', keep: (x, y, z) => (Math.abs(z) > 20 ? Math.max(SASH(x) - 3.2 - y, Math.abs(z) > 22 ? 3 - archRingDist(x, y) : -1) : -1) },
     { mat: 'lavender', keep: () => 1 },
   ],
   mats: { inner: 'inner', edge: 'edge', cap: 'lavender', recess: 'recess', recessWall: 'recessWall', mount: 'mount' },
@@ -229,17 +239,18 @@ export const griffinVaneBody = makePolyBody({
     // 擋泥板羽片小翼（L2-1 外露機能件）：左右後擋泥板頂各四片，往後上扇形展開、往外 32° 傾，兩組不相連、沒有中央主翼
     /** @type {Record<string, THREE.BufferGeometry[]>} */
     const vanes = { pearl: [], violet: [] };
+    // iter-69：羽片放大（長 19–22 → 25–29、寬 4.4–4.8 → 6.0–6.4）並加厚（0.9 → 1.0 mm；26 / 31 mm 整車都要 ≤ 135 g，輪拱內襯深度 2.6 → 1.0 mm 抵銷加重），讓「有翼」的意象撐得起來
     const FEATHERS = [
-      { x0: -26, ang: 5, len: 19, w: 4.4, mat: 'pearl' },
-      { x0: -29.5, ang: 14, len: 21, w: 4.6, mat: 'violet' },
-      { x0: -33, ang: 23, len: 22, w: 4.8, mat: 'pearl' },
-      { x0: -36.5, ang: 32, len: 21, w: 4.6, mat: 'violet' },
+      { x0: -24, ang: 6, len: 25, w: 6.0, mat: 'pearl' },
+      { x0: -28.5, ang: 15, len: 28, w: 6.2, mat: 'violet' },
+      { x0: -33, ang: 24, len: 29, w: 6.4, mat: 'pearl' },
+      { x0: -37.5, ang: 33, len: 27, w: 6.2, mat: 'violet' },
     ];
     for (const sg of [-1, 1]) {
       FEATHERS.forEach((f, i) => {
         const zc = sg * (31 + i * 0.8);
         const y0 = top(f.x0, zc) - 0.7;
-        vanes[f.mat].push(finPlate(featherOutline(f.x0, y0, f.ang, f.len, f.w), zc, 0.9, -sg * 32));
+        vanes[f.mat].push(finPlate(featherOutline(f.x0, y0, f.ang, f.len, f.w), zc, 1.0, -sg * 32));
       });
     }
     parts.push({ geometry: mergeGeos(vanes.pearl), mat: 'pearl2', solid: true, outline: true, name: 'fender-winglets-pearl' });
@@ -249,7 +260,7 @@ export const griffinVaneBody = makePolyBody({
     const knuckles = [];
     for (const sg of [-1, 1]) {
       const g = new THREE.SphereGeometry(1, 18, 10);
-      g.scale(5.5, 1.6, 2.4);
+      g.scale(6.2, 1.7, 2.6);
       g.rotateZ(-0.25);
       g.translate(-34, top(-34, sg * 32.4) + 0.2, sg * 32.4);
       knuckles.push(g);
@@ -278,13 +289,14 @@ export const griffinVaneBody = makePolyBody({
     });
     // 輪拱內襯（前後，31 mm 大輪拱）
     parts.push({
-      geometry: mergeGeos([buildClippedLiner({ x: 40, y: 13, radius: 17.5 }, 2.6), buildClippedLiner({ x: -40, y: 13, radius: 17.5 }, 2.6)]),
+      geometry: mergeGeos([buildClippedLiner({ x: 40, y: 13, radius: 17.5 }, 1.0), buildClippedLiner({ x: -40, y: 13, radius: 17.5 }, 1.0)]),
       mat: 'liner',
       shell: true,
       name: 'arch-liners',
     });
     // 輪拱外緣珍珠白飾邊（強調高聳大輪拱）
-    parts.push({ geometry: kit.decal((x, y, z) => (Math.abs(z) > 30 ? 1.5 - kit.archEdgeDist(x, y, z) : -1)), mat: 'dPearl', name: 'decal-arch-trim' });
+    // iter-69：改用到輪拱圓的解析距離（固定 1.8 mm 寬的連續帶），不再用 |z| > 30 截斷（舊版在腰部收窄處被切成碎片）
+    parts.push({ geometry: kit.decal((x, y, z) => (Math.abs(z) > 22 ? Math.min(1.8 - archRingDist(x, y), archRingDist(x, y) + 0.6) : -1)), mat: 'dPearl', name: 'decal-arch-trim' });
 
     // 兩道平行金色「儀仗飾帶」：從鼻側起，越過前擋泥板上掃，沿腰線到後擋泥板羽座
     const sash = SASH;
@@ -292,7 +304,8 @@ export const griffinVaneBody = makePolyBody({
     const sashSd = (u, v) => {
       const d1 = Math.abs(v - sash(u)) - 0.45;
       const d2 = Math.abs(v - sash(u) + 2.1) - 0.45;
-      return Math.max(Math.min(d1, d2), u - 66, -46 - u);
+      // iter-69：飾帶在輪拱白飾邊外 0.8 mm 處乾淨收尾（舊版直接越過輪拱邊，留下金色碎片）
+      return Math.max(Math.min(d1, d2), u - 66, -46 - u, 2.6 - archRingDist(u, v));
     };
     parts.push({
       geometry: mergeGeos([
