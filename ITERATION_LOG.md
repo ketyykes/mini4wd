@@ -2911,3 +2911,19 @@
 
 ### 驗證
 - `node scripts/score.mjs`：**20/20**（03:46，H1 測試加入前；新測試另外單獨跑通過）。外觀沿用 7.75 → 88.75。
+
+## iter-78（穩定頭 φ11 / φ15、三種摩擦海綿、HG 620 培林：subagent 實作、主 agent 整合）
+### 計畫
+- AS 順序表第 11、15、23 順位。subagent 在 worktree `/tmp/wt-p7b`（分支 `p7-stab-brake-bearing`，`4cc16fa`）只改 `stabilizers.js`、`options.js` 煞車海綿、`bearings.js`。
+- 預期方向：穩定頭直徑越小越晚碰牆；海綿 μ 越大坡底減速越多；HG 培林摩擦小 → 稍快（約 0.1%）。
+
+### 執行
+- cherry-pick `4cc16fa`。subagent 提出兩點由主 agent 決定：
+  - 穩定頭質量：AP 表列 0.3 / 0.5 g，但用表中自己寫的算法（POM 圓盤扣中孔、高 3 mm）是 0.38 / 0.73 g → **採計算值**（和 φ17 同算法，src 寫明差異）。
+  - 三種摩擦海綿：官方沒寫顏色與 μ 的對應 → 三款都標 `gray`、μ 0.4 / 0.7 / 1.0 標推估。`model.js` 新增 `spongeGray` 材質（`sponge-gray`，Blender 依 `sponge-*` 前綴自動分類），原本只認 blue / white。
+- `regulation.js` 不改：「穩定頭直徑 < 前導輪」已經是既有 STABILIZER_ROLLER_SIZE 的分支（標推估規則）；官方「13～19 mm ローラー」範圍檢查只會多擋 9 mm 導輪，而它已被直徑規則擋下 → 不加重複規則。
+
+### 驗證
+- 新測試 `P17_phase7_stabilizer_heads`（φ11 35° > φ15 20° > φ17 10°，直立 0 步接觸）、`P17_phase7_sponge_bearing`（坡底 1.932 > 1.923 > 1.915 m/s、摩擦功 3.93 < 6.54 < 8.90 mJ；HG 3 s 車速與斷電減速只驗方向）。
+- `P18_known_cases` 加 5 個（φ15 × 13 mm / 13-12 雙層、φ11 × 9 mm → STABILIZER_ROLLER_SIZE；φ15 × 19 mm × 預設車殼 → STABILIZER_BODY_CLEARANCE；三種海綿 × FRP 後板 → GROUND_CLEARANCE）＋4 個合法對照；`P17_phase7_laps` 加 6 組（共 15 組）。指定測試 7 項通過。
+- `node scripts/score.mjs`：**20/20**（03:57）。外觀沿用 7.75 → 88.75。worktree `/tmp/wt-p7b` 與分支 `p7-stab-brake-bearing` 已移除。新零件累計 16 款、6 類（制振器 3、導輪 4、輪胎 3、穩定頭 2、煞車海綿 3、培林 1）。

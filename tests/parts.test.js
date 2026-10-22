@@ -774,6 +774,12 @@ describe('P17 新零件的物理效果（只透過組裝設定替換）', () => 
       { wheels: 'wheel-31-hard-slick', body: 'body-pc-box' },
       { wheels: 'wheel-31-soft-slick', body: 'body-pc-box' },
       { wheels: 'wheel-31-sponge-lowrebound', body: 'body-pc-box' },
+      { stabilizer: 'stabilizer-head-11' },
+      { stabilizer: 'stabilizer-head-15', rollers: 'roller-19', body: 'body-pc-box' },
+      { brakeSponge: 'sponge-3type-a' },
+      { brakeSponge: 'sponge-3type-b' },
+      { brakeSponge: 'sponge-3type-c' },
+      { bearings: 'bearing-620-hg' },
     ];
     for (const over of cases) {
       const asm = assemble(cfg(over));
@@ -1156,6 +1162,67 @@ describe('P17 第四階段接觸零件（穩定零件、錐形導輪）', () => 
       expect(upright.stabSteps).toBe(0);
       expect(upright.rollerHit).toBe(true);
     }
+  }, 180000);
+
+  test('P17_phase7_stabilizer_heads 第七階段穩定頭 φ11 / φ15（15391）：直立沒有接觸；直徑越小，首次碰牆所需的側傾角越大（同 19 mm 導輪：11 > 15 > 17）', () => {
+    /** @type {(id: string) => number} */
+    const firstContactDeg = (id) => {
+      const asm = assemble(cfg({ stabilizer: id, rollers: 'roller-19', body: null }));
+      expect(validateAssembly(asm).ok, id).toBe(true);
+      expect(rollIntoWall(asm, 0).stabSteps).toBe(0);
+      for (let deg = 5; deg <= 40; deg += 5) {
+        if (rollIntoWall(asm, deg).stabSteps > 0) {
+          return deg;
+        }
+      }
+      return Infinity;
+    };
+    const a11 = firstContactDeg('stabilizer-head-11');
+    const a15 = firstContactDeg('stabilizer-head-15');
+    const a17 = firstContactDeg('stabilizer-head-17');
+    console.log(`[P17] 穩定頭 × 19 mm 導輪 首次碰牆側傾角：φ11 ${a11}° / φ15 ${a15}° / φ17 ${a17}°`);
+    expect(a11).toBeGreaterThan(a15);
+    expect(a15).toBeGreaterThan(a17);
+    expect(Number.isFinite(a11)).toBe(true);
+  }, 180000);
+
+  test('P17_phase7_sponge_bearing 第七階段三種摩擦海綿（15441）：只差 μ → 下坡坡底 μ 越大減速越多、摩擦功越大；HG 培林（15519）摩擦較小 → 全速較快、斷電減速較少（只驗方向，效果約 0.1%）', () => {
+    const runs = ['sponge-3type-a', 'sponge-3type-b', 'sponge-3type-c'].map((id) => {
+      const asm = assemble(cfg({ brakeSponge: id }));
+      expect(validateAssembly(asm).ok, id).toBe(true);
+      return { id, mu: asm.partsBySlot.brakeSponge.frictionCoeff, ...rampRun(asm, 2.5) };
+    });
+    console.log(`[P17] 三種摩擦海綿 5° 下坡：${runs.map((r) => `${r.id} μ ${r.mu} → 坡底 ${f3(r.vAfter)} m/s、摩擦功 ${(r.spongeWork * 1000).toFixed(2)} mJ`).join('；')}`);
+    for (let i = 1; i < runs.length; i++) {
+      expect(runs[i].mu).toBeGreaterThan(runs[i - 1].mu);
+      expect(runs[i].vAfter).toBeLessThan(runs[i - 1].vAfter);
+      expect(runs[i].spongeWork).toBeGreaterThan(runs[i - 1].spongeWork);
+    }
+    expect(runs.every((r) => r.spongeSteps > 0 && r.minUp > 0.8)).toBe(true);
+
+    /** @type {(asm: any) => { v0: number, dv: number }} */
+    const coast = (asm) => {
+      const env = sim.createWorld(buildStraight(100));
+      const car = sim.createCar(env, { assembly: asm, s: 0.2, lane: 0, drain: false });
+      const dt = env.world.timestep;
+      for (let i = 0; i < 3 / dt; i++) {
+        sim.stepCar(env, car);
+      }
+      const v0 = sim.forwardSpeed(car);
+      car.powered = false;
+      for (let i = 0; i < 1 / dt; i++) {
+        sim.stepCar(env, car);
+      }
+      return { v0, dv: v0 - sim.forwardSpeed(car) };
+    };
+    const std = assemble(cfg({}));
+    const hg = assemble(cfg({ bearings: 'bearing-620-hg' }));
+    expect(validateAssembly(hg).ok).toBe(true);
+    const cStd = coast(std);
+    const cHg = coast(hg);
+    console.log(`[P17] 620 培林 / HG 620：3 s 車速 ${f3(cStd.v0)} / ${f3(cHg.v0)} m/s；斷電 1 s 減速 ${f3(cStd.dv)} / ${f3(cHg.dv)} m/s`);
+    expect(cHg.v0).toBeGreaterThan(cStd.v0);
+    expect(cHg.dv).toBeLessThan(cStd.dv);
   }, 180000);
 
   test('P17_tapered_roller 錐形導輪：牆面接觸法向水平；騎上牆頂時接觸法向帶向上分量（≈ sin 34°），撞擊衝量讓車體向上；同姿勢的圓柱導輪沒有垂直分量', () => {
@@ -1550,6 +1617,12 @@ describe('P18 干涉與安裝相容性', () => {
       { over: { frontRollers: 'roller-19-19-plastic-double', body: 'body-owl-hush' }, codes: ['BODY_ROLLER_CLEARANCE'] },
       { over: { wheels: 'wheel-31-hard-slick', body: 'body-owl-hush' }, codes: ['BODY_TIRE_CLEARANCE'] },
       { over: { rearStay: 'stay-rear-frp', wheels: 'wheel-31-sponge-lowrebound', body: 'body-pc-box' }, contains: 'STAY_TIRE_CLEARANCE' },
+      // ---- 第七階段（iter-78）：穩定頭 φ11 / φ15（推估規則：穩定頭直徑 < 前導輪直徑）、三種摩擦海綿 ----
+      { over: { stabilizer: 'stabilizer-head-15', frontRollers: 'roller-13', body: null }, codes: ['STABILIZER_ROLLER_SIZE'] },
+      { over: { stabilizer: 'stabilizer-head-15', frontRollers: 'roller-13-12-alu-double', body: null }, codes: ['STABILIZER_ROLLER_SIZE'] },
+      { over: { stabilizer: 'stabilizer-head-11', frontRollers: 'roller-9-bearing', body: null }, codes: ['STABILIZER_ROLLER_SIZE'] },
+      { over: { stabilizer: 'stabilizer-head-15', frontRollers: 'roller-19' }, codes: ['STABILIZER_BODY_CLEARANCE'] },
+      { over: { rearStay: 'stay-rear-frp', brakeSponge: 'sponge-3type-a' }, codes: ['GROUND_CLEARANCE'] },
     ];
     for (const c of cases) {
       const res = validateAssembly(assemble(cfg(c.over)));
@@ -1563,7 +1636,7 @@ describe('P18 干涉與安裝相容性', () => {
       }
     }
     // 合法的對照：雙層導輪＋單層的碳纖寬後板、FRP 後板＋後制振器
-    for (const over of [{ rollers: 'roller-13-12-double', rearStay: 'stay-rear-carbon-wide' }, { rearStay: 'stay-rear-frp', massDamper: 'damper-rear-cylinder' }, { stabilizer: 'stabilizer-head-17', rollers: 'roller-19', body: null }, { rollers: 'roller-13-tapered', frontStay: 'stay-front-frp', rearStay: 'stay-rear-frp', body: null }, { frontRollers: 'roller-19-tapered', rearRollers: 'roller-13-alu', frontStay: 'stay-front-frp' }, { frontRollers: 'roller-13-12-double' }, { rearStay: 'stay-rear-carbon-wide', frontRollers: 'roller-19' }, { massDamper: 'damper-side-square', body: 'body-aero-wing' }, { massDamper: 'damper-side-square-32', body: 'body-pc-box' }, { wheels: 'wheel-31-lowfriction', body: 'body-pc-box' }, { motor: 'motor-rev' }, { rearStay: 'stay-rear-frp', massDamper: 'damper-balllink-square' }, { rearStay: 'stay-rear-frp', massDamper: 'damper-heavy' }, { massDamper: 'damper-square-8x8x14', body: 'body-hinge-deck' }, { frontRollers: 'roller-13-12-alu-double-rubber' }, { frontRollers: 'roller-9-8-alu-double', rearRollers: 'roller-9-8-alu-double' }, { wheels: 'wheel-31-soft-slick', body: 'body-pc-box' }, { wheels: 'wheel-31-sponge-lowrebound', body: 'body-pc-box' }]) {
+    for (const over of [{ rollers: 'roller-13-12-double', rearStay: 'stay-rear-carbon-wide' }, { rearStay: 'stay-rear-frp', massDamper: 'damper-rear-cylinder' }, { stabilizer: 'stabilizer-head-17', rollers: 'roller-19', body: null }, { rollers: 'roller-13-tapered', frontStay: 'stay-front-frp', rearStay: 'stay-rear-frp', body: null }, { frontRollers: 'roller-19-tapered', rearRollers: 'roller-13-alu', frontStay: 'stay-front-frp' }, { frontRollers: 'roller-13-12-double' }, { rearStay: 'stay-rear-carbon-wide', frontRollers: 'roller-19' }, { massDamper: 'damper-side-square', body: 'body-aero-wing' }, { massDamper: 'damper-side-square-32', body: 'body-pc-box' }, { wheels: 'wheel-31-lowfriction', body: 'body-pc-box' }, { motor: 'motor-rev' }, { rearStay: 'stay-rear-frp', massDamper: 'damper-balllink-square' }, { rearStay: 'stay-rear-frp', massDamper: 'damper-heavy' }, { massDamper: 'damper-square-8x8x14', body: 'body-hinge-deck' }, { frontRollers: 'roller-13-12-alu-double-rubber' }, { frontRollers: 'roller-9-8-alu-double', rearRollers: 'roller-9-8-alu-double' }, { wheels: 'wheel-31-soft-slick', body: 'body-pc-box' }, { wheels: 'wheel-31-sponge-lowrebound', body: 'body-pc-box' }, { stabilizer: 'stabilizer-head-11' }, { stabilizer: 'stabilizer-head-15', frontRollers: 'roller-17-alu', body: null }, { brakeSponge: 'sponge-3type-c' }, { bearings: 'bearing-620-hg' }]) {
       const res = validateAssembly(assemble(cfg(over)));
       expect(res.ok, JSON.stringify(res.violations)).toBe(true);
     }

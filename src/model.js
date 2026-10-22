@@ -358,6 +358,8 @@ function makeMaterials() {
     steelWeight: new THREE.MeshStandardMaterial({ name: 'steel-weight', color: 0xc3c8ce, roughness: 0.3, metalness: 0.85, emissive: 0x15171a }),
     // iter-55：煞車海綿改用較大的開孔氣孔貼圖（spongeCellTexture），bump 加深，看得出發泡孔隙
     spongeWhite: new THREE.MeshStandardMaterial({ name: 'sponge-white', color: 0xf8f6ee, map: cachedTexture('sponge-cell', spongeCellTexture), bumpMap: cachedTexture('sponge-cell', spongeCellTexture), bumpScale: 1.2, roughness: 1.0, metalness: 0.0, emissive: 0x2a2a26 }),
+    // 第七階段（iter-78）：灰色海綿（15441 三種摩擦海綿，顏色與摩擦的對應官方沒寫 → 三款都畫灰色）
+    spongeGray: new THREE.MeshStandardMaterial({ name: 'sponge-gray', color: 0x8a8c90, map: cachedTexture('sponge-cell', spongeCellTexture), bumpMap: cachedTexture('sponge-cell', spongeCellTexture), bumpScale: 1.2, roughness: 1.0, metalness: 0.0, emissive: 0x111214 }),
     spongeBlue: new THREE.MeshStandardMaterial({ name: 'sponge-blue', color: 0x3c86f0, map: cachedTexture('sponge-cell', spongeCellTexture), bumpMap: cachedTexture('sponge-cell', spongeCellTexture), bumpScale: 1.2, roughness: 1.0, metalness: 0.0, emissive: 0x06142a }),
     // 雙面膠層（海綿與煞車板之間，淡琥珀色、半光澤，和海綿的霧面白區分）
     tape: new THREE.MeshStandardMaterial({ name: 'tape-double-sided', color: 0xe6d29a, roughness: 0.35, metalness: 0.0 }),
@@ -1441,7 +1443,9 @@ const buildOptionalParts = (mats) => {
     // ExtrudeGeometry 的 bevel 往 −z 與 +z 各長 bevelThickness：先平移讓整塊落在 [0, ly − tapeT]，再轉到 −y
     geo.translate(0, 0, bev);
     geo.rotateX(Math.PI / 2);
-    const m = new THREE.Mesh(geo, o.sponge.part.color === 'blue' ? mats.spongeBlue : mats.spongeWhite);
+    /** @type {Record<string, THREE.Material>} */
+    const spongeMats = { blue: mats.spongeBlue, gray: mats.spongeGray };
+    const m = new THREE.Mesh(geo, spongeMats[o.sponge.part.color] ?? mats.spongeWhite);
     m.position.set(cx, b.max.y - tapeT, cz);
     m.name = 'brake-sponge';
     m.userData.part = 'brake-sponge';
