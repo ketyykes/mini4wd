@@ -360,13 +360,14 @@ export function assemble(rawConfig) {
     const st = p[slot];
     const label = sx > 0 ? '前導輪架' : '後導輪架';
     if (st.slide) {
-      // 滑動保桿（iter-61）：滑動板（隨導輪左右滑動）、樹脂滑軌與小五金（固定在底盤）分開放，滑動部分另建剛體（見下方 slider）
+      // 滑動保桿（iter-61；iter-64 起前後皆可）：滑動板（隨導輪左右滑動）、樹脂滑軌與小五金（固定在底盤）分開放，滑動部分另建剛體（見下方 sliders）
       const [cx, cz] = polygonCentroid(st.plate.outline);
       const rail = st.slide.rail;
       const railPos = { x: (rail.xMin_mm + rail.xMax_mm) / 2, y: rail.y_mm + rail.thickness_mm / 2, z: 0 };
-      place(slot, SLIDE_PLATE_LABEL, st.slide.plateMass_g, { x: cx, y: st.plate.y_mm + st.plate.thickness_mm / 2, z: cz });
-      place(slot, '前滑動保桿滑軌', st.slide.railMass_g, railPos);
-      place(slot, '前滑動保桿彈簧與螺絲', st.slide.hardware_g, railPos);
+      const end = sx > 0 ? '前' : '後';
+      place(slot, SLIDE_PLATE_LABELS[slot], st.slide.plateMass_g, { x: cx, y: st.plate.y_mm + st.plate.thickness_mm / 2, z: cz });
+      place(slot, `${end}滑動保桿滑軌`, st.slide.railMass_g, railPos);
+      place(slot, `${end}滑動保桿彈簧與螺絲`, st.slide.hardware_g, railPos);
     } else if (st.plate) {
       const [cx, cz] = polygonCentroid(st.plate.outline);
       place(slot, label, st.mass_g, { x: cx, y: st.plate.y_mm + st.plate.thickness_mm / 2, z: cz });
@@ -416,8 +417,11 @@ export function assemble(rawConfig) {
   const damperLabels = new Set(opt.dampers.map((d) => d.label));
   const movableParts = p.massDamper && !p.massDamper.locked ? parts.filter((q) => q.slot === 'massDamper' && damperLabels.has(q.label)) : [];
   // 滑動保桿（iter-61）：滑動板＋裝在上面的前導輪（＋同一支螺絲上的穩定零件）是另一個剛體，不屬於車體剛體
-  const slider = sliderOf(p.frontStay, parts, opt.stabilizers);
-  const sliderParts = slider ? parts.filter((q) => slider.labels.includes(q.label)) : [];
+  // iter-64：後滑動保桿同理（後滑動板＋後導輪）；前後都裝時是兩個獨立的滑動剛體
+  const slider = sliderOf('frontStay', p.frontStay, parts, opt.stabilizers);
+  const rearSlider = sliderOf('rearStay', p.rearStay, parts, opt.stabilizers);
+  const sliders = [slider, rearSlider].filter((q) => q !== null);
+  const sliderParts = parts.filter((q) => sliders.some((sl) => sl.labels.includes(q.label)));
   const detached = [...movableParts, ...sliderParts];
   const rigid = detached.length > 0 ? massProps(parts.filter((q) => !detached.includes(q)), ch, bodyProps) : total;
   const movable = movableParts.map((q) => {
@@ -446,11 +450,13 @@ export function assemble(rawConfig) {
     boxes.push({ min: { x: w.x - R, y: 0, z: w.z - halfTire }, max: { x: w.x + R, y: 2 * R, z: w.z + halfTire } });
   }
   // 滑動保桿（推估規則，iter-61）：裝在滑動板上的零件（前導輪、滑動板、穩定零件）以行程端點（左右各 ±stroke）的外框計入，車寬檢查較保守
-  const slideZ = slider ? slider.stroke_mm : 0;
+  // iter-64：後滑動保桿同理（後導輪、後滑動板）
+  /** @type {(slot: string) => number} 某個 slot 的零件因滑動行程在 z 方向外擴的量（不在滑動板上 = 0） */
+  const strokeOf = (slot) => sliders.find((sl) => sl.slot === slot || sl.rollerSlot === slot)?.stroke_mm ?? 0;
   /** @type {number[]} 每個外框在 z 方向因滑動行程外擴的量（只有滑動板上的零件 > 0；迎風面積用不外擴的寬度） */
   const boxSlideDz = boxes.map(() => 0);
   for (const r of rollers) {
-    const dz = slider && r.slot === 'frontRollers' ? slideZ : 0;
+    const dz = strokeOf(r.slot);
     boxes.push({ min: { x: r.x - r.r, y: r.y - r.h / 2 + lift, z: r.z - r.r - dz }, max: { x: r.x + r.r, y: r.y + r.h / 2 + lift, z: r.z + r.r + dz } });
     boxSlideDz.push(dz);
   }
@@ -458,8 +464,13 @@ export function assemble(rawConfig) {
   /** @type {{ min: Vec3, max: Vec3 }[]} */
   const extraBoxes = opt.solids.filter((q) => q.group !== 'tire' && q.group !== 'roller').map((q) => {
     const b = solidBox(q.solid);
-    const onSlider = slider && ((q.group === 'stay' && q.slot === 'frontStay') || q.group === 'stabilizer');
-    const dz = onSlider ? slideZ : 0;
+    let dz = 0;
+    if (q.group === 'stay') {
+      dz = strokeOf(q.slot);
+    } else if (q.group === 'stabilizer') {
+      // 穩定零件和前導輪同一支螺絲
+      dz = strokeOf('frontStay');
+    }
     boxSlideDz.push(dz);
     return { min: lifted({ ...b.min, z: b.min.z - dz }, lift), max: lifted({ ...b.max, z: b.max.z + dz }, lift) };
   });
@@ -513,8 +524,10 @@ export function assemble(rawConfig) {
     optional: { dampers: opt.dampers, sponge: opt.sponge, ballast: opt.ballast, stabilizers: opt.stabilizers },
     rigid: { mass_g: rigid.mass_g, com_mm: rigid.com_mm, inertia_kgm2: rigid.inertia_kgm2 },
     movable,
-    // 滑動保桿的滑動部分（iter-61）；沒有滑動保桿時為 null
+    // 滑動保桿的滑動部分（iter-61）：slider = 前、rearSlider = 後（iter-64），沒裝時為 null；sliders = 有裝的（前在前）
     slider,
+    rearSlider,
+    sliders,
     lift_mm: lift,
     gearRatio: p.gear.ratio,
     driveType: ch.driveType,
@@ -541,20 +554,22 @@ export function assemble(rawConfig) {
   };
 }
 
-/** 滑動保桿的滑動板在零件清單（asm.parts）中的標籤 */
-const SLIDE_PLATE_LABEL = '前滑動板';
+/** 滑動保桿的滑動板在零件清單（asm.parts）中的標籤（前 / 後） */
+const SLIDE_PLATE_LABELS = { frontStay: '前滑動板', rearStay: '後滑動板' };
 
 /**
- * 滑動保桿的滑動部分（iter-61）：滑動板＋前導輪（FL / FR）＋前導輪上方的穩定零件（同一支螺絲），質量、質心（車體座標）、對自身質心的慣性。
- * 慣性：各零件以質點計（平行軸定理），滑動板另加自身外框方塊的慣性。前導輪架不是滑動保桿時回傳 null
- * @type {(st: Record<string, any>, parts: PlacedPart[], stabilizers: any[]) => import('./parts/types').PlacedSlider | null}
+ * 滑動保桿的滑動部分（iter-61；iter-64 推廣到後方）：滑動板＋裝在上面的導輪（前：FL / FR＋前導輪上方的穩定零件（同一支螺絲）；後：RL / RR / RUL / RUR），
+ * 質量、質心（車體座標）、對自身質心的慣性。慣性：各零件以質點計（平行軸定理），滑動板另加自身外框方塊的慣性。導輪架不是滑動保桿時回傳 null
+ * @type {(slot: 'frontStay' | 'rearStay', st: Record<string, any>, parts: PlacedPart[], stabilizers: any[]) => import('./parts/types').PlacedSlider | null}
  */
-function sliderOf(st, parts, stabilizers) {
+function sliderOf(slot, st, parts, stabilizers) {
   if (!st.slide) {
     return null;
   }
-  const stabLabels = new Set(stabilizers.map((s) => s.label));
-  const own = parts.filter((q) => q.label === SLIDE_PLATE_LABEL || q.slot === 'frontRollers' || (q.slot === 'stabilizer' && stabLabels.has(q.label)));
+  const rollerSlot = slot === 'frontStay' ? 'frontRollers' : 'rearRollers';
+  // 穩定零件裝在前導輪上方，只跟前滑動板一起滑動
+  const stabLabels = new Set(slot === 'frontStay' ? stabilizers.map((s) => s.label) : []);
+  const own = parts.filter((q) => q.label === SLIDE_PLATE_LABELS[slot] || q.slot === rollerSlot || (q.slot === 'stabilizer' && stabLabels.has(q.label)));
   let mass_g = 0;
   const mom = { x: 0, y: 0, z: 0 };
   for (const q of own) {
@@ -585,7 +600,8 @@ function sliderOf(st, parts, stabilizers) {
   inertia.z += (mp / 12) * (lx * lx + ly * ly);
   const sl = st.slide;
   return {
-    slot: 'frontStay',
+    slot,
+    rollerSlot,
     partId: st.id,
     labels: own.map((q) => q.label),
     mass_g,

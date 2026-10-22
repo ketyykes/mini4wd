@@ -159,9 +159,11 @@ export interface SlideSpec {
   spring: { x_mm: number; innerZ_mm: number; outerZ_mm: number; coilDiameter_mm: number; wireDiameter_mm: number; turns: number; color: number };
 }
 
-/** 組裝後的滑動保桿（asm.slider，車體座標）：滑動部分 = 滑動板＋裝在上面的前導輪（與穩定零件） */
+/** 組裝後的滑動保桿（asm.slider = 前、asm.rearSlider = 後，iter-64；車體座標）：滑動部分 = 滑動板＋裝在上面的導輪（前款另含穩定零件） */
 export interface PlacedSlider {
-  slot: 'frontStay';
+  slot: 'frontStay' | 'rearStay';
+  /** 裝在這塊滑動板上的導輪 slot */
+  rollerSlot: 'frontRollers' | 'rearRollers';
   partId: string;
   /** 滑動部分的零件標籤（asm.parts 的 label） */
   labels: string[];

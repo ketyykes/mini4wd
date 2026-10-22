@@ -95,7 +95,9 @@ export function validateAssembly(asm) {
   }
   if (!(size.z < r.maxWidth_mm)) {
     // 滑動保桿（iter-61）：外框取滑動板在行程端點時的最大範圍（推估規則：官方條文沒寫可動零件怎麼量，取較保守的量法）
-    const slideNote = asm.slider ? `（含前滑動保桿行程端點 ±${asm.slider.stroke_mm} mm 的外框，推估規則）` : '';
+    // iter-64：前 / 後滑動保桿各自的行程端點
+    const sliders = asm.sliders ?? (asm.slider ? [asm.slider] : []);
+    const slideNote = sliders.length > 0 ? `（含${sliders.map((sl) => `${sl.slot === 'frontStay' ? '前' : '後'}滑動保桿行程端點 ±${sl.stroke_mm} mm`).join('、')} 的外框，推估規則）` : '';
     fail('WIDTH', `全寬 ${f1(size.z)} mm${slideNote}，規則須 < ${r.maxWidth_mm} mm`);
   }
   if (!(size.y < r.maxHeight_mm)) {
