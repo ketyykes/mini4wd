@@ -230,9 +230,10 @@ export function createCar(env, opt = {}) {
         RAPIER.ColliderDesc.ball(t.r * MM)
           .setTranslation(r.x * MM - o.x, (r.y + t.y) * MM - o.y, r.z * MM - o.z)
           .setDensity(0)
-          .setFriction(rollerPart.wallFriction)
+          // 第七階段（iter-76）：雙層導輪每一片可有自己的摩擦 / 恢復係數（例如 15418 上層橡膠環），沒有時用零件層級的值
+          .setFriction(t.wallFriction ?? rollerPart.wallFriction)
           .setFrictionCombineRule(RAPIER.CoefficientCombineRule.Min)
-          .setRestitution(rollerPart.restitution),
+          .setRestitution(t.restitution ?? rollerPart.restitution),
         parent,
       ),
     );

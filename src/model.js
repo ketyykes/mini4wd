@@ -429,6 +429,9 @@ function buildWheel(mats, side) {
     if (tread === 'sponge') {
       // 海綿：幾乎方形的斷面（只有 0.3 mm 小圓角）
       r = rr + (R - rr) * Math.min(1, 0.85 + edge * 6);
+    } else if (tread === 'slick') {
+      // 第七階段（iter-76）：slick 胎——和橡膠胎同樣的圓胎肩，但胎面沒有溝槽
+      r = rr + (R - rr) * Math.min(1, 0.55 + edge * 4.5);
     } else if (tread === 'barrel') {
       // 拱形：圓弧 r = R − (crownR − √(crownR² − y²))，胎肩處不低於輪框外 0.4 mm
       const yy = Math.min(Math.abs(y), crownR * 0.98);
@@ -447,8 +450,14 @@ function buildWheel(mats, side) {
   const tireGeo = new THREE.LatheGeometry(prof, 64);
   tireGeo.rotateX(Math.PI / 2);
   /** @type {Record<string, THREE.Material>} */
-  const treadMats = { sponge: mats.tireSponge, hard: mats.tireHard, barrel: mats.tireHard };
-  g.add(new THREE.Mesh(tireGeo, treadMats[tread] ?? mats.tire));
+  const treadMats = { sponge: mats.tireSponge, hard: mats.tireHard, barrel: mats.tireHard, slick: mats.tireHard };
+  let tireMat = treadMats[tread] ?? mats.tire;
+  // 第七階段（iter-76）：零件指定胎色（例如白色硬質 slick、透明軟質 slick）時，複製胎面材質換顏色（材質名稱不變，Blender 分類照舊）
+  if (spec.tire.tireColor !== undefined) {
+    tireMat = tireMat.clone();
+    /** @type {THREE.MeshStandardMaterial} */ (tireMat).color.setHex(spec.tire.tireColor);
+  }
+  g.add(new THREE.Mesh(tireGeo, tireMat));
 
   // 輪框：外圈＋5 組 Y 字幅條
   const rimRing = new THREE.Mesh(new THREE.CylinderGeometry(rr, rr, w * 0.9, 40, 1, true), mats.rimBarrel);
@@ -982,7 +991,7 @@ const buildRoller = (mats, r, opt = {}) => {
   }
   const bodyGeo = new THREE.LatheGeometry(prof.map(([a, b]) => new THREE.Vector2(a, b)).reverse(), 48);
   // 導輪本體材質依零件：塑膠（黑）或鋁合金（亮銀）
-  const body = new THREE.Mesh(bodyGeo, r.finish === 'aluminum' ? mats.rollerAlu : mats.rollerBody);
+  const body = new THREE.Mesh(bodyGeo, rollerBodyMat(mats, r));
   g.add(body);
   if (ring && !tp) {
     g.add(buildRollerRing(ring, R));
@@ -1048,23 +1057,40 @@ const buildRoller = (mats, r, opt = {}) => {
 };
 
 /**
+ * 導輪本體材質：鋁合金（亮銀）或塑膠（預設黑；零件有 color 時用該色，例如 15532 藍色 POM 雙層導輪）
+ * @type {(mats: ReturnType<typeof makeMaterials>, r: { finish?: string, color?: number }) => THREE.Material}
+ */
+const rollerBodyMat = (mats, r) => {
+  if (r.finish === 'aluminum') {
+    return mats.rollerAlu;
+  }
+  if (r.color === undefined) {
+    return mats.rollerBody;
+  }
+  const m = mats.rollerBody.clone();
+  m.color.setHex(r.color);
+  return m;
+};
+
+/**
  * 導輪（可能是雙層）：每一片接觸面各建一顆 buildRoller（尺寸取該片的直徑與高度），整組放在導輪中心
  * @type {(mats: ReturnType<typeof makeMaterials>, r: { x: number, y: number, z: number, r: number, h: number, tiers?: { y: number, r: number, h: number }[], finish?: string, taper?: import('./parts/types').RollerSpec['taper'], ring?: import('./parts/types').RollerSpec['ring'] }, opt?: { bare?: boolean }) => THREE.Group}
  */
 const buildRollerStack = (mats, r, opt = {}) => {
   const tiers = r.tiers ?? [{ y: 0, r: r.r, h: r.h }];
   if (tiers.length === 1) {
-    return buildRoller(mats, { x: r.x, y: r.y + tiers[0].y, z: r.z, r: tiers[0].r, h: tiers[0].h, finish: r.finish, taper: r.taper, ring: r.ring }, opt);
+    return buildRoller(mats, { x: r.x, y: r.y + tiers[0].y, z: r.z, r: tiers[0].r, h: tiers[0].h, finish: r.finish, taper: r.taper, ring: r.ring, color: r.color }, opt);
   }
   const g = new THREE.Group();
   tiers.forEach((t, i) => {
     // 雙層導輪是一體成形：只有最下層保留底部五金
-    g.add(buildRoller(mats, { x: r.x, y: r.y + t.y, z: r.z, r: t.r, h: t.h, finish: r.finish, taper: r.taper }, { bare: opt.bare || i > 0 }));
+    // 第七階段（iter-76）：每一片可有自己的外環（例如 15418 上層橡膠環）
+    g.add(buildRoller(mats, { x: r.x, y: r.y + t.y, z: r.z, r: t.r, h: t.h, finish: r.finish, taper: r.taper, ring: t.ring ?? r.ring, color: r.color }, { bare: opt.bare || i > 0 }));
   });
   // 兩片之間的縮腰（同材質的短圓柱）
   const ys = tiers.map((t) => r.y + t.y);
   const waistH = Math.max(...ys) - Math.min(...ys);
-  const waist = new THREE.Mesh(new THREE.CylinderGeometry(Math.min(...tiers.map((t) => t.r)) - 1.6, Math.min(...tiers.map((t) => t.r)) - 1.6, waistH, 32), r.finish === 'aluminum' ? mats.rollerAlu : mats.rollerBody);
+  const waist = new THREE.Mesh(new THREE.CylinderGeometry(Math.min(...tiers.map((t) => t.r)) - 1.6, Math.min(...tiers.map((t) => t.r)) - 1.6, waistH, 32), rollerBodyMat(mats, r));
   waist.position.set(r.x, (Math.max(...ys) + Math.min(...ys)) / 2, r.z);
   g.add(waist);
   return g;

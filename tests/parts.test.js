@@ -600,6 +600,47 @@ describe('P17 新零件的物理效果（只透過組裝設定替換）', () => 
     expect(maxRise).toBeLessThanOrEqual(1e-7);
   }, 120000);
 
+  test('P17_phase7_rollers_tires 第七階段導輪 / 輪胎：硬 slick 滾阻小 → 極速與起步都比軟 slick 快；低反發海綿胎輕、輪子慣量小 → 起步較快但滾阻大 → 理論極速較低；雙層導輪每一片的牆面摩擦取自己的資料', () => {
+    const base = { body: 'body-pc-box' };
+    /** @type {(over: Record<string, any>) => any} */
+    const A = (over) => {
+      const asm = assemble(cfg({ ...base, ...over }));
+      expect(validateAssembly(asm).ok, JSON.stringify(over)).toBe(true);
+      return asm;
+    };
+    const th = (/** @type {any} */ asm) => theoreticalTopSpeed({ assembly: asm }).vTheory;
+    const v03 = (/** @type {any} */ asm) => launch(asm, 0.3).vEnd;
+    const hard = A({ wheels: 'wheel-31-hard-slick' });
+    const soft = A({ wheels: 'wheel-31-soft-slick' });
+    const large = A({ wheels: 'wheel-31-large' });
+    const sponge = A({ wheels: 'wheel-31-sponge-lowrebound' });
+    console.log(`[P17] slick：理論極速 硬 ${f3(th(hard))} / 軟 ${f3(th(soft))} m/s；0.3 s 起步 硬 ${f3(v03(hard))} / 軟 ${f3(v03(soft))} m/s`);
+    // 同尺寸同質量，只差 μ 與 C_rr：直線上輪胎沒打滑，C_rr 小的那款較快
+    expect(Math.abs(hard.mass_g - soft.mass_g)).toBeLessThan(1e-9);
+    expect(th(hard)).toBeGreaterThan(th(soft));
+    expect(v03(hard)).toBeGreaterThan(v03(soft));
+    const jW = (/** @type {any} */ asm) => asm.spec.spin.perItem_gmm2.wheel;
+    console.log(`[P17] 低反發海綿 31 mm：${f3(sponge.mass_g)} g、輪子慣量 ${f3(jW(sponge))} g·mm²（標準 31 mm ${f3(large.mass_g)} g、${f3(jW(large))}）；理論極速 ${f3(th(sponge))} / ${f3(th(large))} m/s；0.3 s 起步 ${f3(v03(sponge))} / ${f3(v03(large))} m/s`);
+    expect(sponge.mass_g).toBeLessThan(large.mass_g);
+    expect(jW(sponge)).toBeLessThan(jW(large));
+    expect(v03(sponge)).toBeGreaterThan(v03(large));
+    expect(th(sponge)).toBeLessThan(th(large));
+    // 雙層導輪（15418 上層橡膠環）：物理引擎碰撞體下層 μ 0.05、上層 0.10（取每一片自己的資料，不是整顆同一值）
+    const rub = A({ frontRollers: 'roller-13-12-alu-double-rubber' });
+    const env = sim.createWorld(buildStraight(4));
+    const car = sim.createCar(env, { assembly: rub });
+    const fl = car.rollers.find((/** @type {any} */ r) => r.id === 'FL');
+    const tiers = rub.partsBySlot.frontRollers.tiers;
+    expect(fl.colliders.length).toBe(2);
+    fl.colliders.forEach((/** @type {any} */ c, /** @type {number} */ i) => {
+      expect(c.friction()).toBeCloseTo(tiers[i].wallFriction ?? rub.partsBySlot.frontRollers.wallFriction, 6);
+    });
+    expect(fl.colliders[1].friction()).toBeGreaterThan(fl.colliders[0].friction());
+    // 9 / 8 mm 雙層鋁導輪：外框比 13 mm 窄
+    const n98 = A({ frontRollers: 'roller-9-8-alu-double', rearRollers: 'roller-9-8-alu-double' });
+    expect(n98.bbox_mm.size.z).toBeLessThan(A({}).bbox_mm.size.z);
+  }, 120000);
+
   test('P17_balllink_swing 球頭連桿制振器（第七階段新機制：繞橫向軸擺動）：擺角在止點範圍內、靜止角 = 座墊壓縮平衡角、座墊力作用 / 反作用同點、斷電滑行動能不增', () => {
     const asm = assemble(cfg({ rearStay: 'stay-rear-frp', massDamper: 'damper-balllink-square', body: null }));
     expect(validateAssembly(asm).ok).toBe(true);
@@ -703,6 +744,52 @@ describe('P17 新零件的物理效果（只透過組裝設定替換）', () => 
     expect(maxPen).toBeLessThanOrEqual(0.001);
     expect(minUp).toBeGreaterThan(0.8);
   }, 180000);
+
+  test('P17_phase7_laps 第七階段每款新零件至少 1 組合法完整組裝：主賽道跑完官方 3 圈、不穿牆（≤ 1 mm）、不翻車（球頭連桿見 P17_p7_demo）', () => {
+    const cases = [
+      { rearStay: 'stay-rear-frp', massDamper: 'damper-heavy' },
+      { massDamper: 'damper-square-8x8x14', body: 'body-hinge-deck' },
+      { frontRollers: 'roller-13-12-alu-double' },
+      { frontRollers: 'roller-13-12-alu-double-rubber' },
+      { frontRollers: 'roller-9-8-alu-double', rearRollers: 'roller-9-8-alu-double' },
+      { frontRollers: 'roller-19-19-plastic-double', body: 'body-pc-box' },
+      { wheels: 'wheel-31-hard-slick', body: 'body-pc-box' },
+      { wheels: 'wheel-31-soft-slick', body: 'body-pc-box' },
+      { wheels: 'wheel-31-sponge-lowrebound', body: 'body-pc-box' },
+    ];
+    for (const over of cases) {
+      const asm = assemble(cfg(over));
+      expect(validateAssembly(asm).ok, JSON.stringify(over)).toBe(true);
+      const track = buildCircuit();
+      const env = sim.createWorld(track);
+      const car = sim.createCar(env, { assembly: asm, s: 0.15, lane: 0 });
+      const L = track.path.length;
+      let last = 0.15;
+      let dist = 0;
+      let maxPen = 0;
+      let minUp = 1;
+      for (let i = 0; i < Math.round(12 / env.world.timestep) && dist < 3 * L; i++) {
+        sim.stepCar(env, car);
+        const t = car.chassis.translation();
+        const c = track.path.project(t.x, t.z);
+        let ds = c.s - last;
+        if (ds < -L / 2) {
+          ds += L;
+        }
+        if (ds > L / 2) {
+          ds -= L;
+        }
+        dist += ds;
+        last = c.s;
+        maxPen = Math.max(maxPen, sim.wallPenetration(env, car));
+        minUp = Math.min(minUp, sim.upAxis(car).y);
+      }
+      console.log(`[P17] ${JSON.stringify(over)}：3 圈 ${f3(dist)} / ${f3(3 * L)} m，最大穿牆 ${(maxPen * 1000).toFixed(3)} mm、最小 up.y ${f3(minUp)}`);
+      expect(dist).toBeGreaterThanOrEqual(3 * L);
+      expect(maxPen).toBeLessThanOrEqual(0.001);
+      expect(minUp).toBeGreaterThan(0.8);
+    }
+  }, 300000);
 
   test('P17_coast_energy 斷電滑行時整車動能單調不增（含制振器、煞車海綿的組裝）', () => {
     // 容許值：相鄰兩步動能增加量 ≤ 1e-7 J（約初始動能 0.4 J 的 2.5×10⁻⁷）。
@@ -1440,6 +1527,11 @@ describe('P18 干涉與安裝相容性', () => {
       { over: { rearStay: 'stay-rear-frp', massDamper: 'damper-balllink-square', body: 'body-mantis-scythe' }, codes: ['DAMPER_BODY_CLEARANCE'] },
       // 8×8 方塊比 6×6 寬 2 mm、高 2 mm → 碰到 owl 車殼側裙（6×6×14 在 aero-wing 合法，見合法對照）
       { over: { massDamper: 'damper-square-8x8x14', body: 'body-owl-hush' }, codes: ['DAMPER_BODY_CLEARANCE'] },
+      // ---- 第七階段（iter-76）：雙層導輪、31 mm 新輪胎 ----
+      { over: { rearRollers: 'roller-13-12-alu-double' }, codes: ['ROLLER_ROLLER_CLEARANCE'] },
+      { over: { frontRollers: 'roller-19-19-plastic-double', body: 'body-owl-hush' }, codes: ['BODY_ROLLER_CLEARANCE'] },
+      { over: { wheels: 'wheel-31-hard-slick', body: 'body-owl-hush' }, codes: ['BODY_TIRE_CLEARANCE'] },
+      { over: { rearStay: 'stay-rear-frp', wheels: 'wheel-31-sponge-lowrebound', body: 'body-pc-box' }, contains: 'STAY_TIRE_CLEARANCE' },
     ];
     for (const c of cases) {
       const res = validateAssembly(assemble(cfg(c.over)));
@@ -1453,7 +1545,7 @@ describe('P18 干涉與安裝相容性', () => {
       }
     }
     // 合法的對照：雙層導輪＋單層的碳纖寬後板、FRP 後板＋後制振器
-    for (const over of [{ rollers: 'roller-13-12-double', rearStay: 'stay-rear-carbon-wide' }, { rearStay: 'stay-rear-frp', massDamper: 'damper-rear-cylinder' }, { stabilizer: 'stabilizer-head-17', rollers: 'roller-19', body: null }, { rollers: 'roller-13-tapered', frontStay: 'stay-front-frp', rearStay: 'stay-rear-frp', body: null }, { frontRollers: 'roller-19-tapered', rearRollers: 'roller-13-alu', frontStay: 'stay-front-frp' }, { frontRollers: 'roller-13-12-double' }, { rearStay: 'stay-rear-carbon-wide', frontRollers: 'roller-19' }, { massDamper: 'damper-side-square', body: 'body-aero-wing' }, { massDamper: 'damper-side-square-32', body: 'body-pc-box' }, { wheels: 'wheel-31-lowfriction', body: 'body-pc-box' }, { motor: 'motor-rev' }, { rearStay: 'stay-rear-frp', massDamper: 'damper-balllink-square' }, { rearStay: 'stay-rear-frp', massDamper: 'damper-heavy' }, { massDamper: 'damper-square-8x8x14', body: 'body-hinge-deck' }]) {
+    for (const over of [{ rollers: 'roller-13-12-double', rearStay: 'stay-rear-carbon-wide' }, { rearStay: 'stay-rear-frp', massDamper: 'damper-rear-cylinder' }, { stabilizer: 'stabilizer-head-17', rollers: 'roller-19', body: null }, { rollers: 'roller-13-tapered', frontStay: 'stay-front-frp', rearStay: 'stay-rear-frp', body: null }, { frontRollers: 'roller-19-tapered', rearRollers: 'roller-13-alu', frontStay: 'stay-front-frp' }, { frontRollers: 'roller-13-12-double' }, { rearStay: 'stay-rear-carbon-wide', frontRollers: 'roller-19' }, { massDamper: 'damper-side-square', body: 'body-aero-wing' }, { massDamper: 'damper-side-square-32', body: 'body-pc-box' }, { wheels: 'wheel-31-lowfriction', body: 'body-pc-box' }, { motor: 'motor-rev' }, { rearStay: 'stay-rear-frp', massDamper: 'damper-balllink-square' }, { rearStay: 'stay-rear-frp', massDamper: 'damper-heavy' }, { massDamper: 'damper-square-8x8x14', body: 'body-hinge-deck' }, { frontRollers: 'roller-13-12-alu-double-rubber' }, { frontRollers: 'roller-9-8-alu-double', rearRollers: 'roller-9-8-alu-double' }, { wheels: 'wheel-31-soft-slick', body: 'body-pc-box' }, { wheels: 'wheel-31-sponge-lowrebound', body: 'body-pc-box' }]) {
       const res = validateAssembly(assemble(cfg(over)));
       expect(res.ok, JSON.stringify(res.violations)).toBe(true);
     }

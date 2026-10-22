@@ -9,14 +9,14 @@ const ROLLER_REF_HEIGHT_MM = 5;
 /**
  * 導輪配置：前 2 顆＋後每側 1–2 層（後導輪架 upperRollerHeight_mm 為 null 時只有下層）
  * tiers：疊放的接觸片（相對導輪中心的 y、直徑、高度），單層導輪為 1 片
- * @type {(s: any) => { id: string, x: number, y: number, z: number, r: number, h: number, tiers: { y: number, r: number, h: number }[] }[]}
+ * @type {(s: any) => { id: string, x: number, y: number, z: number, r: number, h: number, tiers: { y: number, r: number, h: number, wallFriction?: number, restitution?: number, ring?: any }[] }[]}
  */
 export function rollerLayout(s) {
   const c = s.chassis;
   const r = c.rollerDiameter_mm / 2;
   const h = c.rollerHeight_mm;
   const dy = (h - ROLLER_REF_HEIGHT_MM) / 2;
-  const tiers = (c.rollerTiers ?? [{ diameter_mm: c.rollerDiameter_mm, height_mm: h, y_mm: 0 }]).map((t) => ({ y: t.y_mm, r: t.diameter_mm / 2, h: t.height_mm }));
+  const tiers = (c.rollerTiers ?? [{ diameter_mm: c.rollerDiameter_mm, height_mm: h, y_mm: 0 }]).map((t) => ({ y: t.y_mm, r: t.diameter_mm / 2, h: t.height_mm, wallFriction: t.wallFriction, restitution: t.restitution, ring: t.ring }));
   const fx = c.frontRollerX_mm;
   const fz = c.frontRollerZ_mm;
   const rx = c.rearRollerX_mm;

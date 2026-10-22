@@ -2878,3 +2878,20 @@
 - 30 mm 落下總機械能（`/tmp/audit-drop-p7.mjs`，座墊位能用座墊點位移）：球頭連桿兩組、重型制振器每步增量 0；8×8×14 只有射線輪接地那一步 +25.5 µJ（PEw，稽核 L8 已知）。
 - 指定測試 7 項通過（03:17）。
 - `node scripts/score.mjs`：**20/20**（03:22）。外觀：預設車與車殼不變，沿用基準 7.75（新零件外形併入下次評審）→ 總分 88.75。
+
+## iter-76（導輪 4 款＋輪胎 3 款：subagent 實作、主 agent 整合）
+### 計畫
+- AS 順序表第 5–10 順位：雙層導輪 4 款（15398、15418、15403、15532）、大徑 slick 2 款（15365、15364）、低反發海綿胎（15507＋15491 窄輪框）。subagent 在 `app/` worktree `/tmp/wt-p7a`（分支 `p7-rollers-tires`，`681f341`）只改 `rollers.js`、`wheels.js`、`types.d.ts`；主 agent 整合物理與外觀。
+- 預期：硬 slick 比軟 slick 快（滾阻小）；海綿胎起步快、理論極速低；雙層導輪每片用自己的摩擦。
+
+### 執行
+- cherry-pick `681f341`。
+- `carLayout.js` tiers 保留每片的 `wallFriction` / `restitution` / `ring`；`sim.js` 每片碰撞體 `setFriction(t.wallFriction ?? 零件值)`——subagent 指出原本所有片都用零件層級的值，15418 上層橡膠環的摩擦不會進模擬。
+- 拿掉 subagent 加的 `tireRestitution` 欄位：本專案輪胎垂直方向是全車共用的懸吊彈簧 / 阻尼，這個欄位沒有進模擬，留著會看起來像有物理效果；研究推估值改記在 `src.restitution`（標「未建模」）。
+- `model.js`：新胎面 `slick`（圓胎肩、無溝槽）、讀零件 `tireColor`（白色硬質、淡灰透明軟質）、雙層導輪每片可畫自己的外環（15418 上層橡膠環）、塑膠導輪讀零件 `color`（15532 藍色 POM）。
+- 示範設定原想換成前 13-12 雙層橡膠環＋後 9-8 雙層：在 p7-demo（Rev 馬達＋前硬滑動保桿）高速組合下，前雙層橡膠環在換道器附近翻車（minUp −0.88）、後 9-8 雙層最大穿牆 1.056 mm（> 1 mm）。同樣的導輪在預設組裝都跑完 3 圈（最大穿牆 ≤ 0.12 mm）。疑與稽核 H1（球形碰撞體垂直範圍過大）有關 → 示範設定先不換，H1 修正後重測。
+
+### 驗證
+- 新測試：`P17_phase7_rollers_tires`（硬 / 軟 slick 理論極速與起步、海綿胎質量 / 慣量 / 起步 / 極速、15418 兩片碰撞體摩擦 = 各自資料、9-8 外框較窄）、`P17_phase7_laps`（第七階段每款新零件 1 組合法組裝跑完 3 圈，9 組）；`P18_known_cases` 加 4 個（後 13-12 雙層 → ROLLER_ROLLER_CLEARANCE、前 19-19 雙層 × owl → BODY_ROLLER_CLEARANCE、硬 slick × owl → BODY_TIRE_CLEARANCE、海綿胎 × FRP 後板 → STAY_TIRE_CLEARANCE）＋4 個合法對照。
+- 指定測試 7 項通過。
+- `node scripts/score.mjs`：**20/20**（03:38）。外觀沿用 7.75（預設車不變）→ 88.75。worktree `/tmp/wt-p7a` 與分支 `p7-rollers-tires` 已移除。

@@ -248,8 +248,8 @@ export function rollerLayoutOf(s) {
   const isFront = (/** @type {{ id: string }} */ r) => r.id === 'FL' || r.id === 'FR';
   const fr = s.chassis.frontRoller;
   const rr = s.chassis.rearRoller;
-  const front = rollerLayout(withRoller(fr)).filter(isFront).map((r) => ({ ...r, slot: 'frontRollers', partId: fr.id, finish: fr.finish, taper: fr.taper, ring: fr.ring }));
-  const rear = rollerLayout(withRoller(rr)).filter((r) => !isFront(r)).map((r) => ({ ...r, slot: 'rearRollers', partId: rr.id, finish: rr.finish, taper: rr.taper, ring: rr.ring }));
+  const front = rollerLayout(withRoller(fr)).filter(isFront).map((r) => ({ ...r, slot: 'frontRollers', partId: fr.id, finish: fr.finish, taper: fr.taper, ring: fr.ring, color: fr.color }));
+  const rear = rollerLayout(withRoller(rr)).filter((r) => !isFront(r)).map((r) => ({ ...r, slot: 'rearRollers', partId: rr.id, finish: rr.finish, taper: rr.taper, ring: rr.ring, color: rr.color }));
   return [...front, ...rear];
 }
 

@@ -234,8 +234,9 @@ export const wheelParts = [
     },
   },
   // ---- 第七階段（iter-76）：大徑 slick 胎、低反發海綿窄胎（PARTS_RESEARCH 第七階段 AN 節）----
-  // tireRestitution：輪胎法向（著地）恢復係數，AN 節推估值。※ 目前 sim.js 輪胎垂直方向用全車共用的懸吊彈簧 / 阻尼（spec.sim），沒有讀這個欄位，只記錄
-  // tireColor：胎色（0xRRGGBB）。※ 目前 model.js 胎色由 tread 決定，沒有讀這個欄位
+  // 著地恢復係數（AN 節推估 hard 0.2 / soft 0.3 / 海綿 0.05）沒有建模：sim.js 輪胎垂直方向用全車共用的懸吊彈簧 / 阻尼（spec.sim），
+  // 所以不放成零件欄位（避免看起來有物理效果），只記在 src.restitution（iter-76 主 agent 整合時拿掉 subagent 加的 tireRestitution 欄位）
+  // tireColor：胎色（0xRRGGBB，model.js 讀取；只影響外觀）
   // 15364 / 15365 只有胎，官方「大径タイヤ用ホイールとあわせて使用」→ 這裡的零件 = 胎＋大徑（ノーマル）輪框，質量 / 慣量都含輪框
   {
     id: 'wheel-31-hard-slick',
@@ -247,8 +248,7 @@ export const wheelParts = [
     frictionCoeff: 0.5,
     rollingResistanceCoeff: 0.015,
     slipAngleSaturation_rad: 0.1,
-    tireRestitution: 0.2,
-    tread: 'hard',
+    tread: 'slick',
     tireColor: 0xf0f0ec,
     rimStyle: 'standard',
     rimBaseMass_g: 1.4,
@@ -262,8 +262,8 @@ export const wheelParts = [
       frictionCoeff: '推估（AN 節）：0.5（官方「硬いローグリップ」，同 wheel-26-superhard）',
       rollingResistanceCoeff: '推估（AN 節）：0.015（硬膠遲滯損失小，同 wheel-31-arched）',
       slipAngleSaturation_rad: '同 wheel-31-large（推估）',
-      tireRestitution: '推估（AN 節）：0.2（官方「標準タイヤにくらべてバウンドが少ない」→ 比標準 0.3 低）；目前模擬未使用',
-      tread: '外觀：沿用 hard（較亮的硬胎材質）；實物是無溝槽 slick，model.js 目前沒有 slick 胎面',
+      restitution: '未建模（本專案輪胎垂直方向是全車共用的懸吊彈簧 / 阻尼）：推估（AN 節）：0.2（官方「標準タイヤにくらべてバウンドが少ない」→ 比標準 0.3 低）',
+      tread: '外觀：slick（無溝槽、圓胎肩；iter-76 model.js 新增）',
       tireColor: '[T15365] 官方品名「ホワイト」',
       mass_g: 'AN 節 [ROU] 玩家實測：大径ノーマルタイヤ 胎 2.8 g＋輪框 1.4 g = 4.2 g（硬胎同尺寸，膠料密度差不計）',
       rimBaseMass_g: `[ROU] 玩家實測大径ノーマル輪框 1.4 g；${RIM_SRC}`,
@@ -281,8 +281,7 @@ export const wheelParts = [
     frictionCoeff: 0.9,
     rollingResistanceCoeff: 0.025,
     slipAngleSaturation_rad: 0.1,
-    tireRestitution: 0.3,
-    tread: 'rubber',
+    tread: 'slick',
     tireColor: 0xd8dcd6,
     rimStyle: 'standard',
     rimBaseMass_g: 1.4,
@@ -296,8 +295,8 @@ export const wheelParts = [
       frictionCoeff: '推估（AN 節）：0.9（官方「柔らかく、ハイグリップ」→ 高於標準 0.7）',
       rollingResistanceCoeff: '推估（AN 節）：0.025（軟膠遲滯較大）',
       slipAngleSaturation_rad: '同 wheel-31-large（推估）',
-      tireRestitution: '推估：官方沒有反彈的說法 → 取 AN 節的標準胎基準 0.3；目前模擬未使用',
-      tread: '外觀：沿用 rubber；實物是無溝槽透明 slick，model.js 目前沒有 slick 胎面與透明胎材質',
+      restitution: '未建模（本專案輪胎垂直方向是全車共用的懸吊彈簧 / 阻尼）：推估：官方沒有反彈的說法 → 取 AN 節的標準胎基準 0.3',
+      tread: '外觀：slick（無溝槽、圓胎肩；iter-76 model.js 新增）；透明胎以淡灰色表示',
       tireColor: '[T15364] 官方品名「クリヤー」（透明；色碼為推估的淡灰）',
       mass_g: 'AN 節 [ROU] 玩家實測：大径ノーマルタイヤ 胎 2.8 g＋輪框 1.4 g = 4.2 g（軟胎同尺寸，膠料密度差不計）',
       rimBaseMass_g: `[ROU] 玩家實測大径ノーマル輪框 1.4 g；${RIM_SRC}`,
@@ -318,7 +317,6 @@ export const wheelParts = [
     frictionCoeff: 1.0,
     rollingResistanceCoeff: 0.04,
     slipAngleSaturation_rad: 0.1,
-    tireRestitution: 0.05,
     tread: 'sponge',
     rimStyle: 'standard',
     rimBaseMass_g: 1.1,
@@ -333,7 +331,7 @@ export const wheelParts = [
       frictionCoeff: '推估（AN 節）：1.0（同 wheel-24-sponge）',
       rollingResistanceCoeff: '推估（AN 節）：0.04（同 wheel-24-sponge）',
       slipAngleSaturation_rad: '同 wheel-24-sponge（推估）',
-      tireRestitution: '推估（AN 節）：0.05（官方「ソリッドタイヤより､さらに低反発」，最低）；目前模擬未使用',
+      restitution: '未建模（本專案輪胎垂直方向是全車共用的懸吊彈簧 / 阻尼）：推估（AN 節）：0.05（官方「ソリッドタイヤより､さらに低反発」，最低）',
       mass_g: '推估（AN 節）：窄輪框 1.1 g＋海綿 0.9 g = 2.0 g；合理性：海綿體積 π/4·(31² − 24.8²)·10 = 2,717 mm³ → 密度 0.33 g/cm³，在 Q 節細孔海綿 0.15–0.40 範圍內',
       rimBaseMass_g: `推估（AN 節）：大徑窄輪框 1.1 g（比大徑輪框 1.3 g 窄）；${RIM_SRC}`,
       compat: 'AN 節：官方適用表含 MA；Sec.6「Combining different sizes or materials of tires is allowed」→ 海綿胎裝 15491 窄輪框合法；31 mm 輪胎另受 BODY_TIRE_CLEARANCE、STAY_TIRE_CLEARANCE 檢查',
