@@ -220,6 +220,11 @@ const buildWindscreen = (x0, y0) => {
   };
 };
 
+/** @type {number} 鐮刀片從擋泥板頂面隆起的高度（iter-73：1.6 → 3.2 mm） */
+const BLADE_RISE = 3.2;
+/** @type {number[]} 收翅尖端高度 [左片, 右片]（iter-73：32.2 / 33 → 41 / 42.5，立起一個角度） */
+const WING_TIP_Y = [41, 42.5];
+
 /** @type {number[][]} 鐮刀片中心線（俯視 (x, |z|)）：根部在擋泥板前內角，往後外彎到刃尖 */
 const SCYTHE = [
   [55.5, 22.5],
@@ -385,9 +390,10 @@ export const mantisScytheBody = makePolyBody({
     // 鐮刀片（L1-5 的唯一刃形元素）：前擋泥板頂面隆起 1.6 mm 的炭灰片，凹側（朝後內）是番茄紅鋸齒刃
     /** @type {KeepFn} */
     const bladeKeep = (x, y, z) => (y < 22 ? -1 : -scytheSd(x, Math.abs(z)).d);
-    const blade = buildRegion(kit.surf, [...kit.holes, bladeKeep], { offset: 1.6 });
+    // iter-73（評審 iter-72「刃片不明顯」）：隆起 1.6 → 3.2 mm，刃片側視也看得出一道立起的鐮刀
+    const blade = buildRegion(kit.surf, [...kit.holes, bladeKeep], { offset: BLADE_RISE });
     parts.push({ geometry: blade.geometry, mat: 'graphite2', shell: true, name: 'scythe-blades' });
-    parts.push({ geometry: buildRim(blade, 0, 1.6), mat: 'graphite2', name: 'scythe-blade-walls' });
+    parts.push({ geometry: buildRim(blade, 0, BLADE_RISE), mat: 'graphite2', name: 'scythe-blade-walls' });
     /** @type {KeepFn} 刃：凹側 1 mm 寬的帶，帶鋸齒（每段 u 1/9 一齒） */
     const edgeKeep = (x, y, z) => {
       if (y < 22) {
@@ -397,10 +403,11 @@ export const mantisScytheBody = makePolyBody({
       if (s.side <= 0 || s.u > 0.93) {
         return -1;
       }
-      const tooth = 0.75 + 0.9 * Math.abs(((s.u * 9) % 1) - 0.5) * 2;
+      // iter-73：刃帶 0.75–1.65 → 1.1–2.4 mm 寬，番茄紅鋸齒刃在遠景也讀得出來
+      const tooth = 1.1 + 1.3 * Math.abs(((s.u * 9) % 1) - 0.5) * 2;
       return Math.min(-s.d, s.d + tooth);
     };
-    parts.push({ geometry: buildRegion(kit.surf, [...kit.holes, edgeKeep], { offset: 1.66 }).geometry, mat: 'red2', name: 'scythe-edges' });
+    parts.push({ geometry: buildRegion(kit.surf, [...kit.holes, edgeKeep], { offset: BLADE_RISE + 0.06 }).geometry, mat: 'red2', name: 'scythe-edges' });
     // 複眼燈（V14 變形）：小頭兩側上角各一顆大圓燈（半埋），外圍炭灰＋萊姆綠兩圈同心細環
     /** @type {THREE.BufferGeometry[]} */
     const eyes = [];
@@ -432,8 +439,10 @@ export const mantisScytheBody = makePolyBody({
     parts.push({ geometry: mergeGeos(ringsDark), mat: 'graphite2', solid: true, name: 'eye-rings-dark' });
     parts.push({ geometry: mergeGeos(ringsLime), mat: 'lime2', solid: true, name: 'eye-rings-lime' });
     // 收起的翅膀（folded-wings）：兩片細長葉形平板，左片在下、右片在上（往後錯開 7 mm、抬高 0.9 mm），在中線疊合；尖端翹到 y 33
-    const wingL = { root: [-19, -6.8], tip: [-71.5, 2.2], width: 8.6, thick: 1.15, topY, yTip: 32.2 };
-    const wingR = { root: [-26, 6.8], tip: [-73.5, -2.0], width: 8.6, thick: 1.15, topY, yTip: 33.0, lift: 0.9 };
+    // iter-73（評審 iter-72「收翅平貼在車背上、比概念圖縮小很多」）：尖端 y 32.2 / 33 → 41 / 42.5，翅膀沿長度立起約 10°；
+    // 俯視根部與尖端 (x, z) 不變（俯視投影不變大，維持和 marlin-sail / aero-wing 的 IoU）
+    const wingL = { root: [-19, -6.8], tip: [-71.5, 2.2], width: 8.6, thick: 1.15, topY, yTip: WING_TIP_Y[0] };
+    const wingR = { root: [-26, 6.8], tip: [-73.5, -2.0], width: 8.6, thick: 1.15, topY, yTip: WING_TIP_Y[1], lift: 0.9 };
     parts.push({ geometry: mergeGeos([leafPlate(wingL), leafPlate(wingR)]), mat: 'graphite2', solid: true, outline: true, name: 'folded-wings' });
     // 翅脈：每片翅膀上一條萊姆綠主脈＋兩條斜支脈（細管）
     /** @type {THREE.BufferGeometry[]} */

@@ -31,6 +31,11 @@ const T = monoTable([-71, -69, -66, -62, -58, -52, -44, -30, -14, 0, 14, 30, 44,
   yLow: [22.2, 22.2, 22.0, 21.6, 16.0, 11.5, 10.5, 10.5, 10.5, 10.5, 10.5, 10.5, 10.5, 11.5, 13.0, 13.5, 14.0, 14.5, 15.0],
 });
 
+/** @type {number} 外緣薄唇的厚度（iter-73，肩稜往下 1.1 mm 就往內收） */
+const LIP_T = 1.1;
+/** @type {number} 側面號碼圓底中心高度（iter-73：19.8 → 16.4，落在內收側裙的垂直段） */
+const ROUNDEL_Y = 16.4;
+
 /** @type {number[]} 前後輪軸 x */
 const AXLES = [40, -40];
 /** @type {number} 葉子板隆起高度（輪軸正上方，比甲板高 4.2 mm） */
@@ -74,6 +79,12 @@ const STATIONS = (() => {
     const zCr = Math.min(31, 0.7 * hw);
     const zOut = hw - 1.6;
     const yCr = yC - 0.4 + FENDER_RISE * f;
+    // iter-73（評審 iter-72「鼻、尾、側緣都是厚而方的邊，像托盤」）：外緣改成薄唇＋下沿內收倒角——
+    // 唇口只比肩稜低 LIP_T（側視 1.1 mm 厚的薄邊），唇下側裙往內收 tuckIn（最多 2.6 mm）再垂直往下，
+    // 唇下形成一道陰影線；俯視最外緣仍是 hw（俯視輪廓不變）
+    const yLip = Math.max(ySh - LIP_T, yLow + 0.3);
+    const tuckIn = Math.min(2.6, 0.06 * hw);
+    const yChamfer = Math.max(yLip - 1.6, yLow + 0.2);
     const pts = [
       [0, yC],
       [0.5 * cw, yC - 0.08],
@@ -82,7 +93,9 @@ const STATIONS = (() => {
       [zCr, yCr],
       [zOut, ySh + 0.62 * (yCr - ySh)],
       [hw, ySh],
-      [hw, yLow],
+      [hw, yLip],
+      [hw - tuckIn, yChamfer],
+      [hw - tuckIn, yLow],
     ];
     return { x, pts };
   });
@@ -111,7 +124,8 @@ const COCKPIT = {
  * 側裙分色：石墨灰下身 / 深紅上身的分色線（直線，y 17.2；鼻端與尾端沿外形收）
  * @type {(x: number) => number}
  */
-const splitY = (x) => Math.min(17.2, T('ySh', x) - 2.2);
+// iter-73：分色線從 y 17.2 抬到薄唇正下方——深紅只留甲板＋薄唇，唇下內收的側裙整段石墨灰，讀成「薄殼蓋在深色底身上」
+const splitY = (x) => T('ySh', x) - LIP_T - 0.3;
 
 /**
  * 擋風片：座艙前緣一片後傾的煙燻 PC 片＋黑框（底寬 22，頂到 y ≈ 31）
@@ -180,8 +194,8 @@ export const lowlineFlatBody = makePolyBody({
   wallThickness_mm: 0.5,
   stations: STATIONS,
   tuck: 0.8,
-  // 平滑剖面；只保留肩稜（第 6 點）為銳利稜線
-  hard: [6],
+  // 平滑剖面；肩稜（第 6 點）、薄唇下緣（第 7 點）、內收倒角底（第 8 點）為銳利稜線（iter-73）
+  hard: [6, 7, 8],
   // 葉子板頂開口（俯視圓角長方形，x 輪軸 ±13.8、|z| 21.5–37.2、圓角 R3）＋側面輪拱（R17.6、只開到 y 21.2）：
   // 甲板外緣 |z| 37.2–46 留一條葉子板邊條跨過輪胎（離 31 mm 輪胎外側 34.75 有 2.45 mm），31 mm 輪胎頂從甲板開口露出
   wheelArches: [],
@@ -245,12 +259,13 @@ export const lowlineFlatBody = makePolyBody({
     });
     // 側面白色細分色線（沿石墨灰 / 深紅分色線）
     parts.push({ geometry: kit.decal((x, y, z) => (Math.abs(z) < 30 ? -1 : 0.3 - Math.abs(y - splitY(x) - 0.1))), mat: 'whiteDecal', name: 'decal-side-pinstripe' });
+    // iter-73：側面號碼圓底下移到唇下內收側裙的垂直段（y 16.4），不跨過倒角折線
     // 號碼 42（iter-70：88 和 aero-wing 重號 → 42）：側面白色圓形號碼底＋黑字（前後輪拱之間）；前甲板黑字（雙細線外側）
     const roundel = (u, v) => Math.hypot(u, v) - 3.4;
-    parts.push({ geometry: kit.decal(sideDecal(roundel, { x0: 0, y0: 19.8, zMin: 30 })), mat: 'whiteDecal', name: 'decal-number-roundel' });
+    parts.push({ geometry: kit.decal(sideDecal(roundel, { x0: 0, y0: ROUNDEL_Y, zMin: 30 })), mat: 'whiteDecal', name: 'decal-number-roundel' });
     parts.push({
       geometry: mergeGeos([
-        kit.decal(sideDecal(sdNumber('42', { h: 3.8, w: 2.2, gap: 0.6 }), { x0: 0, y0: 19.8, zMin: 30 }), { offset: 0.12 }),
+        kit.decal(sideDecal(sdNumber('42', { h: 3.8, w: 2.2, gap: 0.6 }), { x0: 0, y0: ROUNDEL_Y, zMin: 30 }), { offset: 0.12 }),
         kit.decal(topDecal(sdNumber('42', { h: 6.0, w: 3.4, gap: 0.9 }), { x0: 54, z0: -17, yMin: 20 }), { offset: 0.12 }),
       ]),
       mat: 'black',
