@@ -2946,3 +2946,17 @@
 - `P17_oneway_wheel`：0.3 s 起步 1.118 / 1.115 m/s（差 0.27%）；2 s 後斷電滑行 3 s 9.680 / 7.590 m；傳動系 ω_d·r 0.000、輪面 2.836 m/s；滑行動能最大回升 0 J。30 mm 落下稽核：著地步 +9.6 µJ（對照 +7.1 µJ，同 L8 已知誤差）。
 - 主賽道 3 圈（預設＋單向輪）：最大穿牆 0.068 mm、最小 up.y 0.983。`P17_phase7_laps` 加入（16 組）。指定測試 6 項通過。
 - `node scripts/score.mjs`：**20/20**（04:11）。外觀沿用 7.75 → 88.75。新零件累計 17 款、6 類；新機制 2 個（球頭連桿擺動、單向離合）。
+
+## iter-80（制振器 4 款：subagent 實作、主 agent 整合；p7-demo Blender 出圖）
+### 計畫
+- AS 順序表的制振器（15428、15501、15459）與煞車（15413、15458）。subagent 在 worktree `/tmp/wt-p7c`（分支 `p7-dampers-brakes`，`0ea7f69`）只改 `options.js`。
+
+### 執行
+- cherry-pick `0ea7f69`：`damper-square-8x8x32`、`damper-slim`、`damper-slim-short`、`damper-ar-side`。
+- 主 agent 原本請 subagent 把 `damper-ar-side` 做成「裝在 MA 會被擋」的不相容案例；subagent 查到官方適用表 [T15459] 含 MA，做成不相容會和來源矛盾 → **採 subagent 的做法（合法零件）**，不捏造不相容。
+- 煞車 2 款**沒做**（subagent 判斷，主 agent 同意）：橡膠煞車是 φ4 端面單點接觸，現有模型接觸面積固定為煞車座 × 煞車架（勁度高估約 14 倍）；AR skid 要帶傾角法向的地面接觸與新安裝點。用等效數值湊會是假資料。記入 SPEC 1.13「未做」。
+- `render/run.sh`（CONFIG=p7-demo, 128 samples）→ `render/out/config-p7-demo/` 4 張（front34 / rear34 / bottom / chassis，共 378 s）。
+
+### 驗證
+- `P17_mass_damper` 加 4 款（可滑動 vs 鎖死：彈起與滯空都較小）；`P18_known_cases` 加 3 個（8×8×32 × 預設車殼 → DAMPER_BODY_CLEARANCE、slim × 標準後架 → MOUNT_COMPAT、AR 側 × pc-box → DAMPER_BODY_CLEARANCE）＋3 個合法對照；`P17_phase7_laps` 加 4 組（共 20 組）。指定測試 5 項通過。
+- `node scripts/score.mjs`：**20/20**（04:29）。外觀沿用 7.75 → 88.75。worktree `/tmp/wt-p7c` 與分支 `p7-dampers-brakes` 已移除。新零件累計 21 款、6 類。

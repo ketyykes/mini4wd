@@ -536,6 +536,10 @@ describe('P17 新零件的物理效果（只透過組裝設定替換）', () => 
       ['MA 側制振器組 32 mm', { massDamper: 'damper-side-square-32', body: null }],
       // 第七階段（iter-75）：8×8×14 側制振器、球頭連桿擺動式（擺動剛體；不裝車殼）。重型 8.8 g 另見 P17_heavy_damper
       ['側制振器 8×8×14', { massDamper: 'damper-square-8x8x14', body: null }],
+      ['側制振器 8×8×32（iter-80）', { massDamper: 'damper-square-8x8x32', body: null }],
+      ['樽型細制振器 3 g（iter-80）', { rearStay: 'stay-rear-frp', massDamper: 'damper-slim', body: null }],
+      ['樽型細制振器 1.5 g（iter-80）', { rearStay: 'stay-rear-frp', massDamper: 'damper-slim-short', body: null }],
+      ['AR 側制振器（碗形＋圓筒，iter-80）', { massDamper: 'damper-ar-side', body: null }],
       ['球頭連桿制振器（擺動）', { rearStay: 'stay-rear-frp', massDamper: 'damper-balllink-square', body: null }],
     ]) {
       const free = assemble(cfg(over));
@@ -830,6 +834,10 @@ describe('P17 新零件的物理效果（只透過組裝設定替換）', () => 
       { brakeSponge: 'sponge-3type-c' },
       { bearings: 'bearing-620-hg' },
       { wheels: 'wheel-26-oneway' },
+      { massDamper: 'damper-square-8x8x32', body: 'body-hinge-deck' },
+      { rearStay: 'stay-rear-frp', massDamper: 'damper-slim' },
+      { rearStay: 'stay-rear-frp', massDamper: 'damper-slim-short' },
+      { massDamper: 'damper-ar-side', body: 'body-hinge-deck' },
     ];
     for (const over of cases) {
       const asm = assemble(cfg(over));
@@ -1673,6 +1681,10 @@ describe('P18 干涉與安裝相容性', () => {
       { over: { stabilizer: 'stabilizer-head-11', frontRollers: 'roller-9-bearing', body: null }, codes: ['STABILIZER_ROLLER_SIZE'] },
       { over: { stabilizer: 'stabilizer-head-15', frontRollers: 'roller-19' }, codes: ['STABILIZER_BODY_CLEARANCE'] },
       { over: { rearStay: 'stay-rear-frp', brakeSponge: 'sponge-3type-a' }, codes: ['GROUND_CLEARANCE'] },
+      // ---- 第七階段（iter-80）：制振器 4 款 ----
+      { over: { massDamper: 'damper-square-8x8x32' }, codes: ['DAMPER_BODY_CLEARANCE'] },
+      { over: { massDamper: 'damper-slim' }, codes: ['MOUNT_COMPAT'] },
+      { over: { massDamper: 'damper-ar-side', body: 'body-pc-box' }, codes: ['DAMPER_BODY_CLEARANCE'] },
     ];
     for (const c of cases) {
       const res = validateAssembly(assemble(cfg(c.over)));
@@ -1686,7 +1698,7 @@ describe('P18 干涉與安裝相容性', () => {
       }
     }
     // 合法的對照：雙層導輪＋單層的碳纖寬後板、FRP 後板＋後制振器
-    for (const over of [{ rollers: 'roller-13-12-double', rearStay: 'stay-rear-carbon-wide' }, { rearStay: 'stay-rear-frp', massDamper: 'damper-rear-cylinder' }, { stabilizer: 'stabilizer-head-17', rollers: 'roller-19', body: null }, { rollers: 'roller-13-tapered', frontStay: 'stay-front-frp', rearStay: 'stay-rear-frp', body: null }, { frontRollers: 'roller-19-tapered', rearRollers: 'roller-13-alu', frontStay: 'stay-front-frp' }, { frontRollers: 'roller-13-12-double' }, { rearStay: 'stay-rear-carbon-wide', frontRollers: 'roller-19' }, { massDamper: 'damper-side-square', body: 'body-aero-wing' }, { massDamper: 'damper-side-square-32', body: 'body-pc-box' }, { wheels: 'wheel-31-lowfriction', body: 'body-pc-box' }, { motor: 'motor-rev' }, { rearStay: 'stay-rear-frp', massDamper: 'damper-balllink-square' }, { rearStay: 'stay-rear-frp', massDamper: 'damper-heavy' }, { massDamper: 'damper-square-8x8x14', body: 'body-hinge-deck' }, { frontRollers: 'roller-13-12-alu-double-rubber' }, { frontRollers: 'roller-9-8-alu-double', rearRollers: 'roller-9-8-alu-double' }, { wheels: 'wheel-31-soft-slick', body: 'body-pc-box' }, { wheels: 'wheel-31-sponge-lowrebound', body: 'body-pc-box' }, { stabilizer: 'stabilizer-head-11' }, { stabilizer: 'stabilizer-head-15', frontRollers: 'roller-17-alu', body: null }, { brakeSponge: 'sponge-3type-c' }, { bearings: 'bearing-620-hg' }, { wheels: 'wheel-26-oneway' }]) {
+    for (const over of [{ rollers: 'roller-13-12-double', rearStay: 'stay-rear-carbon-wide' }, { rearStay: 'stay-rear-frp', massDamper: 'damper-rear-cylinder' }, { stabilizer: 'stabilizer-head-17', rollers: 'roller-19', body: null }, { rollers: 'roller-13-tapered', frontStay: 'stay-front-frp', rearStay: 'stay-rear-frp', body: null }, { frontRollers: 'roller-19-tapered', rearRollers: 'roller-13-alu', frontStay: 'stay-front-frp' }, { frontRollers: 'roller-13-12-double' }, { rearStay: 'stay-rear-carbon-wide', frontRollers: 'roller-19' }, { massDamper: 'damper-side-square', body: 'body-aero-wing' }, { massDamper: 'damper-side-square-32', body: 'body-pc-box' }, { wheels: 'wheel-31-lowfriction', body: 'body-pc-box' }, { motor: 'motor-rev' }, { rearStay: 'stay-rear-frp', massDamper: 'damper-balllink-square' }, { rearStay: 'stay-rear-frp', massDamper: 'damper-heavy' }, { massDamper: 'damper-square-8x8x14', body: 'body-hinge-deck' }, { frontRollers: 'roller-13-12-alu-double-rubber' }, { frontRollers: 'roller-9-8-alu-double', rearRollers: 'roller-9-8-alu-double' }, { wheels: 'wheel-31-soft-slick', body: 'body-pc-box' }, { wheels: 'wheel-31-sponge-lowrebound', body: 'body-pc-box' }, { stabilizer: 'stabilizer-head-11' }, { stabilizer: 'stabilizer-head-15', frontRollers: 'roller-17-alu', body: null }, { brakeSponge: 'sponge-3type-c' }, { bearings: 'bearing-620-hg' }, { wheels: 'wheel-26-oneway' }, { massDamper: 'damper-square-8x8x32', body: 'body-hinge-deck' }, { rearStay: 'stay-rear-frp', massDamper: 'damper-slim' }, { massDamper: 'damper-ar-side', body: 'body-hinge-deck' }]) {
       const res = validateAssembly(assemble(cfg(over)));
       expect(res.ok, JSON.stringify(res.violations)).toBe(true);
     }
