@@ -270,6 +270,8 @@ export const marlinSailBody = makePolyBody({
     const blades = [];
     const fairings = [];
     const FENDER = { a0: 8, a1: 150, r: 15.9, zc: 26.2 };
+    /** @type {(t: number) => number} 擋泥刃 z 向半寬（t = 沿弧 0–1）：中段 3.6，兩端收到 45% */
+    const bladeHalfW = (t) => 3.6 * (0.45 + 0.55 * Math.sin(Math.PI * Math.min(1, Math.max(0, t))) ** 0.5);
     for (const sg of [-1, 1]) {
       /** @type {number[][]} */
       const arc = [];
@@ -278,17 +280,21 @@ export const marlinSailBody = makePolyBody({
         arc.push([40 + FENDER.r * Math.cos(a), 13 + FENDER.r * Math.sin(a), sg * FENDER.zc]);
       }
       // 斷面 [z 向半寬, 徑向半厚]：中段 3.6 × 0.75，兩端收到 45%
-      blades.push(smoothNormals(sweepEllipse(arc, 72, (t) => [3.6 * (0.45 + 0.55 * Math.sin(Math.PI * t) ** 0.5), 0.75], 20)));
+      blades.push(smoothNormals(sweepEllipse(arc, 72, (t) => [bladeHalfW(t), 0.75], 20)));
       /** @type {number[]} */
       const pos = [];
       const n = 40;
       /** @type {(i: number) => number[][]} 第 i 個取樣角的 [擋泥刃內緣點, 車身肩部點] */
+      // iter-62：導流斜面的刃側邊改成跟著擋泥刃內緣走（伸進刃內 0.5 mm），角度範圍 2° → 0.6° 內縮——
+      // 原本固定在 |z| 23.4，刃兩端收窄（內緣 |z| 24.6）時中間留一道看得到輪胎的暗縫
       const edge = (i) => {
-        const a = ((FENDER.a0 + 2 + ((FENDER.a1 - FENDER.a0 - 4) * i) / n) * Math.PI) / 180;
+        const deg = FENDER.a0 + 0.6 + ((FENDER.a1 - FENDER.a0 - 1.2) * i) / n;
+        const a = (deg * Math.PI) / 180;
         const x = 40 + FENDER.r * Math.cos(a);
         const zb = Math.min(T('hw', x) - 1.2, 21);
+        const zBlade = FENDER.zc - bladeHalfW((deg - FENDER.a0) / (FENDER.a1 - FENDER.a0)) + 0.5;
         return [
-          [x, 13 + FENDER.r * Math.sin(a), sg * 23.4],
+          [x, 13 + FENDER.r * Math.sin(a), sg * zBlade],
           [x, kit.surf.topY(x, zb) - 0.4, sg * zb],
         ];
       };

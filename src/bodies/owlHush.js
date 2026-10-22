@@ -2,7 +2,7 @@
 // 大型圓形深煙燻泡泡座艙、座艙後方兩撮短耳羽、車尾低位寬翼（後緣羽毛梳齒狀鋸齒、兩支短支柱、翼頂不高於座艙頂）。
 // 設計：shared/design/body-owl-hush/DESIGN.md（角色、致敬語彙、和劇中車 / 市售車殼的差異）。
 // 剖面由本檔的站位函式產生（推估，依 HOMAGE_RESEARCH 第 4 節與外框 / 輪胎間隙掃描）。
-// 塗裝全為自創：可可棕＋燕麥米＋琥珀、疊羽紋、號碼「23」；不含任何廠商 / 作品名稱、商標或角色圖像。
+// 塗裝全為自創：可可棕＋燕麥米＋琥珀、人字羽紋、號碼「23」；不含任何廠商 / 作品名稱、商標或角色圖像。
 import * as THREE from 'three';
 import { makePolyBody, finPlate, buildDriver, airfoilFin } from './polyBody.js';
 import { namedMaterial, decalMaterial, sdNumber, sdBar, sideDecal, topDecal, mergeGeos, lerp, buildRegion, buildRim } from './loft.js';
@@ -124,30 +124,21 @@ const materials = () => ({
 });
 
 /**
- * 疊羽紋（iter-55，取代人字細紋）：交錯排列的圓形羽片，每一點歸屬「最前面（x 最大）且蓋住它的羽片」，
- * 畫那片羽毛露出來的後半圈邊緣 → 一片片往後疊的鱗狀羽，不再像魚骨。回傳值 ≥ 0 = 在邊線上
- * @type {(Px: number, Pz: number, R: number, w: number) => (x: number, az: number) => number}
+ * 人字羽紋（iter-62，取代 iter-55 的疊羽紋——評審：Y 形分枝弧像魚鱗 / 樹枝）：概念圖那種粗、尖端朝前的 V 形羽紋，
+ * 每側一列沿 x 每 P mm 一道，V 尖在 |z| = zc，兩臂往外後掠（斜率 a），臂寬由 V 尖的 w 收到臂端的 0.45 w（羽尖收尖）。
+ * 回傳值 ≥ 0 = 在羽紋內
+ * @type {(P: number, zc: number, span: number, a: number, w: number) => (x: number, az: number) => number}
  */
-const featherScales = (Px, Pz, R, w) => (x, az) => {
-  const k0 = Math.floor(az / Pz);
-  let bestCx = -Infinity;
-  let bestD = Infinity;
-  for (let k = k0 - 1; k <= k0 + 2; k++) {
-    const off = Math.abs(k) % 2 === 1 ? Px / 2 : 0;
-    const m0 = Math.floor((x - off) / Px);
-    for (let m = m0 - 1; m <= m0 + 2; m++) {
-      const cx = m * Px + off;
-      const d = Math.hypot(x - cx, az - k * Pz);
-      if (d <= R && cx > bestCx) {
-        bestCx = cx;
-        bestD = d;
-      }
-    }
-  }
-  if (bestCx === -Infinity) {
+const featherChevrons = (P, zc, span, a, w) => (x, az) => {
+  const dz = Math.abs(az - zc);
+  if (dz > span) {
     return -1;
   }
-  return w / 2 - Math.abs(R - bestD);
+  // 同一道 V 上 x + a·dz 為定值（V 尖的 x）→ 到最近一道的 x 向距離
+  const f = x + a * dz;
+  const g = f - P * Math.round(f / P);
+  const wEff = w * (1 - 0.55 * (dz / span));
+  return Math.min(wEff / 2 - Math.abs(g), span - dz);
 };
 
 /**
@@ -276,9 +267,9 @@ export const owlHushBody = makePolyBody({
   extras: (kit) => {
     const parts = [];
     const top = (x) => kit.surf.topY(x, 0);
-    // 疊羽紋（iter-55，燕麥米細邊，擋泥板與肩部；座艙底與臉盤除外）——羽尖朝後、一片疊一片
-    // iter-59：羽片放大（間距 6.2 × 4.6 → 9 × 6.4、半徑 4.4 → 6.2）、邊線 0.9 → 1.6 mm，track 遠景也讀得出鱗狀羽
-    const scales = featherScales(9, 6.4, 6.2, 1.6);
+    // 人字羽紋（iter-62，燕麥米，頂面 |z| 15.5–29.5；座艙底與臉盤除外）——每 11 mm 一道粗 V（尖端寬 4.4 mm），尖端朝前、兩臂往外後掠；
+    // 不延伸到擋泥板外側斜面（V 的外臂翻過稜線後側視像肋骨）
+    const scales = featherChevrons(11, 22.5, 7, 0.95, 4.4);
     parts.push({
       geometry: kit.decal((x, y, z) => {
         const az = Math.abs(z);
@@ -288,7 +279,7 @@ export const owlHushBody = makePolyBody({
         return scales(x, az);
       }),
       mat: 'oatDecal',
-      name: 'decal-feather-scales',
+      name: 'decal-feather-chevrons',
     });
     // 琥珀色分色細線（分色線上方）＋臉盤外圈細線
     parts.push({

@@ -169,7 +169,9 @@ const profile = (x) => {
   // 擋泥板內坡：輪胎上方以平滑拋物線抬到輪拱圓柱之上，內坡不被輪拱切開（擋泥板成為獨立的高聳量體，V1）
   const yValley0 = Math.min(yC - 2.2, yF - 1.5);
   const yValley = smoothMax(yValley0, fenderFloor(x));
-  const yShoulder = Math.min(yF - 4.5, yF - 0.12 * (hw - zF) * 3);
+  // iter-62：鼻尖兩站（x 63–64）的側壁肩低於下緣 + 1，原本以 yShoulder − 1 夾住下緣 → 下緣在最後 1 mm 從 15.6 掉到 13.5，
+  // 鼻部白色擋泥板下緣兩角出現往下的尖齒與看得到殼內的黑色小缺口；改成肩至少比下緣高 1.2 mm，下緣維持平順的 15.5–15.6
+  const yShoulder = Math.max(Math.min(yF - 4.5, yF - 0.12 * (hw - zF) * 3), x > 56 ? P.yLow(x) + 1.2 : -Infinity);
   const yLow = Math.min(P.yLow(x), yShoulder - 1);
   // iter-59：鼻端下捲（x 50 → 64），各點高度以側壁下緣為基準壓低，白色前臉不再是平切立面＋大折面
   const roll = noseRoll(x, NOSE_ROLL.x0, NOSE_ROLL.x1, NOSE_ROLL.minFrac);
@@ -415,10 +417,11 @@ export const gazelleLeapBody = makePolyBody({
     parts.push({ geometry: drv.helmet, mat: 'helmet', solid: true, name: 'cockpit-helmet' });
     // 側面水平黑腰帶（瞪羚側帶）：從鼻側一路拉到車尾，前端收尖
     /** @type {(u: number, v: number) => number} u = 往前為正的 x、v = y */
+    // iter-62：前端改在 x 52（鼻端下捲之前）收尖——原本延伸到鼻尖 64、寬度只剩 0.3 mm，在下捲曲面上斷成一截截黑色虛線
     const band = (u, v) => {
       const yMid = 21.4 + 0.01 * u;
-      const half = 1.8 * smoothstep(66, 40, u) + 0.15;
-      return Math.max(Math.abs(v - yMid) - half, u - 64, -58 - u);
+      const half = 1.95 * Math.min(1, Math.max(0, (52 - u) / 14));
+      return Math.max(Math.abs(v - yMid) - half, u - 52, -58 - u);
     };
     parts.push({
       geometry: mergeGeos([

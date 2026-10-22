@@ -96,7 +96,11 @@ const STATIONS = (() => {
     const yLow = Math.min(T('yLow', x), ySh - 1.5);
     const rise = Math.max(0.4, yTop - yRim);
     const pts = [0, 0.38, 0.68, 0.88].map((f) => [f * dw, yRim + rise * Math.sqrt(1 - f * f * 0.97)]);
-    pts.push([dw, yRim], [dw + 1.2, yRim - 1.2], [hw, ySh], [hw, yLow]);
+    // iter-62：甲緣台階在鴨尾唇段（x −56 → −66）漸漸收平——唇緣處甲緣 41.6、肩 42.2，中間 1.2 mm 的台階在唇端面兩端
+    // 形成 V 形小缺角（評審：尾唇兩端小缺角）；收平後台階點落在甲緣與肩的連線上
+    const stepFlat = yRim + ((ySh - yRim) * 1.2) / Math.max(1.2, hw - dw);
+    const stepY = lerp(stepFlat, yRim - 1.2, smoothstep(X_TAIL, -56, x));
+    pts.push([dw, yRim], [dw + 1.2, stepY], [hw, ySh], [hw, yLow]);
     return { x, pts };
   });
 })();
