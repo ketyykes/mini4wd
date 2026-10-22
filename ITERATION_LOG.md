@@ -2789,3 +2789,16 @@
 - reviewer（`shared/reviews/iter-71/REVIEW.md`，8 款逐款 A/B，對照 = iter-69 版、dartfrog 對照 = iter-66 版）：錨點 6.25；對照 7 / 6.5 / 7 / 6.5 / 6 / 7 = 6.67；本輪 7 / 6.5 / 7 / 7 / 6.5 / 7 = **6.83**（只評 8 款修改款）→ 20/20 × 50 ＋ 6.83 × 5 = 84.17。整體 A/B：設計、材質好，其餘持平。
 - 逐款 A/B：fastback（設計、材質好）、trail（設計好；Blender 側窗後半格仍白色反光 → 材質持平）、griffin（持平，碎點消失但改善小）、zeppelin（設計好）、hydroplane（設計、材質好）、mantis（設計好）、marlin（設計好）、dartfrog（全持平，只有 IoU 效果）——**8 款沒有任何一項「差」→ 全保留**。原創性 8 款全「否」；LG2 國際代表隊禁用項通過（提醒：hydroplane 黃＋紺不要做成十字 / 上下分色；zeppelin 不要加深灰＋紅或黑＋黃細線）。
 - 仍需改進：trail Blender 側窗反光；mantis 前胸波浪反光；fastback 鼻部正面太寬平。dartfrog 不要再收窄（蹲伏後腿感會消失）。
+
+## iter-72（21:0x 起）：最後一輪——陣容圖、全陣容評審、文件定稿
+### 執行
+- Blender 重出 skeleton / aero-wing / pc-box / halo（原本是 10/21 或第五階段的圖，材質與目前 showcase.py 不一致）；iter-71 的 8 款與這 4 款複製到 `render/out/<body-id>/`，19 款展示圖齊全。
+- 陣容圖 `render/out/lineup_race.png`（7 款）、`lineup_lg1.png`（6 款）、`lineup_lg2.png`（6 款）；`render/lineup.sh` 標題預設改用 STHeiti 字型（ImageMagick 預設字型沒有中文字，第一次產生時標題只剩數字）。
+- app 截圖 19 款 × 6 視角＋chassis_front34（`renders/iter-72_*`）。
+- 程式碼沒有改動（主線同 iter-71 `b3fbf6d` 的車殼）。
+
+### 驗證
+- `node scripts/score.mjs`：**20/20**（21:11）。
+- reviewer（`shared/reviews/iter-72/REVIEW.md`，**全陣容 19 款**，對照 = 第六階段基準 iter-66）：錨點 6.17；本輪 7 / 7.5 / 8 / 8 / 7.5 / 7 = **7.50** → 20/20 × 50 ＋ 7.50 × 5 = **87.50**。6 項都不比基準 7 / 7.5 / 8 / 7.5 / 7 / 6.5 差（GOAL 完成條件 7）。A/B：多樣性與完成度、材質、零件好，比例、風格感、原創性持平。原創性 19 款全「否」；LG2 國際代表隊禁用項通過；商標 / 文字無。
+- 評審最該改：prism 細黑格線像 UV 網格、光譜帶粉彩（改 20–30 個大刻面＋飽和六色塊）；mantis 收翅 / griffin 羽翼比概念圖小；hydroplane 黃色太淡、lowline 前緣與側緣像厚托盤。
+- **第六階段完成（21:14）**。
