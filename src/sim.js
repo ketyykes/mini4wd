@@ -386,7 +386,8 @@ export function createCar(env, opt = {}) {
     battery: new Battery(P, opt.soc ?? 1),
     drain: opt.drain ?? true,
     powered: opt.powered ?? true,
-    last: { current: 0, terminalVoltage: 0, speed: 0 },
+    // normalSum 初值 = 車重（車子放在地面上），之後每步由射線輪的法向力合計更新（物理稽核 L3）
+    last: { current: 0, terminalVoltage: 0, speed: 0, normalSum: P.massTotal * P.gravity },
   };
 }
 
@@ -574,7 +575,9 @@ export function stepCar(env, car) {
   // 馬達轉速由傳動系轉速決定（不是車體速度）：騰空時輪子可以空轉到無載轉速，落地時再由約束衝量和車速拉齊
   // 單向輪：馬達轉速取傳動系 omegaD（輪子可以比傳動系轉得快）
   const driveSpeed = spin.oneWay ? spin.omegaD * P.wheelRadius : wheelSpeed;
-  const lf = longitudinalForce(P, { speed: driveSpeed, powered: car.powered, battery: car.battery });
+  // 物理稽核 L3（iter-87）：滾阻與輪軸軸承阻力用上一步的 4 輪法向力合計（本步的法向力要等射線輪算完才知道，
+  // 而縱向力要先決定才能分配到各輪；差一步 = 1/240 s，騰空時為 0、落地時跟著法向力變大）
+  const lf = longitudinalForce(P, { speed: driveSpeed, powered: car.powered, battery: car.battery, normalLoad: car.last.normalSum });
 
   let net;
   if (spin.oneWay) {
@@ -721,7 +724,7 @@ export function stepCar(env, car) {
   if (car.powered && car.drain) {
     car.battery.drain(lf.current, dt);
   }
-  car.last = { current: lf.current, terminalVoltage: lf.terminalVoltage, motorVoltage: lf.motorVoltage, speed: v, wheelSpeed };
+  car.last = { current: lf.current, terminalVoltage: lf.terminalVoltage, motorVoltage: lf.motorVoltage, speed: v, wheelSpeed, normalSum };
 }
 
 /**
@@ -779,7 +782,7 @@ function oneWayDrivetrainStep(car, lf, dt) {
   const P = car.P;
   const spin = car.spin;
   const r = P.wheelRadius;
-  const rolling = P.crr * P.massTotal * P.gravity;
+  const rolling = lf.rolling;
   const drivetrainResist = lf.resist - rolling;
   if (spin.Jd > 0) {
     const drive = car.powered ? lf.drive : 0;

@@ -216,7 +216,7 @@ describe('P17 新零件的物理效果（只透過組裝設定替換）', () => 
     expect(ra.minUp).toBeGreaterThan(0.8);
   }, 180000);
 
-  test('P17_brake_plate_carbon 碳纖大面積煞車架（台灣買得到）：海綿貼片面積大 → 接觸剛性 k = E·A/t 大；平地仍不接觸、極速不變；下坡坡底同樣接觸、摩擦做負功，坡底後速度不高於 FRP 架', () => {
+  test('P17_brake_plate_carbon 碳纖大面積煞車架（台灣買得到）：海綿貼片面積大 → 接觸剛性 k = E·A/t 大；平地仍不接觸、極速不變；下坡坡底同樣接觸、摩擦做負功較多，坡底後速度與 FRP 架差異很小（< 0.05%）', () => {
     const frp = assemble(cfg({}, 'race-frp'));
     const carbon = assemble(cfg({ brakePlate: 'brake-plate-carbon' }, 'race-frp'));
     expect(validateAssembly(frp).ok).toBe(true);
@@ -245,9 +245,12 @@ describe('P17 新零件的物理效果（只透過組裝設定替換）', () => 
     expect(ra.spongeSteps).toBeGreaterThan(0);
     expect(ra.spongeWork).toBeGreaterThan(0);
     expect(ra.minUp).toBeGreaterThan(0.8);
-    // 接觸剛性較大 → 同樣的壓入量法向力較大 → 摩擦功較多、坡底後速度不高於 FRP（差異很小，PARTS_RESEARCH AE 節已預期）
+    // 接觸剛性較大 → 同樣的壓入量法向力較大 → 摩擦功較多（PARTS_RESEARCH AE 節已預期差異很小）
     expect(ra.spongeWork).toBeGreaterThan(rb.spongeWork);
-    expect(ra.vAfter).toBeLessThanOrEqual(rb.vAfter);
+    // 坡底後速度：iter-87 查證後由「碳纖 ≤ FRP」改為「差異 < 0.05%」。理由：碳纖架整車重 0.28 g（138.67 vs 138.39 g），
+    // 空氣阻力造成的減速度小約 0.2%，和海綿多做的約 0.3 mJ 負功同數量級，方向不定——舊模型（L3 之前）把初速改成 2.48 / 2.49 / 2.51 / 2.52 m/s，
+    // 4 組都是碳纖較快（+0.11–0.29 mm/s），原斷言只在剛好 2.5 m/s 時成立（ITERATION_LOG iter-87）
+    expect(Math.abs(ra.vAfter - rb.vAfter) / rb.vAfter).toBeLessThan(0.0005);
   }, 180000);
 
   test('P17_p5_taiwan_demo 第五階段示範設定（台灣買得到的零件組合）合法，主賽道跑完官方 3 圈、不穿牆（≤ 1 mm，同 P06）、不翻車', () => {
@@ -697,6 +700,59 @@ describe('P17 新零件的物理效果（只透過組裝設定替換）', () => 
     expect(lf.drive).toBeCloseTo((op.torque * P.gearRatio) / (P.wheelRadius * eta), 12);
     // 反向時的煞車力比「乘 η」的舊算法大（|F| 多 1/η² 倍）
     expect(Math.abs(lf.drive)).toBeGreaterThan(Math.abs((op.torque * P.gearRatio * eta) / P.wheelRadius));
+  });
+
+  test('P17_audit_L3 物理稽核 L3 修正：滾阻與輪軸軸承阻力和 4 輪法向力合計成正比——騰空時傳動系只受馬達反拖減速；平地靜置時法向力合計 = 車重（理論極速不變）', () => {
+    const asm = assemble(cfg({}));
+    const P = asm.P;
+    const battery = new Battery(P, 1);
+    const mg = P.massTotal * P.gravity;
+    // 解析：省略 normalLoad = 車重（和舊算法相同）；normalLoad = 0 時斷電阻力只剩馬達反拖
+    const v = 3;
+    const lfStatic = longitudinalForce(P, { speed: v, powered: false, battery });
+    expect(lfStatic.resist).toBeCloseTo(P.crr * mg + powertrainApi.axleFrictionForce(P) + powertrainApi.motorCoastDragForce(P, v), 12);
+    const lfAir = longitudinalForce(P, { speed: v, powered: false, battery, normalLoad: 0 });
+    expect(lfAir.resist).toBeCloseTo(powertrainApi.motorCoastDragForce(P, v), 12);
+    expect(lfAir.rolling).toBe(0);
+
+    // 模擬：整車抬高 100 mm 斷電放開，輪子以 3 m/s 空轉；騰空的每一步 Δω = −F_反拖(ω·r)·r·dt / J
+    const env = sim.createWorld(buildStraight(4));
+    const car = sim.createCar(env, { assembly: asm, s: 0.5, lane: 0, powered: false });
+    const t = car.chassis.translation();
+    car.chassis.setTranslation({ x: t.x, y: t.y + 0.1, z: t.z }, true);
+    car.spin.omega = v / P.wheelRadius;
+    // 傳動系積分用 spec 的 dt（double）；env.world.timestep 是 Rapier 的 float32，相對差約 5e-8
+    const dt = spec.sim.dt_s;
+    // 第一步用的是放開前的法向力（初值 = 車重），之後才是騰空的 0
+    sim.stepCar(env, car);
+    expect(car.wheels.some((w) => w.contact)).toBe(false);
+    expect(car.last.normalSum).toBe(0);
+    let airSteps = 0;
+    let maxErr = 0;
+    let oldDrop = 0;
+    let newDrop = 0;
+    while (airSteps < 20) {
+      const w0 = car.spin.omega;
+      const expectDrop = (powertrainApi.motorCoastDragForce(P, w0 * P.wheelRadius) * P.wheelRadius * dt) / car.spin.J;
+      sim.stepCar(env, car);
+      expect(car.wheels.some((w) => w.contact)).toBe(false);
+      maxErr = Math.max(maxErr, Math.abs(w0 - car.spin.omega - expectDrop) / expectDrop);
+      newDrop += w0 - car.spin.omega;
+      oldDrop += ((P.crr * mg + powertrainApi.axleFrictionForce(P) + powertrainApi.motorCoastDragForce(P, w0 * P.wheelRadius)) * P.wheelRadius * dt) / car.spin.J;
+      airSteps++;
+    }
+    console.log(`[P17] L3 騰空 ${airSteps} 步：傳動系 ω 下降 ${newDrop.toFixed(4)} rad/s（只有馬達反拖；舊算法含滾阻與軸承 ${oldDrop.toFixed(4)} rad/s），逐步相對誤差最大 ${maxErr.toExponential(2)}`);
+    expect(maxErr).toBeLessThan(1e-9);
+    expect(newDrop).toBeLessThan(oldDrop);
+
+    // 平地靜置 0.3 s：4 輪法向力合計 = 車重（容許 0.5%：射線輪彈簧的殘餘振動）
+    const env2 = sim.createWorld(buildStraight(4));
+    const car2 = sim.createCar(env2, { assembly: asm, s: 0.5, lane: 0, powered: false });
+    for (let i = 0; i < 0.3 / dt; i++) {
+      sim.stepCar(env2, car2);
+    }
+    console.log(`[P17] L3 平地靜置：4 輪法向力合計 ${f3(car2.last.normalSum)} N、車重 ${f3(mg)} N`);
+    expect(Math.abs(car2.last.normalSum - mg) / mg).toBeLessThan(0.005);
   });
 
   test('P17_oneway_wheel ★單向輪（15443，新機制：單向離合）：同零件關掉離合作對照——通電直線加速相同（離合咬合）；斷電滑行時輪子比傳動系快 → 離合脫開、馬達與齒輪不再拖車 → 滑行較遠；滑行動能單調不增', () => {
