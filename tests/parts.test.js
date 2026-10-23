@@ -295,10 +295,11 @@ describe('P17 新零件的物理效果（只透過組裝設定替換）', () => 
     expect(carbon.partsBySlot.frontStay.slide.plateMass_g / alu.partsBySlot.frontStay.slide.plateMass_g).toBeCloseTo(1.6 / 2.7, 9);
     expect(Math.abs(alu.slider.mass_g - carbon.slider.mass_g - dPlate)).toBeLessThan(1e-9);
     expect(Math.abs(alu.mass_g - carbon.mass_g - dPlate)).toBeLessThan(1e-9);
-    const rF = slideWallImpact(frpAsm, 10, 1.5);
-    const rA = slideWallImpact(alu, 10, 1.5);
-    const rC = slideWallImpact(carbon, 10, 1.5);
-    console.log(`[P17] 滑動板 鋁 ${f3(alu.slider.mass_g)} g / 碳纖 ${f3(carbon.slider.mass_g)} g（板差 ${f3(dPlate)} g）；撞牆 10° 1.5 m/s 車身峰值側向力 鋁 ${f3(rA.peakF)} / 碳纖 ${f3(rC.peakF)} / FRP ${f3(rF.peakF)} N；碳纖 能量 ${f3(rC.E0 * 1000)} → 最大 ${f3(rC.Emax * 1000)} → ${f3(rC.Eend * 1000)} mJ`);
+    // 撞牆角度同 P17_slide_bumper 的 5°、2.5 m/s（iter-86 稽核 M1：原本 10° 的擺法已插進對側牆）
+    const rF = slideWallImpact(frpAsm, 5, 2.5);
+    const rA = slideWallImpact(alu, 5, 2.5);
+    const rC = slideWallImpact(carbon, 5, 2.5);
+    console.log(`[P17] 滑動板 鋁 ${f3(alu.slider.mass_g)} g / 碳纖 ${f3(carbon.slider.mass_g)} g（板差 ${f3(dPlate)} g）；撞牆 5° 2.5 m/s 車身峰值側向力 鋁 ${f3(rA.peakF)} / 碳纖 ${f3(rC.peakF)} / FRP ${f3(rF.peakF)} N；碳纖 能量 ${f3(rC.E0 * 1000)} → 最大 ${f3(rC.Emax * 1000)} → ${f3(rC.Eend * 1000)} mJ`);
     expect(rC.peakF).toBeLessThan(rF.peakF);
     // 能量不增加（容許同 P17_slide_bumper 的 0.1%）
     expect(rC.Emax).toBeLessThanOrEqual(rC.E0 * 1.001);
@@ -975,33 +976,43 @@ describe('P17 新零件的物理效果（只透過組裝設定替換）', () => 
     }
   }, 300000);
 
-  test('P17_coast_energy 斷電滑行時整車動能單調不增（含制振器、煞車海綿的組裝）', () => {
-    // 容許值：相鄰兩步動能增加量 ≤ 1e-7 J（約初始動能 0.4 J 的 2.5×10⁻⁷）。
-    // 理由：射線輪的彈簧（靜態壓縮 0.3 mm）與制振器座墊在滑行中有微小的上下振動，位能與動能互換造成的數值起伏在 1e-8 J 等級；
-    // 真的「自己加速」（例如阻力方向錯誤）會是每步 1e-4 J 以上，遠大於此值
+  test('P17_coast_energy 斷電滑行時整車總機械能單調不增（含制振器、擺動式制振器、煞車海綿、前後滑動保桿、單向輪的組裝）', () => {
+    // iter-86 稽核 L7：原本只量動能（位能與動能互換的起伏要靠容許值吸收）、初速時沒設傳動系 ω、沒有滑動保桿組裝 →
+    // 改量總機械能（動能＋重力位能＋射線輪 / 制振器座墊 / 滑動保桿 / 煞車海綿的彈簧位能，見 carMechanicalEnergy），
+    // 傳動系 ω = v / r（起始時輪子與車速一致，不會先有一次非彈性耦合），並加入 p5-taiwan、p7-parts、前後軟滑動保桿
+    // 容許值：相鄰兩步總機械能增加量 ≤ 1e-7 J（約初始能量 0.5 J 的 2×10⁻⁷）。
+    // 理由：稽核 A 量到靜置後給初速的情境四組都是 0.000 µJ；真的「自己加速」（例如阻力方向錯誤）會是每步 1e-4 J 以上，遠大於此值
     const TOL_J = 1e-7;
-    for (const name of ['default', 'race-frp', 'carbon-damper', 'p7-demo']) {
-      const asm = assemble(loadConfig(name));
+    const cases = [
+      ['default', loadConfig('default')],
+      ['race-frp', loadConfig('race-frp')],
+      ['carbon-damper', loadConfig('carbon-damper')],
+      ['p5-taiwan', loadConfig('p5-taiwan')],
+      ['p7-demo', loadConfig('p7-demo')],
+      ['p7-parts', loadConfig('p7-parts')],
+      ['前後軟滑動保桿＋側方塊制振器', cfg({ frontStay: 'stay-front-slide-soft', rearStay: 'stay-rear-slide-soft', massDamper: 'damper-side-square', body: null })],
+    ];
+    for (const [name, config] of cases) {
+      const asm = assemble(config);
+      expect(validateAssembly(asm).ok, `${name}：${JSON.stringify(validateAssembly(asm).violations)}`).toBe(true);
       const env = sim.createWorld(buildStraight(60));
       const car = sim.createCar(env, { assembly: asm, s: 0.3, lane: 0, powered: false });
       const dt = env.world.timestep;
-      // 先靜置落定，再給初速 2.5 m/s（全部剛體同速）
+      // 先靜置落定，再給初速 2.5 m/s（全部剛體同速、傳動系 ω = v / r）
       for (let i = 0; i < 0.1 / dt; i++) {
         sim.stepCar(env, car);
       }
-      for (const b of [car.chassis, ...car.dampers.map((d) => d.body)]) {
-        b.setLinvel({ x: 2.5, y: 0, z: 0 }, true);
-      }
-      let prev = sim.carKineticEnergy(car);
+      setAllVelocity(car, 2.5);
+      let prev = carMechanicalEnergy(car);
       const e0 = prev;
       let maxRise = 0;
       for (let i = 0; i < 3 / dt; i++) {
         sim.stepCar(env, car);
-        const e = sim.carKineticEnergy(car);
+        const e = carMechanicalEnergy(car);
         maxRise = Math.max(maxRise, e - prev);
         prev = e;
       }
-      console.log(`[P17] ${name} 斷電滑行 3 s：動能 ${f3(e0)} → ${prev.toExponential(3)} J，相鄰步最大增加 ${maxRise.toExponential(2)} J`);
+      console.log(`[P17] ${name} 斷電滑行 3 s：總機械能 ${f3(e0 * 1000)} → ${f3(prev * 1000)} mJ（動能 ${f3(sim.carKineticEnergy(car) * 1000)} mJ），相鄰步最大增加 ${maxRise.toExponential(2)} J`);
       expect(prev).toBeLessThan(e0);
       expect(maxRise).toBeLessThanOrEqual(TOL_J);
     }
@@ -1868,13 +1879,81 @@ describe('P18 干涉與安裝相容性', () => {
 });
 
 // ---------------------------------------------------------------------------
+// 稽核 L7（iter-86）：整車總機械能（平地，地板頂面 y = 0）
+// ---------------------------------------------------------------------------
+
+/**
+ * 整車總機械能 = 動能（sim.carKineticEnergy：車體、制振器、擺動剛體、滑動板、傳動系）＋重力位能（所有剛體）
+ * ＋射線輪彈簧位能 ½k·c²＋制振器座墊位能 ½k·rel²（rel < 0 時；擺動式用座墊點）＋滑動保桿彈簧位能＋煞車海綿位能 ½(k/n)·δ²。
+ * 和 sim.js 的力定義一一對應（阻尼項只耗能、不存位能）；只適用平直道（PHYSICS_AUDIT 第 2 節的定義）
+ * @type {(car: any) => number}
+ */
+function carMechanicalEnergy(car) {
+  const g = spec.sim.gravity;
+  const up = sim.upAxis(car);
+  let e = sim.carKineticEnergy(car);
+  e += car.chassis.mass() * g * car.chassis.worldCom().y;
+  for (const d of car.dampers) {
+    e += d.body.mass() * g * d.body.worldCom().y;
+    const a = sim.localToWorld(car, d.anchor);
+    // 座墊點：滑動式 = 制振器剛體原點；擺動式 = 擺動剛體上的座墊點（同 sim.js swingDamperForces）
+    let p = d.body.translation();
+    if (d.swing) {
+      p = sim.localToWorld({ chassis: d.body }, d.seatOnBody);
+    }
+    const rel = (p.x - a.x) * up.x + (p.y - a.y) * up.y + (p.z - a.z) * up.z;
+    if (rel < 0) {
+      e += 0.5 * d.seatK * rel * rel;
+    }
+  }
+  for (const sl of car.sliders) {
+    e += sl.body.mass() * g * sl.body.worldCom().y + sim.sliderState(car, sl).springEnergy;
+  }
+  const { wheelR, restLen, springK } = car.wheelParams;
+  for (const w of car.wheels) {
+    const hp = sim.localToWorld(car, w.hardpoint);
+    const dist = hp.y / up.y;
+    const comp = restLen + wheelR - dist;
+    if (comp > 0 && dist >= 0) {
+      e += 0.5 * springK * comp * comp;
+    }
+  }
+  if (car.sponge) {
+    const n = car.sponge.pts.length;
+    for (const lp of car.sponge.pts) {
+      const p = sim.localToWorld(car, lp);
+      const delta = Math.min(Math.max(0, -p.y / up.y), car.sponge.thickness);
+      e += 0.5 * (car.sponge.k / n) * delta * delta;
+    }
+  }
+  return e;
+}
+
+/**
+ * 所有剛體（車體、制振器、滑動板）設同一前進速度 v（+x）、角速度 0；傳動系 ω = v / r（單向輪的傳動系側也同速）
+ * @type {(car: any, v: number) => void}
+ */
+function setAllVelocity(car, v) {
+  for (const b of [car.chassis, ...car.dampers.map((d) => d.body), ...car.sliders.map((sl) => sl.body)]) {
+    b.setLinvel({ x: v, y: 0, z: 0 }, true);
+    b.setAngvel({ x: 0, y: 0, z: 0 }, true);
+  }
+  car.spin.omega = v / car.P.wheelRadius;
+  if (car.spin.oneWay) {
+    car.spin.omegaD = car.spin.omega;
+  }
+}
+
+// ---------------------------------------------------------------------------
 // 第五階段 iter-61：前寬滑動保桿（TW10 / 15469）——滑動板＋前導輪是相對車體左右滑動的剛體（彈簧＋預壓＋阻尼，行程端點硬止擋）
 // ---------------------------------------------------------------------------
 
 /**
  * 撞直牆：直線賽道上，車頭朝 +z 側牆偏 psi 度、以速度 V（沿車頭方向，傳動系 ω·r = V）斷電滑行，右前導輪離牆面 1 mm 起步，跑 0.1 s。
  * 量測：車體剛體的峰值側向（世界 z）力 m_車體·|Δv_z|/dt、能量 E = 動能（車體＋滑動板＋制振器＋傳動系）＋滑動保桿彈簧位能
- * @type {(asm: any, psiDeg: number, V: number) => { peakF: number, E0: number, Emax: number, Eend: number, uMax: number, springMax: number, dampingWork: number }}
+ * 稽核 M1（iter-86）：車道淨寬 115 mm，車身（導輪外緣）斜放超過約 6° 就會同時插進對側牆（10° 時左後導輪已在牆內 7.88 mm），
+ * Rapier 的深穿透修正會讓量到的力與能量混入初始重疊 → 角度只取 ≤ 6°，並檢查擺好姿勢時整車都在牆內（pen0 < 0）
+ * @type {(asm: any, psiDeg: number, V: number) => { peakF: number, E0: number, Emax: number, Eend: number, uMax: number, springMax: number, dampingWork: number, pen0: number }}
  */
 function slideWallImpact(asm, psiDeg, V) {
   const track = buildStraight(4);
@@ -1902,6 +1981,9 @@ function slideWallImpact(asm, psiDeg, V) {
     b.body.setAngvel({ x: 0, y: 0, z: 0 }, true);
   }
   car.spin.omega = V / car.P.wheelRadius;
+  // 初始姿勢不能和任何一面牆重疊（右前導輪離牆 1 mm，其餘外緣點也要在車道內）
+  const pen0 = sim.wallPenetration(env, car);
+  expect(pen0).toBeLessThan(0);
   const dt = env.world.timestep;
   const m = car.chassis.mass();
   const energy = () => sim.carKineticEnergy(car) + (sim.sliderState(car)?.springEnergy ?? 0);
@@ -1925,7 +2007,7 @@ function slideWallImpact(asm, psiDeg, V) {
     E = energy();
     Emax = Math.max(Emax, E);
   }
-  return { peakF, E0, Emax, Eend: E, uMax, springMax, dampingWork: sim.sliderState(car)?.dampingWork ?? 0 };
+  return { peakF, E0, Emax, Eend: E, uMax, springMax, dampingWork: sim.sliderState(car)?.dampingWork ?? 0, pen0 };
 }
 
 describe('P17 / P18 / P11 第五階段前寬滑動保桿（iter-61）', () => {
@@ -1941,12 +2023,12 @@ describe('P17 / P18 / P11 第五階段前寬滑動保桿（iter-61）', () => {
     expect(Math.abs(soft.rigid.mass_g + soft.slider.mass_g - soft.mass_g)).toBeLessThan(1e-9);
     expect(frpAsm.slider).toBe(null);
 
-    // (1)(2) 撞直牆：兩種角度 / 速度（輕擦牆、較大角度正撞）
-    for (const [psi, V] of [[10, 1.5], [20, 2]]) {
+    // (1)(2) 撞直牆：兩種角度 / 速度（輕擦牆、較快正撞）。iter-86 稽核 M1：原本 10° / 20° 的擺法已插進對側牆，改成 5° / 6°（同 PHYSICS_AUDIT 第 2 節 C）
+    for (const [psi, V] of [[5, 2.5], [6, 4]]) {
       const rF = slideWallImpact(frpAsm, psi, V);
       for (const [name, a] of [['軟（金）', soft], ['硬（銀）', hard]]) {
         const r = slideWallImpact(a, psi, V);
-        console.log(`[P17] 滑動保桿${name} 撞牆 ${psi}° ${V} m/s：車體峰值側向力 ${f3(r.peakF)} N（FRP 板 ${f3(rF.peakF)} N，比 ${f3(r.peakF / rF.peakF)}），最大滑動 ${f3(r.uMax * 1000)} mm、彈簧＋阻尼最大力 ${f3(r.springMax)} N；能量 撞前 ${f3(r.E0 * 1000)} mJ → 最大 ${f3(r.Emax * 1000)} → 0.1 s 後 ${f3(r.Eend * 1000)} mJ（FRP ${f3(rF.E0 * 1000)} → ${f3(rF.Eend * 1000)} mJ），阻尼耗能 ${f3(r.dampingWork * 1000)} mJ`);
+        console.log(`[P17] 滑動保桿${name} 撞牆 ${psi}° ${V} m/s（初始離牆最近 ${f3(-r.pen0 * 1000)} mm）：車體峰值側向力 ${f3(r.peakF)} N（FRP 板 ${f3(rF.peakF)} N，比 ${f3(r.peakF / rF.peakF)}），最大滑動 ${f3(r.uMax * 1000)} mm、彈簧＋阻尼最大力 ${f3(r.springMax)} N；能量 撞前 ${f3(r.E0 * 1000)} mJ → 最大 ${f3(r.Emax * 1000)} → 0.1 s 後 ${f3(r.Eend * 1000)} mJ（FRP ${f3(rF.E0 * 1000)} → ${f3(rF.Eend * 1000)} mJ），阻尼耗能 ${f3(r.dampingWork * 1000)} mJ`);
         // 牆對前導輪的力經過彈簧才到車身 → 峰值側向力較小
         expect(r.peakF).toBeLessThan(rF.peakF);
         // 滑動板確實有滑動、不超過行程（容許 0.02 mm：Rapier joint 限位是速度層級約束，撞到端點的那一步會有微米級的超越，實測 ≤ 0.01 mm）
