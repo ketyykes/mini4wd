@@ -256,6 +256,8 @@ export function createCar(env, opt = {}) {
           .setFriction(t.wallFriction ?? rollerPart.wallFriction)
           .setFrictionCombineRule(RAPIER.CoefficientCombineRule.Min)
           .setRestitution(t.restitution ?? rollerPart.restitution)
+          // iter-85（稽核 L5）：牆的恢復係數是 0，Rapier 預設 Average 會把零件的 e 砍半；改 Max → 實際 e = 零件資料的值
+          .setRestitutionCombineRule(RAPIER.CoefficientCombineRule.Max)
           .setCollisionGroups(ROLLER_GROUPS),
         parent,
       ),
@@ -280,6 +282,7 @@ export function createCar(env, opt = {}) {
         .setFriction(st.part.wallFriction)
         .setFrictionCombineRule(RAPIER.CoefficientCombineRule.Min)
         .setRestitution(st.part.restitution)
+        .setRestitutionCombineRule(RAPIER.CoefficientCombineRule.Max)
         .setCollisionGroups(ROLLER_GROUPS),
       onSlider ? slider.body : chassis,
     );

@@ -650,6 +650,36 @@ describe('P17 新零件的物理效果（只透過組裝設定替換）', () => 
     expect(n98.bbox_mm.size.z).toBeLessThan(A({}).bbox_mm.size.z);
   }, 120000);
 
+  test('P17_audit_L5 物理稽核 L5 修正：導輪 / 穩定零件與牆（e = 0）碰撞的有效恢復係數 = 零件資料的值（組合規則 Max，不再被 Average 砍半）', () => {
+    const asm = assemble(cfg({ frontRollers: 'roller-13-12-alu-double-rubber', rearRollers: 'roller-19-rubber', stabilizer: 'stabilizer-head-11' }));
+    const env = sim.createWorld(buildStraight(1));
+    const car = sim.createCar(env, { assembly: asm });
+    /** @type {number} */
+    let checked = 0;
+    for (const r of car.rollers) {
+      const part = asm.partsBySlot[r.slot];
+      const tiers = part.tiers ?? [{}];
+      r.colliders.forEach((/** @type {any} */ c, /** @type {number} */ i) => {
+        expect(c.restitutionCombineRule()).toBe(RAPIER.CoefficientCombineRule.Max);
+        expect(c.restitution()).toBeCloseTo(tiers[i]?.restitution ?? part.restitution, 6);
+        checked++;
+      });
+    }
+    for (const st of car.stabilizers) {
+      expect(st.collider.restitutionCombineRule()).toBe(RAPIER.CoefficientCombineRule.Max);
+      checked++;
+    }
+    // 牆的恢復係數是 0 → Max 組合後就是零件的值
+    let wallE = -1;
+    env.world.forEachCollider((/** @type {any} */ c) => {
+      if (((c.collisionGroups() >>> 16) & 0x2) !== 0) {
+        wallE = Math.max(wallE, c.restitution());
+      }
+    });
+    expect(wallE).toBe(0);
+    expect(checked).toBeGreaterThanOrEqual(8);
+  }, 60000);
+
   test('P17_audit_L2_L4 物理稽核 L2 / L4 修正：實心正六角軸 I = m·(5/12)·a²；馬達被拖到無載轉速以上（τ < 0）時輪上力 = τ·G/(r·η)（反向功率流，損失讓煞車力變大）', () => {
     // L2：實心 2 mm 六角軸（a = 1 mm）
     expect(axleInertia({ diameter_mm: 2, mass_g: 1 })).toBeCloseTo((5 / 12) * 1 * 1, 12);

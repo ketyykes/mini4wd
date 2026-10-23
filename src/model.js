@@ -346,7 +346,8 @@ function makeMaterials() {
     aluSpacer: new THREE.MeshStandardMaterial({ name: 'alu-spacer', color: 0xb9bec6, roughness: 0.3, metalness: 0.9 }),
     // iter-47：黃銅再亮一點（app 沒有環境貼圖時金屬會偏暗，reviewer iter-46「很小的金色圓柱，不容易認出來」）
     // iter-82（reviewer：app 截圖的黃銅像平光土黃）：粗糙度 0.26 → 0.18、環境反射加強，看得出金屬亮面
-    brassWeight: new THREE.MeshStandardMaterial({ name: 'brass-weight', color: 0xe6bd62, roughness: 0.18, metalness: 0.85, emissive: 0x2a1c05, envMapIntensity: 1.5 }),
+    // iter-85：拿掉自發光（讓黃銅變平光）、metalness 1、較飽和的金色、環境反射加強 → 灰色棚拍環境下也有金屬高光與暗面
+    brassWeight: new THREE.MeshStandardMaterial({ name: 'brass-weight', color: 0xf3c35a, roughness: 0.22, metalness: 1.0, envMapIntensity: 2.2 }),
     nylonCap: new THREE.MeshStandardMaterial({ name: 'plastic-nylon-cap', color: 0x34373c, roughness: 0.55, metalness: 0.0 }),
     // iter-50：板件切口（側面與孔壁）另用一個材質，讓 1.5 mm 板厚與孔緣看得出來：FRP 切口偏白（玻纖斷面）、碳纖切口霧灰
     frpEdge: new THREE.MeshStandardMaterial({ name: 'frp-edge', color: 0xc4c9c6, roughness: 0.8, metalness: 0.0 }),
@@ -939,7 +940,7 @@ const buildRollerRing = (ring, R) => {
  * 導輪與臂之間有墊片間隙，頂部墊片＋十字頭螺絲，底部六角螺帽。物理接觸半徑不變（r.r）
  * opt.bare = true：裝在導輪板的導輪柱上（下方的墊片 / 螺帽由 buildStayPlates 的導輪柱負責），不畫底部墊片、螺帽、螺絲尾端
  * iter-56：前後導輪可不同款，材質（r.finish）與錐形輪廓（r.taper）取自這顆導輪自己的零件資料（rollerLayoutOf）
- * @type {(mats: ReturnType<typeof makeMaterials>, r: { x: number, y: number, z: number, r: number, h: number, finish?: string, taper?: import('./parts/types').RollerSpec['taper'], ring?: import('./parts/types').RollerSpec['ring'] }, opt?: { bare?: boolean }) => THREE.Group}
+ * @type {(mats: ReturnType<typeof makeMaterials>, r: { x: number, y: number, z: number, r: number, h: number, finish?: string, taper?: import('./parts/types').RollerSpec['taper'], ring?: import('./parts/types').RollerSpec['ring'] }, opt?: { bare?: boolean, noTop?: boolean, noBottomFace?: boolean }) => THREE.Group}
  */
 const buildRoller = (mats, r, opt = {}) => {
   // 第五階段：滾珠培林直接當導輪（finish = steel，9 / 11 mm）：外形就是一顆培林
@@ -950,7 +951,9 @@ const buildRoller = (mats, r, opt = {}) => {
   const R = r.r;
   const H = r.h / 2;
   const recessR = R - 1.1;
-  const brgR = 3.7;
+  // iter-85：小徑導輪（9 / 8 mm）的培林外環放不進內凹（3.7 > R − 1.1）→ 培林環依內凹等比縮小（k = 1 時和原本相同）
+  const brgR = Math.min(3.7, recessR - 0.4);
+  const k = brgR / 3.7;
   const recessDepth = 0.7;
   // 截面由頂面內緣 → 外緣 → 底面內緣（r, y）
   /** @type {number[][]} */
@@ -1020,35 +1023,43 @@ const buildRoller = (mats, r, opt = {}) => {
   if (ring && !tp) {
     g.add(buildRollerRing(ring, R));
   }
+  // iter-85：雙層一體導輪的中間面（上片底面、下片頂面）被縮腰擋住、實物也沒有培林 → 不畫培林面與頂部螺絲
   for (const sy of [-1, 1]) {
+    if ((sy > 0 && opt.noTop) || (sy < 0 && opt.noBottomFace)) {
+      continue;
+    }
     const faceRot = sy > 0 ? -Math.PI / 2 : Math.PI / 2;
     const floorY = sy * (H - recessDepth);
     // 培林外環：凸出內凹底面 0.45 mm 的鋼環（含外側壁）
     const outerWall = new THREE.Mesh(new THREE.CylinderGeometry(brgR, brgR, 0.45, 32, 1, true), mats.steel);
     outerWall.position.y = floorY + sy * 0.225;
     g.add(outerWall);
-    const outer = new THREE.Mesh(new THREE.RingGeometry(2.95, brgR, 32), mats.steel);
+    const outer = new THREE.Mesh(new THREE.RingGeometry(2.95 * k, brgR, 32), mats.steel);
     outer.rotation.x = faceRot;
     outer.position.y = floorY + sy * 0.45;
     g.add(outer);
     // 黑色密封蓋（比外環低 0.25 mm）＋內側壁
-    const sealWall = new THREE.Mesh(new THREE.CylinderGeometry(2.95, 2.95, 0.25, 32, 1, true), mats.steel);
+    const sealWall = new THREE.Mesh(new THREE.CylinderGeometry(2.95 * k, 2.95 * k, 0.25, 32, 1, true), mats.steel);
     sealWall.position.y = floorY + sy * 0.325;
     g.add(sealWall);
-    const seal = new THREE.Mesh(new THREE.RingGeometry(1.95, 2.95, 32), mats.chassisDark);
+    const seal = new THREE.Mesh(new THREE.RingGeometry(1.95 * k, 2.95 * k, 32), mats.chassisDark);
     seal.rotation.x = faceRot;
     seal.position.y = floorY + sy * 0.2;
     g.add(seal);
     // 內環（與密封蓋同高再凸 0.15 mm）
-    const innerWall = new THREE.Mesh(new THREE.CylinderGeometry(1.95, 1.95, 0.15, 24, 1, true), mats.steel);
+    const innerWall = new THREE.Mesh(new THREE.CylinderGeometry(1.95 * k, 1.95 * k, 0.15, 24, 1, true), mats.steel);
     innerWall.position.y = floorY + sy * 0.275;
     g.add(innerWall);
-    const inner = new THREE.Mesh(new THREE.RingGeometry(1.0, 1.95, 24), mats.steel);
+    const inner = new THREE.Mesh(new THREE.RingGeometry(1.0, 1.95 * k, 24), mats.steel);
     inner.rotation.x = faceRot;
     inner.position.y = floorY + sy * 0.35;
     g.add(inner);
   }
-  // 頂部墊片（離開導輪頂面 0.2 mm）＋十字頭螺絲
+  // 頂部墊片（離開導輪頂面 0.2 mm）＋十字頭螺絲（雙層導輪只有最上片有）
+  if (opt.noTop) {
+    g.position.set(r.x, r.y, r.z);
+    return g;
+  }
   const washer = new THREE.Mesh(new THREE.CylinderGeometry(2.3, 2.3, 0.4, 24), mats.steel);
   washer.position.y = H - recessDepth + 0.9;
   g.add(washer);
@@ -1106,10 +1117,13 @@ const buildRollerStack = (mats, r, opt = {}) => {
     return buildRoller(mats, { x: r.x, y: r.y + tiers[0].y, z: r.z, r: tiers[0].r, h: tiers[0].h, finish: r.finish, taper: r.taper, ring: r.ring, color: r.color }, opt);
   }
   const g = new THREE.Group();
+  // 最上片 / 最下片（依 y）：螺絲頭只在最上片、底部五金只在最下片
+  const top = tiers.reduce((bi, tt, j) => (tt.y > tiers[bi].y ? j : bi), 0);
+  const bottom = tiers.reduce((bi, tt, j) => (tt.y < tiers[bi].y ? j : bi), 0);
   tiers.forEach((t, i) => {
     // 雙層導輪是一體成形：只有最下層保留底部五金
     // 第七階段（iter-76）：每一片可有自己的外環（例如 15418 上層橡膠環）
-    g.add(buildRoller(mats, { x: r.x, y: r.y + t.y, z: r.z, r: t.r, h: t.h, finish: r.finish, taper: r.taper, ring: t.ring ?? r.ring, color: r.color }, { bare: opt.bare || i > 0 }));
+    g.add(buildRoller(mats, { x: r.x, y: r.y + t.y, z: r.z, r: t.r, h: t.h, finish: r.finish, taper: r.taper, ring: t.ring ?? r.ring, color: r.color }, { bare: opt.bare || i !== bottom, noTop: i !== top, noBottomFace: i !== bottom }));
   });
   // 兩片之間的縮腰（同材質的短圓柱）
   const ys = tiers.map((t) => r.y + t.y);
