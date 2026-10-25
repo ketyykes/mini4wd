@@ -206,6 +206,7 @@ function createSceneImpl(container) {
 
   /** @type {THREE.Group | null} */
   let car = null;
+  let sliderNodes = [];
   const comMarker = buildComMarker();
   scene.add(comMarker);
 
@@ -248,7 +249,9 @@ function createSceneImpl(container) {
       disposeCar(car);
     }
     car = model;
+    sliderNodes = [];
     car.traverse((o) => {
+      if (o.userData.sliderSlot) sliderNodes.push({ node: o, baseZ: o.position.z, slot: o.userData.sliderSlot });
       if (o instanceof THREE.Mesh) {
         o.castShadow = true;
         o.receiveShadow = true;
@@ -312,6 +315,7 @@ function createSceneImpl(container) {
     if (car) {
       car.position.set(0, 0, 0);
       car.quaternion.identity();
+      for (const { node, baseZ } of sliderNodes) node.position.z = baseZ;
     }
     controls.enabled = true;
     camera.position.set(240, 150, -260);
@@ -324,12 +328,13 @@ function createSceneImpl(container) {
    * 賽道模式每幀更新車輛姿態與跟車相機
    * @type {(pos_m: { x: number, y: number, z: number }, rot: { x: number, y: number, z: number, w: number }, dtReal: number) => void}
    */
-  const updateRacePose = (pos_m, rot, dtReal) => {
+  const updateRacePose = (pos_m, rot, dtReal, sliders = {}) => {
     if (!car) {
       return;
     }
     car.position.set(pos_m.x * 1000, pos_m.y * 1000, pos_m.z * 1000);
     car.quaternion.set(rot.x, rot.y, rot.z, rot.w);
+    for (const { node, baseZ, slot } of sliderNodes) node.position.z = baseZ + (sliders[slot] ?? 0);
     const fwd = new THREE.Vector3(1, 0, 0).applyQuaternion(car.quaternion);
     const yaw = Math.atan2(fwd.z, fwd.x);
     if (!chaseInit) {
@@ -356,5 +361,6 @@ function createSceneImpl(container) {
     renderer.render(scene, camera);
   };
 
-  return { renderer, scene, camera, controls, setCar, setComVisible, enterRace, exitRace, updateRacePose, render };
+  const sliderOffsets = () => sliderNodes.map(({ node, baseZ, slot }) => ({ slot, offset_mm: node.position.z - baseZ }));
+  return { renderer, scene, camera, controls, setCar, setComVisible, enterRace, exitRace, updateRacePose, sliderOffsets, render };
 }

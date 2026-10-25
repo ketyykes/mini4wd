@@ -5,8 +5,9 @@
   "type": "module",
   "scripts": {
     "dev": "vite --port 47321 --strictPort --open /web/index.html",
-    "test": "vitest run",
-    "render": "node scripts/render.mjs"
+    "test": "python3 scripts/heavy.py --label mini4wd-vitest -- node node_modules/vitest/vitest.mjs run",
+    "render": "python3 scripts/heavy.py --label mini4wd-render -- node scripts/render.mjs",
+    "score": "node scripts/score.mjs"
   },
   "dependencies": {
     "@dimforge/rapier3d-compat": "^0.21.0",

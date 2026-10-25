@@ -556,7 +556,7 @@ describe('第二階段：零件組裝 / 規則 / 車殼（P04、P08、P09、P11�
       const lap = runCircuitLap(assemble(cfgWith({ body: b.id })), 3);
       const pen = Math.max(lap.maxPen, lap.contactPen);
       const lanes = lap.laneBefore.map((x, k) => `${x}→${lap.laneAfter[k]}`).join('、');
-      console.log(`[P16] ${b.id}：進度 ${f3(lap.progress)} / ${f3(3 * lap.lapLength)} m, ${f3(lap.time)} s, 穿透 ${(pen * 1000).toFixed(3)} mm, 最小 up.y ${f3(lap.minUp)}, 離路面高度 ${(lap.minH * 1000).toFixed(2)}–${(lap.maxH * 1000).toFixed(2)} mm, 換道 ${lanes}, 橋上步數 ${lap.bridgeSteps}`);
+      console.log(`[P16] ${b.id}：進度 ${f3(lap.progress)} / ${f3(3 * lap.lapLength)} m, ${f3(lap.time)} s, 穿透 ${(pen * 1000).toFixed(3)} mm（幾何 ${(lap.maxPen * 1000).toFixed(3)}／接觸 ${(lap.contactPen * 1000).toFixed(3)}）, 最小 up.y ${f3(lap.minUp)}, 離路面高度 ${(lap.minH * 1000).toFixed(2)}–${(lap.maxH * 1000).toFixed(2)} mm, 換道 ${lanes}, 橋上步數 ${lap.bridgeSteps}`);
       expect(lap.progress).toBeGreaterThanOrEqual(3 * lap.lapLength);
       expect(pen).toBeLessThanOrEqual(0.001);
       expect(lap.minUp).toBeGreaterThan(0.8);

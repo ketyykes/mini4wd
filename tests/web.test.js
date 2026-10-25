@@ -482,6 +482,53 @@ describe('P19 網頁換件', () => {
     }
   }, 240000);
 
+  test('P19_compare 固定組裝後換零件，並排顯示目前、基準與差值，清除可恢復', async () => {
+    await changeSlot('config', 'default');
+    await page.click('#btn-compare');
+    const pinned = (await garageState()).comparison;
+    await changeSlot('gear', 'gear-4.0');
+    const state = await garageState();
+    expect(state.comparison).toEqual(pinned);
+    expect(state.asm.topSpeed_ms).not.toBe(pinned.asm.topSpeed_ms);
+    expect(await page.locator('#comparison').isVisible()).toBe(true);
+    const row = page.locator('#comparison tbody tr').filter({ has: page.locator('th', { hasText: '理論極速' }) });
+    const values = await row.locator('td').allTextContents();
+    expect(values[0]).toBe(`${state.asm.topSpeed_ms.toFixed(2)} m/s`);
+    expect(values[1]).toBe(`${pinned.asm.topSpeed_ms.toFixed(2)} m/s`);
+    expect(values[2]).toBe(`${(state.asm.topSpeed_ms - pinned.asm.topSpeed_ms).toFixed(2)} m/s`);
+    const tableBounds = await page.locator('#comparison').boundingBox();
+    const scrollBounds = await page.locator('.table-scroll').boundingBox();
+    expect(scrollBounds.height).toBeGreaterThanOrEqual(tableBounds.height);
+    await page.locator('#comparison').scrollIntoViewIfNeeded();
+    await page.screenshot({ path: path.join(root, 'renders/iter-88_comparison.png') });
+    await page.click('#btn-clear-compare');
+    expect(await page.locator('#comparison').isVisible()).toBe(false);
+  });
+
+  test('P19_ranking_motion 滑動板與導輪跟隨物理位移；只將完賽記錄寫入本機排行且重新載入仍保留', async () => {
+    await changeSlot('config', 'p7-demo');
+    await page.click('#btn-race');
+    await page.waitForFunction(() => Object.values(window.__garage.sliderOffsets_mm ?? {}).some((u) => Math.abs(u) > 0.01), null, { timeout: 45000 });
+    const moving = await garageState();
+    expect(moving.sliderVisualOffsets.length).toBeGreaterThan(2);
+    for (const node of moving.sliderVisualOffsets) {
+      expect(node.offset_mm).toBeCloseTo(moving.sliderOffsets_mm[node.slot], 8);
+    }
+    await page.waitForFunction(() => window.__garage.raceStatus === 'finished', null, { timeout: 90000 });
+    const finished = await garageState();
+    expect(finished.results.length).toBeGreaterThan(0);
+    const id = finished.results[0].id;
+    expect(await page.locator('#race-results li').count()).toBe(finished.results.length);
+    await page.locator('#race-results').scrollIntoViewIfNeeded();
+    await page.screenshot({ path: path.join(root, 'renders/iter-88_ranking.png') });
+    await page.click('#btn-garage');
+    const reset = await garageState();
+    expect(reset.sliderVisualOffsets.every((n) => n.offset_mm === 0)).toBe(true);
+    await page.reload();
+    await waitGarageReady(page);
+    expect((await garageState()).results.some((r) => r.id === id)).toBe(true);
+  }, 180000);
+
   test('P19_URL 參數可還原組裝', async () => {
     const p2 = await browser.newPage({ viewport: { width: 1600, height: 900 } });
     await p2.goto(`${baseUrl}/web/garage.html?motor=motor-high-rev&body=body-skeleton`);

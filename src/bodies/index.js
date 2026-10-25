@@ -1,5 +1,6 @@
 // 車殼目錄：所有車殼都裝在同一組安裝點上；質量、重心、外框由車殼幾何計算
 import * as THREE from 'three';
+import { zeroTensor, addTensor, centralTensor, simplexSecond } from '../massTensor.js';
 import { skeletonBody } from './skeleton.js';
 import { aeroWingBody } from './aeroWing.js';
 import { pcBoxBody } from './pcBox.js';
@@ -118,7 +119,7 @@ const closedVolume = (pts) => {
     const r = find(triV[3 * t]);
     let acc = comp.get(r);
     if (!acc) {
-      acc = [0, 0, 0, 0];
+      acc = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
       comp.set(r, acc);
     }
     // 四面體（原點, a, b, c）的重心 = (a + b + c) / 4
@@ -126,19 +127,23 @@ const closedVolume = (pts) => {
     acc[1] += (v * (ax + bx + cx)) / 4;
     acc[2] += (v * (ay + by + cy)) / 4;
     acc[3] += (v * (az + bz + cz)) / 4;
+    const second = simplexSecond([[ax, ay, az], [bx, by, bz], [cx, cy, cz]], v, 20);
+    Object.values(second).forEach((value, i) => { acc[4 + i] += value; });
   }
   let vol = 0;
   let mx = 0;
   let my = 0;
   let mz = 0;
-  for (const [v, x, y, z] of comp.values()) {
+  const second = zeroTensor();
+  for (const [v, x, y, z, ...q] of comp.values()) {
     const sg = v < 0 ? -1 : 1;
     vol += sg * v;
     mx += sg * x;
     my += sg * y;
     mz += sg * z;
+    Object.keys(second).forEach((key, i) => { second[key] += sg * q[i]; });
   }
-  return { vol, mx, my, mz };
+  return { vol, mx, my, mz, second };
 };
 
 /** @type {Map<string, BodyMassProps>} */
@@ -162,6 +167,7 @@ export const bodyMassProps = (body) => {
   const ac = new THREE.Vector3();
   let area = 0;
   const mom = new THREE.Vector3();
+  const shellSecond = zeroTensor();
   g.traverse((o) => {
     if (!o.isMesh || !isShell(o)) {
       return;
@@ -178,6 +184,12 @@ export const bodyMassProps = (body) => {
       c.fromBufferAttribute(pos, i2).applyMatrix4(o.matrixWorld);
       const s = ab.subVectors(b, a).cross(ac.subVectors(c, a)).length() / 2;
       area += s;
+      addTensor(shellSecond, simplexSecond([a.toArray(), b.toArray(), c.toArray()], s, 12));
+      // Uniform thickness along the triangle normal, centered on the mesh.
+      if (s > 0) {
+        const n = ab.normalize(), d = s * body.wallThickness_mm ** 2 / 12;
+        addTensor(shellSecond, { xx: n.x * n.x, yy: n.y * n.y, zz: n.z * n.z, xy: n.x * n.y, xz: n.x * n.z, yz: n.y * n.z }, d);
+      }
       mom.addScaledVector(a.add(b).add(c), s / 3);
     }
   });
@@ -226,11 +238,14 @@ export const bodyMassProps = (body) => {
   let solidMass = 0;
   let solidVol = 0;
   const solidMom = new THREE.Vector3();
+  const second = zeroTensor();
+  addTensor(second, shellSecond, body.wallThickness_mm * body.density_g_cm3 / 1000);
   for (const [rho, arr] of solidTris) {
     const r = closedVolume(Float64Array.from(arr));
     const m = (r.vol * rho) / 1000;
     solidMass += m;
     solidVol += r.vol;
+    addTensor(second, r.second, rho / 1000);
     if (r.vol > 0) {
       solidMom.add(new THREE.Vector3(r.mx, r.my, r.mz).multiplyScalar(m / r.vol));
     }
@@ -245,6 +260,7 @@ export const bodyMassProps = (body) => {
     solidMass_g: solidMass,
     solidVolume_mm3: solidVol,
     com_mm: { x: com.x, y: com.y, z: com.z },
+    inertia_gmm2: centralTensor(second, mass_g, com),
     bbox_mm: { min: { x: box.min.x, y: box.min.y, z: box.min.z }, max: { x: box.max.x, y: box.max.y, z: box.max.z } },
     vertices: new Float32Array(verts),
   };
@@ -296,7 +312,9 @@ export const bodyClearance = (body, wheels, rollers) => {
       tire = Math.min(tire, cylinderDistance(v[i], v[i + 1], v[i + 2], w, 'z', w.r, w.width / 2));
     }
     for (const r of rollers) {
-      roller = Math.min(roller, cylinderDistance(v[i], v[i + 1], v[i + 2], r, 'y', r.r, r.h / 2));
+      // Closest point on the complete translation segment, not just its ends.
+      const z = r.z + Math.max(-(r.stroke ?? 0), Math.min(r.stroke ?? 0, v[i + 2] - r.z));
+      roller = Math.min(roller, cylinderDistance(v[i], v[i + 1], v[i + 2], { ...r, z }, 'y', r.r, r.h / 2));
     }
   }
   const result = { tire_mm: tire, roller_mm: roller };

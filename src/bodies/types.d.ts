@@ -48,6 +48,8 @@ export interface BodyMassProps {
   solidMass_g: number;
   solidVolume_mm3: number;
   com_mm: Vec3;
+  /** Full central inertia tensor, including products of inertia (g·mm²). */
+  inertia_gmm2: { xx: number; yy: number; zz: number; xy: number; xz: number; yz: number };
   bbox_mm: { min: Vec3; max: Vec3 };
   /** 車殼所有頂點（底盤座標，xyz 交錯） */
   vertices: Float32Array;

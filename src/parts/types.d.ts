@@ -25,7 +25,8 @@ export interface PartCompat {
 export type Solid =
   | { kind: 'box'; min: Vec3; max: Vec3 }
   | { kind: 'cyl'; axis: 'y' | 'z'; c: Vec3; r: number; halfLen: number }
-  | { kind: 'plate'; outline: [number, number][]; y0: number; y1: number };
+  | { kind: 'plate'; outline: [number, number][]; y0: number; y1: number }
+  | { kind: 'sweepZ'; source: Solid; halfStroke: number };
 
 /** 組裝後一個零件實例的實體（干涉檢查的對象） */
 export interface PlacedSolid {
@@ -183,6 +184,8 @@ export interface PlacedSlider {
   com_mm: Vec3;
   /** 滑動部分對自身質心的主慣性（kg·m²） */
   inertia_kgm2: Vec3;
+  inertiaTensor_kgm2: { xx: number; yy: number; zz: number; xy: number; xz: number; yz: number };
+  inertiaFrame: { x: number; y: number; z: number; w: number };
   stroke_mm: number;
   springK_N_per_mm: number;
   preload_N: number;

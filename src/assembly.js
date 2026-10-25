@@ -14,10 +14,12 @@ import { spec as globalSpec, deriveParams } from './spec.js';
 import { resolvePart, listParts } from './parts/index.js';
 import { getBody, bodyMassProps, bodyClearance } from './bodies/index.js';
 import { rollerLayout, wheelLayout, componentLayout } from './carLayout.js';
-import { solidGap, solidBox, verticesGap } from './parts/clearance.js';
+import { solidGap, solidBox, verticesGap, sweepZ } from './parts/clearance.js';
 import { polygonCentroid } from './parts/plateGeom.js';
 import { bumperTrim } from './parts/bumperGeom.js';
 import { drivetrainInertia } from './parts/inertia.js';
+import { frontalArea } from './bodies/silhouette.js';
+import { zeroTensor, addTensor, pointTensor, principalAxes } from './massTensor.js';
 
 /** @typedef {import('./parts/types').PlacedPart} PlacedPart */
 /** @typedef {import('./parts/types').Vec3} Vec3 */
@@ -470,8 +472,16 @@ export function assemble(rawConfig) {
   }
   // 導輪板、選配零件（制振器取整個行程的範圍）
   /** @type {{ min: Vec3, max: Vec3 }[]} */
+  const staticExtraBoxes = [];
   const extraBoxes = opt.solids.filter((q) => q.group !== 'tire' && q.group !== 'roller').map((q) => {
     const b = solidBox(q.solid);
+    const damper = opt.dampers.find((d) => d.swept === q.solid);
+    const halfX = damper?.part.shape === 'box' ? damper.part.length_mm / 2 : (damper?.part.diameter_mm ?? 0) / 2;
+    const halfZ = damper?.part.shape === 'box' ? damper.part.width_mm / 2 : halfX;
+    staticExtraBoxes.push(damper ? {
+      min: lifted({ x: damper.pos.x - halfX, y: damper.seat.y, z: damper.pos.z - halfZ }, lift),
+      max: lifted({ x: damper.pos.x + halfX, y: damper.seat.y + damper.part.height_mm, z: damper.pos.z + halfZ }, lift),
+    } : { min: lifted(b.min, lift), max: lifted(b.max, lift) });
     let dz = 0;
     if (q.group === 'stay') {
       dz = strokeOf(q.slot);
@@ -485,19 +495,20 @@ export function assemble(rawConfig) {
   boxes.push(...extraBoxes);
   const min = { x: Infinity, y: Infinity, z: Infinity };
   const max = { x: -Infinity, y: -Infinity, z: -Infinity };
-  let staticMinZ = Infinity;
-  let staticMaxZ = -Infinity;
   boxes.forEach((b, i) => {
     for (const k of ['x', 'y', 'z']) {
       min[k] = Math.min(min[k], b.min[k]);
       max[k] = Math.max(max[k], b.max[k]);
     }
-    staticMinZ = Math.min(staticMinZ, b.min.z + boxSlideDz[i]);
-    staticMaxZ = Math.max(staticMaxZ, b.max.z - boxSlideDz[i]);
   });
   const bbox_mm = { min, max, size: { x: max.x - min.x, y: max.y - min.y, z: max.z - min.z } };
-  // 迎風面積（SPEC 1.11）：外框寬 × 高 × 填充比例；寬度取滑動板在行程中央（實際行駛）時的值（沒有滑動保桿時就是外框寬）
-  const frontalArea_mm2 = (staticMaxZ - staticMinZ) * bbox_mm.size.y * globalSpec.aero.frontalAreaFill;
+  // Shell mesh projection ∪ other components' projected boxes, at rest.
+  // The swept bounds remain solely for regulation checks.
+  const aeroBoxes = boxes.slice(0, boxes.length - extraBoxes.length).filter((b) => b !== bodyBox).map((b) => {
+    const dz = boxSlideDz[boxes.indexOf(b)];
+    return { min: { ...b.min, z: b.min.z + dz }, max: { ...b.max, z: b.max.z - dz } };
+  }).concat(staticExtraBoxes);
+  const frontalArea_mm2 = frontalArea(body, aeroBoxes, lift);
   // 離地高度：輪胎以外的最低點（底盤本體、車殼、導輪）
   // structureClearance_mm：只看底盤本體、車殼、導輪（物理車體碰撞方塊的底面用這個）；groundClearance_mm 另含導輪板與選配零件（規則檢查用）
   const structureClearance_mm = Math.min(...structBoxes.map((b) => b.min.y), ...rollers.map((r) => r.y - r.h / 2 + lift));
@@ -510,10 +521,10 @@ export function assemble(rawConfig) {
     fit = bodyClearance(
       body,
       wheels.map((w) => ({ x: w.x, y: w.y, z: w.z, r: R, width: p.wheels.width_mm })),
-      rollers,
+      rollers.map((r) => ({ ...r, stroke: strokeOf(r.slot === 'frontRollers' ? 'frontStay' : 'rearStay') })),
     );
   }
-  const interference = interferenceChecks(body, bodyProps, wheels.map((w) => ({ ...w, r: R, width: p.wheels.width_mm })), rollers, opt.solids);
+  const interference = interferenceChecks(body, bodyProps, wheels.map((w) => ({ ...w, r: R, width: p.wheels.width_mm })), rollers, opt.solids, p);
 
   return {
     config: structuredClone(config),
@@ -530,7 +541,7 @@ export function assemble(rawConfig) {
     chassisTrim,
     features: [...new Set([...(ch.features ?? []), ...(p.frontStay.features ?? []), ...(p.rearStay.features ?? [])])],
     optional: { dampers: opt.dampers, sponge: opt.sponge, ballast: opt.ballast, stabilizers: opt.stabilizers },
-    rigid: { mass_g: rigid.mass_g, com_mm: rigid.com_mm, inertia_kgm2: rigid.inertia_kgm2 },
+    rigid: { mass_g: rigid.mass_g, com_mm: rigid.com_mm, inertia_kgm2: rigid.inertia_kgm2, inertiaTensor_kgm2: rigid.inertiaTensor_kgm2, inertiaFrame: rigid.inertiaFrame },
     movable,
     // 滑動保桿的滑動部分（iter-61）：slider = 前、rearSlider = 後（iter-64），沒裝時為 null；sliders = 有裝的（前在前）
     slider,
@@ -541,6 +552,8 @@ export function assemble(rawConfig) {
     driveType: ch.driveType,
     spec: s,
     inertia_kgm2,
+    inertiaTensor_kgm2: total.inertiaTensor_kgm2,
+    inertiaFrame: total.inertiaFrame,
     P: deriveParams({ ...s, frontalArea_mm2 }, mass_g),
     layout: {
       wheels: wheels.map((w) => ({ ...lifted(w, lift), id: w.id, r: R, width: p.wheels.width_mm })),
@@ -644,14 +657,12 @@ function sliderOf(slot, st, parts, stabilizers) {
     mom.z += q.mass_g * q.pos.z;
   }
   const com_mm = { x: mom.x / mass_g, y: mom.y / mass_g, z: mom.z / mass_g };
-  const inertia = { x: 0, y: 0, z: 0 };
+  const inertia = zeroTensor();
   for (const q of own) {
     const dx = q.pos.x - com_mm.x;
     const dy = q.pos.y - com_mm.y;
     const dz = q.pos.z - com_mm.z;
-    inertia.x += q.mass_g * (dy * dy + dz * dz);
-    inertia.y += q.mass_g * (dx * dx + dz * dz);
-    inertia.z += q.mass_g * (dx * dx + dy * dy);
+    addTensor(inertia, pointTensor(q.mass_g, { x: dx, y: dy, z: dz }));
   }
   // 滑動板自身（外框方塊）的慣性
   const xs = st.plate.outline.map((/** @type {number[]} */ v) => v[0]);
@@ -660,10 +671,12 @@ function sliderOf(slot, st, parts, stabilizers) {
   const lz = Math.max(...zs) - Math.min(...zs);
   const ly = st.plate.thickness_mm;
   const mp = st.slide.plateMass_g;
-  inertia.x += (mp / 12) * (ly * ly + lz * lz);
-  inertia.y += (mp / 12) * (lx * lx + lz * lz);
-  inertia.z += (mp / 12) * (lx * lx + ly * ly);
+  inertia.xx += (mp / 12) * (ly * ly + lz * lz);
+  inertia.yy += (mp / 12) * (lx * lx + lz * lz);
+  inertia.zz += (mp / 12) * (lx * lx + ly * ly);
   const sl = st.slide;
+  const tensor = Object.fromEntries(Object.entries(inertia).map(([k, v]) => [k, v * 1e-9]));
+  const principal = principalAxes(tensor);
   return {
     slot,
     rollerSlot,
@@ -671,7 +684,9 @@ function sliderOf(slot, st, parts, stabilizers) {
     labels: own.map((q) => q.label),
     mass_g,
     com_mm,
-    inertia_kgm2: { x: inertia.x * 1e-9, y: inertia.y * 1e-9, z: inertia.z * 1e-9 },
+    inertia_kgm2: principal.inertia,
+    inertiaTensor_kgm2: tensor,
+    inertiaFrame: principal.frame,
     stroke_mm: sl.stroke_mm,
     springK_N_per_mm: sl.springK_N_per_mm,
     preload_N: sl.preload_N,
@@ -681,8 +696,8 @@ function sliderOf(slot, st, parts, stabilizers) {
 }
 
 /**
- * 質量、重心、慣性矩（主軸近似，忽略慣性積）：各零件以質點計（平行軸定理），
- * 底盤本體與車殼另加自身外框的均質方塊慣性（推估：兩者是分佈最廣的零件）
+ * Full parallel-axis tensor. Body uses shell/solid integrals; chassis still
+ * uses its estimated uniform box, remaining components use point masses.
  * @type {(parts: PlacedPart[], ch: any, bodyProps: any) => { mass_g: number, com_mm: Vec3, inertia_kgm2: Vec3 }}
  */
 function massProps(parts, ch, bodyProps) {
@@ -702,30 +717,28 @@ function massProps(parts, ch, bodyProps) {
     const lz = b.max.z - b.min.z;
     return { x: (m / 12) * (ly * ly + lz * lz), y: (m / 12) * (lx * lx + lz * lz), z: (m / 12) * (lx * lx + ly * ly) };
   };
-  const inertia = { x: 0, y: 0, z: 0 };
+  const inertia = zeroTensor();
   for (const q of parts) {
     const dx = q.pos.x - com_mm.x;
     const dy = q.pos.y - com_mm.y;
     const dz = q.pos.z - com_mm.z;
-    inertia.x += q.mass_g * (dy * dy + dz * dz);
-    inertia.y += q.mass_g * (dx * dx + dz * dz);
-    inertia.z += q.mass_g * (dx * dx + dy * dy);
+    addTensor(inertia, pointTensor(q.mass_g, { x: dx, y: dy, z: dz }));
   }
   /** @type {[number, { min: Vec3, max: Vec3 }][]} 底盤本體與車殼（沒裝車殼時只有底盤） */
   // 底盤本體的質量取零件清單裡的值（保桿切除後的質量）
   const chPart = parts.find((q) => q.slot === 'chassis');
   const spread = [[chPart ? chPart.mass_g : ch.mass_g, ch.bbox_mm]];
-  if (bodyProps) {
-    spread.push([bodyProps.mass_g, bodyProps.bbox_mm]);
-  }
   for (const [m, b] of spread) {
     const bi = boxInertia(m, b);
-    inertia.x += bi.x;
-    inertia.y += bi.y;
-    inertia.z += bi.z;
+    inertia.xx += bi.x;
+    inertia.yy += bi.y;
+    inertia.zz += bi.z;
   }
+  if (bodyProps) addTensor(inertia, bodyProps.inertia_gmm2);
   // g·mm² → kg·m²
-  return { mass_g, com_mm, inertia_kgm2: { x: inertia.x * 1e-9, y: inertia.y * 1e-9, z: inertia.z * 1e-9 } };
+  const tensor = Object.fromEntries(Object.entries(inertia).map(([k, v]) => [k, v * 1e-9]));
+  const principal = principalAxes(tensor);
+  return { mass_g, com_mm, inertia_kgm2: principal.inertia, inertiaTensor_kgm2: tensor, inertiaFrame: principal.frame };
 }
 
 /** @type {(cx: number, cz: number, y0: number, lx: number, lz: number, ly: number) => Solid} 底面中心在 (cx, y0, cz) 的方塊 */
@@ -906,13 +919,18 @@ const MOUNTED_ON = new Set(['sponge|stay', 'ballast|stay', 'damper|stay']);
  * 車殼與輪胎 / 導輪沿用 bodies/index.js 的 bodyClearance（BODY_TIRE_CLEARANCE / BODY_ROLLER_CLEARANCE）
  * @type {(body: any, bodyProps: any, wheels: any[], rollers: any[], solids: PlacedSolid[]) => { code: string, a: string, b: string, gap_mm: number }[]}
  */
-function interferenceChecks(body, bodyProps, wheels, rollers, solids) {
+function interferenceChecks(body, bodyProps, wheels, rollers, solids, parts) {
   /** @type {PlacedSolid[]} */
   const all = [
     ...wheels.map((w) => ({ group: 'tire', slot: 'wheels', label: `輪胎 ${w.id}`, solid: /** @type {Solid} */ ({ kind: 'cyl', axis: 'z', c: { x: w.x, y: w.y, z: w.z }, r: w.r, halfLen: w.width / 2 }) })),
     ...rollers.map((r) => ({ group: 'roller', slot: r.slot, label: `導輪 ${r.id}`, solid: /** @type {Solid} */ ({ kind: 'cyl', axis: 'y', c: { x: r.x, y: r.y, z: r.z }, r: r.r, halfLen: r.h / 2 }) })),
     ...solids,
   ];
+  for (const item of all) {
+    const slot = item.group === 'roller' ? (item.slot === 'frontRollers' ? 'frontStay' : 'rearStay') : item.group === 'stabilizer' ? 'frontStay' : item.group === 'stay' ? item.slot : null;
+    item.motion = slot && parts[slot]?.slide ? slot : null;
+    item.swept = sweepZ(item.solid, item.motion ? parts[slot].slide.stroke_mm : 0);
+  }
   /** @type {Map<string, { code: string, a: string, b: string, gap_mm: number }>} 每種代碼只留最小間隙那一組 */
   const worst = new Map();
   /** @type {(code: string, a: string, b: string, gap: number) => void} */
@@ -936,15 +954,18 @@ function interferenceChecks(body, bodyProps, wheels, rollers, solids) {
       // 代碼依 GROUP_ORDER 排前後，例如 STAY_TIRE_CLEARANCE、ROLLER_TIRE_CLEARANCE、BALLAST_SPONGE_CLEARANCE
       const [P, Q] = GROUP_ORDER.indexOf(A.group) <= GROUP_ORDER.indexOf(B.group) ? [A, B] : [B, A];
       const code = `${P.group.toUpperCase()}_${Q.group.toUpperCase()}_CLEARANCE`;
-      record(code, P.label, Q.label, cachedGap(P.solid, Q.solid));
+      // Parts on one board translate together. Sweeping them independently
+      // would invent a relative motion that the joint cannot produce.
+      const sameMotion = P.motion && P.motion === Q.motion;
+      record(code, P.label, Q.label, cachedGap(sameMotion ? P.solid : P.swept, sameMotion ? Q.solid : Q.swept));
     }
   }
   // 選配零件、導輪板與車殼（車殼頂點到零件實體的距離）；沒裝車殼時跳過
-  for (const s of body ? solids : []) {
-    const key = JSON.stringify([body.id, s.solid]);
+  for (const s of body ? all.filter((s) => !['tire', 'roller'].includes(s.group)) : []) {
+    const key = JSON.stringify([body.id, s.swept]);
     let g = bodyGapCache.get(key);
     if (g === undefined) {
-      g = verticesGap(bodyProps.vertices, s.solid);
+      g = verticesGap(bodyProps.vertices, s.swept);
       bodyGapCache.set(key, g);
     }
     record(`${s.group.toUpperCase()}_BODY_CLEARANCE`, s.label, `車殼 ${body.id}`, g);

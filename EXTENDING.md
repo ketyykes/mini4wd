@@ -65,3 +65,20 @@ slot 值的寫法：
 ## 新增一份組裝設定
 現有：`default`、`speed`（高轉速馬達）、`technical`（4:1＋19 mm 導輪）、`light`（鏤空車殼）、`race-frp`（FRP 前後導輪板＋13 mm 鋁導輪＋扭力型馬達＋3.7:1＋1 mm 煞車海綿（貼在 FRP 煞車板下）＋後板 1 g 黃銅配重）、`carbon-damper`（碳纖前板＋碳纖寬後板＋13-12 mm 雙層導輪＋後制振器＋低摩擦胎）。新設定必須合法（P18 會檢查所有 `configs/*.json`）。
 複製 `configs/default.json` 改 slot，並在 `src/assembly.js` 的 `CONFIGS` 註冊名稱，之後 `loadConfig('<名稱>')` 即可使用。
+
+
+## iter-88：幾何、穩健性與網頁紀錄
+- `parts/bumperGeom.js` 同時提供保桿上蓋、肋格、凸台、斜撐和補強片的定義。切除質量以材料聯集扣掉保留結構後積分，不能再把凸台與板重疊的部分重複加總；上蓋 1.0 mm、肋深 1.4 mm 是推估尺寸。前後保桿按同一份鏡射定義，體積快取不包含密度，密度只影響最後換算。
+- 迎風面積使用 `bodies/silhouette.js` 的 `front` 投影（z–y，0.5 mm 格點，保留鏤空），與其他零件的靜止外框投影取聯集。新車殼要正確標記 `shell` / `outline`；側視與俯視的 P20 算法維持原定義。C_d 仍為推估 0.6。
+- `tests/robustness.test.js`：10 款制振器 × 12 種落地 × 可動／鎖死，以及 4 套組裝 × 8 種起跑位置／車道／SOC 組合。量測輸出在 `tmp/robustness.json`。新增制振器時要擴充 `dampers` 清單。
+- 車庫的比較基準固定組裝數值；換件後顯示差值。三圈完賽依模擬跨線時間計時，排行只存在本機 `mini4wd-results-v1`，保留最快 20 筆。未完賽不記錄，禁止儲存時仍可完成模擬。之後若更改物理或賽道，須更新 `garageResults.js` 的紀錄版本，避免混比成績。
+- 3D 的滑動板、導輪柱、導輪與穩定頭使用 `userData.sliderSlot`，由 `race.pose().sliders` 的實際相對位移驅動；固定滑軌不應標記。回車庫時位移歸零。
+
+## iter-89：碰撞、慣性與重運算
+
+- `src/bodies/collision.js` 從 `shell`／`solid` 幾何建立 12 × 32 × 48 mm 分區點雲；`sim.js` 使用各區局部方塊組成複合碰撞與內部邊緣修正。不要將裝飾貼紙納入結構；小於分區的凹陷仍是近似。區內曲率與凹陷仍是方塊近似；不得回到整車外框填實。穿牆檢查使用實際碰撞代理的外緣頂點。
+- 車殼慣性用 `bodyMassProps().inertia_gmm2` 的完整中心張量；組裝輸出 `inertiaTensor_kgm2`、`inertiaFrame` 及主慣性 `inertia_kgm2`。新的剛體必須把主軸方向一併交給 Rapier；轉動動能也要先轉入主軸。
+- `sweepZ` 表示滑動的完整掃掠，不能只檢查兩個端點；同一滑板上的零件需保留相同運動，不能獨立掃掠後互相比較。
+- 滑動板的彈簧衝量由 `applySliderSpringImpulses` 以整個有關節系統的 `M⁻¹Q` 施加，不能只對車身和一塊板加原始剛體衝量，否則會暫時破壞共同角速度。`sliderLimits.test.js` 檢查這項關係，以及未碰牆時的預測式止擋、線動量／動能與不做位置投影。
+- 重運算用 `python3 scripts/heavy.py --label <說明> -- <指令> [參數]`。`npm test`、`npm run render`、`npm run score` 與根目錄 `render/run.sh` 已接入。其他專案可使用相同腳本，並將 `MINI4WD_HEAVY_LOCK` 設為同一個絕對路徑。預設為系統暫存目錄的 `codex-heavy-compute.lock`；不要刪除這個鎖檔，核心鎖會隨持有程序結束釋放。
+- `python3 scripts/heavy_test.py` 檢查跨程序互斥、失效回收、wrapper 被殺而 child 仍活著、逾時及訊號轉送。只有使用相同協定的工作才會互斥。

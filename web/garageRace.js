@@ -3,7 +3,7 @@
 // （track.nextLane），3 圈內三條車道各跑一圈，跑滿 3 × 一圈長度即完賽
 import { spec } from '../src/spec.js';
 import { buildCircuit } from '../src/track.js';
-import { initRapier, createWorld, createCar, stepCar, forwardSpeed, upAxis, carLevel } from '../src/sim.js';
+import { initRapier, createWorld, createCar, stepCar, forwardSpeed, upAxis, carLevel, sliderState } from '../src/sim.js';
 
 /** 每幀物理計算的時間上限（ms）：超過就讓模擬比真實時間慢，畫面仍維持流暢 */
 const FRAME_BUDGET_MS = 14;
@@ -26,6 +26,7 @@ const STALL_TIME_S = 1.5;
  * @property {number} finishDistance 終點距離 m
  * @property {number} lapLength 一圈長度 m
  * @property {number} simTime 模擬時間 s
+ * @property {number[]} lapTimes 已完成各圈的模擬時間 s（跨線時在物理步內插）
  * @property {number} voltage 電池端電壓 V（負載下）
  * @property {number} current 馬達電流 A
  * @property {number} lane 目前車道（0 = 內側）
@@ -73,11 +74,15 @@ function createSession(asm) {
   let lastS = s0;
   let simTime = 0;
   let realTime = 0;
+  let finishTime = null;
+  const lapTimes = [];
+  let lastCrossingTime = 0;
   /** @type {RaceStatus} */
   let status = 'running';
 
   /** @type {() => void} 推進一步並累計沿賽道的行駛距離 */
   const stepOnce = () => {
+    const previousProgress = progress;
     stepCar(env, car);
     simTime += dt;
     const t = car.chassis.translation();
@@ -91,6 +96,15 @@ function createSession(asm) {
     }
     progress += ds;
     lastS = c.s;
+    while (lapTimes.length < RACE_LAPS && progress >= (lapTimes.length + 1) * L) {
+      const crossing = simTime - dt + dt * (((lapTimes.length + 1) * L - previousProgress) / ds);
+      lapTimes.push(crossing - lastCrossingTime);
+      lastCrossingTime = crossing;
+    }
+    if (progress >= finishDistance) {
+      finishTime = lastCrossingTime;
+      status = 'finished';
+    }
   };
 
   /**
@@ -105,8 +119,10 @@ function createSession(asm) {
     realTime += want;
     const steps = Math.max(1, Math.round(want / dt));
     const t0 = performance.now();
+    const timeBefore = simTime;
     for (let i = 0; i < steps; i++) {
       stepOnce();
+      if (status !== 'running') break;
       if (i % 16 === 15 && performance.now() - t0 > FRAME_BUDGET_MS) {
         break;
       }
@@ -125,7 +141,7 @@ function createSession(asm) {
       return;
     }
     if (Math.abs(forwardSpeed(car)) < STALL_SPEED && simTime > 1) {
-      stallTime += want;
+      stallTime += simTime - timeBefore;
       if (stallTime > STALL_TIME_S) {
         status = 'stalled';
         return;
@@ -156,7 +172,8 @@ function createSession(asm) {
       lapProgress: Math.max(0, progress / L),
       finishDistance,
       lapLength: L,
-      simTime,
+      simTime: finishTime ?? simTime,
+      lapTimes: lapTimes.slice(),
       voltage: car.last.terminalVoltage || car.battery.ocv(),
       current: car.last.current,
       lane,
@@ -167,8 +184,11 @@ function createSession(asm) {
     };
   };
 
-  /** @type {() => { pos: { x: number, y: number, z: number }, rot: { x: number, y: number, z: number, w: number } }} */
-  const pose = () => ({ pos: car.chassis.translation(), rot: car.chassis.rotation() });
+  /** Chassis pose and actual local slider offsets in mm, for rendering. */
+  const pose = () => ({
+    pos: car.chassis.translation(), rot: car.chassis.rotation(),
+    sliders: Object.fromEntries(car.sliders.map((sl) => [sl.slot, sliderState(car, sl).u * 1000])),
+  });
 
   /** 釋放 Rapier 世界（WASM 記憶體） */
   const dispose = () => {

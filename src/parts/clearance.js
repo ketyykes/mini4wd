@@ -10,6 +10,16 @@ const SAMPLE_MM = 0.4;
 /** 只在對方外框外擴 MARGIN 內的樣本點計算（更遠的不可能小於判定門檻 1 mm） */
 const MARGIN = 2.5;
 
+/** Exact swept volume for translation along z. Plates use the union of the
+ * two endpoint polygons and each edge's swept quadrilateral; concave outlines
+ * therefore keep their recesses rather than becoming bounding rectangles. */
+export const sweepZ = (solid, halfStroke) => {
+  if (!(halfStroke > 0)) return solid;
+  if (solid.kind === 'box') return { ...solid, min: { ...solid.min, z: solid.min.z - halfStroke }, max: { ...solid.max, z: solid.max.z + halfStroke } };
+  if (solid.kind === 'cyl' && solid.axis === 'z') return { ...solid, halfLen: solid.halfLen + halfStroke };
+  return { kind: 'sweepZ', source: solid, halfStroke };
+};
+
 /** @type {(px: number, pz: number, a: number[], b: number[]) => number} 點到線段距離（x-z 平面） */
 const segDist = (px, pz, a, b) => {
   const dx = b[0] - a[0];
@@ -44,6 +54,22 @@ const combine = (a, b) => {
  * @type {(s: Solid, x: number, y: number, z: number) => number}
  */
 export const sdf = (s, x, y, z) => {
+  if (s.kind === 'sweepZ') {
+    const { source: q, halfStroke: h } = s;
+    if (q.kind === 'cyl') {
+      const dz = Math.max(0, Math.abs(z - q.c.z) - h);
+      return combine(Math.hypot(x - q.c.x, dz) - q.r, Math.abs(y - q.c.y) - q.halfLen);
+    }
+    let d = Math.min(sdf(q, x, y, z - h), sdf(q, x, y, z + h));
+    for (let i = 0; i < q.outline.length; i++) {
+      const a = q.outline[i], b = q.outline[(i + 1) % q.outline.length];
+      // Edges parallel to the motion sweep a line, not an area.
+      if (Math.abs(a[0] - b[0]) < 1e-12) continue;
+      const edge = { kind: 'plate', y0: q.y0, y1: q.y1, outline: [[a[0], a[1] - h], [b[0], b[1] - h], [b[0], b[1] + h], [a[0], a[1] + h]] };
+      d = Math.min(d, sdf(edge, x, y, z));
+    }
+    return d;
+  }
   if (s.kind === 'box') {
     const dx = Math.max(s.min.x - x, x - s.max.x);
     const dy = Math.max(s.min.y - y, y - s.max.y);
@@ -75,6 +101,10 @@ export const sdf = (s, x, y, z) => {
  * @type {(s: Solid) => { min: Vec3, max: Vec3 }}
  */
 export const solidBox = (s) => {
+  if (s.kind === 'sweepZ') {
+    const b = solidBox(s.source);
+    return { min: { ...b.min, z: b.min.z - s.halfStroke }, max: { ...b.max, z: b.max.z + s.halfStroke } };
+  }
   if (s.kind === 'box') {
     return { min: s.min, max: s.max };
   }
@@ -110,7 +140,13 @@ export const surfaceSamples = (s) => {
   }
   /** @type {number[]} */
   const out = [];
-  if (s.kind === 'box') {
+  if (s.kind === 'sweepZ') {
+    const pts = surfaceSamples(s.source);
+    for (const t of steps(2 * s.halfStroke)) {
+      const dz = (2 * t - 1) * s.halfStroke;
+      for (let i = 0; i < pts.length; i += 3) out.push(pts[i], pts[i + 1], pts[i + 2] + dz);
+    }
+  } else if (s.kind === 'box') {
     const { min, max } = s;
     const ux = steps(max.x - min.x);
     const uy = steps(max.y - min.y);

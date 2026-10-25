@@ -5,7 +5,7 @@ import * as THREE from 'three';
 import { wheelLayout, componentLayout } from './carLayout.js';
 import { assemble, loadConfig, rollerLayoutOf } from './assembly.js';
 import { getPart } from './parts/index.js';
-import { bumperGeometry } from './parts/bumperGeom.js';
+import { bumperGeometry, inBumperPolygon } from './parts/bumperGeom.js';
 
 /** 車殼卡榫與開關位置（底盤座標，取自底盤零件資料） */
 const BODY_MOUNTS = getPart('chassis-midship').bodyMounts;
@@ -1195,10 +1195,14 @@ const buildStayPlates = (mats) => {
     } else if (st.material === 'aluminum') {
       mat = [mats.aluPlate, mats.aluPlateEdge];
     }
+    const moving = new THREE.Group();
+    moving.name = `${slot}-moving`;
+    if (st.slide) moving.userData.sliderSlot = slot;
+    grp.add(moving);
     const holes = pl.holes.map((h) => circlePts(h.x, h.z, h.r, 16));
     const plate = extrudeXZ(pl.outline, pl.thickness_mm, mat, holes, 0.25);
     plate.position.y = pl.y_mm;
-    grp.add(plate);
+    moving.add(plate);
     // 滑動保桿（iter-61）：樹脂滑軌＋左右對頂的彈簧（尺寸取自零件資料 slide，與質量同一份）
     if (st.slide) {
       grp.add(buildSlideRailAndSprings(mats, st.slide, pl.y_mm + pl.thickness_mm));
@@ -1222,12 +1226,12 @@ const buildStayPlates = (mats) => {
         }
         const t = new THREE.Mesh(new THREE.CylinderGeometry(rad, rad, y1 - y0, 20), m);
         t.position.set(x, (y0 + y1) / 2, z);
-        grp.add(t);
+        moving.add(t);
       };
       // 板底的十字頭螺絲頭
       const head = new THREE.Mesh(new THREE.CylinderGeometry(1.9, 2.0, 1.0, 20), mats.screw);
       head.position.set(x, pl.y_mm - 0.5, z);
-      grp.add(head);
+      moving.add(head);
       // 板面墊片 → 鋁墊管 → 導輪底墊片
       let y = plateTop;
       tube(y, y + 0.4, 2.6, mats.steel);
@@ -1242,7 +1246,7 @@ const buildStayPlates = (mats) => {
       tube(y + 0.9, y + 1.3, 2.2, mats.steel);
       const nut = new THREE.Mesh(new THREE.CylinderGeometry(2.3, 2.3, 1.8, 6), mats.aluNut);
       nut.position.set(x, y + 2.2, z);
-      grp.add(nut);
+      moving.add(nut);
       tube(y + 3.1, y + 4.0, 1.8, mats.nylonCap);
       // 螺絲桿（板底 → 頂端）
       tube(pl.y_mm, y + 4.4, 0.95, mats.screw);
@@ -1543,6 +1547,7 @@ const buildOptionalParts = (mats) => {
     const grp = new THREE.Group();
     grp.name = `stabilizer-${st.pos.z < 0 ? 'L' : 'R'}`;
     grp.userData.part = 'stabilizer';
+    if (asmCur.partsBySlot.frontStay.slide) grp.userData.sliderSlot = 'frontStay';
     const c = st.solid.c;
     const h = st.h;
     const isTube = h > st.r;
@@ -2018,7 +2023,7 @@ function buildChassis(mats) {
   const rx = ch.bumperRollerX_mm ?? comp.rollerX;
   const rz = ch.bumperRollerZ_mm ?? c.frontRollerZ_mm;
   const bumperY = ch.bumperBottomY_mm ?? c.rollerCenterHeight_mm - 4.6;
-  const bt = 2.4;
+  const bt = ch.bumperThickness_mm;
   /** @type {(x0: number, z0: number, x1: number, z1: number, w: number, h: number, y: number) => THREE.Mesh} 兩點之間的方樑 */
   const beam = (x0, z0, x1, z1, w, h, y) => {
     const len = Math.hypot(x1 - x0, z1 - z0);
@@ -2035,17 +2040,7 @@ function buildChassis(mats) {
     // iter-06：橋接板改成「上蓋＋下方鏤空肋層」（MA 保桿底面是三角形肋格，頂面為平整上蓋）：
     // 下層 1.4 mm 開三角形／長圓口袋，上層 1.0 mm 上蓋封住 → 底面看是鏤空骨架、不會透出背景；
     // 上蓋外緣加立起的邊框樑、中央 2 顆十字螺絲（與後方上層導輪架同等的細節）
-    /** @type {number[][][]} */
-    const pockets = [
-      roundedRect(sx * 57.5, 0, 8, 9, 1.5),
-      roundedRect(sx * 68.5, 0, 6, 8, 1.5),
-    ];
-    for (const sz of [-1, 1]) {
-      pockets.push([[sx * 52.5, sz * 19.2], [sx * 60.5, sz * 17.2], [sx * 52.5, sz * 6.5]]);
-      pockets.push([[sx * 63.5, sz * 15.8], [sx * 71.5, sz * 8.6], [sx * 63.5, sz * 6.2]]);
-      pockets.push([[sx * 54.5, sz * 5.2], [sx * 61.8, sz * 5.2], [sx * 61.8, sz * 15.5]]);
-    }
-    const ribLayer = extrudeXZ(bridge, 1.4, mats.chassis, pockets);
+    const ribLayer = extrudeXZ(bridge, bg.ribDepth, mats.chassis, bg.bridgePockets);
     ribLayer.position.y = bumperY;
     g.add(ribLayer);
     // iter-35：舊的上蓋與邊框樑由下方的一體寬保桿取代
@@ -2056,13 +2051,13 @@ function buildChassis(mats) {
     g.add(beam(sx * (rx + 2.4), -9, sx * (rx + 2.4), 9, 1.4, 4.2, bumperY));
     // 這一端換成 FRP / 碳纖導輪板時，保桿兩側的導輪臂剪掉（實車改裝常見的「保桿切除」，導輪改由板子撐），
     // 只留中央橋接板當板子的鎖點（iter-47，reviewer iter-46：板子被原廠保桿蓋住、看起來很厚）。
-    // 註：底盤質量仍用未加工的實測值 24.4 g（[NAO]），剪掉的導輪臂約 0.5 g 未扣（推估），見 PARTS_RESEARCH 第三階段 L 節
+    // 未加工底盤使用實測 24.4 g；切除體積與質心由 bumperTrim 扣除。
     const platedEnd = sx > 0 ? asmCur.partsBySlot.frontStay.plate : asmCur.partsBySlot.rearStay.plate;
     // iter-35：導輪臂改成和橋接板一體成形的寬保桿（reviewer iter-34：「細長的直桿導輪架加一塊平板」；
     // ref_ma-chassis：前後保桿是一整片帶曲線外形的寬板，兩端包住導輪座，板上有減重孔，外緣有立起的圓角肋）
     if (!platedEnd) {
-      const plate = extrudeXZ(bg.wide, bt, mats.chassis, bg.wideHoles, 0.35);
-      plate.position.y = bumperY;
+      const plate = extrudeXZ(bg.wide, bg.skinThickness, mats.chassis, bg.wideHoles);
+      plate.position.y = bumperY + bg.ribDepth;
       g.add(plate);
     } else {
       // 切除後留下的中央部分 = 寬保桿板 ∩ 橋接板範圍（切除的質量見 bumperTrim，同一份幾何）
@@ -2078,8 +2073,8 @@ function buildChassis(mats) {
         return c;
       };
       const keepHoles = bg.wideHoles.filter((h) => h.every((pt) => inBridge(pt)));
-      const center = extrudeXZ(bridge, bt, mats.chassis, keepHoles, 0.35);
-      center.position.y = bumperY;
+      const center = extrudeXZ(bg.bridgeSkin, bg.skinThickness, mats.chassis, keepHoles);
+      center.position.y = bumperY + bg.ribDepth;
       g.add(center);
     }
     // 導輪座凸台、三角斜撐、補強片屬於導輪臂；保桿切除時一起拿掉（iter-47，幾何同 bumperTrim）
@@ -2092,79 +2087,24 @@ function buildChassis(mats) {
       for (const st of bg.struts) {
         const strut = beam(st.a[0], st.a[1], st.b[0], st.b[1], st.w, st.h, 0);
         strut.position.y = st.yc;
-        strut.rotation.z = sx * Math.atan2(bumperY - (y0 + t), Math.hypot(st.b[0] - st.a[0], st.b[1] - st.a[1])) * 0.9;
         g.add(strut);
       }
       for (const w of bg.webs) {
-        const web = extrudeXY([[0, 0], [10, 0], [10, 3.2], [0, 1]], w.thickness, mats.chassis);
+        const web = extrudeXY([[0, 0], [10, 0], [10, w.top1], [0, w.top0]], w.thickness, mats.chassis);
         web.position.set(w.x, w.y, w.z);
         g.add(web);
       }
-      // iter-51：保桿底面的加強肋格（reviewer：底視仍以平板為主）：寬保桿板底下一層 1.0 mm 深的肋格，
+      // 保桿總厚 2.4 mm = 上蓋 1.0 mm＋下層肋格 1.4 mm（與 bumperTrim 同一份幾何），
       // 沿兩支導輪臂開一排口袋（口袋底為深色），中央橋接板與減重孔處挖空。
-      // 肋格（槍灰）底 = 保桿底 5.4 − 1.0 = 4.4 mm，高於底板 2.2 mm，不影響離地高度與外框
+      // 肋格下緣 = 保桿底 5.4 mm；口袋深度為推估值。
       {
-        /** @type {(x: number, z: number, poly: number[][]) => boolean} */
-        const inP = (x, z, poly) => {
-          let c = false;
-          for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
-            const [xi, zi] = poly[i];
-            const [xj, zj] = poly[j];
-            if (zi > z !== zj > z && x < ((xj - xi) * (z - zi)) / (zj - zi) + xi) {
-              c = !c;
-            }
-          }
-          return c;
-        };
-        // 橋接板範圍（前緣內縮到 rx + 1，確保在寬保桿外形內）
-        const bridgeHole = bg.bridge.map(([x, z]) => [Math.sign(x) * Math.min(Math.abs(x), bg.rx + 1), z]);
-        /** @type {number[][][]} */
-        const ribHoles = [bridgeHole, ...bg.wideHoles.filter((h) => !h.some(([x, z]) => inP(x, z, bridgeHole)))];
-        // 沿導輪臂切成一格一格的口袋（每格長 4.6 mm、格間肋 1.0 mm），口袋寬度到臂的外形內 1.0 mm 為止（減重孔落在口袋裡）
-        for (const sz of [-1, 1]) {
-          const a0 = [53.5, 17];
-          const a1 = [bg.rx - 5.5, bg.rz - 2.5];
-          const L = Math.hypot(a1[0] - a0[0], a1[1] - a0[1]);
-          const ux = (a1[0] - a0[0]) / L;
-          const uz = (a1[1] - a0[1]) / L;
-          const nx = -uz;
-          const nz = ux;
-          const P = (t, v) => [sx * (a0[0] + ux * t + nx * v), sz * (a0[1] + uz * t + nz * v)];
-          /** @type {(t: number, dir: number) => number} 臂在 t 處往 ±v 方向到外形邊緣的距離 */
-          const reach = (t, dir) => {
-            let v = 0;
-            while (v < 20) {
-              const [x, z] = P(t, dir * (v + 0.1));
-              if (!inP(x, z, bg.wide) || inP(x, z, bridgeHole)) {
-                break;
-              }
-              v += 0.1;
-            }
-            return v;
-          };
-          for (let t0 = 0.5; t0 + 4.6 <= L; t0 += 5.6) {
-            const t1 = t0 + 4.6;
-            const vp = Math.min(reach(t0, 1), reach(t1, 1), reach((t0 + t1) / 2, 1)) - 1.0;
-            const vm = Math.min(reach(t0, -1), reach(t1, -1), reach((t0 + t1) / 2, -1)) - 1.0;
-            if (vp + vm < 2.5) {
-              continue;
-            }
-            ribHoles.push([P(t0, -vm), P(t1, -vm), P(t1, vp), P(t0, vp)]);
-          }
-        }
-        // 口袋已涵蓋的減重孔不再單獨列（避免孔重疊）
-        for (let i = ribHoles.length - 1; i >= 1; i--) {
-          const h = ribHoles[i];
-          if (h.length > 4 && ribHoles.some((q, j) => j !== i && q.length === 4 && h.every(([x, z]) => inP(x, z, q)))) {
-            ribHoles.splice(i, 1);
-          }
-        }
-        const ribGrid = extrudeXZ(bg.wide, 1.0, mats.chassis, ribHoles);
-        ribGrid.position.y = bumperY - 1.0;
+        const { bridgeHole, ribHoles } = bg;
+        const ribGrid = extrudeXZ(bg.wide, bg.ribDepth, mats.chassis, ribHoles);
+        ribGrid.position.y = bumperY;
         g.add(ribGrid);
         // 口袋底：保桿板底面貼一層深色薄面（口袋讀起來是凹進去的深色格子，肋是槍灰色）
-        const pocketFloor = extrudeXZ(bg.wide, 0.05, mats.chassisDark, [bridgeHole, ...bg.wideHoles.filter((h) => !h.some(([x, z]) => inP(x, z, bridgeHole)))]);
-        pocketFloor.position.y = bumperY - 0.06;
+        const pocketFloor = extrudeXZ(bg.wide, 0.05, mats.chassisDark, [bridgeHole, ...bg.wideHoles.filter((h) => !h.some(([x, z]) => inBumperPolygon(x, z, bridgeHole)))]);
+        pocketFloor.position.y = bumperY + bg.ribDepth - 0.05;
         g.add(pocketFloor);
       }
       for (const sz of [-1, 1]) {
@@ -2184,7 +2124,10 @@ function buildChassis(mats) {
   g.add(buildStayPlates(mats));
   for (const r of rollerLayoutOf(spec)) {
     const onPlate = r.x > 0 ? !!asmCur.partsBySlot.frontStay.plate : !!asmCur.partsBySlot.rearStay.plate;
-    g.add(buildRollerStack(mats, r, { bare: onPlate }));
+    const roller = buildRollerStack(mats, r, { bare: onPlate });
+    const slot = r.x > 0 ? 'frontStay' : 'rearStay';
+    if (asmCur.partsBySlot[slot].slide) roller.userData.sliderSlot = slot;
+    g.add(roller);
   }
 
   // ---- 雙軸馬達（置中、軸向沿 x，130 型外殼平面朝上下）----

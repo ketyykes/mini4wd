@@ -55,12 +55,22 @@
       <aside class="panel panel-stats" aria-label="數值與規則檢查">
         <h2 class="panel-title">數值</h2>
         <dl class="stats" id="stats"></dl>
+        <h2 class="panel-title">兩套組裝比較</h2>
+        <div class="compare-actions">
+          <button type="button" class="btn btn-secondary" id="btn-compare">固定目前組裝為基準</button>
+          <button type="button" class="btn btn-secondary" id="btn-clear-compare" hidden>清除比較</button>
+        </div>
+        <p class="hint" id="compare-hint">固定一套組裝後，換零件即可查看差異。</p>
+        <div class="table-scroll"><table id="comparison" hidden aria-label="組裝數值比較"></table></div>
         <h2 class="panel-title">規則檢查</h2>
         <div class="rules" id="rules" aria-live="polite"></div>
         <div class="race-box">
           <button type="button" class="btn btn-primary" data-action="race" id="btn-race" disabled>上賽道</button>
           <p class="hint" id="race-hint"></p>
         </div>
+        <h2 class="panel-title">三圈計時排行</h2>
+        <p class="hint" id="results-hint">保留本機最快 20 筆完賽成績，依模擬時間排序。</p>
+        <ol id="race-results" aria-label="三圈計時排行"></ol>
       </aside>
     </div>
     <script type="module" src="./garage.js"></script>

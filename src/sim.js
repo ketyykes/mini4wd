@@ -4,6 +4,7 @@ import RAPIER from '@dimforge/rapier3d-compat';
 import { spec } from './spec.js';
 import { Battery, longitudinalForce } from './powertrain.js';
 import { assemble, loadConfig } from './assembly.js';
+import { bodyCollisionCells } from './bodies/collision.js';
 
 const MM = 0.001;
 
@@ -164,7 +165,8 @@ function channelAt(track, s, centerD, level) {
 }
 
 /**
- * 車體碰撞方塊（mm，車體座標）：車殼外框的長寬，底面 = 底盤離地高度，頂面 = 車殼頂 − 2 mm（同第一階段）；沒裝車殼時用底盤本體外框
+ * Legacy diagnostic envelope (mm), also used for the bare chassis core.
+ * A car with a body collides through bodyColliderDesc's mesh-derived patches.
  * @type {(asm: any) => { hx: number, hy: number, hz: number, cx: number, cy: number }}
  */
 export function bodyColliderBox(asm) {
@@ -180,6 +182,74 @@ export function bodyColliderBox(asm) {
     cx: (b.max.x + b.min.x) / 2,
     cy: (top + bottom) / 2,
   };
+}
+
+const hullShapeCache = new WeakMap();
+/** One compound collider: chassis core plus mesh-derived box patches. */
+export function bodyColliderDesc(asm) {
+  const box = bodyColliderBox({ ...asm, body: null });
+  const shapes = [new RAPIER.Cuboid(box.hx * MM, box.hy * MM, box.hz * MM)];
+  const positions = [{ x: box.cx * MM, y: box.cy * MM, z: 0 }];
+  const identity = { x: 0, y: 0, z: 0, w: 1 };
+  // Once the foam is completely compressed, its real rigid backing plate
+  // takes the contact. Do not fill the compressible foam with a rigid collider.
+  const backing = asm.optional?.sponge?.plate?.box;
+  if (backing) {
+    const { min, max } = backing;
+    shapes.push(new RAPIER.Cuboid((max.x - min.x) * MM / 2, (max.y - min.y) * MM / 2, (max.z - min.z) * MM / 2));
+    positions.push({ x: (max.x + min.x) * MM / 2, y: ((max.y + min.y) / 2 + asm.lift_mm) * MM, z: (max.z + min.z) * MM / 2 });
+  }
+  if (asm.body) {
+    const def = asm.body.def;
+    let hulls = hullShapeCache.get(def);
+    if (!hulls) {
+      hulls = bodyCollisionCells(def).map((points) => {
+        const min = [Infinity, Infinity, Infinity], max = [-Infinity, -Infinity, -Infinity];
+        for (let i = 0; i < points.length; i++) { const k = i % 3; min[k] = Math.min(min[k], points[i]); max[k] = Math.max(max[k], points[i]); }
+        const center = min.map((v, k) => (v + max[k]) / 2);
+        // Analytic boxes keep CCD/races affordable. Each box bounds only this
+        // clipped mesh patch, never the full car's length/height/width.
+        const shape = new RAPIER.Cuboid(...min.map((v, k) => Math.max((max[k] - v) * MM / 2, 1e-8)));
+        return { shape, position: { x: center[0] * MM, y: center[1] * MM, z: center[2] * MM } };
+      });
+      hullShapeCache.set(def, hulls);
+    }
+    for (const { shape, position } of hulls) {
+      shapes.push(shape);
+      positions.push({ ...position, y: position.y + asm.lift_mm * MM });
+    }
+  }
+  return RAPIER.ColliderDesc.compound(shapes, positions, shapes.map(() => identity), RAPIER.CompoundFlags.FIX_INTERNAL_EDGES)
+    .setDensity(0).setFriction(0.3).setCollisionGroups(CAR_GROUPS);
+}
+
+const extremesCache = new WeakMap();
+/** Vertices of the convex envelope of the actual collision patches. These are
+ * material/proxy points, not the empty corners of a car-wide bounding box. */
+export function collisionExtremePoints(asm) {
+  const box = bodyColliderBox({ ...asm, body: null });
+  const points = [];
+  for (const x of [-1, 1]) for (const y of [-1, 1]) for (const z of [-1, 1]) {
+    points.push({ x: (box.cx + x * box.hx) * MM, y: (box.cy + y * box.hy) * MM, z: z * box.hz * MM });
+  }
+  if (!asm.body) return points;
+  const def = asm.body.def;
+  let surface = extremesCache.get(def);
+  if (!surface) {
+    const clouds = bodyCollisionCells(def);
+    const vertices = [];
+    for (const p of clouds) {
+      const min = [Infinity, Infinity, Infinity], max = [-Infinity, -Infinity, -Infinity];
+      for (let i = 0; i < p.length; i++) { const k = i % 3; min[k] = Math.min(min[k], p[i]); max[k] = Math.max(max[k], p[i]); }
+      for (const x of [min[0], max[0]]) for (const y of [min[1], max[1]]) for (const z of [min[2], max[2]]) vertices.push(x * MM, y * MM, z * MM);
+    }
+    const raw = RAPIER.ColliderDesc.convexHull(Float32Array.from(vertices)).shape.intoRaw();
+    if (!raw) throw new Error(`Invalid collision envelope: ${def.id}`);
+    surface = RAPIER.Shape.fromRawShape(raw).vertices;
+    extremesCache.set(def, surface);
+  }
+  for (let i = 0; i < surface.length; i += 3) points.push({ x: surface[i], y: surface[i + 1] + asm.lift_mm * MM, z: surface[i + 2] });
+  return points;
 }
 
 /** @type {any} 預設組裝（沒有指定 assembly 時使用） */
@@ -205,24 +275,20 @@ export function createCar(env, opt = {}) {
   const rigid = asm.rigid ?? { mass_g: asm.mass_g, com_mm: asm.com_mm, inertia_kgm2: asm.inertia_kgm2 };
   const com = { x: rigid.com_mm.x * MM, y: rigid.com_mm.y * MM, z: rigid.com_mm.z * MM };
 
-  // 慣性矩由零件組裝推導（assembly.js：零件質點＋底盤本體與車殼的外框方塊，iter-33）
+  // Full assembly tensor is diagonalized; the principal frame need not be
+  // aligned with the body axes. Collider densities remain zero.
   const inertia = rigid.inertia_kgm2;
 
   const bodyDesc = RAPIER.RigidBodyDesc.dynamic()
     .setTranslation(start.x, 0.0005, start.z)
     .setRotation(yawQuat(-start.theta))
-    .setAdditionalMassProperties(rigid.mass_g / 1000, com, inertia, { x: 0, y: 0, z: 0, w: 1 })
+    .setAdditionalMassProperties(rigid.mass_g / 1000, com, inertia, rigid.inertiaFrame ?? { x: 0, y: 0, z: 0, w: 1 })
     .setCcdEnabled(true)
     .setCanSleep(false);
   const chassis = world.createRigidBody(bodyDesc);
 
-  const box = bodyColliderBox(asm);
   const bodyCol = world.createCollider(
-    RAPIER.ColliderDesc.cuboid(box.hx * MM, box.hy * MM, box.hz * MM)
-      .setTranslation(box.cx * MM, box.cy * MM, 0)
-      .setDensity(0)
-      .setFriction(0.3)
-      .setCollisionGroups(CAR_GROUPS),
+    bodyColliderDesc(asm),
     chassis,
   );
 
@@ -378,7 +444,8 @@ export function createCar(env, opt = {}) {
     massKg,
     asm,
     P,
-    box,
+    box: bodyColliderBox(asm), // Diagnostic envelope only; collisions use bodyCol.
+    extremePoints: collisionExtremePoints(asm),
     // 傳動系轉動狀態（第四階段）：omega = 輪子角速度（rad/s，4 輪與齒輪、馬達機械連結成一個自由度），J = 換算到輪軸的等效轉動慣量
     // 第七階段（iter-79）單向輪：oneWay = true 時 omega = 輪子角速度（J_w = 4 顆輪），omegaD = 傳動系（馬達＋齒輪＋輪軸，J_d = J − J_w）角速度，
     // 兩者經單向離合連接（見 stepCar）；engaged = 本步離合是否咬合
@@ -406,7 +473,7 @@ function createSlider(world, chassis, sl, start) {
     RAPIER.RigidBodyDesc.dynamic()
       .setTranslation(start.x + wp.x, 0.0005 + wp.y, start.z + wp.z)
       .setRotation(rq)
-      .setAdditionalMassProperties(m, { x: 0, y: 0, z: 0 }, sl.inertia_kgm2, { x: 0, y: 0, z: 0, w: 1 })
+      .setAdditionalMassProperties(m, { x: 0, y: 0, z: 0 }, sl.inertia_kgm2, sl.inertiaFrame ?? { x: 0, y: 0, z: 0, w: 1 })
       .setCcdEnabled(true)
       .setCanSleep(false),
   );
@@ -488,8 +555,8 @@ export function sliderState(car, sl = car.slider) {
 }
 
 /**
- * 滑動保桿的彈簧＋阻尼（每步）：F = F_spring(u) − c·u'，以衝量 F·dt 作用在滑動板（+）與車體上 joint 錨點（−）——
- * 兩者等值反向、作用在同一點，總動量與角動量不變；彈簧力是保守力（只儲存 / 釋放能量），阻尼力與相對速度反向（只耗能）。
+ * 滑動保桿的彈簧＋阻尼（每步）：F = F_spring(u) − c·u'，等反內衝量的廣義力只有滑動欄 F·dt，
+ * 透過整個有關節系統的 M^-1 Q 更新車體與全部滑板；總動量與角動量不變，也立刻保留共同角速度。
  * 時間積分為線性化的後退 Euler（隱式）：力取「下一步的位移與速度」u + dt·u'₊、u'₊（彈簧以目前位置的局部剛性 k_eff 線性化），
  * u'₊ = u' + K·J，K = 7 自由度質量矩陣反矩陣的滑動項（含車體反衝），解出
  *   J = dt·[F_s(u) − (c + k_eff·dt)·u'] / (1 + dt·K·(c + k_eff·dt))。
@@ -498,9 +565,10 @@ export function sliderState(car, sl = car.slider) {
  * 彈簧在一步內把滑動板往牆推的速度（F/m·dt ≈ 0.08 m/s）只會被 Rapier 的軟接觸部分抵消，前導輪會慢慢壓進牆（實測一圈 2 mm）；
  * 先加彈簧衝量、再解接觸衝量，接觸衝量就會把朝牆速度消掉（非彈性），下一步積分時導輪不再往牆裡移動
  * iter-64：前後各有滑動板時逐一施加（index = 在 car.sliders 的位置，對應廣義座標 6 + index）；每一個衝量各自是後退 Euler，總能量仍不增加
- * @type {(car: any, sl: any, index: number, Minv: number[][]) => void}
+ * @type {(car: any, sl: any, index: number, system: ReturnType<typeof sliderSystem>) => void}
  */
-function sliderSpringImpulse(car, sl, index, Minv) {
+function sliderSpringImpulse(car, sl, index, system) {
+  const { Minv, rs } = system;
   const dt = spec.sim.dt_s;
   const side = rotate(car.chassis.rotation(), { x: 0, y: 0, z: 1 });
   const { u, uDot } = sliderRelative(car, sl);
@@ -514,9 +582,32 @@ function sliderSpringImpulse(car, sl, index, Minv) {
   sl.force = J / dt;
   // 阻尼耗能（量測用）：阻尼力 −c·u'₊ 在這一步做的負功
   sl.dampingWork += sl.c * uDotNext * uDotNext * dt;
-  const anchorW = localToWorld(car, sl.anchor);
-  sl.body.applyImpulse({ x: side.x * J, y: side.y * J, z: side.z * J }, true);
-  car.chassis.applyImpulseAtPoint({ x: -side.x * J, y: -side.y * J, z: -side.z * J }, anchorW, true);
+  // Apply M^-1 Q to the constrained system. Applying the two raw-body impulses
+  // alone changes the chassis angular velocity without the boards' rotation,
+  // violating their joint until the next Rapier step (and pushing past stops).
+  const dq = Minv.map((row) => row[6 + index] * J);
+  const addVelocity = (body, dv, dw) => {
+    const v = body.linvel(), w = body.angvel();
+    body.setLinvel({ x: v.x + dv.x, y: v.y + dv.y, z: v.z + dv.z }, true);
+    body.setAngvel({ x: w.x + dw.x, y: w.y + dw.y, z: w.z + dw.z }, true);
+  };
+  const dv = { x: dq[0], y: dq[1], z: dq[2] }, dw = { x: dq[3], y: dq[4], z: dq[5] };
+  addVelocity(car.chassis, dv, dw);
+  car.sliders.forEach((board, k) => {
+    const r = rs[k], du = dq[6 + k];
+    addVelocity(board.body, {
+      x: dv.x + dw.y * r.z - dw.z * r.y + du * side.x,
+      y: dv.y + dw.z * r.x - dw.x * r.z + du * side.y,
+      z: dv.z + dw.x * r.y - dw.y * r.x + du * side.z,
+    }, dw);
+  });
+}
+
+/** Internal spring impulses, respecting all slider joints immediately. */
+export function applySliderSpringImpulses(car) {
+  if (car.sliders.length === 0) return;
+  const system = sliderSystem(car);
+  car.sliders.forEach((sl, i) => sliderSpringImpulse(car, sl, i, system));
 }
 
 /**
@@ -704,10 +795,7 @@ export function stepCar(env, car) {
   env.world.step();
   // 滑動保桿（iter-61）：彈簧＋阻尼以衝量形式在積分後、牆面接觸衝量之前施加（見 sliderSpringImpulse 說明）
   // iter-64：前後各一塊時逐一施加（質量矩陣只和位置有關，一步內共用）
-  if (car.sliders.length > 0) {
-    const { Minv } = sliderSystem(car);
-    car.sliders.forEach((sl, i) => sliderSpringImpulse(car, sl, i, Minv));
-  }
+  applySliderSpringImpulses(car);
   // 導輪–牆接觸的補強（iter-49）：預設 'impulse' = 速度層級的非彈性碰撞衝量（wallContactImpulses，動量一致）；
   // 'position' = iter-34 的位置投影（只改位置、不改動量，保留作比較）；'none' = 只用 Rapier 的軟接觸。
   // config 的 wallPositionProjection 已由 wallContactMode 取代（iter-49）
@@ -993,33 +1081,26 @@ export function swingAngle(car, d) {
  * 整車動能（J）：車體剛體（平移＋轉動）＋制振器剛體＋滑動保桿的滑動剛體（iter-61）＋傳動系轉動動能 ½·J·ω²（第四階段：輪子、輪軸、齒輪、馬達電樞，換算到輪軸）
  * @type {(car: any) => number}
  */
-export function carKineticEnergy(car) {
-  const b = car.chassis;
+function rigidBodyKineticEnergy(b) {
   const v = b.linvel();
   const w = b.angvel();
-  // 角速度轉到車體座標（慣性主軸與車體座標對齊，assembly.js 忽略慣性積）
   const q = b.rotation();
-  const wl = rotate({ x: -q.x, y: -q.y, z: -q.z, w: q.w }, w);
+  const bodyW = rotate({ x: -q.x, y: -q.y, z: -q.z, w: q.w }, w);
+  const f = b.principalInertiaLocalFrame();
+  const wl = rotate({ x: -f.x, y: -f.y, z: -f.z, w: f.w }, bodyW);
   const I = b.principalInertia();
-  let e = 0.5 * b.mass() * (v.x * v.x + v.y * v.y + v.z * v.z) + 0.5 * (I.x * wl.x * wl.x + I.y * wl.y * wl.y + I.z * wl.z * wl.z);
+  return 0.5 * b.mass() * (v.x * v.x + v.y * v.y + v.z * v.z) + 0.5 * (I.x * wl.x * wl.x + I.y * wl.y * wl.y + I.z * wl.z * wl.z);
+}
+
+export function carKineticEnergy(car) {
+  let e = rigidBodyKineticEnergy(car.chassis);
   for (const d of car.dampers ?? []) {
-    const u = d.body.linvel();
-    e += 0.5 * d.body.mass() * (u.x * u.x + u.y * u.y + u.z * u.z);
-    // 第七階段：擺動式制振器會相對車體轉動，轉動動能另計（滑動式的轉動被 joint 鎖住、慣性 1e-9，可忽略）
-    if (d.swing) {
-      const wd = rotate({ x: -d.body.rotation().x, y: -d.body.rotation().y, z: -d.body.rotation().z, w: d.body.rotation().w }, d.body.angvel());
-      const Id = d.body.principalInertia();
-      e += 0.5 * (Id.x * wd.x * wd.x + Id.y * wd.y * wd.y + Id.z * wd.z * wd.z);
-    }
+    e += rigidBodyKineticEnergy(d.body);
   }
   // 滑動保桿的滑動剛體（iter-61）：平移＋轉動動能（轉動與車體同步，joint 鎖住相對轉動）；彈簧位能不在這裡（見 sliderState）
   // iter-64：前後滑動板各自計入
   for (const sl of car.sliders ?? []) {
-    const sb = sl.body;
-    const u = sb.linvel();
-    const ws = rotate({ x: -q.x, y: -q.y, z: -q.z, w: q.w }, sb.angvel());
-    const Is = sb.principalInertia();
-    e += 0.5 * sb.mass() * (u.x * u.x + u.y * u.y + u.z * u.z) + 0.5 * (Is.x * ws.x * ws.x + Is.y * ws.y * ws.y + Is.z * ws.z * ws.z);
+    e += rigidBodyKineticEnergy(sl.body);
   }
   if (car.spin?.oneWay) {
     // 單向輪：輪子與傳動系分開算
@@ -1238,7 +1319,11 @@ export function wallContactImpulses(env, car) {
     }
   }
   const contacts = [...rollerWallContacts(env, car).filter((c) => c.pen > slop), ...stabContacts];
-  if (contacts.length === 0) {
+  const approachingStop = car.sliders.some((sl) => {
+    const { u, uDot } = sliderRelative(car, sl);
+    return Math.abs(u + spec.sim.dt_s * uDot) >= sl.stroke;
+  });
+  if (contacts.length === 0 && !approachingStop) {
     return;
   }
   // 滑動保桿（iter-61）：車體＋滑動板是 7 自由度系統，接觸衝量改在廣義座標求解（見 sliderContactImpulses）
@@ -1465,16 +1550,20 @@ function sliderContactImpulses(car, contacts) {
   }
   // 行程端點硬止擋（滑動板靠在止擋上時）：單邊約束「不再往止擋外滑」，與牆面接觸一起解，
   // 牆把導輪推向止擋的衝量才會在同一步經止擋傳到車體（否則要等下一步 Rapier 的 joint 限位）；每塊滑動板各自判斷
-  const stopTol = 0.01 * MM;
   /** @type {any[]} */
   const stops = [];
   car.sliders.forEach((sl, k) => {
     const { u } = sliderRelative(car, sl);
-    if (Math.abs(u) >= sl.stroke - stopTol) {
+    // Speculative unilateral limits: keep the next integration inside the
+    // travel, rather than waiting until a light board has crossed its stop.
+    // target <= 0 only removes approaching velocity; no position projection
+    // or penetration-recovery energy is added here.
+    for (const sign of [-1, 1]) {
       const j = new Array(dof).fill(0);
-      j[6 + k] = u > 0 ? -1 : 1;
+      j[6 + k] = -sign;
       const w = response(j);
-      stops.push({ j, w, K: dotQ(j, w), acc: 0 });
+      const target = -Math.max(0, sl.stroke - sign * u) / spec.sim.dt_s;
+      stops.push({ j, w, K: dotQ(j, w), acc: 0, target });
     }
   });
   const rows = [...contacts, ...stops];
@@ -1483,7 +1572,7 @@ function sliderContactImpulses(car, contacts) {
   for (let it = 0; it < iters; it++) {
     for (const c of rows) {
       const vn = dotQ(c.j, q);
-      const next = Math.max(0, c.acc - vn / c.K);
+      const next = Math.max(0, c.acc + ((c.target ?? 0) - vn) / c.K);
       const dj = next - c.acc;
       c.acc = next;
       if (dj !== 0) {
@@ -1563,19 +1652,11 @@ export function minWallContactDist(env, collider) {
 }
 
 /**
- * 車體所有外緣點（車體方塊 8 角＋導輪最外緣）的世界座標
+ * Collision proxy envelope vertices + mounted rollers' rims, in world space.
  * @param {ReturnType<typeof createCar>} car
  */
 export function carExtremePoints(car) {
-  const box = car.box;
-  const pts = [];
-  for (const sx of [-1, 1]) {
-    for (const sy of [-1, 1]) {
-      for (const sz of [-1, 1]) {
-        pts.push(localToWorld(car, { x: (box.cx + sx * box.hx) * MM, y: (box.cy + sy * box.hy) * MM, z: sz * box.hz * MM }));
-      }
-    }
-  }
+  const pts = car.extremePoints.map((p) => localToWorld(car, p));
   for (const r of car.rollers) {
     for (let k = 0; k < 8; k++) {
       const a = (k / 8) * Math.PI * 2;

@@ -9,6 +9,7 @@ import { theoreticalTopSpeed } from '../src/powertrain.js';
 import { buildCarModel } from '../src/model.js';
 import { createGarageScene } from './garageScene.js';
 import { startRace } from './garageRace.js';
+import { readResults, recordResult } from './garageResults.js';
 
 /** @typedef {import('../src/parts/types').PartBase} PartBase */
 /** @typedef {{ code: string, message: string }} Violation */
@@ -255,6 +256,11 @@ let scene;
 /** @type {Awaited<ReturnType<typeof startRace>> | null} */
 let race = null;
 let modelPending = false;
+let comparison = null;
+let recordedRace = false;
+// Accessing localStorage itself can throw when browser storage is disabled.
+let resultsStorage;
+try { resultsStorage = window.localStorage; } catch { resultsStorage = null; }
 
 // ---------------------------------------------------------------------------
 // DOM
@@ -277,6 +283,60 @@ const hud = $('hud');
 const warmHint = $('warm-hint');
 const presetModified = $('preset-modified');
 const chkCom = /** @type {HTMLInputElement} */ ($('chk-com'));
+
+const assemblyLabel = () => `${PRESET_LABELS[garage.preset] ?? garage.preset}${sameValue(garage.config, presetConfig(garage.preset)) ? '' : '（已修改）'} · ${currentAsm?.body?.def.name ?? '無車殼'}`;
+
+const renderComparison = () => {
+  const table = $('comparison');
+  table.replaceChildren();
+  table.hidden = !comparison || !garage.asm;
+  $('btn-clear-compare').hidden = !comparison;
+  $('btn-compare').disabled = !garage.asm || garage.running;
+  garage.comparison = comparison;
+  if (!comparison || !garage.asm) return;
+  $('compare-hint').textContent = `基準：${comparison.label}；差值 = 目前 − 基準`;
+  const head = document.createElement('thead');
+  const header = document.createElement('tr');
+  for (const label of ['項目', '目前', '基準', '差值']) {
+    const cell = document.createElement('th');
+    cell.scope = 'col'; cell.textContent = label; header.append(cell);
+  }
+  head.append(header); table.append(head);
+  const body = document.createElement('tbody');
+  const current = garage.asm, base = comparison.asm;
+  const rows = [
+    ['總重', current.mass_g, base.mass_g, 'g'],
+    ...['x', 'y', 'z'].map((k) => [`重心 ${k}`, current.com_mm[k], base.com_mm[k], 'mm']),
+    ['理論極速', current.topSpeed_ms, base.topSpeed_ms, 'm/s'],
+    ['離地高度', current.groundClearance_mm, base.groundClearance_mm, 'mm'],
+  ];
+  for (const [label, value, ref, unit] of rows) {
+    const row = document.createElement('tr');
+    for (const text of [label, `${fx(value, 2)} ${unit}`, `${fx(ref, 2)} ${unit}`, `${value - ref >= 0 ? '+' : ''}${fx(value - ref, 2)} ${unit}`]) {
+      const cell = document.createElement(row.children.length ? 'td' : 'th');
+      if (!row.children.length) cell.scope = 'row';
+      cell.textContent = text; row.append(cell);
+    }
+    body.append(row);
+  }
+  table.append(body);
+};
+
+const renderResults = (rows = readResults(resultsStorage)) => {
+  garage.results = rows;
+  const list = $('race-results');
+  list.replaceChildren();
+  for (const row of rows) {
+    const item = document.createElement('li');
+    const time = document.createElement('strong');
+    time.textContent = `${row.time.toFixed(3)} s`;
+    const label = document.createElement('span');
+    label.textContent = row.label;
+    const laps = document.createElement('small');
+    laps.textContent = `各圈 ${row.lapTimes.map((t) => t.toFixed(3)).join(' / ')} s`;
+    item.append(time, label, laps); list.append(item);
+  }
+};
 
 /** @type {Map<string, HTMLSelectElement>} slot → 選單 */
 const selects = new Map([['body', selBody]]);
@@ -726,6 +786,7 @@ const update = () => {
     statusPill.classList.add('is-bad');
   }
   garage.lastUpdateMs = Date.now();
+  renderComparison();
   garage.updateCount += 1;
   writeUrl();
   scheduleModel();
@@ -819,10 +880,12 @@ const onRace = async () => {
   garage.running = true;
   btnRace.disabled = true;
   lockSelects(true);
+  renderComparison();
   loadingEl.hidden = false;
   loadingEl.textContent = '建立 Rapier 物理世界與賽道…';
   try {
     race = await startRace(currentAsm);
+    recordedRace = false;
     scene.enterRace(race.track);
     hud.hidden = false;
     $('viewport-hint').hidden = true;
@@ -837,6 +900,7 @@ const onRace = async () => {
   } catch (err) {
     garage.running = false;
     lockSelects(false);
+    renderComparison();
     raceHint.textContent = `無法開始模擬：${err instanceof Error ? err.message : String(err)}`;
     btnRace.disabled = !garage.raceEnabled;
   }
@@ -852,9 +916,12 @@ const onGarage = () => {
   garage.raceStatus = null;
   garage.speed = 0;
   scene.exitRace();
+  garage.sliderOffsets_mm = {};
+  garage.sliderVisualOffsets = scene.sliderOffsets();
   hud.hidden = true;
   $('viewport-hint').hidden = false;
   lockSelects(false);
+  renderComparison();
   btnRace.disabled = !garage.raceEnabled;
   btnRace.focus();
 };
@@ -865,6 +932,12 @@ const updateHud = () => {
     return;
   }
   const s = race.snapshot();
+  if (s.status === 'finished' && !recordedRace) {
+    recordedRace = true;
+    const saved = recordResult(resultsStorage, s, garage.config, assemblyLabel());
+    renderResults(saved.rows);
+    $('results-hint').textContent = saved.saved ? '本機完賽紀錄已儲存，依模擬時間排序。' : '本次成績已顯示；瀏覽器無法儲存，重新整理後會消失。';
+  }
   garage.speed = s.speed;
   garage.distance = s.distance;
   garage.laps = s.laps;
@@ -951,8 +1024,10 @@ const loop = (now) => {
   lastFrame = now;
   if (race && garage.running) {
     race.advance(dt);
-    const { pos, rot } = race.pose();
-    scene.updateRacePose(pos, rot, dt);
+    const { pos, rot, sliders } = race.pose();
+    scene.updateRacePose(pos, rot, dt, sliders);
+    garage.sliderOffsets_mm = sliders;
+    garage.sliderVisualOffsets = scene.sliderOffsets();
     updateHud();
   }
   scene.render();
@@ -971,6 +1046,17 @@ const init = () => {
   btnRace.addEventListener('click', onRace);
   btnGarage.addEventListener('click', onGarage);
   chkCom.addEventListener('change', () => scene.setComVisible(chkCom.checked));
+  $('btn-compare').addEventListener('click', () => {
+    if (!garage.asm || garage.running) return;
+    comparison = { label: assemblyLabel(), config: structuredClone(garage.config), asm: structuredClone(garage.asm) };
+    renderComparison();
+  });
+  $('btn-clear-compare').addEventListener('click', () => {
+    comparison = null;
+    $('compare-hint').textContent = '固定一套組裝後，換零件即可查看差異。';
+    renderComparison();
+  });
+  renderResults();
   // 首次組裝；3D 模型在下一幀建立，建好後 garage.ready = true
   update();
   if (currentAsm && !isEmptyValue(garage.config.body)) {

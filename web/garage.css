@@ -437,3 +437,13 @@ input:focus-visible {
     transition: none !important;
   }
 }
+.compare-actions { display: flex; flex-wrap: wrap; gap: 6px; }
+.compare-actions .btn { font-size: 12px; padding: 7px 9px; }
+.table-scroll { overflow-x: auto; flex-shrink: 0; }
+#comparison { width: 100%; border-collapse: collapse; margin-bottom: 16px; font-size: 11px; font-variant-numeric: tabular-nums; }
+#comparison th, #comparison td { padding: 6px 3px; border-bottom: 1px solid #41434a; text-align: right; white-space: nowrap; }
+#comparison th:first-child { text-align: left; }
+#race-results { padding-left: 22px; font-size: 12px; }
+#race-results li { margin: 10px 0; }
+#race-results strong, #race-results span, #race-results small { display: block; overflow-wrap: anywhere; }
+#race-results small { color: #a4a8b0; margin-top: 3px; }

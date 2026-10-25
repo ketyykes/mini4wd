@@ -7,7 +7,7 @@
 import * as THREE from 'three';
 
 /** @typedef {import('./types').BodyDef} BodyDef */
-/** @typedef {{ view: 'side' | 'top', cell: number, u0: number, v0: number, nu: number, nv: number, grid: Uint8Array }} Silhouette */
+/** @typedef {{ view: 'side' | 'top' | 'front', cell: number, u0: number, v0: number, nu: number, nv: number, grid: Uint8Array }} Silhouette */
 
 /** @type {number} 格點大小（mm） */
 export const SILHOUETTE_CELL_MM = 0.5;
@@ -16,6 +16,7 @@ export const SILHOUETTE_CELL_MM = 0.5;
 const WINDOW = {
   side: { u0: -85, u1: 85, v0: -5, v1: 75 },
   top: { u0: -85, u1: 85, v0: -55, v1: 55 },
+  front: { u0: -55, u1: 55, v0: -5, v1: 75 },
 };
 
 /** 算質量時用的中性材質（只需要幾何） */
@@ -56,7 +57,7 @@ function fillTriangle(s, a, b, c) {
     const len = Math.hypot(q[0] - p[0], q[1] - p[1]) || 1;
     return { p, q, len };
   });
-  const tol = cell * 0.5;
+  const tol = s.view === 'front' ? 1e-9 : cell * 0.5;
   for (let iu = minU; iu <= maxU; iu++) {
     const pu = u0 + (iu + 0.5) * cell;
     for (let iv = minV; iv <= maxV; iv++) {
@@ -125,7 +126,8 @@ const cache = new Map();
 
 /**
  * 車殼的側視或俯視填滿輪廓
- * @type {(body: BodyDef, view: 'side' | 'top', cell?: number) => Silhouette}
+ * front projects onto z–y and preserves openings for aerodynamic area.
+ * @type {(body: BodyDef, view: 'side' | 'top' | 'front', cell?: number) => Silhouette}
  */
 export function bodySilhouette(body, view, cell = SILHOUETTE_CELL_MM) {
   const key = `${body.id}:${view}:${cell}`;
@@ -142,7 +144,7 @@ export function bodySilhouette(body, view, cell = SILHOUETTE_CELL_MM) {
   g.updateMatrixWorld(true);
   const p = new THREE.Vector3();
   /** @type {(v: THREE.Vector3) => number[]} */
-  const proj = view === 'side' ? (v) => [v.x, v.y] : (v) => [v.x, v.z];
+  const proj = view === 'front' ? (v) => [v.z, v.y] : view === 'side' ? (v) => [v.x, v.y] : (v) => [v.x, v.z];
   g.traverse((o) => {
     if (!o.isMesh || !isOutline(o)) {
       return;
@@ -162,9 +164,38 @@ export function bodySilhouette(body, view, cell = SILHOUETTE_CELL_MM) {
       fillTriangle(s, pts[i0], pts[i1], pts[i2]);
     }
   });
-  fillHoles(s);
+  if (view !== 'front') fillHoles(s);
   cache.set(key, s);
   return s;
+}
+
+/**
+ * Union of the shell's frontal projection and installed components' projected
+ * boxes. Count overlapping pixels once. Boxes use the static position, so slide
+ * travel and damper sweep do not inflate aerodynamic area. C_d remains estimated.
+ * @param {BodyDef | null} body
+ * @param {{min: {y: number, z: number}, max: {y: number, z: number}}[]} boxes
+ * @param {number} lift Shell translation from reference chassis coordinates (mm).
+ */
+export function frontalArea(body, boxes, lift = 0) {
+  const shell = body ? bodySilhouette(body, 'front') : null;
+  const cell = SILHOUETTE_CELL_MM;
+  const minZ = Math.min(...boxes.map((b) => b.min.z), shell ? shell.u0 : Infinity);
+  const maxZ = Math.max(...boxes.map((b) => b.max.z), shell ? shell.u0 + shell.nu * cell : -Infinity);
+  const minY = Math.min(...boxes.map((b) => b.min.y), shell ? shell.v0 + lift : Infinity);
+  const maxY = Math.max(...boxes.map((b) => b.max.y), shell ? shell.v0 + shell.nv * cell + lift : -Infinity);
+  let pixels = 0;
+  for (let iz = Math.floor(minZ / cell); iz < Math.ceil(maxZ / cell); iz++) {
+    const z = (iz + 0.5) * cell;
+    for (let iy = Math.floor(minY / cell); iy < Math.ceil(maxY / cell); iy++) {
+      const y = (iy + 0.5) * cell;
+      const u = shell ? Math.floor((z - shell.u0) / cell) : -1;
+      const v = shell ? Math.floor((y - lift - shell.v0) / cell) : -1;
+      const inShell = shell && u >= 0 && u < shell.nu && v >= 0 && v < shell.nv && shell.grid[u * shell.nv + v];
+      if (inShell || boxes.some((b) => z >= b.min.z && z < b.max.z && y >= b.min.y && y < b.max.y)) pixels++;
+    }
+  }
+  return pixels * cell * cell;
 }
 
 /**

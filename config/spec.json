@@ -44,8 +44,7 @@
     "airDensity_src": "SPEC 1.11",
     "dragCoeff": 0.6,
     "dragCoeff_src": "SPEC 1.11 / 1.12",
-    "frontalAreaFill": 0.7,
-    "frontalAreaFill_src": "SPEC 1.11：迎風面積 = 外框寬 × 高 × 0.7（扣掉車殼斜面與輪間空隙，推估）；iter-33 起寬、高由組裝外框推導（MA 參考 97 × 38 × 0.7 ≈ 2.6×10⁻³ m²）"
+    "frontalArea_src": "SPEC 1.11：車殼三角網格的正面投影與其他已安裝零件靜止外框的投影聯集（0.5 mm 格點，不填鏤空、不重複計算遮蔽），C_d 0.6 仍為推估；不使用滑動或制振器行程外框"
   },
   "track": {
     "laneWidth_mm": 115.0,

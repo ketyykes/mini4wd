@@ -3,6 +3,7 @@
 // 所有替換只透過組裝設定（configs/*.json 或 slot 覆寫），模擬與規則檢查都用 src/ 的同一套程式（網頁也用這一套）。
 import { describe, test, expect, beforeAll } from 'vitest';
 import RAPIER from '@dimforge/rapier3d-compat';
+import { dropTest, carMechanicalEnergy } from './helpers/drop.js';
 import { assemble, loadConfig, listConfigs, SLOTS, OPTIONAL_SLOTS } from '../src/assembly.js';
 import { validateAssembly } from '../src/regulation.js';
 import { listParts } from '../src/parts/index.js';
@@ -125,44 +126,7 @@ function rampRun(asm, v0) {
   return { vAfter, spongeSteps, spongeWork: car.sponge?.frictionWork ?? 0, minUp };
 }
 
-/**
- * 從高度 h（mm）水平落下（斷電、無水平速度），量測落地後車體的垂直彈跳：
- * 落地 15 ms 後車體原點的最高點（彈起高度）、四輪全部離地的累計時間（彈跳滯空）、落地 20 ms 後 |v_y| 的積分
- * @type {(asm: any, h_mm: number) => { rebound_mm: number, air_ms: number, sumVy_mm: number }}
- */
-function dropTest(asm, h_mm) {
-  const env = sim.createWorld(buildStraight(4));
-  const car = sim.createCar(env, { assembly: asm, s: 0.5, lane: 0, powered: false });
-  for (const b of [car.chassis, ...car.dampers.map((d) => d.body)]) {
-    const t = b.translation();
-    b.setTranslation({ x: t.x, y: t.y + h_mm / 1000, z: t.z }, true);
-  }
-  const dt = env.world.timestep;
-  let landed = -1;
-  let peak = -Infinity;
-  let air = 0;
-  let sumVy = 0;
-  for (let i = 0; i < 0.4 / dt; i++) {
-    sim.stepCar(env, car);
-    const touching = car.wheels.some((w) => w.contact);
-    if (landed < 0 && touching) {
-      landed = i;
-    }
-    if (landed < 0) {
-      continue;
-    }
-    if (!touching) {
-      air += dt;
-    }
-    if (i > landed + 0.015 / dt) {
-      peak = Math.max(peak, car.chassis.translation().y);
-    }
-    if (i > landed + 0.02 / dt) {
-      sumVy += Math.abs(car.chassis.linvel().y) * dt;
-    }
-  }
-  return { rebound_mm: peak * 1000, air_ms: air * 1000, sumVy_mm: sumVy * 1000 };
-}
+// 落下量測共用 tests/helpers/drop.js（同時供多高度、傾斜落地回歸使用）。
 
 // ---------------------------------------------------------------------------
 // P17：新零件的物理效果
@@ -1524,6 +1488,10 @@ const CLEAR_D = 1.4;
 
 /** @type {(s: any) => { min: any, max: any }} 測試自己的外框計算 */
 function boxOf(s) {
+  if (s.kind === 'travel') {
+    const b = boxOf(s.source);
+    return { min: { ...b.min, z: b.min.z - s.stroke }, max: { ...b.max, z: b.max.z + s.stroke } };
+  }
   if (s.kind === 'box') {
     return s;
   }
@@ -1552,6 +1520,24 @@ function inPoly(x, z, poly) {
 
 /** @type {(x: number, y: number, z: number, s: any) => boolean} 點在實體內 */
 function inside(x, y, z, s) {
+  if (s.kind === 'travel') {
+    const q = s.source, h = s.stroke;
+    if (q.kind === 'box') return x >= q.min.x && x <= q.max.x && y >= q.min.y && y <= q.max.y && z >= q.min.z - h && z <= q.max.z + h;
+    if (q.kind === 'cyl') {
+      const closestZ = Math.max(q.c.z - h, Math.min(q.c.z + h, z));
+      return inside(x, y, z - closestZ + q.c.z, q);
+    }
+    if (y < q.y0 || y > q.y1) return false;
+    if (inPoly(x, z - h, q.outline) || inPoly(x, z + h, q.outline)) return true;
+    // A scanline through x intersects an edge within the travel segment.
+    for (let i = 0; i < q.outline.length; i++) {
+      const a = q.outline[i], b = q.outline[(i + 1) % q.outline.length];
+      if ((a[0] > x) === (b[0] > x)) continue;
+      const crossZ = a[1] + (x - a[0]) * (b[1] - a[1]) / (b[0] - a[0]);
+      if (Math.abs(crossZ - z) <= h) return true;
+    }
+    return false;
+  }
   if (s.kind === 'box') {
     return x >= s.min.x && x <= s.max.x && y >= s.min.y && y <= s.max.y && z >= s.min.z && z <= s.max.z;
   }
@@ -1670,6 +1656,18 @@ function expectedClearanceCodes(asm) {
   for (const st of asm.optional.stabilizers ?? []) {
     items.push({ group: 'stabilizer', solid: st.solid });
   }
+  // Reconstruct the motion from the public assembly, independently of sweepZ.
+  // Roller order follows asm.layout.rollers; stay order follows the slots above.
+  let rollerIndex = 0, stayIndex = 0;
+  for (const item of items) {
+    let slot;
+    if (item.group === 'roller') slot = asm.layout.rollers[rollerIndex++].slot === 'frontRollers' ? 'frontStay' : 'rearStay';
+    if (item.group === 'stay') slot = ['frontStay', 'rearStay'].filter((s) => asm.partsBySlot[s].plate)[stayIndex++];
+    if (item.group === 'stabilizer') slot = 'frontStay';
+    const h = slot ? asm.partsBySlot[slot].slide?.stroke_mm : 0;
+    item.motion = h ? slot : null;
+    item.travel = h ? { kind: 'travel', source: item.solid, stroke: h } : item.solid;
+  }
   const expected = new Set();
   const ambiguous = new Set();
   /** @type {(code: string, verdict: string) => void} */
@@ -1691,12 +1689,14 @@ function expectedClearanceCodes(asm) {
         continue;
       }
       const [P, Q] = ORDER.indexOf(A.group) <= ORDER.indexOf(B.group) ? [A, B] : [B, A];
-      add(`${P.group.toUpperCase()}_${Q.group.toUpperCase()}_CLEARANCE`, oracle(P.solid, Q.solid));
+      const together = P.motion && P.motion === Q.motion;
+      add(`${P.group.toUpperCase()}_${Q.group.toUpperCase()}_CLEARANCE`, oracle(together ? P.solid : P.travel, together ? Q.solid : Q.travel));
     }
   }
   // 零件與車殼：車殼頂點落在零件外擴 1 mm 內就算干涉（頂點來自 bodies/index.js 的車殼網格）
   const verts = bodyMassProps(asm.body.def).vertices;
   for (const it of items.filter((q) => !['tire', 'roller'].includes(q.group))) {
+    it.solid = it.travel;
     const key = JSON.stringify([asm.body.id, it.solid]);
     let v = oracleCache.get(key);
     if (!v) {
@@ -1873,6 +1873,48 @@ describe('P18 干涉與安裝相容性', () => {
     }
   });
 
+  test('P18_multislot 三至七槽同時替換，完整滑動行程與獨立體積檢查一致', () => {
+    const choices = {
+      body: ['body-pc-box', 'body-hinge-deck', 'body-aero-wing', 'body-tortoise-dome'],
+      frontStay: ['stay-front-frp', 'stay-front-slide-soft', 'stay-front-slide-hard-carbon'],
+      rearStay: ['stay-rear-frp', 'stay-rear-slide-soft', 'stay-rear-slide-hard-carbon'],
+      massDamper: [null, 'damper-side-square', 'damper-rear-cylinder', 'damper-ar-side'],
+      frontRollers: ['roller-13-alu', 'roller-19', 'roller-13-12-double'],
+      stabilizer: [null, 'stabilizer-head-11'],
+      brakeSponge: [null, 'sponge-1mm-strong'],
+    };
+    let seed = 0x89;
+    let legal = 0, blocked = 0;
+    const seen = new Set();
+    for (let n = 0; seen.size < 96 && n < 512; n++) {
+      const config = { ...loadConfig('default') };
+      for (const [slot, values] of Object.entries(choices)) {
+        seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0;
+        config[slot] = values[Math.floor(seed / 0x100000000 * values.length)];
+      }
+      // A deterministic matrix, stored through its seed and catalog choices.
+      const label = JSON.stringify(config);
+      if (seen.has(label)) continue;
+      seen.add(label);
+      const asm = assemble(config), result = validateAssembly(asm);
+      const got = new Set(result.violations.map((v) => v.code));
+      const { expected, ambiguous } = expectedClearanceCodes(asm);
+      for (const code of expected) expect(got.has(code), `${label}: missing ${code}`).toBe(true);
+      for (const code of got) {
+        if (CLEARANCE_RE.test(code) && !code.startsWith('BODY_') && code !== 'GROUND_CLEARANCE') {
+          expect(expected.has(code) || ambiguous.has(code), `${label}: unexpected ${code}`).toBe(true);
+        }
+      }
+      const compat = expectedCompatCodes(asm);
+      expect([...got].filter((c) => COMPAT_CODES.has(c)).sort(), label).toEqual([...compat].sort());
+      if (result.ok) legal++; else blocked++;
+    }
+    expect(seen.size).toBe(96);
+    expect(legal).toBeGreaterThan(0);
+    expect(blocked).toBeGreaterThan(0);
+    console.log(`[P18] multislot: ${legal} legal / ${blocked} blocked`);
+  }, 600000);
+
   test('P18_pairwise 所有零件槽的替代款兩兩組合：干涉 / 相容性代碼和獨立檢查一致，有問題的組合一律擋下', () => {
     const opts = slotOptions();
     const slots = Object.keys(opts);
@@ -1938,52 +1980,7 @@ describe('P18 干涉與安裝相容性', () => {
 // 稽核 L7（iter-86）：整車總機械能（平地，地板頂面 y = 0）
 // ---------------------------------------------------------------------------
 
-/**
- * 整車總機械能 = 動能（sim.carKineticEnergy：車體、制振器、擺動剛體、滑動板、傳動系）＋重力位能（所有剛體）
- * ＋射線輪彈簧位能 ½k·c²＋制振器座墊位能 ½k·rel²（rel < 0 時；擺動式用座墊點）＋滑動保桿彈簧位能＋煞車海綿位能 ½(k/n)·δ²。
- * 和 sim.js 的力定義一一對應（阻尼項只耗能、不存位能）；只適用平直道（PHYSICS_AUDIT 第 2 節的定義）
- * @type {(car: any) => number}
- */
-function carMechanicalEnergy(car) {
-  const g = spec.sim.gravity;
-  const up = sim.upAxis(car);
-  let e = sim.carKineticEnergy(car);
-  e += car.chassis.mass() * g * car.chassis.worldCom().y;
-  for (const d of car.dampers) {
-    e += d.body.mass() * g * d.body.worldCom().y;
-    const a = sim.localToWorld(car, d.anchor);
-    // 座墊點：滑動式 = 制振器剛體原點；擺動式 = 擺動剛體上的座墊點（同 sim.js swingDamperForces）
-    let p = d.body.translation();
-    if (d.swing) {
-      p = sim.localToWorld({ chassis: d.body }, d.seatOnBody);
-    }
-    const rel = (p.x - a.x) * up.x + (p.y - a.y) * up.y + (p.z - a.z) * up.z;
-    if (rel < 0) {
-      e += 0.5 * d.seatK * rel * rel;
-    }
-  }
-  for (const sl of car.sliders) {
-    e += sl.body.mass() * g * sl.body.worldCom().y + sim.sliderState(car, sl).springEnergy;
-  }
-  const { wheelR, restLen, springK } = car.wheelParams;
-  for (const w of car.wheels) {
-    const hp = sim.localToWorld(car, w.hardpoint);
-    const dist = hp.y / up.y;
-    const comp = restLen + wheelR - dist;
-    if (comp > 0 && dist >= 0) {
-      e += 0.5 * springK * comp * comp;
-    }
-  }
-  if (car.sponge) {
-    const n = car.sponge.pts.length;
-    for (const lp of car.sponge.pts) {
-      const p = sim.localToWorld(car, lp);
-      const delta = Math.min(Math.max(0, -p.y / up.y), car.sponge.thickness);
-      e += 0.5 * (car.sponge.k / n) * delta * delta;
-    }
-  }
-  return e;
-}
+// carMechanicalEnergy 的完整定義見 tests/helpers/drop.js。
 
 /**
  * 所有剛體（車體、制振器、滑動板）設同一前進速度 v（+x）、角速度 0；傳動系 ω = v / r（單向輪的傳動系側也同速）
