@@ -6,6 +6,7 @@ import { wheelLayout, componentLayout } from './carLayout.js';
 import { assemble, loadConfig, rollerLayoutOf } from './assembly.js';
 import { getPart } from './parts/index.js';
 import { bumperGeometry, inBumperPolygon } from './parts/bumperGeom.js';
+import { chassisSideGeometry } from './parts/chassisGeom.js';
 
 /** 車殼卡榫與開關位置（底盤座標，取自底盤零件資料） */
 const BODY_MOUNTS = getPart('chassis-midship').bodyMounts;
@@ -1391,8 +1392,30 @@ const buildOptionalParts = (mats) => {
       grp.add(groove);
     }
     grp.add(w);
-    // 第五階段：托架（零件資料 bracket，例如 MA 側制振器組的 FRP 側板）：貼在配重內側的直立板，位置與 assembly.js 托架質量的位置相同
-    if (part.bracket) {
+    // Side adapter solids and fixed mass use the same assembly data.
+    if (d.adapter) {
+      const b = d.adapter.plate;
+      const plate = new THREE.Mesh(new THREE.BoxGeometry(b.max.x - b.min.x, b.max.y - b.min.y, b.max.z - b.min.z), [mats.frpEdge, mats.frpEdge, mats.frpPlate, mats.frpPlate, mats.frpEdge, mats.frpEdge]);
+      plate.position.set((b.min.x + b.max.x) / 2, (b.min.y + b.max.y) / 2, (b.min.z + b.max.z) / 2);
+      plate.name = 'side-damper-mount-plate';
+      grp.add(plate);
+      const p = d.adapter.pad;
+      const pad = p.kind === 'box'
+        ? new THREE.Mesh(new THREE.BoxGeometry(p.max.x - p.min.x, p.max.y - p.min.y, p.max.z - p.min.z), mats.tireSponge)
+        : new THREE.Mesh(new THREE.CylinderGeometry(p.r, p.r, 2 * p.halfLen, 24), mats.tireSponge);
+      if (p.kind === 'box') pad.position.set((p.min.x + p.max.x) / 2, (p.min.y + p.max.y) / 2, (p.min.z + p.max.z) / 2);
+      else pad.position.set(p.c.x, p.c.y, p.c.z);
+      pad.name = 'side-damper-seat-pad';
+      grp.add(pad);
+      for (const sp of d.adapter.spacers) {
+        const height = sp.y1 - sp.y0;
+        const profile = [[sp.innerRadius, 0], [sp.outerRadius, 0], [sp.outerRadius, height], [sp.innerRadius, height], [sp.innerRadius, 0]];
+        const spacer = new THREE.Mesh(new THREE.LatheGeometry(profile.map(([r, y]) => new THREE.Vector2(r, y)), 24), mats.aluSpacer);
+        spacer.position.set(sp.x, sp.y0, sp.z);
+        spacer.name = 'side-damper-mount-spacer';
+        grp.add(spacer);
+      }
+    } else if (part.bracket) {
       const t = part.bracket.thickness_mm;
       const side = Math.sign(d.seat.z) || 1;
       const plateH = h + part.stroke_mm + 1.0;
@@ -1408,7 +1431,7 @@ const buildOptionalParts = (mats) => {
     for (const dx of screwXs) {
       const sxp = d.seat.x + dx;
       // 後制振器：螺絲由導輪板底面（板厚 1.5 mm）往上鎖，板底露出螺絲頭；側制振器：托架很低（離地 1 mm），用平頭螺絲埋在托架內，不畫頭
-      const below = part.mount === 'side' ? d.seat.y - 1.0 : d.seat.y - 1.5 + 0.01;
+      const below = d.adapter ? d.adapter.surfaceY : part.mount === 'side' ? d.seat.y - 1.0 : d.seat.y - 1.5 + 0.01;
       const shaftTop = top + 3.2;
       const shaft = new THREE.Mesh(new THREE.CylinderGeometry(0.95, 0.95, shaftTop - below, 12), mats.screw);
       shaft.position.set(sxp, (below + shaftTop) / 2, d.seat.z);
@@ -1429,7 +1452,7 @@ const buildOptionalParts = (mats) => {
       nylon.position.set(sxp, top + 2.3, d.seat.z);
       grp.add(nylon);
     }
-    if (part.mount === 'side') {
+    if (part.mount === 'side' && !d.adapter) {
       // 側托架：從底盤側壁伸出的小板（ABS）
       const sz = Math.sign(d.seat.z);
       const bracket = new THREE.Mesh(new THREE.BoxGeometry(part.length_mm + 4, 1.0, Math.abs(d.seat.z) - 28 + part.width_mm / 2), mats.chassis);
@@ -1842,42 +1865,22 @@ function buildChassis(mats) {
     g.add(wallN);
   }
   // ---- 側裙（iter-03）：電池段兩側的底盤側裙，從側面看得到底盤有厚度而不是薄板 ----
-  for (const sz of [-1, 1]) {
-    const skirtPts = [[-23, 29], [23, 29], [21, 35.5], [-21, 35.5]].map(([x, z]) => [x, sz * z]);
-    const skirt = extrudeXZ(sz > 0 ? skirtPts : skirtPts.slice().reverse(), 2.8, mats.chassis, [
-      roundedRect(-12, sz * 32.2, 8, 3, 1.2),
-      roundedRect(0, sz * 32.2, 8, 3, 1.2),
-      roundedRect(12, sz * 32.2, 8, 3, 1.2),
-    ].map((h) => (sz > 0 ? h : h.slice().reverse())));
-    skirt.position.y = y0 + 0.3;
+  for (const sideGeom of chassisSideGeometry(c)) {
+    const sz = sideGeom.sign;
+    const sg = sideGeom.skirt;
+    const skirt = extrudeXZ(sg.outline, sg.y1 - sg.y0, mats.chassis, sg.holes);
+    skirt.position.y = sg.y0;
+    skirt.name = `chassis-side-skirt-${sz}`;
     g.add(skirt);
     // iter-09：電池艙側壁（側視可見的底盤厚度；reviewer「側面只是一條細黑邊」）：
     // x-y 輪廓板，兩端沿輪胎外 2.5 mm 的圓弧內凹（MA 側面在前後輪處是弧形缺口），高到車殼底緣內側；
     // 板面有 3 個內凹窗（深色底）＋窗間立肋＋上緣倒角條，讀起來是有厚度的成型件而非細線
     // iter-12：車殼下緣 6.4 → 8.6 mm（ref side-high：車門下方露出一整條黑色底盤側裙）→ 側壁頂 6.9 → 9.4 mm，窗與倒角條跟著上移
-    const topY = 9.4;
-    const wheelY = c.refWheelDiameter_mm / 2;
-    const arcR = wheelY + 2.5;
-    const prof = [];
-    const nA = 10;
-    // 右端（+x）由下往上沿前輪圓弧，左端（−x）由上往下沿後輪圓弧
-    for (let k = 0; k <= nA; k++) {
-      const y = y0 + ((topY - y0) * k) / nA;
-      prof.push([hw - Math.sqrt(arcR * arcR - (y - wheelY) ** 2), y]);
-    }
-    for (let k = nA; k >= 0; k--) {
-      const y = y0 + ((topY - y0) * k) / nA;
-      prof.push([-hw + Math.sqrt(arcR * arcR - (y - wheelY) ** 2), y]);
-    }
-    const winY = y0 + 3.0;
-    const winHoles = [-13, 0, 13].map((wx) => roundedRect(wx, winY, 9, 3.0, 1.0));
-    // iter-43：側框上緣下方一排減重圓孔（reviewer iter-42：「側面主框補上減重孔與卡榫」）
-    for (const hx of [-19.5, -6.5, 6.5, 19.5]) {
-      winHoles.push(circlePts(hx, topY - 1.6, 0.8, 12));
-    }
-    const wallZ = sz > 0 ? 35.0 : -36.2;
-    const sideWall = extrudeXY(prof, 1.2, mats.chassis, winHoles);
-    sideWall.position.z = wallZ;
+    const { topY, wheelY, arcR, winY } = sideGeom;
+    const wg = sideGeom.wall;
+    const sideWall = extrudeXY(wg.outline, wg.z1 - wg.z0, mats.chassis, wg.holes);
+    sideWall.position.z = wg.z0;
+    sideWall.name = `chassis-side-wall-${sz}`;
     g.add(sideWall);
     // iter-43：上緣弧形外緣條（中段高、兩端順著輪拱降下，取代平直上緣的視覺）與兩個車殼卡榫凸片
     {
@@ -1915,8 +1918,10 @@ function buildChassis(mats) {
     // iter-12：側邊支撐塊（ref side-high：車門下方、兩輪之間偏後的黑色方塊，頂面有 2 個孔）
     // 位置由擬合相機量測（推估 ±1 mm）：x −10 … −20、頂面 y ≈ 7、外側面 z ≈ ∓38；底到底盤最低面 y0
     const blockTop = 7.6;
-    const block = new THREE.Mesh(new THREE.BoxGeometry(10, blockTop - y0, 5.8), mats.chassis);
-    block.position.set(-15, (blockTop + y0) / 2, sz * 35.9);
+    const bg = sideGeom.block;
+    const block = new THREE.Mesh(new THREE.BoxGeometry(bg.max.x - bg.min.x, bg.max.y - bg.min.y, bg.max.z - bg.min.z), mats.chassis);
+    block.position.set((bg.min.x + bg.max.x) / 2, (bg.min.y + bg.max.y) / 2, (bg.min.z + bg.max.z) / 2);
+    block.name = `chassis-side-block-${sz}`;
     g.add(block);
     for (const hx of [-12.4, -17.6]) {
       const hole = new THREE.Mesh(new THREE.CylinderGeometry(1.15, 1.15, 0.12, 20), mats.chassisDark);

@@ -9,6 +9,11 @@
 const SAMPLE_MM = 0.4;
 /** 只在對方外框外擴 MARGIN 內的樣本點計算（更遠的不可能小於判定門檻 1 mm） */
 const MARGIN = 2.5;
+const profileCache = new WeakMap();
+const profilePlate = (s) => {
+  if (!profileCache.has(s)) profileCache.set(s, { kind: 'plate', outline: s.outline, holes: s.holes, y0: s.z0, y1: s.z1 });
+  return profileCache.get(s);
+};
 
 /** Exact swept volume for translation along z. Plates use the union of the
  * two endpoint polygons and each edge's swept quadrilateral; concave outlines
@@ -54,6 +59,7 @@ const combine = (a, b) => {
  * @type {(s: Solid, x: number, y: number, z: number) => number}
  */
 export const sdf = (s, x, y, z) => {
+  if (s.kind === 'profileZ') return sdf(profilePlate(s), x, z, y);
   if (s.kind === 'sweepZ') {
     const { source: q, halfStroke: h } = s;
     if (q.kind === 'cyl') {
@@ -92,7 +98,12 @@ export const sdf = (s, x, y, z) => {
   for (let i = 0; i < o.length; i++) {
     d = Math.min(d, segDist(x, z, o[i], o[(i + 1) % o.length]));
   }
-  const d2 = insidePoly(x, z, o) ? -d : d;
+  let d2 = insidePoly(x, z, o) ? -d : d;
+  for (const hole of s.holes ?? []) {
+    let hd = Infinity;
+    for (let i = 0; i < hole.length; i++) hd = Math.min(hd, segDist(x, z, hole[i], hole[(i + 1) % hole.length]));
+    d2 = Math.max(d2, insidePoly(x, z, hole) ? hd : -hd);
+  }
   return combine(d2, Math.max(s.y0 - y, y - s.y1));
 };
 
@@ -101,6 +112,10 @@ export const sdf = (s, x, y, z) => {
  * @type {(s: Solid) => { min: Vec3, max: Vec3 }}
  */
 export const solidBox = (s) => {
+  if (s.kind === 'profileZ') {
+    const b = solidBox(profilePlate(s));
+    return { min: { x: b.min.x, y: b.min.z, z: b.min.y }, max: { x: b.max.x, y: b.max.z, z: b.max.y } };
+  }
   if (s.kind === 'sweepZ') {
     const b = solidBox(s.source);
     return { min: { ...b.min, z: b.min.z - s.halfStroke }, max: { ...b.max, z: b.max.z + s.halfStroke } };
@@ -137,6 +152,13 @@ export const surfaceSamples = (s) => {
   const hit = sampleCache.get(s);
   if (hit) {
     return hit;
+  }
+  if (s.kind === 'profileZ') {
+    const source = surfaceSamples(profilePlate(s));
+    const out = Float64Array.from(source);
+    for (let i = 0; i < out.length; i += 3) { out[i + 1] = source[i + 2]; out[i + 2] = source[i + 1]; }
+    sampleCache.set(s, out);
+    return out;
   }
   /** @type {number[]} */
   const out = [];
@@ -195,8 +217,7 @@ export const surfaceSamples = (s) => {
     // 板件：上下面（多邊形內部格點）＋側面（沿邊取樣，上下與中間高度）
     const b = solidBox(s);
     const ys = steps(s.y1 - s.y0).map((t) => s.y0 + (s.y1 - s.y0) * t);
-    const o = s.outline;
-    for (let i = 0; i < o.length; i++) {
+    for (const o of [s.outline, ...(s.holes ?? [])]) for (let i = 0; i < o.length; i++) {
       const p0 = o[i];
       const p1 = o[(i + 1) % o.length];
       for (const t of steps(Math.hypot(p1[0] - p0[0], p1[1] - p0[1]))) {
@@ -209,7 +230,7 @@ export const surfaceSamples = (s) => {
     }
     for (let x = b.min.x; x <= b.max.x; x += SAMPLE_MM * 2) {
       for (let z = b.min.z; z <= b.max.z; z += SAMPLE_MM * 2) {
-        if (insidePoly(x, z, o)) {
+        if (insidePoly(x, z, s.outline) && !(s.holes ?? []).some((hole) => insidePoly(x, z, hole))) {
           out.push(x, s.y0, z, x, s.y1, z);
         }
       }

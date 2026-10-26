@@ -1,5 +1,5 @@
 // Local records are versioned: future physics/track changes need a new key.
-export const RESULTS_KEY = 'mini4wd-results-v2'; // iter-89: mesh contacts + full body inertia.
+export const RESULTS_KEY = 'mini4wd-results-v3'; // iter-90: side mounting height + fixed hardware mass.
 const LIMIT = 20;
 
 export function readResults(storage) {

@@ -14,6 +14,7 @@ import { spec } from '../src/spec.js';
 import { buildStraight, buildCircuit } from '../src/track.js';
 import * as sim from '../src/sim.js';
 import { axleInertia } from '../src/parts/inertia.js';
+import { chassisSideSolids } from '../src/parts/chassisGeom.js';
 
 /** @type {(x: number) => string} */
 const f3 = (x) => x.toFixed(3);
@@ -414,12 +415,16 @@ describe('P17 新零件的物理效果（只透過組裝設定替換）', () => 
     expect(Math.abs(s31lf - s31) / s31).toBeLessThan(0.005);
     expect(d31lf).toBeGreaterThan(d31);
 
-    // MA 側制振器組：總質量多 2 ×（8.3 黃銅＋0.9 FRP 側板）；可滑動的只有 2 顆黃銅（側板鎖在底盤）
+    // iter-90: displayed 35×6.5×1.5 mm FRP plates + four hollow Al spacers.
+    // Only the two brass weights move; hardware stays fixed on the chassis.
     const noD = assemble(cfg({ body: null }));
     const d32 = assemble(cfg({ body: null, massDamper: 'damper-side-square-32' }));
     const movable = d32.movable.reduce((sum, m) => sum + m.mass_g, 0);
     console.log(`[P17] 側制振器組：總重 ${f3(noD.mass_g)} → ${f3(d32.mass_g)} g，可滑動 ${f3(movable)} g（${d32.movable.length} 顆）`);
-    expect(Math.abs(d32.mass_g - noD.mass_g - 2 * (8.3 + 0.9))).toBeLessThan(1e-6);
+    const plateMass = 35 * 6.5 * 1.5 * 1.85 / 1000;
+    const spacerMass = Math.PI * (2 ** 2 - 1.1 ** 2) * 6 * 2.7 / 1000;
+    const padMass = 32 * 6 * 1 * 0.12 / 1000;
+    expect(Math.abs(d32.mass_g - noD.mass_g - 2 * (8.3 + plateMass + padMass) - 4 * spacerMass)).toBeLessThan(1e-6);
     expect(d32.movable.length).toBe(2);
     expect(Math.abs(movable - 2 * 8.3)).toBeLessThan(1e-9);
   }, 240000);
@@ -1488,6 +1493,10 @@ const CLEAR_D = 1.4;
 
 /** @type {(s: any) => { min: any, max: any }} 測試自己的外框計算 */
 function boxOf(s) {
+  if (s.kind === 'profileZ') {
+    const xs = s.outline.map(p => p[0]), ys = s.outline.map(p => p[1]);
+    return { min: { x: Math.min(...xs), y: Math.min(...ys), z: s.z0 }, max: { x: Math.max(...xs), y: Math.max(...ys), z: s.z1 } };
+  }
   if (s.kind === 'travel') {
     const b = boxOf(s.source);
     return { min: { ...b.min, z: b.min.z - s.stroke }, max: { ...b.max, z: b.max.z + s.stroke } };
@@ -1520,6 +1529,7 @@ function inPoly(x, z, poly) {
 
 /** @type {(x: number, y: number, z: number, s: any) => boolean} 點在實體內 */
 function inside(x, y, z, s) {
+  if (s.kind === 'profileZ') return z >= s.z0 && z <= s.z1 && inPoly(x, y, s.outline) && !(s.holes ?? []).some(h => inPoly(x, y, h));
   if (s.kind === 'travel') {
     const q = s.source, h = s.stroke;
     if (q.kind === 'box') return x >= q.min.x && x <= q.max.x && y >= q.min.y && y <= q.max.y && z >= q.min.z - h && z <= q.max.z + h;
@@ -1545,7 +1555,7 @@ function inside(x, y, z, s) {
     const [a, b, c] = s.axis === 'z' ? [x - s.c.x, y - s.c.y, z - s.c.z] : [x - s.c.x, z - s.c.z, y - s.c.y];
     return a * a + b * b <= s.r * s.r && Math.abs(c) <= s.halfLen;
   }
-  return y >= s.y0 && y <= s.y1 && inPoly(x, z, s.outline);
+  return y >= s.y0 && y <= s.y1 && inPoly(x, z, s.outline) && !(s.holes ?? []).some(h => inPoly(x, z, h));
 }
 
 /** @type {(x: number, y: number, z: number, s: any, d: number) => boolean} 點離實體是否 ≤ d（近似，見 HIT_D / CLEAR_D 說明） */
@@ -1631,6 +1641,8 @@ function expectedClearanceCodes(asm) {
   const lift = asm.lift_mm;
   /** @type {{ group: string, solid: any }[]} */
   const items = [];
+  // Fixed adapters participate in body / tire / other-part clearance too.
+  for (const d of asm.optional.solids) if (d.mountingHardware) items.push({ group: 'damper', solid: d.solid });
   for (const w of asm.layout.wheels) {
     items.push({ group: 'tire', solid: { kind: 'cyl', axis: 'z', c: { x: w.x, y: w.y - lift, z: w.z }, r: w.r, halfLen: w.width / 2 } });
   }
@@ -1678,6 +1690,13 @@ function expectedClearanceCodes(asm) {
       ambiguous.add(code);
     }
   };
+  // Share structural geometry, but use this test's independent volume grid
+  // and proximity probes (never production SDF / samples / solidGap).
+  if (asm.partsBySlot.massDamper?.mount === 'side') {
+    for (const d of asm.optional.dampers) for (const ch of chassisSideSolids(asm.partsBySlot.chassis)) {
+      add('DAMPER_CHASSIS_CLEARANCE', oracle(d.swept, ch.solid));
+    }
+  }
   for (let i = 0; i < items.length; i++) {
     for (let j = i + 1; j < items.length; j++) {
       const A = items[i];
@@ -1829,6 +1848,8 @@ describe('P18 干涉與安裝相容性', () => {
       { over: { massDamper: { base: 'damper-side-square-32', length_mm: 60 }, body: null }, codes: ['SIDE_PART_TIRE_ZONE', 'DAMPER_TIRE_CLEARANCE'] },
       // 32 mm 側制振器比 14 mm 長 → 碰到 aero-wing 車殼側裙（14 mm 款合法，見下方合法對照）
       { over: { massDamper: 'damper-side-square-32', body: 'body-aero-wing' }, codes: ['DAMPER_BODY_CLEARANCE'] },
+      // iter-90: the shared elevated adapter plate also intersects this shell.
+      { over: { massDamper: 'damper-side-square', body: 'body-aero-wing' }, codes: ['DAMPER_BODY_CLEARANCE'] },
       // ---- 第七階段（iter-75）：新制振器 ----
       // 球頭連桿、重型制振器要裝在後導輪板的制振器座（標準塑膠後架沒有）
       { over: { massDamper: 'damper-balllink-square' }, codes: ['MOUNT_COMPAT'] },
@@ -1867,7 +1888,7 @@ describe('P18 干涉與安裝相容性', () => {
       }
     }
     // 合法的對照：雙層導輪＋單層的碳纖寬後板、FRP 後板＋後制振器
-    for (const over of [{ rollers: 'roller-13-12-double', rearStay: 'stay-rear-carbon-wide' }, { rearStay: 'stay-rear-frp', massDamper: 'damper-rear-cylinder' }, { stabilizer: 'stabilizer-head-17', rollers: 'roller-19', body: null }, { rollers: 'roller-13-tapered', frontStay: 'stay-front-frp', rearStay: 'stay-rear-frp', body: null }, { frontRollers: 'roller-19-tapered', rearRollers: 'roller-13-alu', frontStay: 'stay-front-frp' }, { frontRollers: 'roller-13-12-double' }, { rearStay: 'stay-rear-carbon-wide', frontRollers: 'roller-19' }, { massDamper: 'damper-side-square', body: 'body-aero-wing' }, { massDamper: 'damper-side-square-32', body: 'body-pc-box' }, { wheels: 'wheel-31-lowfriction', body: 'body-pc-box' }, { motor: 'motor-rev' }, { rearStay: 'stay-rear-frp', massDamper: 'damper-balllink-square' }, { rearStay: 'stay-rear-frp', massDamper: 'damper-heavy' }, { massDamper: 'damper-square-8x8x14', body: 'body-hinge-deck' }, { frontRollers: 'roller-13-12-alu-double-rubber' }, { frontRollers: 'roller-9-8-alu-double', rearRollers: 'roller-9-8-alu-double' }, { wheels: 'wheel-31-soft-slick', body: 'body-pc-box' }, { wheels: 'wheel-31-sponge-lowrebound', body: 'body-pc-box' }, { stabilizer: 'stabilizer-head-11' }, { stabilizer: 'stabilizer-head-15', frontRollers: 'roller-17-alu', body: null }, { brakeSponge: 'sponge-3type-c' }, { bearings: 'bearing-620-hg' }, { wheels: 'wheel-26-oneway' }, { massDamper: 'damper-square-8x8x32', body: 'body-hinge-deck' }, { rearStay: 'stay-rear-frp', massDamper: 'damper-slim' }, { massDamper: 'damper-ar-side', body: 'body-hinge-deck' }]) {
+    for (const over of [{ rollers: 'roller-13-12-double', rearStay: 'stay-rear-carbon-wide' }, { rearStay: 'stay-rear-frp', massDamper: 'damper-rear-cylinder' }, { stabilizer: 'stabilizer-head-17', rollers: 'roller-19', body: null }, { rollers: 'roller-13-tapered', frontStay: 'stay-front-frp', rearStay: 'stay-rear-frp', body: null }, { frontRollers: 'roller-19-tapered', rearRollers: 'roller-13-alu', frontStay: 'stay-front-frp' }, { frontRollers: 'roller-13-12-double' }, { rearStay: 'stay-rear-carbon-wide', frontRollers: 'roller-19' }, { massDamper: 'damper-side-square', body: 'body-pc-box' }, { massDamper: 'damper-side-square-32', body: 'body-pc-box' }, { wheels: 'wheel-31-lowfriction', body: 'body-pc-box' }, { motor: 'motor-rev' }, { rearStay: 'stay-rear-frp', massDamper: 'damper-balllink-square' }, { rearStay: 'stay-rear-frp', massDamper: 'damper-heavy' }, { massDamper: 'damper-square-8x8x14', body: 'body-hinge-deck' }, { frontRollers: 'roller-13-12-alu-double-rubber' }, { frontRollers: 'roller-9-8-alu-double', rearRollers: 'roller-9-8-alu-double' }, { wheels: 'wheel-31-soft-slick', body: 'body-pc-box' }, { wheels: 'wheel-31-sponge-lowrebound', body: 'body-pc-box' }, { stabilizer: 'stabilizer-head-11' }, { stabilizer: 'stabilizer-head-15', frontRollers: 'roller-17-alu', body: null }, { brakeSponge: 'sponge-3type-c' }, { bearings: 'bearing-620-hg' }, { wheels: 'wheel-26-oneway' }, { massDamper: 'damper-square-8x8x32', body: 'body-hinge-deck' }, { rearStay: 'stay-rear-frp', massDamper: 'damper-slim' }, { massDamper: 'damper-ar-side', body: 'body-hinge-deck' }]) {
       const res = validateAssembly(assemble(cfg(over)));
       expect(res.ok, JSON.stringify(res.violations)).toBe(true);
     }

@@ -25,7 +25,8 @@ export interface PartCompat {
 export type Solid =
   | { kind: 'box'; min: Vec3; max: Vec3 }
   | { kind: 'cyl'; axis: 'y' | 'z'; c: Vec3; r: number; halfLen: number }
-  | { kind: 'plate'; outline: [number, number][]; y0: number; y1: number }
+  | { kind: 'plate'; outline: [number, number][]; holes?: [number, number][][]; y0: number; y1: number }
+  | { kind: 'profileZ'; outline: [number, number][]; holes?: [number, number][][]; z0: number; z1: number }
   | { kind: 'sweepZ'; source: Solid; halfStroke: number };
 
 /** 組裝後一個零件實例的實體（干涉檢查的對象） */
@@ -35,6 +36,7 @@ export interface PlacedSolid {
   slot: string;
   label: string;
   solid: Solid;
+  mountingHardware?: boolean;
 }
 
 export type PartCategory =

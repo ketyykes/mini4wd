@@ -23,6 +23,7 @@ const GROUP_NAMES = {
   BALLAST: '配重',
   BODY: '車殼',
   STABILIZER: '穩定零件',
+  CHASSIS: '底盤結構',
 };
 
 /**
@@ -54,6 +55,7 @@ export const VIOLATION_CODES = {
   DAMPER_SPONGE_CLEARANCE: '制振器與煞車海綿干涉',
   DAMPER_STAY_CLEARANCE: '制振器與導輪板干涉',
   DAMPER_BODY_CLEARANCE: '制振器（含上下行程）與車殼干涉',
+  DAMPER_CHASSIS_CLEARANCE: '制振器（含上下行程）與底盤側裙／側壁／支撐結構干涉（推估幾何，非官方條文）',
   SPONGE_TIRE_CLEARANCE: '煞車海綿與輪胎干涉',
   SPONGE_ROLLER_CLEARANCE: '煞車海綿與導輪干涉',
   SPONGE_BODY_CLEARANCE: '煞車海綿與車殼干涉',

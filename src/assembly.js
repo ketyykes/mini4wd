@@ -20,6 +20,7 @@ import { bumperTrim } from './parts/bumperGeom.js';
 import { drivetrainInertia } from './parts/inertia.js';
 import { frontalArea } from './bodies/silhouette.js';
 import { zeroTensor, addTensor, pointTensor, principalAxes } from './massTensor.js';
+import { chassisSideSolids, sideDamperAdapter } from './parts/chassisGeom.js';
 
 /** @typedef {import('./parts/types').PlacedPart} PlacedPart */
 /** @typedef {import('./parts/types').Vec3} Vec3 */
@@ -540,7 +541,7 @@ export function assemble(rawConfig) {
     interference,
     chassisTrim,
     features: [...new Set([...(ch.features ?? []), ...(p.frontStay.features ?? []), ...(p.rearStay.features ?? [])])],
-    optional: { dampers: opt.dampers, sponge: opt.sponge, ballast: opt.ballast, stabilizers: opt.stabilizers },
+    optional: { dampers: opt.dampers, damperBrackets: opt.damperBrackets, solids: opt.solids, sponge: opt.sponge, ballast: opt.ballast, stabilizers: opt.stabilizers },
     rigid: { mass_g: rigid.mass_g, com_mm: rigid.com_mm, inertia_kgm2: rigid.inertia_kgm2, inertiaTensor_kgm2: rigid.inertiaTensor_kgm2, inertiaFrame: rigid.inertiaFrame },
     movable,
     // 滑動保桿的滑動部分（iter-61）：slider = 前、rearSlider = 後（iter-64），沒裝時為 null；sliders = 有裝的（前在前）
@@ -792,22 +793,41 @@ function optionalLayout(p, comp, rollers) {
     /** @type {{ x: number, y: number, z: number }[]} 制振器底面中心（下止點） */
     let seats = [];
     if (d.mount === 'side') {
-      const m = ch.sideDamperMount ?? { x_mm: 0, z_mm: 33, y_mm: 2 };
+      const m = ch.sideDamperMount ?? { x_mm: 0, z_mm: 33 };
       seats = [{ x: m.x_mm, y: m.y_mm, z: -m.z_mm }, { x: m.x_mm, y: m.y_mm, z: m.z_mm }].slice(0, d.count);
     } else {
       const m = p.rearStay.damperMount ?? { x_mm: -79, z_mm: 0, y_mm: ch.bumperBottomY_mm };
       seats = [{ x: m.x_mm, y: m.y_mm, z: m.z_mm }];
     }
     seats.forEach((s, i) => {
+      const adapter = d.mount === 'side' ? sideDamperAdapter(ch, d, s) : null;
+      if (adapter) s.y = adapter.seatY;
       const h = d.height_mm;
+      // The prismatic joint permits 1 mm of seat compression below zero.
+      // Include that lower stop in side-structure clearance, not just +stroke.
+      const lowerTravel = adapter ? 1 : 0;
       const swept = d.shape === 'box'
-        ? boxAt(s.x, s.z, s.y, d.length_mm, d.width_mm, h + d.stroke_mm)
-        : { kind: 'cyl', axis: 'y', c: { x: s.x, y: s.y + (h + d.stroke_mm) / 2, z: s.z }, r: d.diameter_mm / 2, halfLen: (h + d.stroke_mm) / 2 };
+        ? boxAt(s.x, s.z, s.y - lowerTravel, d.length_mm, d.width_mm, h + d.stroke_mm + lowerTravel)
+        : { kind: 'cyl', axis: 'y', c: { x: s.x, y: s.y + (h + d.stroke_mm - lowerTravel) / 2, z: s.z }, r: d.diameter_mm / 2, halfLen: (h + d.stroke_mm + lowerTravel) / 2 };
       const label = seats.length > 1 ? `制振器 ${s.z < 0 ? '左' : '右'}` : '制振器';
-      dampers.push({ label, mass_g: d.mass_g, pos: { x: s.x, y: s.y + h / 2, z: s.z }, seat: s, part: d, swept, index: i });
+      dampers.push({ label, mass_g: d.mass_g, pos: { x: s.x, y: s.y + h / 2, z: s.z }, seat: s, part: d, swept, index: i, adapter });
       solids.push({ group: 'damper', slot: 'massDamper', label, solid: /** @type {Solid} */ (swept) });
-      // 托架（零件資料 bracket：固定在底盤側面的板，與配重同一個 x 範圍、貼在配重內側；只計質量，干涉沿用配重的行程範圍）
-      if (d.bracket) {
+      // Side mounting plates / spacers stay fixed; their actual solids also
+      // participate in body and unrelated-part clearance.
+      if (adapter) {
+        const b = solidBox(adapter.plate);
+        damperBrackets.push({ label: `${label}托架`, mass_g: adapter.plateMass_g, pos: { x: (b.min.x + b.max.x) / 2, y: (b.min.y + b.max.y) / 2, z: (b.min.z + b.max.z) / 2 } });
+        solids.push({ group: 'damper', slot: 'massDamper', label: `${label}托架`, solid: adapter.plate, mountingHardware: true });
+        const padBox = solidBox(adapter.pad);
+        damperBrackets.push({ label: `${label}座墊`, mass_g: adapter.padMass_g, pos: { x: (padBox.min.x + padBox.max.x) / 2, y: (padBox.min.y + padBox.max.y) / 2, z: (padBox.min.z + padBox.max.z) / 2 } });
+        solids.push({ group: 'damper', slot: 'massDamper', label: `${label}座墊`, solid: adapter.pad, mountingHardware: true });
+        adapter.spacers.forEach((spacer, n) => {
+          damperBrackets.push({ label: `${label}墊管 ${n + 1}`, mass_g: spacer.mass_g, pos: { x: spacer.x, y: (spacer.y0 + spacer.y1) / 2, z: spacer.z } });
+          // The bore is occupied by its mounting screw; an outer cylinder is
+          // conservative for clearance against unrelated parts and the body.
+          solids.push({ group: 'damper', slot: 'massDamper', label: `${label}墊管 ${n + 1}`, mountingHardware: true, solid: { kind: 'cyl', axis: 'y', c: { x: spacer.x, y: (spacer.y0 + spacer.y1) / 2, z: spacer.z }, r: spacer.outerRadius, halfLen: (spacer.y1 - spacer.y0) / 2 } });
+        });
+      } else if (d.bracket) {
         const b = d.bracket;
         const side = Math.sign(s.z) || 1;
         damperBrackets.push({ label: `${label}托架`, mass_g: b.mass_g, pos: { x: s.x, y: s.y + h / 2, z: s.z - side * (d.width_mm / 2 + b.thickness_mm / 2) } });
@@ -969,6 +989,13 @@ function interferenceChecks(body, bodyProps, wheels, rollers, solids, parts) {
       bodyGapCache.set(key, g);
     }
     record(`${s.group.toUpperCase()}_BODY_CLEARANCE`, s.label, `車殼 ${body.id}`, g);
+  }
+  // Moving side weights must clear real side structures, including the full
+  // damper travel. Fasteners/adapter-to-chassis mounting contact is intentional.
+  if (parts.massDamper?.mount === 'side') {
+    for (const s of solids.filter((q) => q.group === 'damper' && !q.mountingHardware)) {
+      for (const ch of chassisSideSolids(parts.chassis)) record('DAMPER_CHASSIS_CLEARANCE', s.label, ch.label, cachedGap(s.solid, ch.solid));
+    }
   }
   return [...worst.values()];
 }
