@@ -5,6 +5,7 @@ import { spec } from './spec.js';
 import { Battery, longitudinalForce } from './powertrain.js';
 import { assemble, loadConfig } from './assembly.js';
 import { bodyCollisionCells } from './bodies/collision.js';
+import { solveContactVelocities } from './contactSolver.js';
 
 const MM = 0.001;
 
@@ -324,14 +325,15 @@ export function createCar(env, opt = {}) {
           .setRestitution(t.restitution ?? rollerPart.restitution)
           // iter-85（稽核 L5）：牆的恢復係數是 0，Rapier 預設 Average 會把零件的 e 砍半；改 Max → 實際 e = 零件資料的值
           .setRestitutionCombineRule(RAPIER.CoefficientCombineRule.Max)
-          .setCollisionGroups(ROLLER_GROUPS),
+          .setCollisionGroups(ROLLER_GROUPS)
+        .setSolverGroups((spec.sim.wallContactMode ?? 'impulse').startsWith('impulse') ? 0 : collisionGroups(ALL_GROUPS, ALL_GROUPS)),
         parent,
       ),
     );
     // collider：最大那片（與牆接觸的主要接觸面），給 P05 等量測用
     const main = tiers.reduce((bi, t, i) => (t.r > tiers[bi].r ? i : bi), 0);
     // 錐形導輪（第四階段）：接觸幾何（上段圓柱＋下段截錐）給 rollerWallContacts 用；一般導輪 taper = null（整顆是圓柱）
-    return { ...r, collider: colliders[main], colliders, taper: rollerPart.taper ?? null, onSlider, slider: mountSlider };
+    return { ...r, restitution: rollerPart.restitution, mu: Math.min(rollerPart.wallFriction, spec.track.wallFriction), collider: colliders[main], colliders, taper: rollerPart.taper ?? null, onSlider, slider: mountSlider };
   });
 
   // 穩定零件（第四階段）：前導輪上方的 POM 圓柱（不轉動），用 Rapier 圓柱碰撞體掛在車體上。
@@ -349,13 +351,14 @@ export function createCar(env, opt = {}) {
         .setFrictionCombineRule(RAPIER.CoefficientCombineRule.Min)
         .setRestitution(st.part.restitution)
         .setRestitutionCombineRule(RAPIER.CoefficientCombineRule.Max)
-        .setCollisionGroups(ROLLER_GROUPS),
+        .setCollisionGroups(ROLLER_GROUPS)
+        .setSolverGroups((spec.sim.wallContactMode ?? 'impulse').startsWith('impulse') ? 0 : collisionGroups(ALL_GROUPS, ALL_GROUPS)),
       onSlider ? slider.body : chassis,
     );
     // 局部座標（m）：圓柱軸的上下端點與半徑，給 stabilizerWallContacts 用；mu = 對牆滑動摩擦（不轉動）
     const c = { x: st.pos.x * MM, y: (st.pos.y + lift) * MM, z: st.pos.z * MM };
     const axisPts = [-1, 1].map((k) => ({ x: c.x, y: c.y + k * (st.h / 2) * MM, z: c.z }));
-    return { label: st.label, collider, axisPts, r: st.r * MM, mu: st.part.wallFriction, contact: false, normalForce: 0, contactSteps: 0, onSlider, slider: onSlider ? slider : null };
+    return { label: st.label, restitution: st.part.restitution, collider, axisPts, r: st.r * MM, mu: Math.min(st.part.wallFriction, spec.track.wallFriction), contact: false, normalForce: 0, contactSteps: 0, onSlider, slider: onSlider ? slider : null };
   });
 
   // 制振器（第三階段）：獨立剛體＋prismatic joint（沿車體 y 軸上下滑動，行程上下限為硬止點），
@@ -607,6 +610,9 @@ function sliderSpringImpulse(car, sl, index, system) {
 export function applySliderSpringImpulses(car) {
   if (car.sliders.length === 0) return;
   const system = sliderSystem(car);
+  // Mass-metric projection onto the ideal prismatic velocity space preserves
+  // linear/angular momentum and removes only joint-violating kinetic energy.
+  writeSliderVelocity(car, system, sliderVelocity(car, system));
   car.sliders.forEach((sl, i) => sliderSpringImpulse(car, sl, i, system));
 }
 
@@ -796,18 +802,19 @@ export function stepCar(env, car) {
   // 滑動保桿（iter-61）：彈簧＋阻尼以衝量形式在積分後、牆面接觸衝量之前施加（見 sliderSpringImpulse 說明）
   // iter-64：前後各一塊時逐一施加（質量矩陣只和位置有關，一步內共用）
   applySliderSpringImpulses(car);
-  // 導輪–牆接觸的補強（iter-49）：預設 'impulse' = 速度層級的非彈性碰撞衝量（wallContactImpulses，動量一致）；
-  // 'position' = iter-34 的位置投影（只改位置、不改動量，保留作比較）；'none' = 只用 Rapier 的軟接觸。
+  rollingConstraintImpulse(car, spareFwd * dt, spareBack * dt);
+  // 導輪–牆接觸（iter-93共用求解）：預設 'impulse' = 速度層級的非彈性碰撞衝量（wallContactImpulses，動量一致）；
+  // 水平靜止接觸另做不改速度的整組位置穩定化；impulse+position沿用此流程。
+  // 'position' 保留iter-34診斷，'none'只用Rapier。
   // config 的 wallPositionProjection 已由 wallContactMode 取代（iter-49）
   const mode = spec.sim.wallContactMode ?? 'impulse';
   if (mode === 'impulse' || mode === 'impulse+position') {
     wallContactImpulses(env, car);
+    stabilizeWallPositions(env, car);
   }
-  if (mode === 'position' || mode === 'impulse+position') {
+  if (mode === 'position') {
     projectRollersOutOfWalls(env, car);
   }
-
-  rollingConstraintImpulse(car, spareFwd * dt, spareBack * dt);
 
   if (car.powered && car.drain) {
     car.battery.drain(lf.current, dt);
@@ -1175,7 +1182,8 @@ function projectRollersOutOfWalls(env, car) {
  *       最小分離方向是錐面法向：與水平夾 β = atan((R − R_b)/h_k)，法向 = cosβ·(水平推回車道) + sinβ·(向上)，穿透 = δ·cosβ
  *       → 錐形導輪騎上牆頂時產生「推回車道＋上抬」分力（[T95436]「コース内へ復帰しやすい」）
  *   (3) 整顆導輪在牆頂之上：沒有接觸
- * @type {(env: ReturnType<typeof createWorld>, car: ReturnType<typeof createCar>) => { n: { x: number, y: number, z: number }, p: { x: number, y: number, z: number }, pen: number, roller: string }[]}
+ * @param {ReturnType<typeof createWorld>} env
+ * @param {ReturnType<typeof createCar>} car
  */
 export function rollerWallContacts(env, car) {
   const { track } = env;
@@ -1185,61 +1193,67 @@ export function rollerWallContacts(env, car) {
   const wallH = track.dims.wallH ?? spec.track.wallHeight_mm * MM;
   const out = [];
   for (const r of car.rollers) {
-    const w = mountedToWorld(car, { x: r.x * MM, y: r.y * MM, z: r.z * MM }, r.slider);
-    const pp = track.path.project(w.x, w.z);
-    const ch = channelAt(track, pp.s, center.d, level);
-    const pose = track.path.pose(pp.s);
-    const T = { x: Math.cos(pose.theta), z: Math.sin(pose.theta) };
-    const N = { x: -Math.sin(pose.theta), z: Math.cos(pose.theta) };
-    const rr = r.r * MM;
-    // 導輪輪廓（世界 y）：頂面、圓柱段底緣、錐形段底面半徑
-    const top = w.y + (r.h / 2) * MM;
-    const hc = (r.taper ? r.taper.cylinderHeight_mm : r.h) * MM;
-    const hk = r.taper ? r.taper.coneHeight_mm * MM : 0;
-    const rb = r.taper ? (r.taper.bottomDiameter_mm / 2) * MM : rr;
-    const yCyl = top - hc;
-    const yBot = yCyl - hk;
-    const wallTop = (track.roadHeight ? track.roadHeight(pp.s, level) : 0) + wallH;
-    if (wallTop <= yBot) {
-      continue;
-    }
-    for (const side of [1, -1]) {
-      const k = side > 0 ? ch.slopeU : ch.slopeL;
-      const face = side > 0 ? ch.faceU : ch.faceL;
-      if (!Number.isFinite(face)) {
+    for (const [tierIndex, tier] of (r.tiers ?? [{ y: 0, r: r.r, h: r.h }]).entries()) {
+      const mu = Math.min(tier.wallFriction ?? r.mu, spec.track.wallFriction);
+      const w = mountedToWorld(car, { x: r.x * MM, y: (r.y + tier.y) * MM, z: r.z * MM }, r.slider);
+      const pp = track.path.project(w.x, w.z);
+      const ch = channelAt(track, pp.s, center.d, level);
+      const pose = track.path.pose(pp.s);
+      const T = { x: Math.cos(pose.theta), z: Math.sin(pose.theta) };
+      const N = { x: -Math.sin(pose.theta), z: Math.cos(pose.theta) };
+      const rr = tier.r * MM;
+      // 導輪輪廓（世界 y）：頂面、圓柱段底緣、錐形段底面半徑
+      const top = w.y + (tier.h / 2) * MM;
+      const hc = (r.taper ? r.taper.cylinderHeight_mm : tier.h) * MM;
+      const hk = r.taper ? r.taper.coneHeight_mm * MM : 0;
+      const rb = r.taper ? (r.taper.bottomDiameter_mm / 2) * MM : rr;
+      const yCyl = top - hc;
+      const yBot = yCyl - hk;
+      const wallTop = (track.roadHeight ? track.roadHeight(pp.s, level) : 0) + wallH;
+      if (wallTop <= yBot) {
         continue;
       }
-      const cos = 1 / Math.sqrt(1 + k * k);
-      // 上側牆（d 較大）：法向 = (k·T − N)·cos；下側牆：(N − k·T)·cos
-      const nx = side * (k * T.x - N.x) * cos;
-      const nz = side * (k * T.z - N.z) * cos;
-      // 導輪軸到牆面的水平距離
-      const gap = side * (face - pp.d) * cos;
-      if (wallTop >= yCyl || hk <= 0) {
-        const pen = rr - gap;
-        if (pen <= 0) {
+      for (const side of [1, -1]) {
+        const k = side > 0 ? ch.slopeU : ch.slopeL;
+        const face = side > 0 ? ch.faceU : ch.faceL;
+        if (!Number.isFinite(face)) {
           continue;
         }
-        out.push({ n: { x: nx, y: 0, z: nz }, p: { x: w.x - nx * rr, y: w.y, z: w.z - nz * rr }, pen, roller: r.id, onSlider: !!r.onSlider, slider: r.slider });
-        continue;
+        const cos = 1 / Math.sqrt(1 + k * k);
+        // 上側牆（d 較大）：法向 = (k·T − N)·cos；下側牆：(N − k·T)·cos
+        const nx = side * (k * T.x - N.x) * cos;
+        const nz = side * (k * T.z - N.z) * cos;
+        // 導輪軸到牆面的水平距離
+        const gap = side * (face - pp.d) * cos;
+        if (wallTop >= yCyl || hk <= 0) {
+          const pen = rr - gap;
+          if (pen <= 0) {
+            continue;
+          }
+          out.push({ n: { x: nx, y: 0, z: nz }, p: { x: w.x - nx * rr, y: w.y, z: w.z - nz * rr }, pen, side, mu, restitution: tier.restitution ?? r.restitution, tier: tierIndex, roller: r.id, onSlider: !!r.onSlider, slider: r.slider });
+          continue;
+        }
+        // 牆頂邊緣碰錐面
+        const re = rb + ((rr - rb) * (wallTop - yBot)) / hk;
+        const overlap = re - gap;
+        if (overlap <= 0) {
+          continue;
+        }
+        const beta = Math.atan2(rr - rb, hk);
+        const cb = Math.cos(beta);
+        const sb = Math.sin(beta);
+        out.push({
+          n: { x: nx * cb, y: sb, z: nz * cb },
+          p: { x: w.x - nx * re, y: wallTop, z: w.z - nz * re },
+          pen: overlap * cb,
+          roller: r.id,
+          mu,
+          restitution: tier.restitution ?? r.restitution,
+          side,
+          tier: tierIndex,          onSlider: !!r.onSlider,
+          slider: r.slider,
+        });
       }
-      // 牆頂邊緣碰錐面
-      const re = rb + ((rr - rb) * (wallTop - yBot)) / hk;
-      const overlap = re - gap;
-      if (overlap <= 0) {
-        continue;
-      }
-      const beta = Math.atan2(rr - rb, hk);
-      const cb = Math.cos(beta);
-      const sb = Math.sin(beta);
-      out.push({
-        n: { x: nx * cb, y: sb, z: nz * cb },
-        p: { x: w.x - nx * re, y: wallTop, z: w.z - nz * re },
-        pen: overlap * cb,
-        roller: r.id,
-        onSlider: !!r.onSlider,
-        slider: r.slider,
-      });
     }
   }
   return out;
@@ -1286,9 +1300,9 @@ export function stabilizerWallContacts(env, car) {
           // 端點在牆頂以下：碰牆面；若同時在牆頂附近（下端點），取較小的分離方向（水平 or 往上離開牆頂）
           const penV = w === bot ? wallTop - bot.y : Infinity;
           if (penV < penH && top.y >= wallTop) {
-            out.push({ n: { x: 0, y: 1, z: 0 }, p: { x: w.x - nx * st.r, y: w.y, z: w.z - nz * st.r }, pen: penV, mu: st.mu, stab: st });
+            out.push({ n: { x: 0, y: 1, z: 0 }, p: { x: w.x - nx * st.r, y: w.y, z: w.z - nz * st.r }, pen: penV, mu: st.mu, restitution: st.restitution, contactKey: `${st.label}:bottom:${side}:top`, stab: st });
           } else {
-            out.push({ n: { x: nx, y: 0, z: nz }, p: { x: w.x - nx * st.r, y: w.y, z: w.z - nz * st.r }, pen: penH, mu: st.mu, stab: st });
+            out.push({ n: { x: nx, y: 0, z: nz }, p: { x: w.x - nx * st.r, y: w.y, z: w.z - nz * st.r }, pen: penH, mu: st.mu, restitution: st.restitution, contactKey: `${st.label}:${w === bot ? "bottom" : "top"}:${side}:face`, stab: st });
           }
         }
       }
@@ -1298,18 +1312,17 @@ export function stabilizerWallContacts(env, car) {
 }
 
 /**
- * 導輪撞牆的速度層級約束（非彈性碰撞衝量，iter-49 取代 iter-34 的位置投影）：
- * 問題：Rapier 的軟接觸（soft constraint）在彎道持續側向力下，導輪會被壓進牆 0.6–1.1 mm 的穩態穿透（見 projectRollersOutOfWalls 說明）。
- * 做法：導輪穿入牆面超過 slop、且接觸點朝牆移動時，
- * 在接觸點沿牆面法向施加衝量 J = −v_n / K（K = 1/m + (r×n)·I⁻¹(r×n)），使接觸點法向速度變 0。
- * 衝量同時改變車體的線動量與角動量（牆的反作用力，牛頓第三定律），恢復係數 0、不增加動能。
- * 多個導輪同時接觸時用循序衝量（Gauss–Seidel，累積衝量 ≥ 0）。只改速度、不直接改位置：穿透由 Rapier 自身的接觸偏壓逐步修回。
- * 結果（iter-49）：預設車一圈最大穿透 0.06 mm（幾何）/ 0.13 mm（接觸），6 款車殼 3 圈 ≤ 0.15 mm，彎道貼牆比例 ≈ 99%（未出現 iter-34 「整車移除朝牆速度」時的彈離）。
- * @type {(env: ReturnType<typeof createWorld>, car: ReturnType<typeof createCar>) => void}
+ * iter-93 wall solve: a single owner for roller/stabilizer normal response,
+ * effective Coulomb friction and all slider stops. Rapier still computes the
+ * contact manifolds for diagnostics, but its roller/stabilizer solver groups
+ * are disabled in impulse mode. Body/track and ground contacts stay native.
+ * Compression is inelastic; first-contact restitution uses the tier's e.
+ * Persistent overlap never becomes a positive velocity bias.
  */
 export function wallContactImpulses(env, car) {
+  car.wallSolve = { iterations: 0, residual: 0, converged: true };
   const slop = spec.sim.wallProjectionSlop_mm * MM;
-  // 第四階段：穩定零件的牆面 / 牆頂接觸也在這裡處理（法向非彈性衝量＋滑動摩擦；導輪會轉動，切向不加摩擦，同第三階段）
+  // iter-93: both roller effective friction and stabilizer sliding friction are coupled with normal/stop impulses.
   const stabContacts = car.stabilizers?.length ? stabilizerWallContacts(env, car) : [];
   for (const st of car.stabilizers ?? []) {
     st.contact = stabContacts.some((c) => c.stab === st);
@@ -1324,70 +1337,36 @@ export function wallContactImpulses(env, car) {
     return Math.abs(u + spec.sim.dt_s * uDot) >= sl.stroke;
   });
   if (contacts.length === 0 && !approachingStop) {
+    car.wallTouches = new Set();
     return;
   }
-  // 滑動保桿（iter-61）：車體＋滑動板是 7 自由度系統，接觸衝量改在廣義座標求解（見 sliderContactImpulses）
-  // iter-64：前後各一塊滑動板時為 6 + 2 = 8 自由度
-  if (car.sliders.length > 0) {
-    sliderContactImpulses(car, contacts);
-    return;
-  }
-  const body = car.chassis;
-  const invM = body.invMass();
-  const Iinv = body.effectiveWorldInvInertia();
-  const com = body.worldCom();
-  /** @type {(v: { x: number, y: number, z: number }) => { x: number, y: number, z: number }} */
-  const mulI = (v) => ({
-    x: Iinv.m11 * v.x + Iinv.m12 * v.y + Iinv.m13 * v.z,
-    y: Iinv.m12 * v.x + Iinv.m22 * v.y + Iinv.m23 * v.z,
-    z: Iinv.m13 * v.x + Iinv.m23 * v.y + Iinv.m33 * v.z,
-  });
-  /** @type {(a: any, b: any) => { x: number, y: number, z: number }} */
-  const cross = (a, b) => ({ x: a.y * b.z - a.z * b.y, y: a.z * b.x - a.x * b.z, z: a.x * b.y - a.y * b.x });
-  for (const c of contacts) {
-    const rc = { x: c.p.x - com.x, y: c.p.y - com.y, z: c.p.z - com.z };
-    const rn = cross(rc, c.n);
-    const irn = mulI(rn);
-    c.K = invM + rn.x * irn.x + rn.y * irn.y + rn.z * irn.z;
-    c.acc = 0;
-  }
-  const iters = spec.sim.wallImpulseIterations ?? 4;
-  for (let it = 0; it < iters; it++) {
-    for (const c of contacts) {
-      const v = body.velocityAtPoint(c.p);
-      const vn = v.x * c.n.x + v.y * c.n.y + v.z * c.n.z;
-      const next = Math.max(0, c.acc - vn / c.K);
-      const dj = next - c.acc;
-      c.acc = next;
-      if (dj !== 0) {
-        body.applyImpulseAtPoint({ x: c.n.x * dj, y: c.n.y * dj, z: c.n.z * dj }, c.p, true);
-      }
+  // Same 6+n coordinate solve for rigid mounts and movable stays.
+  sliderContactImpulses(car, contacts);
+}
+
+// Split position stabilization for horizontal wall faces. A common translation
+// preserves every internal joint coordinate, velocity, inertia and gravity
+// potential. It carries no Baumgarte velocity/energy kick. Sloped taper contacts
+// are deliberately excluded: raising the car would change potential energy.
+export function stabilizeWallPositions(env, car) {
+  const slop = spec.sim.wallProjectionSlop_mm * MM;
+  const bodies = [car.chassis, ...car.sliders.map((sl) => sl.body), ...car.dampers.map((d) => d.body)];
+  for (let it = 0; it < 4; it++) {
+    const contacts = [...rollerWallContacts(env, car), ...stabilizerWallContacts(env, car)]
+      .filter((c) => {
+        if (Math.abs(c.n.y) >= 1e-12 || c.pen <= slop + 1e-9) return false;
+        const v = (c.slider?.body ?? c.stab?.slider?.body ?? car.chassis).velocityAtPoint(c.p);
+        // A restituting impact must separate by its own velocity, not receive
+        // an additional positional push that changes the next contact timing.
+        return v.x * c.n.x + v.y * c.n.y + v.z * c.n.z <= 1e-7;
+      });
+    const c = contacts.sort((a, b) => b.pen - a.pen)[0];
+    if (!c) break;
+    const delta = c.pen - slop;
+    for (const b of bodies) {
+      const p = b.translation();
+      b.setTranslation({ x: p.x + delta * c.n.x, y: p.y, z: p.z + delta * c.n.z }, true);
     }
-  }
-  // 穩定零件的滑動摩擦（庫侖）：切向衝量 ≤ μ·J_n，且不超過讓接觸點切向速度歸零所需的量（不會反向加速，只消耗動能）
-  const dt = spec.sim.dt_s;
-  for (const c of contacts) {
-    if (!c.stab) {
-      continue;
-    }
-    c.stab.normalForce += c.acc / dt;
-    if (!(c.acc > 0) || !(c.mu > 0)) {
-      continue;
-    }
-    const v = body.velocityAtPoint(c.p);
-    const vn = v.x * c.n.x + v.y * c.n.y + v.z * c.n.z;
-    const vt = { x: v.x - vn * c.n.x, y: v.y - vn * c.n.y, z: v.z - vn * c.n.z };
-    const vtLen = Math.hypot(vt.x, vt.y, vt.z);
-    if (vtLen < 1e-9) {
-      continue;
-    }
-    const td = { x: vt.x / vtLen, y: vt.y / vtLen, z: vt.z / vtLen };
-    const rc = { x: c.p.x - com.x, y: c.p.y - com.y, z: c.p.z - com.z };
-    const rt = cross(rc, td);
-    const irt = mulI(rt);
-    const Kt = invM + rt.x * irt.x + rt.y * irt.y + rt.z * irt.z;
-    const jt = Math.min(c.mu * c.acc, vtLen / Kt);
-    body.applyImpulseAtPoint({ x: -td.x * jt, y: -td.y * jt, z: -td.z * jt }, c.p, true);
   }
 }
 
@@ -1430,7 +1409,7 @@ const sdp3 = (s) => [
 /**
  * 車體＋滑動板的 (6 + n) 自由度質量矩陣反矩陣（見 sliderContactImpulses 說明；n = 滑動板數，iter-61 只有前方 n = 1，iter-64 前後都裝時 n = 2）：
  * side = 車體 z 軸（世界座標）、c_c = 車體質心、rs[k] = 第 k 塊滑動板質心 − 車體質心
- * @type {(car: any) => { s: { x: number, y: number, z: number }, cc: { x: number, y: number, z: number }, rs: { x: number, y: number, z: number }[], Minv: number[][] }}
+ * @param {any} car
  */
 function sliderSystem(car) {
   const body = car.chassis;
@@ -1450,6 +1429,7 @@ function sliderSystem(car) {
   }
   /** @type {{ x: number, y: number, z: number }[]} */
   const rs = [];
+  const inertias = [];
   car.sliders.forEach((sl, k) => {
     const sb = sl.body;
     const cs = sb.worldCom();
@@ -1457,6 +1437,7 @@ function sliderSystem(car) {
     rs.push(r);
     const ms = sb.mass();
     const Is = invertMatrix(sdp3(sb.effectiveWorldInvInertia()));
+    inertias.push(Is);
     // 滑動板和車體同角速度：轉動慣量直接加到車體的轉動自由度
     for (let i = 0; i < 3; i++) {
       for (let j = 0; j < 3; j++) {
@@ -1480,7 +1461,40 @@ function sliderSystem(car) {
       }
     }
   });
-  return { s, cc, rs, Minv: invertMatrix(M) };
+  return { s, cc, rs, Ic, inertias, Minv: invertMatrix(M) };
+}
+
+// Project independent Rapier body velocities into the joint's 6+n dimensional
+// subspace using q = M^-1 sum(A_i^T M_i v_i), not by copying chassis velocity.
+function sliderVelocity(car, system) {
+  const { s, rs, Ic, inertias, Minv } = system;
+  const body = car.chassis, v = body.linvel(), w = body.angvel();
+  const mul = (I, v) => I.map((row) => row[0] * v.x + row[1] * v.y + row[2] * v.z);
+  const angular = mul(Ic, w);
+  const h = [body.mass() * v.x, body.mass() * v.y, body.mass() * v.z, ...angular, ...car.sliders.map(() => 0)];
+  car.sliders.forEach((sl, k) => {
+    const vs = sl.body.linvel(), ws = sl.body.angvel(), r = rs[k], m = sl.body.mass();
+    const p = { x: m * vs.x, y: m * vs.y, z: m * vs.z }, a = mul(inertias[k], ws);
+    h[0] += p.x; h[1] += p.y; h[2] += p.z;
+    h[3] += a[0] + r.y * p.z - r.z * p.y;
+    h[4] += a[1] + r.z * p.x - r.x * p.z;
+    h[5] += a[2] + r.x * p.y - r.y * p.x;
+    h[6 + k] = s.x * p.x + s.y * p.y + s.z * p.z;
+  });
+  return Minv.map((row) => row.reduce((sum, x, k) => sum + x * h[k], 0));
+}
+
+function writeSliderVelocity(car, { s, rs }, q) {
+  const V = { x: q[0], y: q[1], z: q[2] }, W = { x: q[3], y: q[4], z: q[5] };
+  car.chassis.setLinvel(V, true);
+  car.chassis.setAngvel(W, true);
+  car.sliders.forEach((sl, k) => {
+    const r = rs[k], du = q[6 + k];
+    sl.body.setLinvel({ x: V.x + W.y * r.z - W.z * r.y + du * s.x,
+      y: V.y + W.z * r.x - W.x * r.z + du * s.y,
+      z: V.z + W.x * r.y - W.y * r.x + du * s.z }, true);
+    sl.body.setAngvel(W, true);
+  });
 }
 
 /**
@@ -1488,28 +1502,19 @@ function sliderSystem(car) {
  * 廣義速度 q' = (V, Ω, u')：V、Ω = 車體質心速度與角速度，u' = 滑動速度；滑動板質心速度 = V + Ω×r + u'·side（r = 滑動板質心 − 車體質心），角速度 = Ω。
  * 動能 T = ½·m_c·V² + ½·Ωᵀ(I_c + I_s)Ω + ½·m_s·|V + Ω×r + u'·side|² = ½·q'ᵀ·M·q'（M 為 7×7 質量矩陣）。
  * 接觸點 p 沿方向 d 的速度 = j·q'，j = (d, (p − c_c)×d, 滑動板上的點才有 d·side)；單位衝量的廣義速度變化 = M⁻¹·jᵀ，有效反質量 K = j·M⁻¹·jᵀ。
- * 和 wallContactImpulses 相同的非彈性衝量（J = −v_n / K，累積 ≥ 0，Gauss–Seidel）與穩定零件的庫侖摩擦，只是改在 7 自由度上求解：
+ * iter-93：法向／止擋active-set同解，再與二維圓盤庫侖摩擦交替至接觸速度殘差≤10^-9 m/s（最多64輪）：
  * 牆對前導輪的衝量沿 side 的分量只改變滑動速度 u'（之後由彈簧 / 行程止擋傳到車體），垂直分量經 joint 直接作用在整體。
- * 滑動板靠在行程端點時，止擋也當成單邊約束一起解。恢復係數 0 → 系統動能不增加。最後把 q' 寫回兩個 Rapier 剛體（滑動板速度和車體一致，符合 joint 約束）
+ * 止擋為預測行程單邊約束；初次接觸才給恢復係數目標。最後把q寫回全部剛體，保持共同角速度與理想滑動速度。
  * iter-64：推廣到 n 塊滑動板（前、後各一）：q' = (V, Ω, u'₀, …, u'ₙ₋₁)，每塊滑動板各一個滑動欄；接觸點只在自己那塊滑動板的欄有 d·side，
  * 後導輪碰牆的側向衝量因此只改變後滑動板的 u'，再經後彈簧 / 止擋傳到車體。n = 1 時與 iter-61 的 7 自由度完全相同
  * @type {(car: any, contacts: any[]) => void}
  */
 function sliderContactImpulses(car, contacts) {
-  const body = car.chassis;
   const n = car.sliders.length;
   const dof = 6 + n;
-  const { s, cc, rs, Minv } = sliderSystem(car);
-  // 目前的廣義速度
-  const V = body.linvel();
-  const W = body.angvel();
-  const q = [V.x, V.y, V.z, W.x, W.y, W.z];
-  car.sliders.forEach((sl, k) => {
-    const r = rs[k];
-    const vs = sl.body.linvel();
-    const vsRigid = { x: V.x + W.y * r.z - W.z * r.y, y: V.y + W.z * r.x - W.x * r.z, z: V.z + W.x * r.y - W.y * r.x };
-    q.push((vs.x - vsRigid.x) * s.x + (vs.y - vsRigid.y) * s.y + (vs.z - vsRigid.z) * s.z);
-  });
+  const system = sliderSystem(car);
+  const { s, cc, Minv } = system;
+  const q = sliderVelocity(car, system);
 
   /** @type {(c: any) => number} 接觸點所在滑動板的索引（導輪、穩定零件；固定在車體 = −1） */
   const sliderIndex = (c) => {
@@ -1526,27 +1531,17 @@ function sliderContactImpulses(car, contacts) {
     }
     return j;
   };
-  /** @type {(j: number[]) => number[]} M⁻¹·jᵀ */
-  const response = (j) => Minv.map((row) => row.reduce((acc, v, k) => acc + v * j[k], 0));
-  /** @type {(a: number[], b: number[]) => number} */
-  const dotQ = (a, b) => a.reduce((acc, v, k) => acc + v * b[k], 0);
-  /** @type {(p: any, k: number) => { x: number, y: number, z: number }} 接觸點速度向量（k = 所在滑動板索引，−1 = 車體） */
-  const pointVel = (p, k) => {
-    const rho = { x: p.x - cc.x, y: p.y - cc.y, z: p.z - cc.z };
-    const u = k >= 0 ? q[6 + k] : 0;
-    return {
-      x: q[0] + q[4] * rho.z - q[5] * rho.y + u * s.x,
-      y: q[1] + q[5] * rho.x - q[3] * rho.z + u * s.y,
-      z: q[2] + q[3] * rho.y - q[4] * rho.x + u * s.z,
-    };
-  };
-
   for (const c of contacts) {
     c.slid = sliderIndex(c);
     c.j = jacobian(c.n, c.p, c.slid);
-    c.w = response(c.j);
-    c.K = dotQ(c.j, c.w);
-    c.acc = 0;
+    // Stable orthonormal tangent frame, independent of instantaneous slip.
+    const seed = Math.abs(c.n.y) < 0.9 ? { x: 0, y: 1, z: 0 } : { x: 1, y: 0, z: 0 };
+    const proj = seed.x * c.n.x + seed.y * c.n.y + seed.z * c.n.z;
+    const t = { x: seed.x - proj * c.n.x, y: seed.y - proj * c.n.y, z: seed.z - proj * c.n.z };
+    const len = Math.hypot(t.x, t.y, t.z);
+    for (const k of ['x', 'y', 'z']) t[k] /= len;
+    const t2 = { x: c.n.y * t.z - c.n.z * t.y, y: c.n.z * t.x - c.n.x * t.z, z: c.n.x * t.y - c.n.y * t.x };
+    c.tangents = [jacobian(t, c.p, c.slid), jacobian(t2, c.p, c.slid)];
   }
   // 行程端點硬止擋（滑動板靠在止擋上時）：單邊約束「不再往止擋外滑」，與牆面接觸一起解，
   // 牆把導輪推向止擋的衝量才會在同一步經止擋傳到車體（否則要等下一步 Rapier 的 joint 限位）；每塊滑動板各自判斷
@@ -1561,74 +1556,26 @@ function sliderContactImpulses(car, contacts) {
     for (const sign of [-1, 1]) {
       const j = new Array(dof).fill(0);
       j[6 + k] = -sign;
-      const w = response(j);
       const target = -Math.max(0, sl.stroke - sign * u) / spec.sim.dt_s;
-      stops.push({ j, w, K: dotQ(j, w), acc: 0, target });
+      stops.push({ j, target });
     }
   });
-  const rows = [...contacts, ...stops];
-  let changed = false;
-  const iters = spec.sim.wallImpulseIterations ?? 4;
-  for (let it = 0; it < iters; it++) {
-    for (const c of rows) {
-      const vn = dotQ(c.j, q);
-      const next = Math.max(0, c.acc + ((c.target ?? 0) - vn) / c.K);
-      const dj = next - c.acc;
-      c.acc = next;
-      if (dj !== 0) {
-        changed = true;
-        for (let k = 0; k < dof; k++) {
-          q[k] += c.w[k] * dj;
-        }
-      }
-    }
-  }
-  // 穩定零件的滑動摩擦（庫侖，同 wallContactImpulses）
-  const dt = spec.sim.dt_s;
+  const previous = car.wallTouches ?? new Set();
+  car.wallTouches = new Set();
   for (const c of contacts) {
-    if (!c.stab) {
-      continue;
-    }
-    c.stab.normalForce += c.acc / dt;
-    if (!(c.acc > 0) || !(c.mu > 0)) {
-      continue;
-    }
-    const v = pointVel(c.p, c.slid);
-    const vn = v.x * c.n.x + v.y * c.n.y + v.z * c.n.z;
-    const vt = { x: v.x - vn * c.n.x, y: v.y - vn * c.n.y, z: v.z - vn * c.n.z };
-    const vtLen = Math.hypot(vt.x, vt.y, vt.z);
-    if (vtLen < 1e-9) {
-      continue;
-    }
-    const td = { x: vt.x / vtLen, y: vt.y / vtLen, z: vt.z / vtLen };
-    const jtRow = jacobian(td, c.p, c.slid);
-    const wt = response(jtRow);
-    const Kt = dotQ(jtRow, wt);
-    const jt = Math.min(c.mu * c.acc, vtLen / Kt);
-    changed = true;
-    for (let k = 0; k < dof; k++) {
-      q[k] -= wt[k] * jt;
-    }
+    const key = c.roller ? `${c.roller}:${c.tier}:${c.side}` : c.contactKey;
+    car.wallTouches.add(key);
+    const vn = c.j.reduce((sum, x, i) => sum + x * q[i], 0);
+    // Restitution only on contact entry, never a persistent penetration bias.
+    c.target = previous.has(key) ? 0 : -(c.restitution ?? 0) * Math.min(0, vn);
   }
-  if (!changed) {
-    return;
+  const initial = [...q];
+  car.wallSolve = solveContactVelocities(q, Minv, contacts, stops);
+  for (const c of contacts) {
+    if (c.stab) c.stab.normalForce += c.acc / spec.sim.dt_s;
   }
-  const Vn = { x: q[0], y: q[1], z: q[2] };
-  const Wn = { x: q[3], y: q[4], z: q[5] };
-  body.setLinvel(Vn, true);
-  body.setAngvel(Wn, true);
-  car.sliders.forEach((sl, k) => {
-    const r = rs[k];
-    sl.body.setLinvel(
-      {
-        x: Vn.x + Wn.y * r.z - Wn.z * r.y + q[6 + k] * s.x,
-        y: Vn.y + Wn.z * r.x - Wn.x * r.z + q[6 + k] * s.y,
-        z: Vn.z + Wn.x * r.y - Wn.y * r.x + q[6 + k] * s.z,
-      },
-      true,
-    );
-    sl.body.setAngvel(Wn, true);
-  });
+  if (car.sliders.length === 0 && q.every((v, k) => v === initial[k])) return;
+  writeSliderVelocity(car, system, q);
 }
 
 /**

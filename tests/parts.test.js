@@ -1421,7 +1421,7 @@ describe('P17 第四階段接觸零件（穩定零件、錐形導輪）', () => 
     expect(cHg.dv).toBeLessThan(cStd.dv);
   }, 180000);
 
-  test('P17_tapered_roller 錐形導輪：牆面接觸法向水平；騎上牆頂時接觸法向帶向上分量（≈ sin 34°），撞擊衝量讓車體向上；同姿勢的圓柱導輪沒有垂直分量', () => {
+  test('P17_tapered_roller 錐形導輪：牆面接觸法向水平；騎上牆頂時接觸法向帶向上分量（≈ sin 34°），撞擊衝量讓車體向上；零摩擦法向對照的圓柱導輪沒有垂直分量', () => {
     const tapered = assemble(cfg({ rollers: 'roller-13-tapered', body: null }, 'race-frp'));
     const plain = assemble(cfg({ rollers: 'roller-13-alu', body: null }, 'race-frp'));
     expect(validateAssembly(tapered).ok, JSON.stringify(validateAssembly(tapered).violations)).toBe(true);
@@ -1452,6 +1452,13 @@ describe('P17 第四階段接觸零件（穩定零件、錐形導輪）', () => 
       car.chassis.setTranslation({ x: t.x, y, z: face - fr.z / 1000 - reach + 0.0003 }, true);
       car.chassis.setLinvel({ x: 0, y: 0, z: 0.2 }, true);
       const contacts = sim.rollerWallContacts(env, car).filter((c) => c.roller === 'FR');
+      // This case isolates geometry-induced NORMAL lift. Tangential friction
+      // can legitimately create vertical COM motion via off-center rotation.
+      // Its coupled behavior/energy is covered by P17_slider_wall_friction.
+      for (const r of car.rollers) {
+        r.mu = 0;
+        r.tiers = r.tiers.map((tier) => ({ ...tier, wallFriction: 0 }));
+      }
       const vy0 = car.chassis.linvel().y;
       sim.wallContactImpulses(env, car);
       return { contacts, dvy: car.chassis.linvel().y - vy0 };

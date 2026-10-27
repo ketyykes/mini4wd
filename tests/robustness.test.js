@@ -82,9 +82,14 @@ describe('正式穩健性回歸', () => {
         let last = start.s;
         let maxPen = 0;
         let minUp = 1;
-        let steps = 0;
+        let steps = 0, maxSolverResidual = 0, solverFailures = 0, maxSolverIterations = 0;
         for (; steps < Math.ceil(30 / spec.sim.dt_s) && distance < 3 * L && minUp > 0.8; steps++) {
           sim.stepCar(env, car);
+          if (car.wallSolve) {
+            maxSolverResidual = Math.max(maxSolverResidual, car.wallSolve.residual);
+            maxSolverIterations = Math.max(maxSolverIterations, car.wallSolve.iterations);
+            solverFailures += +!car.wallSolve.converged;
+          }
           const t = car.chassis.translation();
           const p = track.path.project(t.x, t.z);
           let ds = p.s - last;
@@ -96,11 +101,12 @@ describe('正式穩健性回歸', () => {
           maxPen = Math.max(maxPen, sim.wallPenetration(env, car));
         }
         const label = `${name} ${JSON.stringify(start)}`;
-        measurements[`${name}-race`].push({ start, distance, simTime: steps * spec.sim.dt_s, maxPen_mm: maxPen * 1000, minUp });
+        measurements[`${name}-race`].push({ start, distance, simTime: steps * spec.sim.dt_s, maxPen_mm: maxPen * 1000, minUp, maxSolverResidual, maxSolverIterations, solverFailures });
         console.log(`[P17] ${label}: ${distance.toFixed(3)} m, ${(steps * spec.sim.dt_s).toFixed(3)} s, ${(maxPen * 1000).toFixed(3)} mm, up ${minUp.toFixed(3)}`);
         expect(distance, label).toBeGreaterThanOrEqual(3 * L);
         expect(maxPen, label).toBeLessThanOrEqual(0.001);
         expect(minUp, label).toBeGreaterThan(0.8);
+        expect(solverFailures, label).toBe(0);
       } finally {
         env.world.free();
       }

@@ -79,7 +79,7 @@
     "normalizedAllowedLinearError_src": "Rapier 允許不修正的穿透（×lengthUnit 0.1 m）：預設 0.005 → 0.5 mm，等於一半的 P06 上限；iter-01 改 0.0002 → 0.02 mm",
     "wallContactMode": "impulse",
     "wallProjectionSlop_mm": 0.05,
-    "wallContactMode_src": "iter-49：導輪–牆接觸在 Rapier 軟接觸之外加「接觸點法向的非彈性衝量」（J = −v_n / K，恢復係數 0，同時改線動量與角動量，不直接改位置），取代 iter-34 只改位置的投影（不守動量）。可選值 impulse / position（舊投影，保留作比較）/ none（只用 Rapier 軟接觸，穩態穿透約 0.6 mm）。slop 0.05 mm 為衝量的啟動門檻（允許的接觸重疊，小於 Rapier 預設 0.5 mm 的十分之一）",
+    "wallContactMode_src": "iter-93：impulse模式由同一6+n自由度系統求導輪／穩定頭法向、雙切向累積庫侖摩擦與滑板預測止擋；其Rapier碰撞體保留接觸診斷、停用原生衝量。初次接觸用原分層恢復係數，持續接觸不加正速度偏壓；水平靜止接觸另做車體／滑板／制振器整組位置穩定化，保留速度、內部行程及重力位能，不向上投影錐面／牆頂。slop沿用0.05 mm。impulse+position為相容別名；position保留舊位置診斷，none只用Rapier。幾何近似、與地板／輪胎分步及全域逐步能量限制見SPEC iter-93",
     "wallProjectionFraction": 1.0
   },
   "bearingsGeometry": {
