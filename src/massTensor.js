@@ -11,6 +11,17 @@ export const pointTensor = (m, p) => ({
   xy: -m * p.x * p.y, xz: -m * p.x * p.z, yz: -m * p.y * p.z,
 });
 
+/** Uniform solid cylinder about its center, with its length along body x.
+ * Inputs may use g/mm (output g·mm²) or kg/m (output kg·m²).
+ * This estimates the distribution inside the outer envelope, not cell internals. */
+export function cylinderXTensor(mass, radius, length) {
+  if (![mass, radius, length].every((v) => Number.isFinite(v) && v > 0)) {
+    throw new Error('Cylinder mass, radius and length must be positive and finite');
+  }
+  const transverse = mass * (3 * radius ** 2 + length ** 2) / 12;
+  return { xx: mass * radius ** 2 / 2, yy: transverse, zz: transverse, xy: 0, xz: 0, yz: 0 };
+}
+
 /** Convert raw second moments ∫rrᵀ dm into inertia about the center of mass. */
 export function centralTensor(second, mass, com) {
   const out = {

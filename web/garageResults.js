@@ -1,5 +1,5 @@
 // Local records are versioned: future physics/track changes need a new key.
-export const RESULTS_KEY = 'mini4wd-results-v4'; // iter-91: passive motor endpoint fit + brush voltage drop.
+export const RESULTS_KEY = 'mini4wd-results-v5'; // iter-92: AA cell intrinsic inertia.
 const LIMIT = 20;
 
 export function readResults(storage) {

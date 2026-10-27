@@ -77,6 +77,8 @@ export interface PlacedPart {
   label: string;
   mass_g: number;
   pos: Vec3;
+  /** 對自身質心、車體座標軸的慣性張量（g·mm²）；未提供的零件仍採既有近似 */
+  inertia_gmm2?: { xx: number; yy: number; zz: number; xy: number; xz: number; yz: number };
 }
 
 /** 傳動系轉動慣量（parts/inertia.js drivetrainInertia；第四階段） */

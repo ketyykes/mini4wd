@@ -19,7 +19,7 @@ import { polygonCentroid } from './parts/plateGeom.js';
 import { bumperTrim } from './parts/bumperGeom.js';
 import { drivetrainInertia } from './parts/inertia.js';
 import { frontalArea } from './bodies/silhouette.js';
-import { zeroTensor, addTensor, pointTensor, principalAxes } from './massTensor.js';
+import { zeroTensor, addTensor, pointTensor, principalAxes, cylinderXTensor } from './massTensor.js';
 import { chassisSideSolids, sideDamperAdapter } from './parts/chassisGeom.js';
 
 /** @typedef {import('./parts/types').PlacedPart} PlacedPart */
@@ -303,13 +303,13 @@ export function assemble(rawConfig) {
 
   /** @type {PlacedPart[]} */
   const parts = [];
-  /** @type {(slot: string, label: string, mass_g: number, pos: Vec3) => void} */
-  const place = (slot, label, mass_g, pos) => {
+  /** @type {(slot: string, label: string, mass_g: number, pos: Vec3, inertia_gmm2?: PlacedPart['inertia_gmm2']) => void} */
+  const place = (slot, label, mass_g, pos, inertia_gmm2) => {
     // 質量 0 的零件（例如和底盤一體成型的前保桿）不列入
     if (mass_g <= 0) {
       return;
     }
-    parts.push({ slot, id: p[slot]?.id ?? body?.id ?? slot, category: p[slot]?.category ?? 'body', label, mass_g, pos: lifted(pos, lift) });
+    parts.push({ slot, id: p[slot]?.id ?? body?.id ?? slot, category: p[slot]?.category ?? 'body', label, mass_g, pos: lifted(pos, lift), ...(inertia_gmm2 ? { inertia_gmm2 } : {}) });
   };
 
   // 保桿切除（iter-47）：裝 FRP / 碳纖導輪板（chassisTrim）的那一端，底盤保桿兩側導輪臂剪掉；
@@ -333,7 +333,9 @@ export function assemble(rawConfig) {
   place('motor', '雙軸馬達', p.motor.mass_g, { x: comp.motor.x, y: comp.motor.y, z: comp.motor.z });
   const cells = p.battery.cells;
   comp.battery.zs.slice(0, cells).forEach((z, i) => {
-    place('battery', `電池 ${i + 1}`, p.battery.mass_g / cells, { x: comp.battery.x, y: comp.battery.y, z });
+    const cellMass = p.battery.mass_g / cells;
+    place('battery', `電池 ${i + 1}`, cellMass, { x: comp.battery.x, y: comp.battery.y, z },
+      cylinderXTensor(cellMass, comp.battery.dia / 2, comp.battery.length));
   });
   // 齒輪組：前後各一半；質心取中間齒輪與輪軸齒輪之間（推估）
   for (const sx of [1, -1]) {
@@ -698,7 +700,8 @@ function sliderOf(slot, st, parts, stabilizers) {
 
 /**
  * Full parallel-axis tensor. Body uses shell/solid integrals; chassis still
- * uses its estimated uniform box, remaining components use point masses.
+ * uses its estimated uniform box. Explicit component central tensors (currently
+ * AA cells) are added once; remaining components still use point masses.
  * @type {(parts: PlacedPart[], ch: any, bodyProps: any) => { mass_g: number, com_mm: Vec3, inertia_kgm2: Vec3 }}
  */
 function massProps(parts, ch, bodyProps) {
@@ -724,6 +727,7 @@ function massProps(parts, ch, bodyProps) {
     const dy = q.pos.y - com_mm.y;
     const dz = q.pos.z - com_mm.z;
     addTensor(inertia, pointTensor(q.mass_g, { x: dx, y: dy, z: dz }));
+    if (q.inertia_gmm2) addTensor(inertia, q.inertia_gmm2);
   }
   /** @type {[number, { min: Vec3, max: Vec3 }][]} 底盤本體與車殼（沒裝車殼時只有底盤） */
   // 底盤本體的質量取零件清單裡的值（保桿切除後的質量）

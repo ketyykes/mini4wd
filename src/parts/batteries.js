@@ -1,5 +1,9 @@
 // 電池組（2 顆 AA 串聯；SPEC 1.3）
 
+// iter-92: central inertia uses the existing outer dimensions and placed mass.
+// Uniform internal density is an estimate; chemistry-specific layers are not measured.
+const INERTIA_SRC = '推估：按既有每顆質量與外徑／長度，視為沿車體x的均質圓柱；Ixx=mr²/2、Iyy=Izz=m(3r²+L²)/12。非電芯內部材料分布實測。';
+
 /** @type {import('./types').PartBase[]} */
 export const batteryParts = [
   {
@@ -26,6 +30,7 @@ export const batteryParts = [
       cellOcvCurve: 'SPEC 1.3：開路電壓 vs SOC 分段線性（推估）',
       cutoffCellVoltage_V: 'SPEC 1.3：1.0 V/顆',
       cellMass_g: 'SPEC 1.3：約 19 g/顆',
+      inertia: INERTIA_SRC,
       cellDiameter_mm: 'SPEC 1.9：Eneloop 規格書直徑 14.35 mm',
       cellLength_mm: '推估：AA 通用長度 50.5 mm',
     },
@@ -58,6 +63,7 @@ export const batteryParts = [
       capacity_mAh: '推估（P 節）：標稱約 2.4 Ah，但 2 A 等級放電的有效容量建議只取 1.0 Ah（[LYGDUR]「1 W 定功率約 900 mAh」只見於搜尋摘要）',
       cutoffCellVoltage_V: 'PARTS_RESEARCH P 節：[EALK] 放電終止 0.9 V/顆',
       cellMass_g: 'PARTS_RESEARCH P 節 [E91]：「Typical Weight: 23.0 grams」',
+      inertia: INERTIA_SRC,
       mass_g: '2 × 23.0 g（[E91]；Duracell 23.8 g [LYGDUR]）',
       cellDiameter_mm: '推估：AA（LR6）IEC 尺寸 13.5–14.5 mm，取上限',
       cellLength_mm: '推估：AA 通用長度 50.5 mm',
@@ -85,6 +91,7 @@ export const batteryParts = [
       cellInternalResistance_ohm: '[ENPRO]「Internal Impedance Approx. 40mΩ(at 1KHz)」；DC 建模取 50 mΩ（推估：比 AC 值高約 25%，與 SPEC 1.3 由 25 → 40 mΩ 的放大比例一致）',
       cellOcvCurve: '同 battery-aa-nimh-950（SPEC 1.3 推估曲線）',
       cellMass_g: '[ENPRO]「Weight Approx. 30 g」',
+      inertia: INERTIA_SRC,
       mass_g: '2 × 30 g（[ENPRO]）',
       cellDiameter_mm: '推估：AA 上限 14.5 mm',
     },
