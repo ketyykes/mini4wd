@@ -75,31 +75,38 @@ export function batteryResistanceAt(P, soc) {
 /**
  * 在給定開路電壓與馬達轉速下，求電流、端電壓與馬達輸出扭力
  * 電路（第四階段加入迴路電阻 Rc：電池端子、開關、馬達端子的本體＋接點電阻，見 switch 零件）：
- *   Voc − I·(Rb + Rc + Rm) − Ke·ω = 0；輸出扭力 τ = Kt·I − τ_f(ω)
+ *   Voc − I·(Rb + Rc + Rm) − Ub·sign(I) − k·ω = 0；τ = k·I − τ_f(ω)
+ * The brush drop opposes CURRENT (including generation), not rotation.
+ * At I = 0 it supports any voltage in [−Ub, Ub] (static dead band).
  * terminalVoltage = 電池端電壓 Voc − I·Rb；motorVoltage = 馬達端子電壓 Voc − I·(Rb + Rc)
- * @type {(P: any, voc: number, omegaMotor: number, rb?: number) => { current: number, torque: number, terminalVoltage: number, motorVoltage: number }}
+ * @type {(P: any, voc: number, omegaMotor: number, rb?: number) => { current: number, torque: number, terminalVoltage: number, motorVoltage: number, brushVoltage: number }}
  */
 export function motorOperatingPoint(P, voc, omegaMotor, rb = P.batteryResistance) {
   const rc = P.circuitResistance ?? 0;
   const rTotal = rb + rc + P.motorResistance;
-  const current = (voc - P.ke * omegaMotor) / rTotal;
+  const voltage = voc - P.ke * omegaMotor;
+  const ub = P.motorBrushDrop;
+  const current = Math.sign(voltage) * Math.max(0, Math.abs(voltage) - ub) / rTotal;
+  const brushVoltage = voltage - current * rTotal;
   const torque = P.kt * current - motorFrictionTorque(P, omegaMotor);
   const terminalVoltage = voc - current * rb;
   const motorVoltage = voc - current * (rb + rc);
-  return { current, torque, terminalVoltage, motorVoltage };
+  return { current, torque, terminalVoltage, motorVoltage, brushVoltage };
 }
 
 /**
  * 等效線性馬達參數（含電池內阻與 I0 摩擦）：τ_out = τ_stall · (1 − ω/ω0)
- * τ_out(ω) = Kt·(V − Ke·ω)/R − Kt·I0·[c + (1−c)·ω/ω0r] 對 ω 為線性，故仍是 SPEC P01 的線性馬達模型
+ * In the motoring branch I > 0:
+ * τ_out(ω) = k·(V − Ub − k·ω)/R − k·I0·[c + (1−c)·ω/ω0r].
+ * This is linear through the positive-torque range used by P01/P13.
  * @type {(P: any, voc: number, rb?: number) => { omega0: number, tauStall: number }}
  */
 export function linearMotorParams(P, voc, rb = P.batteryResistance) {
   const rTotal = rb + (P.circuitResistance ?? 0) + P.motorResistance;
   const c = P.motorFrictionCoulombFraction;
-  const tauStall = (P.kt * voc) / rTotal - P.motorFrictionTorque * c;
+  const tauStall = (P.kt * Math.max(0, voc - P.motorBrushDrop)) / rTotal - P.motorFrictionTorque * c;
   const slope = (P.kt * P.ke) / rTotal + (P.motorFrictionTorque * (1 - c)) / P.omega0Rated;
-  return { omega0: tauStall / slope, tauStall };
+  return tauStall > 0 ? { omega0: tauStall / slope, tauStall } : { omega0: 0, tauStall: 0 };
 }
 
 /**
@@ -194,6 +201,7 @@ export function theoreticalTopSpeed({ assembly, soc = 1, voc }) {
   const r = P.wheelRadius;
   const { omega0, tauStall } = linearMotorParams(P, vocUsed, batteryResistanceAt(P, soc));
   const v0 = (omega0 / gearRatio) * r;
+  if (omega0 === 0) return { vTheory: 0, v0, omega0, tauStall };
   const eta = driveEfficiency(P);
   const netForce = (v) => {
     const omega = (v / r) * gearRatio;

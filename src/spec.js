@@ -14,15 +14,23 @@ const G_TO_KG = 0.001;
 export function deriveParams(s, massTotal_g) {
   const wheelRadius = (s.tire.diameter_mm / 2) * MM;
 
-  // 馬達模型常數（SPEC 1.4 推估式，含無載電流 I0）：
-  // R_m = V / I_stall、k_t = τ_stall / (I_stall − I0)、k_e = (V − I0·R_m) / ω0
+  // Passive PMDC endpoint fit (SPEC 1.4, iter-91): kt = ke = k.
+  // V = R·I + Ub·sign(I) + k·ω; τ = k·I − τ_f(ω).
+  // The existing friction split c gives τ_f(0+) = c·k·I0.
+  // Solve k, R and Ub from BOTH specified no-load/stall points, rather
+  // than treating V/Is as winding resistance and hiding kt/ke losses.
   // 輸出扭力 τ = k_t·I − τ_f(ω)，τ_f 在 3 V 無載轉速時 = k_t·I0（第一階段決策 D1）
   const m = s.motor;
   const omega0Rated = (m.noLoadRpm_atRated * 2 * Math.PI) / 60;
   const i0 = m.noLoadCurrent_A;
-  const motorResistance = m.ratedVoltage_V / m.stallCurrent_atRated_A;
-  const kt = m.stallTorque_atRated_Nm / (m.stallCurrent_atRated_A - i0);
-  const ke = (m.ratedVoltage_V - i0 * motorResistance) / omega0Rated;
+  const is = m.stallCurrent_atRated_A;
+  const kt = m.stallTorque_atRated_Nm / (is - m.frictionCoulombFraction * i0);
+  const ke = kt;
+  const motorResistance = kt * omega0Rated / (is - i0);
+  const motorBrushDrop = m.ratedVoltage_V - is * motorResistance;
+  if (!(motorResistance > 0) || !(kt > 0) || !(motorBrushDrop >= 0)) {
+    throw new Error('Motor endpoints do not admit a passive constant brush-drop fit');
+  }
 
   return {
     wheelRadius,
@@ -31,6 +39,7 @@ export function deriveParams(s, massTotal_g) {
     ke,
     kt,
     motorResistance,
+    motorBrushDrop,
     omega0Rated,
     motorFrictionTorque: kt * i0,
     motorFrictionCoulombFraction: m.frictionCoulombFraction,
