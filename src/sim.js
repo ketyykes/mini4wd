@@ -719,10 +719,18 @@ export function stepCar(env, car) {
   let appliedLong = 0;
   let spareFwd = 0;
   let spareBack = 0;
+  // 接觸開始那一步的預測（iter-94）：射線多看「本步可能前進的距離」，壓縮量本步由 c0 ≤ 0 變成 c1 > 0 時，
+  // 彈簧力用離散梯度 [U(c1) − U(c0)] / (c1 − c0)，讓本步施力做的功等於彈簧位能增量；
+  // 舊做法本步不施力，積分後卻多出 ½k·c1² 的位能，落地瞬間總機械能因而回升（見 ITERATION_LOG iter-94）
+  const gUp = -spec.sim.gravity * up.y;
   for (const w of car.wheels) {
     const hp = localToWorld(car, w.hardpoint);
+    const vHp = body.velocityAtPoint(hp);
+    /** @type {number} 本步預測的法向速度（沿 up，含重力；負 = 往地面） */
+    const vnPred = vHp.x * up.x + vHp.y * up.y + vHp.z * up.z + gUp * dt;
+    const lookAhead = Math.max(0, -vnPred * dt);
     const ray = new RAPIER.Ray(hp, { x: -up.x, y: -up.y, z: -up.z });
-    const hit = env.world.castRay(ray, maxLen, true, undefined, undefined, undefined, body);
+    const hit = env.world.castRay(ray, maxLen + lookAhead, true, undefined, undefined, undefined, body);
     w.contact = false;
     w.normalForce = 0;
     if (!hit) {
@@ -733,7 +741,17 @@ export function stepCar(env, car) {
     const vp = body.velocityAtPoint(cp);
     const vn = vp.x * up.x + vp.y * up.y + vp.z * up.z;
     const compression = maxLen - dist;
-    w.normalForce = Math.max(0, springK * compression - damperC * vn);
+    if (compression > 0) {
+      w.normalForce = Math.max(0, springK * compression - damperC * vn);
+    } else {
+      const c1 = compression - vnPred * dt;
+      if (c1 <= 0) {
+        continue;
+      }
+      /** @type {number} 本步在接觸中的時間比例 */
+      const frac = c1 / (c1 - compression);
+      w.normalForce = Math.max(0, (springK * c1 * c1) / (2 * (c1 - compression)) - damperC * vn * frac);
+    }
     w.contact = true;
     w.cp = cp;
     w.vp = vp;

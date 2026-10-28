@@ -42,8 +42,8 @@ describe('正式穩健性回歸', () => {
         expect(Object.values(result).every((v) => typeof v !== 'number' || Number.isFinite(v))).toBe(true);
         expect(result.minUp).toBeGreaterThan(0.8);
         expect(result.finalUp).toBeGreaterThan(0.99);
-        // Impact stabilization may briefly add numerical energy; report its
-        // magnitude, and require net dissipation over the complete landing.
+        // iter-94：射線輪開始接觸那一步改用離散梯度力後，落地過程任何一步的總機械能都不得高於落下前
+        expect(result.maxEnergy).toBeLessThanOrEqual(result.initialEnergy);
         expect(result.finalEnergy).toBeLessThan(result.initialEnergy);
       }
       measurements[id].push({ scenario, free: a, locked: b });
