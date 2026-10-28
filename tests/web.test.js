@@ -210,6 +210,18 @@ describe('P19 網頁換件', () => {
     // 停用時點按鈕不會開始模擬
     await page.locator('[data-action="race"]').click({ force: true });
     expect((await garageState()).running).toBe(false);
+    // B15（iter-100）：勾「切輪拱」→ 輪胎干涉解除、可上賽道、數值與 Node 一致、網址記錄 archCut=1；取消勾選恢復原狀
+    await page.check('#chk-arch-cut');
+    await expect.poll(async () => (await garageState()).config.bodyArchCut).toBe(true);
+    const cut = await garageState();
+    expectMatchesNode(cut);
+    expect(cut.validation.codes).not.toContain('BODY_TIRE_CLEARANCE');
+    expect(cut.validation.ok).toBe(true);
+    expect(cut.asm.bodyMass_g).toBeLessThan(g.asm.bodyMass_g);
+    expect(new URL(page.url()).searchParams.get('archCut')).toBe('1');
+    await page.uncheck('#chk-arch-cut');
+    await expect.poll(async () => (await garageState()).validation.codes).toContain('BODY_TIRE_CLEARANCE');
+    expect(new URL(page.url()).searchParams.get('archCut')).toBe(null);
   }, 60000);
 
   test('P19_合法組合上賽道後車子在賽道上跑且經換道器換車道', async () => {

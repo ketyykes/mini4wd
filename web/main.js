@@ -130,6 +130,10 @@ for (const slot of Object.keys(SLOTS)) {
     config[slot] = params.get(slot);
   }
 }
+// B15（iter-100）：?archCut=1 切輪拱
+if (params.get('archCut') === '1') {
+  config.bodyArchCut = true;
+}
 const car = buildCarModel(assemble(config), { body: bodyParam !== 'none' });
 scene.add(car);
 

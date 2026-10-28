@@ -283,6 +283,8 @@ const hud = $('hud');
 const warmHint = $('warm-hint');
 const presetModified = $('preset-modified');
 const chkCom = /** @type {HTMLInputElement} */ ($('chk-com'));
+/** B15（iter-100）：切輪拱（config.bodyArchCut；網址 archCut=1） */
+const chkArchCut = /** @type {HTMLInputElement} */ ($('chk-arch-cut'));
 
 const assemblyLabel = () => `${PRESET_LABELS[garage.preset] ?? garage.preset}${sameValue(garage.config, presetConfig(garage.preset)) ? '' : '（已修改）'} · ${currentAsm?.body?.def.name ?? '無車殼'}`;
 
@@ -557,6 +559,9 @@ const readUrl = () => {
       garage.notices.push(`URL 參數 ${slot}=${v} 無法辨識，已忽略`);
     }
   }
+  if (params.get('archCut') === '1') {
+    config.bodyArchCut = true;
+  }
   garage.preset = preset;
   garage.config = config;
 };
@@ -579,13 +584,16 @@ const writeUrl = () => {
       params.set(slot, String(v));
     }
   }
+  if (garage.config.bodyArchCut && !base.bodyArchCut) {
+    params.set('archCut', '1');
+  }
   const qs = params.toString();
   let url = location.pathname;
   if (qs) {
     url += `?${qs}`;
   }
   history.replaceState(null, '', url);
-  const modified = SLOT_KEYS.some((s) => !sameValue(garage.config[s], base[s]));
+  const modified = SLOT_KEYS.some((s) => !sameValue(garage.config[s], base[s])) || !!garage.config.bodyArchCut !== !!base.bodyArchCut;
   presetModified.hidden = !modified;
 };
 
@@ -851,11 +859,13 @@ const syncSelects = () => {
   for (const [slot, sel] of selects) {
     setSelectValue(sel, garage.config[slot]);
   }
+  chkArchCut.checked = !!garage.config.bodyArchCut;
 };
 
 /** @type {(disabled: boolean) => void} 上賽道時鎖住選單 */
 const lockSelects = (disabled) => {
   selConfig.disabled = disabled;
+  chkArchCut.disabled = disabled;
   for (const sel of selects.values()) {
     sel.disabled = disabled;
   }
@@ -1043,6 +1053,17 @@ const init = () => {
   syncSelects();
   selConfig.addEventListener('change', () => onPresetChange(selConfig.value));
   selBody.addEventListener('change', () => onSlotChange('body', selBody.value));
+  chkArchCut.addEventListener('change', () => {
+    if (garage.running) {
+      return;
+    }
+    if (chkArchCut.checked) {
+      garage.config.bodyArchCut = true;
+    } else {
+      delete garage.config.bodyArchCut;
+    }
+    update();
+  });
   btnRace.addEventListener('click', onRace);
   btnGarage.addEventListener('click', onGarage);
   chkCom.addEventListener('change', () => scene.setComVisible(chkCom.checked));

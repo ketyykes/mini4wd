@@ -13,6 +13,7 @@ import p7PartsConfig from '../configs/p7-parts.json';
 import { spec as globalSpec, deriveParams } from './spec.js';
 import { resolvePart, listParts } from './parts/index.js';
 import { getBody, bodyMassProps, bodyClearance } from './bodies/index.js';
+import { archCutBody } from './bodies/archCut.js';
 import { rollerLayout, wheelLayout, componentLayout } from './carLayout.js';
 import { solidGap, solidBox, verticesGap, sweepZ } from './parts/clearance.js';
 import { polygonCentroid } from './parts/plateGeom.js';
@@ -284,10 +285,14 @@ export function assemble(rawConfig) {
     p[slot] = resolvePart(v, category);
   }
   // body 為 null / 空字串時不裝車殼（只有底盤）：質量、重心、外框、規則檢查都只算底盤
-  const body = config.body ? getBody(config.body) : null;
-  const bodyProps = body ? bodyMassProps(body) : null;
   const s = buildSpec(p);
   const ch = p.chassis;
+  // B15（iter-100）：bodyArchCut = true 時把輪胎附近的殼面剪掉（底盤座標，輪軸相對底盤固定；切口跟著實際輪徑與輪寬）
+  const baseBody = config.body ? getBody(config.body) : null;
+  const body = baseBody && config.bodyArchCut
+    ? archCutBody(baseBody, wheelLayout(s).map((w) => ({ x: w.x, y: w.y, z: w.z, r: p.wheels.diameter_mm / 2, width: p.wheels.width_mm })))
+    : baseBody;
+  const bodyProps = body ? bodyMassProps(body) : null;
 
   // 換輪徑時整個底盤（含導輪、車殼）跟著升降
   const lift = (p.wheels.diameter_mm - ch.refWheelDiameter_mm) / 2;
@@ -592,6 +597,8 @@ export function assemble(rawConfig) {
       ? {
           id: body.id,
           def: body,
+          // 切輪拱時記錄原車殼 id 與切掉的質量（B15）
+          archCut: body.archCut ? { baseId: body.archCut.baseId, removedMass_g: bodyMassProps(baseBody).mass_g - bodyProps.mass_g } : null,
           mounts: body.mounts.map((m) => ({ ...lifted(m, lift), id: m.id })),
           mass_g: bodyProps.mass_g,
           bbox_mm: bodyBox,
