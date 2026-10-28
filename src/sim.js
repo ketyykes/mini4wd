@@ -1501,7 +1501,7 @@ function sliderSystem(car) {
       }
     }
   });
-  return { s, cc, rs, Ic, inertias, Minv: invertMatrix(M) };
+  return { s, cc, rs, Ic, inertias, M, Minv: invertMatrix(M) };
 }
 
 // Project independent Rapier body velocities into the joint's 6+n dimensional
@@ -1610,7 +1610,8 @@ function sliderContactImpulses(car, contacts) {
     c.target = previous.has(key) ? 0 : -(c.restitution ?? 0) * Math.min(0, vn);
   }
   const initial = [...q];
-  car.wallSolve = solveContactVelocities(q, Minv, contacts, stops);
+  // iter-98（B1）：傳入質量矩陣啟用能量保證（同時恢復碰撞不得增加 ½qᵀMq，見 contactSolver.js）
+  car.wallSolve = solveContactVelocities(q, Minv, contacts, stops, { M: system.M });
   for (const c of contacts) {
     if (c.stab) c.stab.normalForce += c.acc / spec.sim.dt_s;
   }

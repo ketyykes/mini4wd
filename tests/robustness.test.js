@@ -83,12 +83,16 @@ describe('正式穩健性回歸', () => {
         let maxPen = 0;
         let minUp = 1;
         let steps = 0, maxSolverResidual = 0, solverFailures = 0, maxSolverIterations = 0;
+        // iter-98（B1）：每一次牆接觸共用求解後的系統動能 ½qᵀMq 都不得高於求解前；記錄恢復目標被縮小的次數
+        let maxWallEnergyGain = -Infinity, energyGuards = 0;
         for (; steps < Math.ceil(30 / spec.sim.dt_s) && distance < 3 * L && minUp > 0.8; steps++) {
           sim.stepCar(env, car);
           if (car.wallSolve) {
             maxSolverResidual = Math.max(maxSolverResidual, car.wallSolve.residual);
             maxSolverIterations = Math.max(maxSolverIterations, car.wallSolve.iterations);
             solverFailures += +!car.wallSolve.converged;
+            if (car.wallSolve.energyBefore !== undefined) maxWallEnergyGain = Math.max(maxWallEnergyGain, car.wallSolve.energyAfter - car.wallSolve.energyBefore);
+            energyGuards += +!!car.wallSolve.energyGuard;
           }
           const t = car.chassis.translation();
           const p = track.path.project(t.x, t.z);
@@ -101,12 +105,13 @@ describe('正式穩健性回歸', () => {
           maxPen = Math.max(maxPen, sim.wallPenetration(env, car));
         }
         const label = `${name} ${JSON.stringify(start)}`;
-        measurements[`${name}-race`].push({ start, distance, simTime: steps * spec.sim.dt_s, maxPen_mm: maxPen * 1000, minUp, maxSolverResidual, maxSolverIterations, solverFailures });
+        measurements[`${name}-race`].push({ start, distance, simTime: steps * spec.sim.dt_s, maxPen_mm: maxPen * 1000, minUp, maxSolverResidual, maxSolverIterations, solverFailures, maxWallEnergyGain, energyGuards });
         console.log(`[P17] ${label}: ${distance.toFixed(3)} m, ${(steps * spec.sim.dt_s).toFixed(3)} s, ${(maxPen * 1000).toFixed(3)} mm, up ${minUp.toFixed(3)}`);
         expect(distance, label).toBeGreaterThanOrEqual(3 * L);
         expect(maxPen, label).toBeLessThanOrEqual(0.001);
         expect(minUp, label).toBeGreaterThan(0.8);
         expect(solverFailures, label).toBe(0);
+        expect(maxWallEnergyGain, label).toBeLessThanOrEqual(1e-12);
       } finally {
         env.world.free();
       }

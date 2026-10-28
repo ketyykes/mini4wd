@@ -91,8 +91,44 @@ function solveNormals(q, rows, A, tolerance) {
  * and a nonpositive speculative target. The mass matrix must be SPD.
  * Accumulated impulses reset each physical step. Every sweep couples normal,
  * disk-constrained friction and travel stops; only impulse differences apply.
+ * Passing the mass matrix M (options) enables the energy guard described below.
  */
-export function solveContactVelocities(q, Minv, contacts, limits = [], { maxIterations = 64, tolerance = 1e-9 } = {}) {
+export function solveContactVelocities(q, Minv, contacts, limits = [], { maxIterations = 64, tolerance = 1e-9, M = null } = {}) {
+  if (!M) return solveOnce(q, Minv, contacts, limits, maxIterations, tolerance);
+  // iter-98（B1）：全域能量保證。同時多點恢復碰撞（法向目標 −e·v_n）的聯立解可能讓 ½qᵀMq 增加
+  // （隨機 6 自由度多接觸案例最多 +1.8%，見 scripts/diag/b1-gain-search.test.js）。增加時把所有恢復目標等比例縮小，
+  // 二分到剛好不增能的最大比例 α。α = 0 時所有法向／止擋目標 ≤ 0：ΔKE = λᵀv₁ − ½λᵀAλ ≤ 0，摩擦圓盤只耗能 → 必定不增能
+  const q0 = [...q];
+  const e0 = kineticEnergy(q0, M);
+  const targets = contacts.map((c) => c.target ?? 0);
+  const restituting = targets.some((t) => t > 0);
+  let result = solveOnce(q, Minv, contacts, limits, maxIterations, tolerance);
+  let e1 = kineticEnergy(q, M);
+  if (!restituting || e1 <= e0) return { ...result, energyBefore: e0, energyAfter: e1, restitutionScale: 1 };
+  /** @type {(alpha: number) => { result: any, q: number[], e: number }} 以比例 α 縮小恢復目標後重解 */
+  const trial = (alpha) => {
+    const qa = [...q0];
+    contacts.forEach((c, i) => { c.target = targets[i] > 0 ? alpha * targets[i] : targets[i]; });
+    const r = solveOnce(qa, Minv, contacts, limits, maxIterations, tolerance);
+    return { result: r, q: qa, e: kineticEnergy(qa, M) };
+  };
+  let lo = 0, hi = 1;
+  for (let it = 0; it < 30 && hi - lo > 1e-6; it++) {
+    const mid = (lo + hi) / 2;
+    if (trial(mid).e <= e0) lo = mid; else hi = mid;
+  }
+  // 以 α = lo 重解一次：q、contact 的 acc／friction／target 都對應實際採用的解
+  const final = trial(lo);
+  q.splice(0, q.length, ...final.q);
+  result = final.result;
+  e1 = final.e;
+  return { ...result, energyBefore: e0, energyAfter: e1, restitutionScale: lo, energyGuard: true };
+}
+
+/** @type {(v: number[], M: number[][]) => number} 廣義速度的動能 ½vᵀMv */
+export const kineticEnergy = (v, M) => 0.5 * M.reduce((sum, row, i) => sum + v[i] * dot(row, v), 0);
+
+function solveOnce(q, Minv, contacts, limits, maxIterations, tolerance) {
   const rows = [...contacts, ...limits];
   for (const c of rows) {
     c.w = response(Minv, c.j);

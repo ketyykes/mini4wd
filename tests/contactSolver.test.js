@@ -1,5 +1,5 @@
 import { expect, test } from 'vitest';
-import { solveContactVelocities } from '../src/contactSolver.js';
+import { solveContactVelocities, kineticEnergy } from '../src/contactSolver.js';
 
 const eye = (n) => Array.from({ length: n }, (_, i) => Array.from({ length: n }, (_, j) => +(i === j)));
 const dot = (a, b) => a.reduce((s, x, i) => s + x * b[i], 0);
@@ -101,4 +101,67 @@ test('P17_contact_restitution 單點撞擊保留指定恢復係數與耗散，�
     expect(q[1]).toBeCloseTo(3 - 0.2 * c.acc, 9);
     expect(dot(q, q)).toBeLessThanOrEqual(13 + 1e-10);
   }
+});
+
+// iter-98（B1）：scripts/diag/b1-gain-search.test.js 隨機搜尋到的案例：6 自由度剛體兩點同時恢復碰撞，聯立解讓動能 +1.26%
+const GAIN_CASE = {"I": [0.31929803076665847, 0.14548226406797765, 0.05641814237926156], "q0": [-0.4715717853978276, -0.5539533733390272, -0.7666211985051632, 0.32169413892552257, 0.40873095113784075, -0.6414213399402797], "contacts": [{"j": [0.7151855731199914, 0.5513455765452564, -0.4295668181144912, 0.17961376776674762, 0.05102219243760277, 0.36452544503770445], "tangents": [[0.5148971335178831, 0, 0.8572519710651397, -0.33539718175456135, -0.14249590792549763, 0.201451910645158], [0.4726420822314669, -0.8342769655360137, -0.2838862569409171, 0.09359698109410641, 0.03371885029576401, 0.05673755433725275]], "mu": 0, "target": 0.4037686169474809}, {"j": [0.2148089609774456, 0.7876680706713074, 0.5774392788239563, -0.24752288421812, -0.0031423779649109333, 0.09636560311467988], "tangents": [[-0.9372495221745518, 0, 0.3486593368656206, -0.16532787189161205, 0.033711899929429884, -0.444426557812994], [0.27462782719048084, -0.61609983804976, 0.7382415228688339, -0.37062280394811364, -0.004017450802740701, 0.134519911831371]], "mu": 0.367289433022961, "target": 1.061067226829772}]};
+const diag = (v) => v.map((x, i) => v.map((_, k) => (i === k ? x : 0)));
+
+test('P17_contact_energy_guard 同時多點恢復碰撞：聯立解可能增能 → 給質量矩陣時等比例縮小恢復目標，保證 ½qᵀMq 不增加且不穿透', () => {
+  const M = diag([1, 1, 1, ...GAIN_CASE.I]);
+  const Minv = diag([1, 1, 1, ...GAIN_CASE.I.map((x) => 1 / x)]);
+  const fresh = () => GAIN_CASE.contacts.map((c) => ({ ...c, j: [...c.j], tangents: c.tangents.map((t) => [...t]) }));
+  const e0 = kineticEnergy(GAIN_CASE.q0, M);
+  // 沒有守門：確實增能（說明守門是必要的，不是理論上的擔心）
+  const plain = [...GAIN_CASE.q0];
+  expect(solveContactVelocities(plain, Minv, fresh()).converged).toBe(true);
+  expect(kineticEnergy(plain, M) / e0 - 1).toBeGreaterThan(0.01);
+  // 有守門：不增能、仍有反彈（α > 0）、所有接觸都不再接近
+  const q = [...GAIN_CASE.q0];
+  const contacts = fresh();
+  const r = solveContactVelocities(q, Minv, contacts, [], { M });
+  expect(r.converged).toBe(true);
+  expect(r.energyGuard).toBe(true);
+  expect(r.restitutionScale).toBeGreaterThan(0);
+  expect(r.restitutionScale).toBeLessThan(1);
+  expect(r.energyAfter).toBeLessThanOrEqual(e0 * (1 + 1e-12));
+  expect(kineticEnergy(q, M)).toBeCloseTo(r.energyAfter, 15);
+  for (const c of contacts) expect(dot(c.j, q)).toBeGreaterThanOrEqual(-1e-9);
+  console.log(`[P17 energy guard] 無守門 +${((kineticEnergy(plain, M) / e0 - 1) * 100).toFixed(3)}%，守門 α = ${r.restitutionScale.toFixed(4)}、${((r.energyAfter / e0 - 1) * 100).toExponential(2)}%`);
+});
+
+test('P17_contact_energy_random 600 組隨機 6 自由度多點接觸（恢復係數、摩擦隨機）：守門後動能都不增加、不穿透；沒增能的案例結果與原解相同', () => {
+  let seed = 98;
+  const rnd = () => { seed = (seed * 1664525 + 1013904223) % 4294967296; return seed / 4294967296; };
+  const cross = (a, b) => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
+  const unit = (v) => { const L = Math.hypot(...v); return v.map((x) => x / L); };
+  let guarded = 0, cases = 0;
+  while (cases < 600) {
+    const I = [0.02 + rnd() * 0.3, 0.02 + rnd() * 0.3, 0.02 + rnd() * 0.3];
+    const M = diag([1, 1, 1, ...I]), Minv = diag([1, 1, 1, ...I.map((x) => 1 / x)]);
+    const q0 = Array.from({ length: 6 }, () => rnd() * 2 - 1);
+    const contacts = [];
+    const n = 2 + Math.floor(rnd() * 3);
+    for (let k = 0; k < n; k++) {
+      const p = [rnd() - 0.5, rnd() - 0.5, rnd() - 0.5], d = unit([rnd() - 0.5, rnd() - 0.5, rnd() - 0.5]);
+      const t1 = unit(cross(d, Math.abs(d[1]) < 0.9 ? [0, 1, 0] : [1, 0, 0])), t2 = cross(d, t1);
+      const J = (v) => [...v, ...cross(p, v)];
+      const j = J(d), vn = dot(j, q0), e = rnd(), mu = rnd() < 0.5 ? 0 : rnd();
+      if (vn < 0) contacts.push({ j, tangents: [J(t1), J(t2)], mu, target: -e * vn });
+    }
+    if (contacts.length < 2) continue;
+    cases++;
+    const copy = () => contacts.map((c) => ({ ...c, j: [...c.j], tangents: c.tangents.map((t) => [...t]) }));
+    const plain = [...q0];
+    solveContactVelocities(plain, Minv, copy());
+    const q = [...q0], cs = copy();
+    const r = solveContactVelocities(q, Minv, cs, [], { M });
+    const e0 = kineticEnergy(q0, M);
+    expect(kineticEnergy(q, M)).toBeLessThanOrEqual(e0 * (1 + 1e-12));
+    for (const c of cs) expect(dot(c.j, q)).toBeGreaterThanOrEqual(-1e-8);
+    if (r.energyGuard) guarded++;
+    else q.forEach((x, i) => expect(x).toBe(plain[i]));
+  }
+  expect(guarded).toBeGreaterThan(0);
+  console.log(`[P17 energy random] ${cases} 組，觸發守門 ${guarded} 組`);
 });
