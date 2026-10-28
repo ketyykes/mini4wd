@@ -192,13 +192,22 @@ export function bodyColliderDesc(asm) {
   const shapes = [new RAPIER.Cuboid(box.hx * MM, box.hy * MM, box.hz * MM)];
   const positions = [{ x: box.cx * MM, y: box.cy * MM, z: 0 }];
   const identity = { x: 0, y: 0, z: 0, w: 1 };
-  // Once the foam is completely compressed, its real rigid backing plate
-  // takes the contact. Do not fill the compressible foam with a rigid collider.
-  const backing = asm.optional?.sponge?.plate?.box;
-  if (backing) {
-    const { min, max } = backing;
-    shapes.push(new RAPIER.Cuboid((max.x - min.x) * MM / 2, (max.y - min.y) * MM / 2, (max.z - min.z) * MM / 2));
-    positions.push({ x: (max.x + min.x) * MM / 2, y: ((max.y + min.y) / 2 + asm.lift_mm) * MM, z: (max.z + min.z) * MM / 2 });
+  const rotations = [identity];
+  // Once the foam / rubber is completely compressed, its real rigid backing
+  // (plate, AR skid slab, rubber socket) takes the contact. Do not fill the
+  // compressible part itself with a rigid collider.
+  for (const b of asm.optional?.sponge?.backing ?? []) {
+    if (b.kind === 'box') {
+      const { min, max } = b;
+      shapes.push(new RAPIER.Cuboid((max.x - min.x) * MM / 2, (max.y - min.y) * MM / 2, (max.z - min.z) * MM / 2));
+      positions.push({ x: (max.x + min.x) * MM / 2, y: ((max.y + min.y) / 2 + asm.lift_mm) * MM, z: (max.z + min.z) * MM / 2 });
+    } else if (b.kind === 'obox') {
+      shapes.push(new RAPIER.Cuboid(b.half.x * MM, b.half.y * MM, b.half.z * MM));
+      positions.push({ x: b.c.x * MM, y: (b.c.y + asm.lift_mm) * MM, z: b.c.z * MM });
+      rotations.push({ x: 0, y: 0, z: Math.sin(b.angleZ_rad / 2), w: Math.cos(b.angleZ_rad / 2) });
+      continue;
+    }
+    rotations.push(identity);
   }
   if (asm.body) {
     const def = asm.body.def;
@@ -218,9 +227,10 @@ export function bodyColliderDesc(asm) {
     for (const { shape, position } of hulls) {
       shapes.push(shape);
       positions.push({ ...position, y: position.y + asm.lift_mm * MM });
+      rotations.push(identity);
     }
   }
-  return RAPIER.ColliderDesc.compound(shapes, positions, shapes.map(() => identity), RAPIER.CompoundFlags.FIX_INTERNAL_EDGES)
+  return RAPIER.ColliderDesc.compound(shapes, positions, rotations, RAPIER.CompoundFlags.FIX_INTERNAL_EDGES)
     .setDensity(0).setFriction(0.3).setCollisionGroups(CAR_GROUPS);
 }
 
@@ -393,25 +403,19 @@ export function createCar(env, opt = {}) {
     return { body: rb, joint, anchor, mass: m, seatK, seatC, slideC: d.slideFriction_Nspm, label: d.label };
   });
 
-  // 煞車海綿（第三階段）：海綿底面的接觸點（車體座標，m）；接觸剛性 k = E·A / t，只在射線碰到地面 / 坡道時產生力
+  // 煞車接觸（第三階段海綿；iter-95 起含橡膠煞車端面、AR 海綿條）：接觸點由組裝給（車體座標，m），各點平分面積；
+  // 接觸剛性 k = E·A / t（t = 可壓縮厚度：海綿厚度或橡膠柱伸出長度），只在射線碰到地面 / 坡道時產生力
   const sp = asm.optional?.sponge;
   let sponge = null;
   if (sp) {
-    const b = sp.solid;
     const lift = asm.lift_mm;
-    const y = (b.min.y + lift) * MM;
-    /** @type {{ x: number, y: number, z: number }[]} 底面 4 角＋中心，各分擔 1/5 面積 */
-    const pts = [
-      { x: b.min.x, z: b.min.z },
-      { x: b.min.x, z: b.max.z },
-      { x: b.max.x, z: b.min.z },
-      { x: b.max.x, z: b.max.z },
-      { x: (b.min.x + b.max.x) / 2, z: 0 },
-    ].map((q) => ({ x: q.x * MM, y, z: q.z * MM }));
+    const ct = sp.contact;
+    /** @type {{ x: number, y: number, z: number }[]} */
+    const pts = ct.pts_mm.map((q) => ({ x: q.x * MM, y: (q.y + lift) * MM, z: q.z * MM }));
     const part = sp.part;
-    const k = (part.compressiveModulus_Pa * sp.area_mm2 * MM * MM) / (part.thickness_mm * MM);
+    const k = (part.compressiveModulus_Pa * ct.area_mm2 * MM * MM) / (ct.thickness_mm * MM);
     const c = 2 * part.contactDampingRatio * Math.sqrt(k * massKg);
-    sponge = { pts, k, c, mu: part.frictionCoeff, thickness: part.thickness_mm * MM, contact: false, normalForce: 0, frictionWork: 0 };
+    sponge = { pts, k, c, mu: part.frictionCoeff, thickness: ct.thickness_mm * MM, contact: false, normalForce: 0, frictionWork: 0 };
   }
 
   // 自寫射線輪（raycast wheel）：Rapier 內建 DynamicRayCastVehicleController 的側向摩擦在
@@ -942,20 +946,35 @@ function spongeForces(env, car, { up }) {
   const n = sp.pts.length;
   sp.contact = false;
   sp.normalForce = 0;
+  const dt = spec.sim.dt_s;
+  const gUp = -spec.sim.gravity * up.y;
   for (const lp of sp.pts) {
     const p = localToWorld(car, lp);
+    // iter-94：同射線輪，預測本步沿 up 的位移；本步才開始壓縮時用離散梯度力（見 stepCar 的射線輪說明）
+    const vP = body.velocityAtPoint(p);
+    const vnPred = vP.x * up.x + vP.y * up.y + vP.z * up.z + gUp * dt;
     const origin = { x: p.x + up.x * PROBE, y: p.y + up.y * PROBE, z: p.z + up.z * PROBE };
     const ray = new RAPIER.Ray(origin, { x: -up.x, y: -up.y, z: -up.z });
-    const hit = env.world.castRayAndGetNormal(ray, PROBE + sp.thickness, true, undefined, undefined, undefined, body);
-    if (!hit || hit.timeOfImpact >= PROBE) {
+    const hit = env.world.castRayAndGetNormal(ray, PROBE + sp.thickness + Math.max(0, -vnPred * dt), true, undefined, undefined, undefined, body);
+    if (!hit) {
       continue;
     }
-    const delta = Math.min(PROBE - hit.timeOfImpact, sp.thickness);
+    const delta0 = PROBE - hit.timeOfImpact;
     const nrm = hit.normal;
     const cp = { x: origin.x - up.x * hit.timeOfImpact, y: origin.y - up.y * hit.timeOfImpact, z: origin.z - up.z * hit.timeOfImpact };
     const v = body.velocityAtPoint(cp);
     const vn = v.x * nrm.x + v.y * nrm.y + v.z * nrm.z;
-    const fn = Math.max(0, (sp.k / n) * delta - (sp.c / n) * vn);
+    let fn;
+    if (delta0 > 0) {
+      fn = Math.max(0, (sp.k / n) * Math.min(delta0, sp.thickness) - (sp.c / n) * vn);
+    } else {
+      const d1 = delta0 - vnPred * dt;
+      if (d1 <= 0) {
+        continue;
+      }
+      const frac = d1 / (d1 - delta0);
+      fn = Math.max(0, ((sp.k / n) * d1 * d1) / (2 * (d1 - delta0)) - (sp.c / n) * vn * frac);
+    }
     if (fn <= 0) {
       continue;
     }

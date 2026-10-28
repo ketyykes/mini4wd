@@ -410,7 +410,10 @@ export function assemble(rawConfig) {
     if (opt.sponge.plate) {
       place('brakeSponge', '煞車板', opt.sponge.plate.mass_g, opt.sponge.plate.pos);
     }
-    place('brakeSponge', '煞車海綿', opt.sponge.mass_g, opt.sponge.pos);
+    for (const e of opt.sponge.extras) {
+      place('brakeSponge', e.label, e.mass_g, e.pos);
+    }
+    place('brakeSponge', opt.sponge.label, opt.sponge.mass_g, opt.sponge.pos);
   }
   if (opt.ballast) {
     place('ballast', `配重（${opt.ballast.mount}）`, opt.ballast.mass_g, opt.ballast.pos);
@@ -843,35 +846,12 @@ function optionalLayout(p, comp, rollers) {
   const sp = p.brakeSponge;
   if (sp) {
     const m = p.rearStay.brakeMount ?? { xMin_mm: 62, xMax_mm: 73, halfZ_mm: 8, y_mm: ch.bumperBottomY_mm };
-    // 煞車板（iter-50）：海綿貼在煞車板下，煞車板鎖在導輪架煞車座下方。iter-60 起由 brakePlate slot 決定（舊資料：海綿零件自帶的 brakePlate；都沒有時厚度 0）
-    const bp = p.brakePlate ?? sp.brakePlate ?? { thickness_mm: 0, density_g_cm3: 0, margin_mm: 0 };
-    const lx = m.xMax_mm - m.xMin_mm;
-    // 貼片寬：煞車架有指定（大面積碳纖架）就用它，否則同煞車座
-    let lz = 2 * m.halfZ_mm;
-    if (bp.padHalfZ_mm !== null && bp.padHalfZ_mm !== undefined) {
-      lz = 2 * bp.padHalfZ_mm;
+    if (sp.kind === 'rubber-pin') {
+      sponge = rubberPinLayout(sp, m, (p.wheels.diameter_mm - ch.refWheelDiameter_mm) / 2);
+    } else {
+      sponge = spongePadLayout(sp, p.brakePlate ?? sp.brakePlate ?? { thickness_mm: 0, density_g_cm3: 0, margin_mm: 0 }, m);
     }
-    const t = sp.thickness_mm;
-    const cx = -(m.xMin_mm + m.xMax_mm) / 2;
-    const tp = bp.thickness_mm;
-    const plateBox = boxAt(cx, 0, m.y_mm - tp, lx + 2 * bp.margin_mm, lz + 2 * bp.margin_mm, tp);
-    const spongeBox = boxAt(cx, 0, m.y_mm - tp - t, lx, lz, t);
-    // 干涉 / 離地用的實體：煞車板＋海綿合成一個方塊（外框取煞車板）
-    const solid = boxAt(cx, 0, m.y_mm - tp - t, lx + 2 * bp.margin_mm, lz + 2 * bp.margin_mm, tp + t);
-    const spongeMass = (lx * lz * t * sp.density_g_cm3) / 1000;
-    const plateMass_g = ((lx + 2 * bp.margin_mm) * (lz + 2 * bp.margin_mm) * tp * bp.density_g_cm3) / 1000;
-    sponge = {
-      mass_g: spongeMass,
-      pos: { x: cx, y: m.y_mm - tp - t / 2, z: 0 },
-      plate: tp > 0 ? { mass_g: plateMass_g, pos: { x: cx, y: m.y_mm - tp / 2, z: 0 }, box: plateBox, material: bp.material } : null,
-      spongeBox,
-      solid,
-      part: sp,
-      area_mm2: lx * lz,
-      length_mm: lx,
-      width_mm: lz,
-    };
-    solids.push({ group: 'sponge', slot: 'brakeSponge', label: '煞車海綿', solid });
+    solids.push({ group: 'sponge', slot: 'brakeSponge', label: sponge.label, solid: sponge.solid });
   }
 
   let ballast = null;
@@ -913,6 +893,160 @@ function optionalLayout(p, comp, rollers) {
     }
   }
   return { dampers, damperBrackets, sponge, ballast, stabilizers, solids };
+}
+
+/**
+ * 煞車海綿＋煞車架（iter-50 / 60；iter-95 加 AR 斜面架）：海綿貼在煞車架下，煞車架鎖在導輪架煞車座下方。
+ * 回傳的 contact（車體底盤座標，mm）給 sim.js 的煞車接觸：接觸點、總面積、可壓縮厚度；backing 是海綿壓到底後承受接觸的剛性部分
+ * @type {(sp: any, bp: any, m: any) => any}
+ */
+function spongePadLayout(sp, bp, m) {
+  const t = sp.thickness_mm;
+  const tp = bp.thickness_mm;
+  const margin = bp.margin_mm;
+  // 貼片寬：煞車架有指定（大面積碳纖架、AR 海綿條）就用它，否則同煞車座
+  let lz = 2 * m.halfZ_mm;
+  if (bp.padHalfZ_mm !== null && bp.padHalfZ_mm !== undefined) {
+    lz = 2 * bp.padHalfZ_mm;
+  }
+  if (!bp.padLengthX_mm) {
+    const lx = m.xMax_mm - m.xMin_mm;
+    const cx = -(m.xMin_mm + m.xMax_mm) / 2;
+    const plateBox = boxAt(cx, 0, m.y_mm - tp, lx + 2 * margin, lz + 2 * margin, tp);
+    const spongeBox = boxAt(cx, 0, m.y_mm - tp - t, lx, lz, t);
+    // 干涉 / 離地用的實體：煞車板＋海綿合成一個方塊（外框取煞車板）
+    const solid = boxAt(cx, 0, m.y_mm - tp - t, lx + 2 * margin, lz + 2 * margin, tp + t);
+    const plateMass_g = ((lx + 2 * margin) * (lz + 2 * margin) * tp * bp.density_g_cm3) / 1000;
+    // 接觸點：底面 4 角＋中心（沿用第三階段：外框取煞車板）
+    const b = solid;
+    const pts = [[b.min.x, b.min.z], [b.min.x, b.max.z], [b.max.x, b.min.z], [b.max.x, b.max.z], [(b.min.x + b.max.x) / 2, 0]].map(([x, z]) => ({ x, y: b.min.y, z }));
+    return {
+      label: '煞車海綿',
+      mass_g: (lx * lz * t * sp.density_g_cm3) / 1000,
+      pos: { x: cx, y: m.y_mm - tp - t / 2, z: 0 },
+      plate: tp > 0 ? { mass_g: plateMass_g, pos: { x: cx, y: m.y_mm - tp / 2, z: 0 }, box: plateBox, material: bp.material } : null,
+      extras: [],
+      spongeBox,
+      solid,
+      part: sp,
+      area_mm2: lx * lz,
+      length_mm: lx,
+      width_mm: lz,
+      contact: { pts_mm: pts, area_mm2: lx * lz, thickness_mm: t },
+      backing: tp > 0 ? [{ kind: 'box', min: plateBox.min, max: plateBox.max }] : [],
+    };
+  }
+  // AR 煞車組（15458）：海綿條（沿車長 padLengthX_mm）貼在架的後端；架的前段底面做成往前上翹的斜面（スキッド）。
+  // 斜面在煞車座面以下：前緣厚度 = 板厚 − 長度 × tanθ（> 0），不往上穿進保桿
+  const lx = bp.padLengthX_mm;
+  const xPadRear = m.xMax_mm;
+  const xPadFront = m.xMax_mm - lx;
+  const cxPad = -(xPadRear + xPadFront) / 2;
+  const sk = bp.skid;
+  const rise = sk.length_mm * Math.tan((sk.angle_deg * Math.PI) / 180);
+  if (!(rise < tp)) {
+    throw new Error(`${bp.id}: 斜面上翹 ${rise.toFixed(2)} mm 超過板厚`);
+  }
+  const zHalf = lz / 2 + margin;
+  const yBottom = m.y_mm - tp;
+  // 平板：|x| ∈ [海綿前緣 − 外擴, 海綿後緣 + 外擴]；斜板：再往前 skid.length_mm（底面座標 x 為負值 = 車尾）
+  const flatFront = xPadFront - margin;
+  const plateBox = { min: { x: -(xPadRear + margin), y: yBottom, z: -zHalf }, max: { x: -flatFront, y: m.y_mm, z: zHalf } };
+  const skidFront = flatFront - sk.length_mm;
+  /** @type {Vec3[]} 斜板的 8 個角點（凸包）：底面由 (−flatFront, yBottom) 斜上到 (−skidFront, yBottom + rise)，頂面貼煞車座 */
+  const skidHull = [];
+  for (const z of [-zHalf, zHalf]) {
+    skidHull.push({ x: -flatFront, y: yBottom, z }, { x: -flatFront, y: m.y_mm, z }, { x: -skidFront, y: yBottom + rise, z }, { x: -skidFront, y: m.y_mm, z });
+  }
+  const spongeBox = boxAt(cxPad, 0, yBottom - t, lx, lz, t);
+  const solid = { min: { x: -(xPadRear + margin), y: yBottom - t, z: -zHalf }, max: { x: -skidFront, y: m.y_mm, z: zHalf }, kind: 'box' };
+  const flatVol = (xPadRear - flatFront + margin) * 2 * zHalf * tp;
+  const skidVol = sk.length_mm * 2 * zHalf * (tp + (tp - rise)) / 2;
+  const plateMass_g = ((flatVol + skidVol) * bp.density_g_cm3) / 1000;
+  // 平板＋斜板的質心（x：體積加權；y：板厚中央，斜板略高，取體積加權的近似）
+  const flatCx = -(xPadRear + margin + flatFront) / 2;
+  const skidCx = -(flatFront + skidFront) / 2;
+  const plateCx = (flatCx * flatVol + skidCx * skidVol) / (flatVol + skidVol);
+  const plateCy = (((yBottom + m.y_mm) / 2) * flatVol + ((yBottom + rise / 2 + m.y_mm) / 2) * skidVol) / (flatVol + skidVol);
+  const pts = [[-xPadRear, -lz / 2], [-xPadRear, lz / 2], [-xPadFront, -lz / 2], [-xPadFront, lz / 2], [cxPad, 0]].map(([x, z]) => ({ x, y: yBottom - t, z }));
+  return {
+    label: '煞車海綿',
+    mass_g: (lx * lz * t * sp.density_g_cm3) / 1000,
+    pos: { x: cxPad, y: yBottom - t / 2, z: 0 },
+    plate: { mass_g: plateMass_g, pos: { x: plateCx, y: plateCy, z: 0 }, box: plateBox, skidHull, material: bp.material },
+    extras: [],
+    spongeBox,
+    solid,
+    part: sp,
+    area_mm2: lx * lz,
+    length_mm: lx,
+    width_mm: lz,
+    contact: { pts_mm: pts, area_mm2: lx * lz, thickness_mm: t },
+    backing: [{ kind: 'box', min: plateBox.min, max: plateBox.max }, skidBacking(flatFront, skidFront, yBottom, rise, tp, zHalf)],
+  };
+}
+
+/**
+ * 斜板的碰撞體：底面貼著斜面、內接於斜板的旋轉方塊（厚度取斜板前緣的垂直厚度 × cosθ）。
+ * 不用凸包：Rapier 0.21 凸多面體對刀口的接觸法向實測偏離斜面（scripts/diag/b8-hull.test.js），旋轉方塊的法向與解析值一致
+ * @type {(flatFront: number, skidFront: number, yBottom: number, rise: number, tp: number, zHalf: number) => any}
+ */
+function skidBacking(flatFront, skidFront, yBottom, rise, tp, zHalf) {
+  const len = flatFront - skidFront;
+  const theta = Math.atan2(rise, len);
+  const slope = Math.hypot(len, rise);
+  const thick = (tp - rise) * Math.cos(theta);
+  // 底面中點，往材料內側（−sinθ, cosθ）移半個厚度
+  const mx = -(flatFront + skidFront) / 2;
+  const my = yBottom + rise / 2;
+  return {
+    kind: 'obox',
+    c: { x: mx - Math.sin(theta) * thick / 2, y: my + Math.cos(theta) * thick / 2, z: 0 },
+    half: { x: slope / 2, y: thick / 2, z: zHalf },
+    angleZ_rad: theta,
+  };
+}
+
+/**
+ * 橡膠煞車（iter-95，15413）：後保桿煞車座下方向下的樹脂管座，橡膠柱從管座伸出 pinProtrusion_mm。
+ * 大徑輪時（輪徑使底盤抬高 ≥ 鋁墊圈長度）在管座上方加鋁墊圈，端面離地與小徑輪相同（官方：鋁墊圈讓小徑、大徑輪都能用）。
+ * 接觸：端面中心一點（面積 = 橡膠柱截面、可壓縮長度 = 伸出長度）；壓到底後由管座（剛性）承受
+ * @type {(sp: any, m: any, lift: number) => any}
+ */
+function rubberPinLayout(sp, m, lift) {
+  const collar = lift >= sp.collarLength_mm - 1e-9 ? sp.collarLength_mm : 0;
+  const cx = -(m.xMin_mm + m.xMax_mm) / 2;
+  const rPin = sp.pinDiameter_mm / 2;
+  const rSock = sp.socketDiameter_mm / 2;
+  const ySockTop = m.y_mm - collar;
+  const ySockBot = ySockTop - sp.socketLength_mm;
+  const yTip = ySockBot - sp.pinProtrusion_mm;
+  const area = Math.PI * rPin * rPin;
+  // 橡膠柱全長 = 伸出長度＋插在管座內的長度；管座 = 管壁（外徑 − 柱徑）；鋁墊圈內孔取 M2.6 螺絲孔 2.6 mm（推估）
+  const rubberLen = sp.pinProtrusion_mm + sp.socketLength_mm;
+  const rubberMass = (area * rubberLen * sp.rubberDensity_g_cm3) / 1000;
+  const sockMass = (Math.PI * (rSock * rSock - rPin * rPin) * sp.socketLength_mm * sp.socketDensity_g_cm3) / 1000;
+  const collarMass = (Math.PI * (rSock * rSock - 1.3 * 1.3) * collar * sp.collarDensity_g_cm3) / 1000;
+  const extras = [{ label: '橡膠煞車管座', mass_g: sockMass, pos: { x: cx, y: (ySockTop + ySockBot) / 2, z: 0 } }];
+  if (collar > 0) {
+    extras.push({ label: '橡膠煞車鋁墊圈', mass_g: collarMass, pos: { x: cx, y: (m.y_mm + ySockTop) / 2, z: 0 } });
+  }
+  /** @type {Solid} 干涉 / 離地：管座外徑的圓柱（含橡膠柱與鋁墊圈，保守） */
+  const solid = { kind: 'cyl', axis: 'y', c: { x: cx, y: (m.y_mm + yTip) / 2, z: 0 }, r: rSock, halfLen: (m.y_mm - yTip) / 2 };
+  return {
+    label: '橡膠煞車',
+    mass_g: rubberMass,
+    pos: { x: cx, y: (ySockTop + yTip) / 2 - sp.socketLength_mm / 2, z: 0 },
+    plate: null,
+    extras,
+    solid,
+    part: sp,
+    pin: { x: cx, yTip, ySockBot, ySockTop, yTop: m.y_mm, rPin, rSock, collar },
+    area_mm2: area,
+    contact: { pts_mm: [{ x: cx, y: yTip, z: 0 }], area_mm2: area, thickness_mm: sp.pinProtrusion_mm },
+    // 管座壓到底的剛性背板：與其他背板一致用方塊（外接管座圓柱）
+    backing: [{ kind: 'box', min: { x: cx - rSock, y: ySockBot, z: -rSock }, max: { x: cx + rSock, y: ySockTop, z: rSock } }],
+  };
 }
 
 /** @type {Map<string, number>} 車殼頂點 → 實體間隙的快取（key：車殼 id＋實體） */

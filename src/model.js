@@ -1461,7 +1461,32 @@ const buildOptionalParts = (mats) => {
     }
     g.add(grp);
   }
-  if (o.sponge) {
+  if (o.sponge?.pin) {
+    // iter-95：橡膠煞車（15413）：保桿下向的樹脂管座＋伸出的橡膠柱；大徑輪時管座上方加鋁墊圈。尺寸取組裝結果（與質量、接觸同一份）
+    const pin = o.sponge.pin;
+    const grp = new THREE.Group();
+    grp.name = 'brake-rubber';
+    grp.userData.part = 'brake-sponge';
+    const socketLen = pin.ySockTop - pin.ySockBot;
+    const socket = new THREE.Mesh(new THREE.CylinderGeometry(pin.rSock, pin.rSock, socketLen, 20), mats.chassisBlack);
+    socket.position.set(pin.x, (pin.ySockTop + pin.ySockBot) / 2, 0);
+    socket.name = 'brake-rubber-socket';
+    grp.add(socket);
+    // 橡膠柱端面倒一點圓角（官方照片為圓柱狀橡膠），伸出部分用輪胎橡膠材質
+    const rubberLen = pin.ySockBot - pin.yTip;
+    const rubber = new THREE.Mesh(new THREE.CylinderGeometry(pin.rPin, pin.rPin * 0.92, rubberLen, 18), mats.tire);
+    rubber.position.set(pin.x, (pin.ySockBot + pin.yTip) / 2, 0);
+    rubber.name = 'brake-rubber-pin';
+    grp.add(rubber);
+    if (pin.collar > 0) {
+      const collar = new THREE.Mesh(new THREE.CylinderGeometry(pin.rSock, pin.rSock, pin.collar, 20), mats.aluSpacer);
+      collar.position.set(pin.x, (pin.yTop + pin.ySockTop) / 2, 0);
+      collar.name = 'brake-rubber-collar';
+      grp.add(collar);
+    }
+    g.add(grp);
+  }
+  if (o.sponge && !o.sponge.pin) {
     // 煞車海綿（iter-47）：圓角方塊（海綿裁切邊），表面氣孔貼圖；白 = 強力、藍 = 溫和（G 節 [T15492]、[T15512]）
     // iter-50：煞車板（1.5 mm FRP 小板，鎖在導輪架煞車座下）＋貼在板下的海綿；尺寸取組裝結果（與質量、干涉同一份）
     if (o.sponge.plate) {
@@ -1470,11 +1495,27 @@ const buildOptionalParts = (mats) => {
       const isCarbon = o.sponge.plate.material === 'carbon';
       const face = isCarbon ? mats.carbonPlate : mats.frpPlate;
       const edge = isCarbon ? mats.carbonEdge : mats.frpEdge;
-      const plateMesh = new THREE.Mesh(new THREE.BoxGeometry(pb.max.x - pb.min.x, pb.max.y - pb.min.y, pb.max.z - pb.min.z), [edge, edge, face, face, edge, edge]);
+      const isResin = o.sponge.plate.material === 'abs';
+      const plateMesh = new THREE.Mesh(new THREE.BoxGeometry(pb.max.x - pb.min.x, pb.max.y - pb.min.y, pb.max.z - pb.min.z), isResin ? mats.chassisBlack : [edge, edge, face, face, edge, edge]);
       plateMesh.position.set((pb.min.x + pb.max.x) / 2, (pb.min.y + pb.max.y) / 2, (pb.min.z + pb.max.z) / 2);
       plateMesh.name = 'brake-plate';
       plateMesh.userData.part = 'brake-sponge';
       g.add(plateMesh);
+      const hull = o.sponge.plate.skidHull;
+      if (hull) {
+        // iter-95：AR 煞車組前端斜板（スキッド）：側面梯形沿 z 擠出，頂點與物理凸包同一份
+        const zs = hull.map((q) => q.z);
+        const z0 = Math.min(...zs);
+        const side = hull.filter((q) => q.z === z0);
+        const ordered = [side[0], side[2], side[3], side[1]];
+        const shape = new THREE.Shape(ordered.map((q) => new THREE.Vector2(q.x, q.y)));
+        const geo = new THREE.ExtrudeGeometry(shape, { depth: Math.max(...zs) - z0, bevelEnabled: false });
+        geo.translate(0, 0, z0);
+        const skid = new THREE.Mesh(geo, mats.chassisBlack);
+        skid.name = 'brake-plate-skid';
+        skid.userData.part = 'brake-sponge';
+        g.add(skid);
+      }
     }
     const b = o.sponge.spongeBox ?? o.sponge.solid;
     const lx = b.max.x - b.min.x;

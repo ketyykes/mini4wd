@@ -450,6 +450,9 @@ describe('P19 網頁換件', () => {
       ['brakeSponge', 'sponge-3type-b'],
       ['brakeSponge', 'sponge-3type-c'],
       ['bearings', 'bearing-620-hg'],
+      // iter-95（B8）：AR 斜面煞車架（配目前的海綿）、橡膠煞車（不使用煞車架）
+      ['brakePlate', 'brake-plate-ar-skid'],
+      ['brakeSponge', 'brake-rubber'],
     ];
     for (const [slot, value] of changes) {
       const ms = await changeSlot(slot, value);
@@ -459,13 +462,15 @@ describe('P19 網頁換件', () => {
       expect(g.config[slot]).toBe(value);
       expectMatchesNode(g);
     }
-    for (const [slot, value] of [['massDamper', '__none__'], ['frontRollers', 'roller-13'], ['rearRollers', 'roller-13'], ['stabilizer', '__none__'], ['wheels', 'wheel-26-lowprofile'], ['brakeSponge', '__none__'], ['bearings', 'bearing-620']]) {
+    for (const [slot, value] of [['massDamper', '__none__'], ['frontRollers', 'roller-13'], ['rearRollers', 'roller-13'], ['stabilizer', '__none__'], ['wheels', 'wheel-26-lowprofile'], ['brakeSponge', '__none__'], ['bearings', 'bearing-620'], ['brakePlate', 'brake-plate-frp']]) {
       await changeSlot(slot, value);
     }
     // URL 還原：第七階段兩組示範設定的零件
     for (const query of [
       'rearStay=stay-rear-frp&massDamper=damper-balllink-square&wheels=wheel-26-oneway&bearings=bearing-620-hg&frontRollers=roller-11-bearing&rearRollers=roller-19-rubber&body=body-pc-box',
       'frontRollers=roller-19-19-plastic-double&stabilizer=stabilizer-head-15&rearRollers=roller-9-8-alu-double&rearStay=stay-rear-carbon-wide&wheels=wheel-31-hard-slick&massDamper=damper-slim&brakeSponge=sponge-3type-b&body=body-pc-box',
+      'brakeSponge=sponge-2mm-strong&brakePlate=brake-plate-ar-skid',
+      'brakeSponge=brake-rubber&wheels=wheel-31-hard-slick&body=body-pc-box',
     ]) {
       const p2 = await browser.newPage({ viewport: { width: 1600, height: 900 } });
       await p2.goto(`${baseUrl}/web/garage.html?${query}`);

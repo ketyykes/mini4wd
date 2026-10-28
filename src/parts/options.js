@@ -458,6 +458,43 @@ export const brakeSpongeParts = [
       taiwan: 'TAIWAN_SOURCES TW29',
     },
   },
+  // ---- iter-95（FINAL_REPORT B8）：15413 橡膠煞車，端面單點接觸 ----
+  // 官方只寫安裝方式與作用時機，沒有尺寸與摩擦數值 → 尺寸、模數、μ 全為推估（PARTS_RESEARCH 第七階段 AK 節 [T15413]、AM 節）。
+  // 接觸模型：橡膠柱端面一點對路面的壓縮彈簧（k = E·A / 伸出長度）＋阻尼＋庫侖摩擦；壓到底後由剛性管座碰撞體承受
+  {
+    id: 'brake-rubber',
+    category: 'brake-sponge',
+    kind: 'rubber-pin',
+    name: '橡膠煞車（15413，後保桿下向管座＋橡膠柱）',
+    color: 'black',
+    /** 橡膠柱直徑與伸出管座的長度（可壓縮長度） */
+    pinDiameter_mm: 4,
+    pinProtrusion_mm: 2,
+    /** 管座（樹脂管）外徑與長度 */
+    socketDiameter_mm: 6,
+    socketLength_mm: 1.5,
+    /** 鋁墊圈：大徑輪胎時加在管座上方，讓橡膠端面離地與小徑輪相同 */
+    collarLength_mm: 2.5,
+    frictionCoeff: 0.8,
+    compressiveModulus_Pa: 3e6,
+    contactDampingRatio: 0.2,
+    rubberDensity_g_cm3: 1.2,
+    socketDensity_g_cm3: 1.2,
+    collarDensity_g_cm3: 2.7,
+    compat: { requires: ['rear-brake-mount'] },
+    mass_g: 0,
+    src: {
+      grade: 'PARTS_RESEARCH 第七階段 AK 節 [T15413] 官方：「リヤバンパーにパイプ形状のソケットを下向きに取り付け､そこにゴムをセット」「レーンチェンジやスロープを上り始める時､ブレーキゴムが路面と接触してマシンを減速」「付属のアルミカラーをセットすることで小径､大径タイヤに対応」；適用含 MA。官方無尺寸、無摩擦數值',
+      dims: '推估：橡膠柱 φ4 mm、伸出 2 mm，管座 φ6 × 1.5 mm；端面離地取與「1.5 mm 煞車板＋2 mm 海綿」裝在標準後保桿相同的 1.9 mm（官方無尺寸，只說會在坡道起點碰到路面）',
+      collarLength_mm: '推估：(31 − 26) / 2 = 2.5 mm，大徑輪時端面離地維持與小徑輪相同（官方只說鋁墊圈讓小徑、大徑輪都能用）',
+      frictionCoeff: '推估：橡膠對 ABS 賽道取 0.8（略高於本專案標準輪胎 0.7；官方未寫）',
+      compressiveModulus_Pa: '推估：一般橡膠（硬度約 60A）壓縮模數約 2–5 MPa，取 3 MPa',
+      contactDampingRatio: '推估：橡膠遲滯 0.2（低於發泡海綿 0.3）',
+      density: '推估：橡膠 1.2、樹脂管座 1.2、鋁墊圈 2.7 g/cm³；質量由體積計算（組裝時）',
+      rule: '[REG7] 沒有煞車條文；最低離地 ≥ 1 mm（GROUND_CLEARANCE）仍適用',
+      mount: '裝在後導輪架的煞車座（rear-brake-mount）；滑動保桿等沒有煞車座的後導輪架 → MOUNT_COMPAT。橡膠煞車直接鎖在保桿上，不使用 brakePlate 煞車架',
+    },
+  },
 ];
 
 /** @type {import('./types').PartBase[]} */
@@ -533,6 +570,31 @@ export const brakePlateParts = [
       margin_mm: '同 FRP 煞車架 0.6 mm（推估）',
       mass_g: '依貼片面積計算（組裝時）：(13 + 1.2) × (24 + 1.2) × 1.5 × 1.6 ≈ 0.86 g（AE 節估整片約 1.7 g）',
       taiwan: 'TAIWAN_SOURCES TW15（四驅博士學校／露天，15550；另有新莊超音速陽明賣場）',
+    },
+  },  // iter-95（FINAL_REPORT B8）：15458 AR 煞車組的塑膠煞車架：前端斜面スキッド＋5 mm 寬海綿條
+  {
+    id: 'brake-plate-ar-skid',
+    category: 'brake-plate',
+    name: 'AR 煞車組塑膠煞車架（前端斜面、5 mm 寬海綿條；15458）',
+    material: 'abs',
+    thickness_mm: 1.5,
+    density_g_cm3: 1.05,
+    margin_mm: 0.6,
+    padHalfZ_mm: 10,
+    /** 海綿條沿車長方向的寬度：貼在煞車架後端 */
+    padLengthX_mm: 5,
+    /** 前端斜面：平板前段改為往前、往上翹起的斜板（角度、水平長度） */
+    skid: { angle_deg: 20, length_mm: 3 },
+    mass_g: 0,
+    src: {
+      grade: 'PARTS_RESEARCH 第五階段 AE 節、第七階段 AK 節 [T15458] 官方：「ARシャーシ ブレーキセット」「ブレーキ用スポンジは5mm幅にカットされ､摩擦力の異なる2種類」「ステーは前方がスキッド形状」「前後方向の取付け位置を選べ､ビスとスペーサーの組み合わせで高さ調整が可能」；適用表含 MA',
+      padLengthX_mm: '官方：海綿 5 mm 寬；沿車長方向放置、貼在架的後端為本專案推估',
+      padHalfZ_mm: '推估：海綿條長 20 mm（第七階段 AM 節）',
+      skid: '推估：官方只說「スキッド形状」，角度 20°、水平長 3 mm（第七階段 AT 節第 7 點：角度需實物量測）；長度受板厚限制，斜面前緣仍留 0.41 mm 厚、不往上穿進保桿',
+      thickness_mm: '推估：同 FRP 煞車架 1.5 mm',
+      density_g_cm3: '推估：樹脂架以 ABS 1.05 g/cm³（同底盤，SPEC 1.14）',
+      mass_g: '依平板＋斜板體積計算（組裝時）；AE 節估整組約 1.2 g（含螺絲）',
+      sponge: '海綿另選（brakeSponge slot）；官方附的兩種海綿摩擦數值未公開，沿用既有海綿零件的推估值',
     },
   },
 ];

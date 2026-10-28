@@ -6,7 +6,7 @@ import { GTAOPass } from 'three/examples/jsm/postprocessing/GTAOPass.js';
 import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
 import { buildCarModel, buildTrackModel } from '../src/model.js';
 import { buildCircuit } from '../src/track.js';
-import { assemble, loadConfig } from '../src/assembly.js';
+import { assemble, loadConfig, SLOTS } from '../src/assembly.js';
 
 /**
  * 棚拍環境（取代 RoomEnvironment：它的多個小燈箱在車漆上反射成斑駁亮點）
@@ -123,6 +123,12 @@ const bodyParam = params.get('body');
 const config = loadConfig(params.get('config') ?? 'default');
 if (bodyParam && bodyParam !== 'none') {
   config.body = bodyParam;
+}
+// iter-95：檢查用，?<slot>=<零件 id> 覆寫單一 slot（同換件頁網址），例如 brakeSponge=brake-rubber
+for (const slot of Object.keys(SLOTS)) {
+  if (slot !== 'body' && params.get(slot)) {
+    config[slot] = params.get(slot);
+  }
 }
 const car = buildCarModel(assemble(config), { body: bodyParam !== 'none' });
 scene.add(car);

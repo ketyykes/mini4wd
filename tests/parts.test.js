@@ -2490,3 +2490,249 @@ describe('P17 / P18 第五階段後寬滑動保桿（iter-64）', () => {
     }
   });
 });
+
+// ---------------------------------------------------------------------------
+// iter-95（FINAL_REPORT B8）：橡膠煞車（15413，端面單點接觸）、AR 煞車組斜面架（15458）
+// ---------------------------------------------------------------------------
+
+/**
+ * 上坡起點：平地 → 5° 上坡 → 30 mm 高平台。車在平地以 v0 斷電滑行上坡，回傳上到平台 0.3 m 後的車速與煞車接觸量
+ * @type {(asm: any, v0: number) => { vTop: number, steps: number, work: number, minUp: number }}
+ */
+function upSlopeRun(asm, v0) {
+  const env = sim.createWorld(buildStraight(4));
+  const H = 0.03;
+  const theta = (5 * Math.PI) / 180;
+  const car = sim.createCar(env, { assembly: asm, s: 0.2, lane: 0, powered: false });
+  const x0 = car.chassis.translation().x + 0.2;
+  const x1 = x0 + H / Math.tan(theta);
+  const hw = 0.055;
+  const ground = env.world.createRigidBody(RAPIER.RigidBodyDesc.fixed());
+  const L = Math.hypot(x1 - x0, H);
+  const th = 0.004;
+  env.world.createCollider(
+    RAPIER.ColliderDesc.cuboid(L / 2, th / 2, hw)
+      .setTranslation((x0 + x1) / 2 + (Math.sin(theta) * th) / 2, H / 2 - (Math.cos(theta) * th) / 2, 0)
+      .setRotation({ x: 0, y: 0, z: Math.sin(theta / 2), w: Math.cos(theta / 2) })
+      .setFriction(0.3),
+    ground,
+  );
+  env.world.createCollider(RAPIER.ColliderDesc.cuboid(0.6, H / 2, hw).setTranslation(x1 + 0.6, H / 2, 0).setFriction(0.3), ground);
+  const dt = env.world.timestep;
+  for (let i = 0; i < 0.05 / dt; i++) {
+    sim.stepCar(env, car);
+  }
+  for (const b of [car.chassis, ...car.dampers.map((d) => d.body)]) {
+    b.setLinvel({ x: v0, y: 0, z: 0 }, true);
+  }
+  let steps = 0;
+  let minUp = 1;
+  let vTop = NaN;
+  for (let i = 0; i < 3 / dt; i++) {
+    sim.stepCar(env, car);
+    if (car.sponge?.contact) {
+      steps++;
+    }
+    minUp = Math.min(minUp, sim.upAxis(car).y);
+    if (car.chassis.translation().x > x1 + 0.3) {
+      vTop = car.chassis.linvel().x;
+      break;
+    }
+  }
+  const work = car.sponge?.frictionWork ?? 0;
+  env.world.free();
+  return { vTop, steps, work, minUp };
+}
+
+describe('iter-95 B8：橡膠煞車與 AR 斜面煞車架', () => {
+  test('P18_b8_brakes 規則與相容性：裝不上或離地不足的組合被擋下，合法組合通過', () => {
+    const cases = [
+      // FRP 後板比標準後保桿低 1.5 mm → 橡膠端面只離地 0.4 mm
+      { over: { rearStay: 'stay-rear-frp', brakeSponge: 'brake-rubber' }, codes: ['GROUND_CLEARANCE'] },
+      // 滑動保桿沒有煞車座
+      { over: { rearStay: 'stay-rear-slide-soft', brakeSponge: 'brake-rubber' }, codes: ['MOUNT_COMPAT'] },
+      { over: { rearStay: 'stay-rear-frp', brakeSponge: 'sponge-2mm-strong', brakePlate: 'brake-plate-ar-skid' }, codes: ['GROUND_CLEARANCE'] },
+    ];
+    for (const c of cases) {
+      const codes = validateAssembly(assemble(cfg(c.over))).violations.map((v) => v.code);
+      console.log(`[P18] ${JSON.stringify(c.over)} → ${JSON.stringify(codes)}`);
+      expect(codes).toEqual(c.codes);
+    }
+    const legal = [
+      { brakeSponge: 'brake-rubber' },
+      { brakeSponge: 'brake-rubber', wheels: 'wheel-31-hard-slick', body: 'body-pc-box' },
+      { brakeSponge: 'sponge-2mm-strong', brakePlate: 'brake-plate-ar-skid' },
+      { brakeSponge: 'sponge-1mm-strong', brakePlate: 'brake-plate-ar-skid' },
+    ];
+    for (const over of legal) {
+      const res = validateAssembly(assemble(cfg(over)));
+      expect(res.ok, `${JSON.stringify(over)} ${JSON.stringify(res.violations)}`).toBe(true);
+    }
+    // 鋁墊圈：大徑輪時橡膠端面離地與小徑輪相同（官方「小径､大径タイヤに対応」）
+    const small = assemble(cfg({ brakeSponge: 'brake-rubber' }));
+    const large = assemble(cfg({ brakeSponge: 'brake-rubber', wheels: 'wheel-31-hard-slick', body: 'body-pc-box' }));
+    const tip = (asm) => asm.optional.sponge.contact.pts_mm[0].y + asm.lift_mm;
+    expect(tip(large)).toBeCloseTo(tip(small), 9);
+    expect(large.optional.sponge.pin.collar).toBe(2.5);
+    expect(small.optional.sponge.pin.collar).toBe(0);
+  });
+
+  test('P14_b8_brakes 質量由幾何體積推導、整車質量 = 零件加總', () => {
+    const base = assemble(cfg());
+    const rubber = assemble(cfg({ brakeSponge: 'brake-rubber' }));
+    const p = rubber.partsBySlot.brakeSponge;
+    const rPin = p.pinDiameter_mm / 2;
+    const rS = p.socketDiameter_mm / 2;
+    const expected = (Math.PI * rPin ** 2 * (p.pinProtrusion_mm + p.socketLength_mm) * p.rubberDensity_g_cm3
+      + Math.PI * (rS ** 2 - rPin ** 2) * p.socketLength_mm * p.socketDensity_g_cm3) / 1000;
+    expect(rubber.mass_g - base.mass_g).toBeCloseTo(expected, 9);
+    const ar = assemble(cfg({ brakeSponge: 'sponge-2mm-strong', brakePlate: 'brake-plate-ar-skid' }));
+    const bp = ar.partsBySlot.brakePlate;
+    const sp = ar.partsBySlot.brakeSponge;
+    const zHalf = bp.padHalfZ_mm + bp.margin_mm;
+    const rise = bp.skid.length_mm * Math.tan((bp.skid.angle_deg * Math.PI) / 180);
+    const plateVol = (bp.padLengthX_mm + 2 * bp.margin_mm) * 2 * zHalf * bp.thickness_mm + bp.skid.length_mm * 2 * zHalf * (bp.thickness_mm - rise / 2);
+    const spongeVol = bp.padLengthX_mm * 2 * bp.padHalfZ_mm * sp.thickness_mm;
+    expect(ar.mass_g - base.mass_g).toBeCloseTo((plateVol * bp.density_g_cm3 + spongeVol * sp.density_g_cm3) / 1000, 9);
+    for (const asm of [rubber, ar]) {
+      expect(asm.mass_g).toBeCloseTo(asm.parts.reduce((s, q) => s + q.mass_g, 0), 9);
+    }
+    console.log(`[P14] 橡膠煞車 +${f3(rubber.mass_g - base.mass_g)} g；AR 斜面架＋2 mm 海綿條 +${f3(ar.mass_g - base.mass_g)} g`);
+  });
+
+  test('P17_brake_rubber 上坡起點車尾下沉 → 橡膠端面碰路面減速；下坡坡底同理；摩擦只做負功', () => {
+    const none = assemble(cfg());
+    const rubber = assemble(cfg({ brakeSponge: 'brake-rubber' }));
+    const a = upSlopeRun(none, 1.5);
+    const b = upSlopeRun(rubber, 1.5);
+    console.log(`[P17] 上坡起點 1.5 m/s：無煞車 ${f3(a.vTop)} m/s；橡膠煞車 ${f3(b.vTop)} m/s，接觸 ${b.steps} 步、摩擦功 ${(b.work * 1000).toFixed(3)} mJ`);
+    expect(Number.isFinite(a.vTop) && Number.isFinite(b.vTop)).toBe(true);
+    expect(a.steps).toBe(0);
+    expect(b.steps).toBeGreaterThan(0);
+    expect(b.work).toBeGreaterThan(0);
+    expect(b.vTop).toBeLessThan(a.vTop);
+    expect(Math.min(a.minUp, b.minUp)).toBeGreaterThan(0.8);
+    const c = rampRun(none, 2.5);
+    const d = rampRun(rubber, 2.5);
+    console.log(`[P17] 5° 下坡坡底 2.5 m/s：無煞車 ${f3(c.vAfter)}；橡膠煞車 ${f3(d.vAfter)} m/s，接觸 ${d.spongeSteps} 步`);
+    expect(d.spongeSteps).toBeGreaterThan(0);
+    expect(d.vAfter).toBeLessThan(c.vAfter);
+  }, 120000);
+
+  test('P17_ar_skid 斜面架：垂直落在橫桿上時，接觸法向沿斜面 → 水平衝量 / 垂直衝量 = −tan20°；同位置的平板只有垂直衝量', () => {
+    /** @type {(over: Record<string, any>) => number} 落到無摩擦橫桿上第一個 1 ms 的衝量比 Jx / Jy */
+    const impulseRatio = (over) => {
+      const asm = assemble(cfg({ body: null, ...over }));
+      expect(validateAssembly(asm).ok).toBe(true);
+      const env = sim.createWorld(buildStraight(4));
+      const car = sim.createCar(env, { assembly: asm, s: 0.5, lane: 0, powered: false });
+      const lift = 0.01;
+      for (const b of [car.chassis, ...car.dampers.map((d) => d.body), ...car.sliders.map((sl) => sl.body)]) {
+        const t = b.translation();
+        b.setTranslation({ x: t.x, y: t.y + lift, z: t.z }, true);
+      }
+      // 橫桿：車尾 x = −66 mm 處（AR 斜板底下、海綿條前方、底盤核心之後），寬 ±6 mm（碰不到輪胎射線與海綿取樣射線）；
+      // 頂邊比斜板底面低 5 mm → 落下 5 mm 時只有斜板 / 平板碰到；摩擦 0，只量法向
+      const wedgeY = (3.9 + 1.4 * Math.tan((20 * Math.PI) / 180)) / 1000;
+      const p = sim.localToWorld(car, { x: -0.066, y: 0, z: 0 });
+      // 刀口：0.5 mm 見方的長條繞 z 轉 45°，尖邊朝上（接觸法向由煞車架的面決定）
+      const a = 0.00025;
+      const ground = env.world.createRigidBody(RAPIER.RigidBodyDesc.fixed());
+      env.world.createCollider(
+        RAPIER.ColliderDesc.cuboid(a, a, 0.006).setRotation({ x: 0, y: 0, z: Math.sin(Math.PI / 8), w: Math.cos(Math.PI / 8) })
+          .setTranslation(p.x, car.chassis.translation().y + wedgeY - 0.005 - a * Math.SQRT2, p.z).setFriction(0).setFrictionCombineRule(RAPIER.CoefficientCombineRule.Min),
+        ground,
+      );
+      const dt = env.world.timestep;
+      const g = spec.sim.gravity;
+      let v0 = null;
+      let k = 0;
+      for (let i = 0; i < 0.1 / dt; i++) {
+        const before = car.chassis.linvel();
+        sim.stepCar(env, car);
+        const v = car.chassis.linvel();
+        if (!v0 && v.y - before.y + g * dt > 1e-4) {
+          v0 = before;
+        }
+        if (v0 && ++k >= Math.round(0.001 / dt)) {
+          const jx = v.x - v0.x;
+          const jy = v.y - v0.y + g * k * dt;
+          expect(car.wheels.some((w) => w.contact)).toBe(false);
+          env.world.free();
+          return jx / jy;
+        }
+      }
+      env.world.free();
+      throw new Error('沒有碰到橫桿');
+    };
+    const skid = impulseRatio({ brakeSponge: 'sponge-2mm-strong', brakePlate: 'brake-plate-ar-skid' });
+    const flat = impulseRatio({ brakeSponge: 'sponge-2mm-strong', brakePlate: 'brake-plate-frp' });
+    const expected = -Math.tan((20 * Math.PI) / 180);
+    console.log(`[P17] 落在橫桿上 Jx/Jy：AR 斜面 ${skid.toFixed(4)}（−tan20° = ${expected.toFixed(4)}）；FRP 平板 ${flat.toFixed(4)}`);
+    expect(skid).toBeCloseTo(expected, 1);
+    expect(Math.abs(flat)).toBeLessThan(0.02);
+  }, 60000);
+
+  test('P17_b8_energy_laps 斷電滑行機械能不增、落地任一步不高於落下前、合法組裝跑完官方 3 圈', () => {
+    const overs = [
+      { brakeSponge: 'brake-rubber' },
+      { brakeSponge: 'sponge-2mm-strong', brakePlate: 'brake-plate-ar-skid' },
+    ];
+    for (const over of overs) {
+      const asm = assemble(cfg(over));
+      expect(validateAssembly(asm).ok).toBe(true);
+      for (const s of [{ h: 60 }, { h: 100, pitch: 8 }, { h: 100, pitch: -8 }]) {
+        const r = dropTest(asm, s.h, s);
+        expect(r.landed).toBe(true);
+        expect(r.maxEnergy, JSON.stringify({ over, s })).toBeLessThanOrEqual(r.initialEnergy);
+        expect(r.finalEnergy).toBeLessThan(r.initialEnergy);
+      }
+      const env = sim.createWorld(buildStraight(100));
+      const car = sim.createCar(env, { assembly: asm, s: 0.2, lane: 0, drain: false });
+      const dt = env.world.timestep;
+      for (let i = 0; i < 1.5 / dt; i++) {
+        sim.stepCar(env, car);
+      }
+      car.powered = false;
+      let prev = carMechanicalEnergy(car);
+      const e0 = prev;
+      let maxRise = 0;
+      for (let i = 0; i < 1.5 / dt; i++) {
+        sim.stepCar(env, car);
+        const e = carMechanicalEnergy(car);
+        maxRise = Math.max(maxRise, e - prev);
+        prev = e;
+      }
+      expect(maxRise).toBeLessThanOrEqual(1e-7);
+      expect(prev).toBeLessThan(e0);
+      const track = buildCircuit();
+      const env2 = sim.createWorld(track);
+      const car2 = sim.createCar(env2, { assembly: asm, s: 0.15, lane: 0 });
+      const L = track.path.length;
+      let last = 0.15;
+      let dist = 0;
+      let maxPen = 0;
+      let minUp = 1;
+      for (let i = 0; i < Math.round(12 / env2.world.timestep) && dist < 3 * L; i++) {
+        sim.stepCar(env2, car2);
+        const t = car2.chassis.translation();
+        const c = track.path.project(t.x, t.z);
+        let ds = c.s - last;
+        if (ds < -L / 2) {
+          ds += L;
+        }
+        if (ds > L / 2) {
+          ds -= L;
+        }
+        dist += ds;
+        last = c.s;
+        maxPen = Math.max(maxPen, sim.wallPenetration(env2, car2));
+        minUp = Math.min(minUp, sim.upAxis(car2).y);
+      }
+      console.log(`[P17] ${JSON.stringify(over)}：滑行最大單步回升 ${maxRise.toExponential(2)} J；3 圈 ${f3(dist)} / ${f3(3 * L)} m，最大穿牆 ${(maxPen * 1000).toFixed(3)} mm、最小 up.y ${f3(minUp)}`);
+      expect(dist).toBeGreaterThanOrEqual(3 * L);
+      expect(maxPen).toBeLessThanOrEqual(0.001);
+      expect(minUp).toBeGreaterThan(0.8);
+    }
+  }, 300000);
+});
