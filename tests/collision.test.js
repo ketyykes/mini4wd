@@ -5,6 +5,7 @@ import { listBodies } from '../src/bodies/index.js';
 import { bodyCollisionCells } from '../src/bodies/collision.js';
 import { assemble, loadConfig } from '../src/assembly.js';
 import { bodyColliderDesc, collisionExtremePoints, initRapier } from '../src/sim.js';
+import { buildCircuit } from '../src/track.js';
 import { sdf, solidGap, sweepZ } from '../src/parts/clearance.js';
 
 beforeAll(initRapier);
@@ -125,3 +126,30 @@ test('P17_sponge_hard_stop 海綿保留可壓縮空間，壓到底後由真實�
   expect(Math.abs(hard)).toBeLessThan(Math.abs(missing) / 10);
   expect(missing).toBeLessThan(-0.001);
 });
+
+test('P16_track_mesh_oriented 牆與路面網格封閉、繞向一致、法向朝外（三角網格 ORIENTED 旗標的前提，iter-96）', () => {
+  const track = buildCircuit();
+  for (const m of [...track.wallMeshes, ...(track.roadMeshes ?? [])]) {
+    const v = m.vertices, idx = m.indices;
+    const key = (i) => `${v[3 * i].toFixed(6)},${v[3 * i + 1].toFixed(6)},${v[3 * i + 2].toFixed(6)}`;
+    const directed = new Set();
+    let volume = 0;
+    for (let t = 0; t < idx.length; t += 3) {
+      const [a, b, c] = [0, 1, 2].map((q) => new THREE.Vector3(v[3 * idx[t + q]], v[3 * idx[t + q] + 1], v[3 * idx[t + q] + 2]));
+      volume += a.dot(b.clone().cross(c)) / 6;
+      for (const [p, q] of [[0, 1], [1, 2], [2, 0]]) {
+        const e = `${key(idx[t + p])}>${key(idx[t + q])}`;
+        // 同方向的邊出現兩次 = 相鄰三角形繞向相反
+        expect(directed.has(e)).toBe(false);
+        directed.add(e);
+      }
+    }
+    // 每條有向邊都有反向邊 = 封閉；有號體積 > 0 = 法向朝外
+    for (const e of directed) {
+      const [p, q] = e.split('>');
+      expect(directed.has(`${q}>${p}`)).toBe(true);
+    }
+    expect(volume).toBeGreaterThan(0);
+  }
+});
+

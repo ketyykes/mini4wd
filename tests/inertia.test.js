@@ -1,7 +1,10 @@
 import { beforeAll, expect, test } from 'vitest';
 import * as THREE from 'three';
 import { bodyMassProps } from '../src/bodies/index.js';
-import { principalAxes } from '../src/massTensor.js';
+import { principalAxes, plateTensor, boxTensor, flattenedCylinderXTensor, pointTensor, addTensor } from '../src/massTensor.js';
+import { wheelInertia } from '../src/parts/inertia.js';
+import { bumperTrim } from '../src/parts/bumperGeom.js';
+import { chassisMeshDistribution } from './helpers/chassisMesh.js';
 import { assemble, loadConfig } from '../src/assembly.js';
 import { buildStraight } from '../src/track.js';
 import { batteryParts } from '../src/parts/batteries.js';
@@ -116,11 +119,8 @@ function expectedAssemblyTensor(asm, parts, com) {
       const b = asm.partsBySlot.battery;
       accumulate(matrix(cellVolumeTensor(m, b.cellDiameter_mm / 2, b.cellLength_mm)));
     }
-    if (part.slot === 'chassis') {
-      const box = asm.partsBySlot.chassis.bbox_mm;
-      const x = box.max.x - box.min.x, y = box.max.y - box.min.y, z = box.max.z - box.min.z;
-      accumulate(matrix({ xx: m * (y * y + z * z) / 12, yy: m * (x * x + z * z) / 12, zz: m * (x * x + y * y) / 12, xy: 0, xz: 0, yz: 0 }));
-    }
+    // iter-96（B3）：底盤與其他零件自帶中心張量（各自的正確性另見 P14_component_tensors），這裡只驗證「每件只計一次」
+    if (part.slot !== 'battery' && part.inertia_gmm2) accumulate(matrix(part.inertia_gmm2));
     if (part.slot === 'body') accumulate(matrix(bodyMassProps(asm.body.def).inertia_gmm2));
   }
   return result;
@@ -162,7 +162,59 @@ test('P14_battery_scaling 電池長度平方影響橫向慣性，質量／重心
     expect(doubled.inertiaTensor_kgm2[k] - a.inertiaTensor_kgm2[k]).toBeCloseTo(k === 'yy' || k === 'zz' ? delta : 0, 13);
   }
   // Wheel diameter lifts every part equally; central inertia is translation invariant.
+  // iter-96（B3）：輪子帶自身張量後，輪徑變大本身會加大輪子慣性 → 整車差值只能是四顆輪子自身張量的差
   const lifted = assemble({ ...config, wheels: { base: a.partsBySlot.wheels.id, diameter_mm: a.partsBySlot.wheels.diameter_mm + 2 } });
   expect(lifted.com_mm.y - a.com_mm.y).toBeCloseTo(1, 12);
-  for (const k of Object.keys(a.inertiaTensor_kgm2)) expect(lifted.inertiaTensor_kgm2[k]).toBeCloseTo(a.inertiaTensor_kgm2[k], 13);
+  const ownWheels = (asm) => asm.parts.filter((q) => q.slot === 'wheels').reduce((t, q) => addTensor(t, q.inertia_gmm2), { xx: 0, yy: 0, zz: 0, xy: 0, xz: 0, yz: 0 });
+  const dWheel = addTensor(ownWheels(lifted), ownWheels(a), -1);
+  expect(dWheel.zz).toBeGreaterThan(0);
+  for (const k of Object.keys(a.inertiaTensor_kgm2)) expect(lifted.inertiaTensor_kgm2[k] - a.inertiaTensor_kgm2[k]).toBeCloseTo(dWheel[k] * 1e-9, 13);
+});
+
+test('P14_component_tensors 底盤慣性來自 3D 模型網格分布、保桿切除扣掉自身慣性，零件張量與解析式一致（iter-96，B3）', () => {
+  const base = { ...loadConfig('default'), body: null, frontStay: 'stay-front-standard', rearStay: 'stay-rear-standard' };
+  const asm = assemble(base);
+  const ch = asm.partsBySlot.chassis;
+  // 1. 底盤資料內存的分布 = 由目前 3D 模型重算（模型改了就要同步更新 chassis.js）
+  const d = chassisMeshDistribution(asm);
+  for (const k of ['x', 'y', 'z']) expect(ch.com_mm[k], `com ${k}`).toBeCloseTo(d.com_mm[k], 6);
+  for (const k of Object.keys(d.gyration_mm2)) expect(ch.inertiaPerMass_mm2[k], `I ${k}`).toBeCloseTo(d.gyration_mm2[k], 4);
+  // 2. 未切保桿：底盤件的中心張量 = 每 g 分布 × 實測質量
+  const part = asm.parts.find((q) => q.slot === 'chassis');
+  expect(asm.partsBySlot.frontStay.chassisTrim).toBeFalsy();
+  for (const k of Object.keys(d.gyration_mm2)) expect(part.inertia_gmm2[k]).toBeCloseTo(ch.inertiaPerMass_mm2[k] * ch.mass_g, 6);
+  // 3. 切保桿：剩餘底盤（對原點）＋切除區（∫rrᵀ dm）＝完整底盤（對原點）
+  const trimmed = assemble({ ...base, frontStay: 'stay-front-frp', rearStay: 'stay-rear-frp' });
+  expect(trimmed.partsBySlot.frontStay.chassisTrim).toBeTruthy();
+  const rest = trimmed.parts.find((q) => q.slot === 'chassis');
+  const restPos = { ...rest.pos, y: rest.pos.y - trimmed.lift_mm };
+  const sum = addTensor({ ...rest.inertia_gmm2 }, pointTensor(rest.mass_g, restPos));
+  let trimMass = 0;
+  const rho = ch.density_g_cm3 / 1000;
+  for (const sx of [1, -1]) {
+    const t = bumperTrim(ch, sx);
+    trimMass += t.mass_g;
+    const q = t.second_mm5;
+    addTensor(sum, { xx: (q.yy + q.zz) * rho, yy: (q.xx + q.zz) * rho, zz: (q.xx + q.yy) * rho, xy: -q.xy * rho, xz: -q.xz * rho, yz: -q.yz * rho });
+    // 切除區二次矩與質量、重心自洽：∫(r − c)² ≥ 0（平行軸定理）
+    expect(q.xx / t.volume_mm3 - t.com_mm.x ** 2).toBeGreaterThan(0);
+    expect(q.yy / t.volume_mm3 - t.com_mm.y ** 2).toBeGreaterThan(0);
+    expect(q.zz / t.volume_mm3 - t.com_mm.z ** 2).toBeGreaterThan(0);
+  }
+  expect(rest.mass_g + trimMass).toBeCloseTo(ch.mass_g, 9);
+  const full = addTensor({ ...part.inertia_gmm2 }, pointTensor(ch.mass_g, ch.com_mm));
+  for (const k of Object.keys(full)) expect(sum[k], `trim ${k}`).toBeCloseTo(full[k], 3);
+  // 4. 基本形狀：矩形平板 = 方塊；削平量 = 直徑時退化為實心圓柱；輪胎繞軸 = 傳動系同一份值
+  const rect = plateTensor(2, [[-5, -3], [5, -3], [5, 3], [-5, 3]], 1.5);
+  const box = boxTensor(2, 10, 1.5, 6);
+  for (const k of Object.keys(box)) expect(rect[k], `plate ${k}`).toBeCloseTo(box[k], 9);
+  const cyl = flattenedCylinderXTensor(10, 20, 20, 25);
+  expect(cyl.xx / (0.5 * 10 * 100)).toBeCloseTo(1, 2);
+  expect(cyl.yy / (10 * (100 / 4 + 625 / 12))).toBeCloseTo(1, 2);
+  const flat = flattenedCylinderXTensor(10, 20.1, 15.1, 25);
+  expect(flat.zz).toBeLessThan(flat.yy);
+  const wheel = asm.parts.find((q) => q.slot === 'wheels');
+  expect(wheel.inertia_gmm2.zz).toBeCloseTo(wheelInertia(asm.partsBySlot.wheels).total, 9);
+  // 5. 整車：比「底盤 = 外框實心方塊、其餘質點」大（質量往周邊集中），三軸都在合理範圍
+  console.log(`[P14 B3] Ixx/Iyy/Izz = ${['xx', 'yy', 'zz'].map((k) => (asm.inertiaTensor_kgm2[k] * 1e9).toFixed(0)).join(' / ')} g·mm²，底盤件 ${['xx', 'yy', 'zz'].map((k) => part.inertia_gmm2[k].toFixed(0)).join(' / ')}`);
 });

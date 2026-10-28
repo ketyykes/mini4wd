@@ -22,6 +22,69 @@ export function cylinderXTensor(mass, radius, length) {
   return { xx: mass * radius ** 2 / 2, yy: transverse, zz: transverse, xy: 0, xz: 0, yz: 0 };
 }
 
+/** 均質方塊對自身中心（邊長 lx, ly, lz 沿車體 x, y, z）。單位同 cylinderXTensor */
+export const boxTensor = (m, lx, ly, lz) => ({
+  xx: (m * (ly ** 2 + lz ** 2)) / 12, yy: (m * (lx ** 2 + lz ** 2)) / 12, zz: (m * (lx ** 2 + ly ** 2)) / 12, xy: 0, xz: 0, yz: 0,
+});
+
+/**
+ * 軸對稱件（軸沿 axis）：已知繞軸慣量 axial，橫向 = axial / 2 + m·len² / 12（軸對稱分布 ∫x² = ∫y² = axial / 2，沿軸均勻分布）
+ * @type {(m: number, axial: number, len: number, axis: 'x' | 'y' | 'z') => Record<string, number>}
+ */
+export function axisymmetricTensor(m, axial, len, axis) {
+  const tr = axial / 2 + (m * len ** 2) / 12;
+  return { xx: axis === 'x' ? axial : tr, yy: axis === 'y' ? axial : tr, zz: axis === 'z' ? axial : tr, xy: 0, xz: 0, yz: 0 };
+}
+
+const flatCylCache = new Map();
+/**
+ * 兩側削平的圓柱（130 型馬達外殼：直徑 dia、上下削平到 flat，沿 x 長 length）的均質中心張量。
+ * 截面 ⟨y²⟩、⟨z²⟩ 以 0.02 mm 格點數值積分（快取）
+ * @type {(m: number, dia: number, flat: number, length: number) => Record<string, number>}
+ */
+export function flattenedCylinderXTensor(m, dia, flat, length) {
+  const key = `${dia}|${flat}`;
+  let mo = flatCylCache.get(key);
+  if (!mo) {
+    const r = dia / 2;
+    const h = 0.02;
+    let n = 0, yy = 0, zz = 0;
+    for (let y = -flat / 2 + h / 2; y < flat / 2; y += h) {
+      for (let z = -r + h / 2; z < r; z += h) {
+        if (y * y + z * z <= r * r) { n++; yy += y * y; zz += z * z; }
+      }
+    }
+    mo = { y2: yy / n, z2: zz / n };
+    flatCylCache.set(key, mo);
+  }
+  const x2 = length ** 2 / 12;
+  return { xx: m * (mo.y2 + mo.z2), yy: m * (x2 + mo.z2), zz: m * (x2 + mo.y2), xy: 0, xz: 0, yz: 0 };
+}
+
+/**
+ * 均質平板（俯視多邊形 outline [[x, z], …]、厚 t 沿 y）對自身重心的張量：多邊形面積二次矩（格林公式）＋厚度項
+ * @type {(m: number, outline: number[][], t: number) => Record<string, number>}
+ */
+export function plateTensor(m, outline, t) {
+  let A = 0, cx = 0, cz = 0, ixx = 0, izz = 0, ixz = 0;
+  for (let i = 0; i < outline.length; i++) {
+    const [x0, z0] = outline[i];
+    const [x1, z1] = outline[(i + 1) % outline.length];
+    const cr = x0 * z1 - x1 * z0;
+    A += cr / 2;
+    cx += ((x0 + x1) * cr) / 6;
+    cz += ((z0 + z1) * cr) / 6;
+    ixx += ((x0 * x0 + x0 * x1 + x1 * x1) * cr) / 12;
+    izz += ((z0 * z0 + z0 * z1 + z1 * z1) * cr) / 12;
+    ixz += ((x0 * z1 + 2 * x0 * z0 + 2 * x1 * z1 + x1 * z0) * cr) / 24;
+  }
+  cx /= A; cz /= A;
+  // 面積平均（對重心）
+  const x2 = ixx / A - cx * cx, z2 = izz / A - cz * cz, xz = ixz / A - cx * cz;
+  const y2 = t ** 2 / 12;
+  return { xx: m * (y2 + z2), yy: m * (x2 + z2), zz: m * (x2 + y2), xy: 0, xz: -m * xz, yz: 0 };
+}
+
 /** Convert raw second moments ∫rrᵀ dm into inertia about the center of mass. */
 export function centralTensor(second, mass, com) {
   const out = {

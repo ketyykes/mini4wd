@@ -203,12 +203,14 @@ const trimCache = new Map();
 /**
  * 保桿切除的體積、質量、重心：上蓋、鏤空肋格、凸台、斜撐與補強片的聯集，
  * 扣除保留的中央橋接板與前緣立邊，以 0.1 mm 格點積分；質量 = 體積 × 密度。
- * @type {(ch: any, sx: number) => { volume_mm3: number, mass_g: number, com_mm: { x: number, y: number, z: number } }}
+ * @type {(ch: any, sx: number) => { volume_mm3: number, mass_g: number, com_mm: { x: number, y: number, z: number }, second_mm5: Record<string, number> }}
  */
 export function bumperTrim(ch, sx) {
   if (sx < 0) {
     const front = bumperTrim(ch, 1);
-    return { ...front, com_mm: { ...front.com_mm, x: -front.com_mm.x } };
+    // 鏡射 x → −x：含 x 一次方的乘積項變號
+    const s2 = front.second_mm5;
+    return { ...front, com_mm: { ...front.com_mm, x: -front.com_mm.x }, second_mm5: { ...s2, xy: -s2.xy, xz: -s2.xz } };
   }
   const key = JSON.stringify([ch.bumperRollerX_mm, ch.bumperRollerZ_mm, ch.bumperBottomY_mm, ch.bumperThickness_mm, ch.groundClearanceRef_mm, ch.plateThickness_mm]);
   const hit = trimCache.get(key);
@@ -221,6 +223,8 @@ export function bumperTrim(ch, sx) {
   const zs = [...g.wide.map((p) => p[1]), ...g.struts.flatMap((s) => [s.a[1] - s.w, s.a[1] + s.w, s.b[1] - s.w, s.b[1] + s.w])];
   let volume = 0;
   const mom = { x: 0, y: 0, z: 0 };
+  // iter-96（B3）：同時積分 ∫rrᵀ dV（mm⁵），切除區的慣性也從底盤扣掉
+  const second = { xx: 0, yy: 0, zz: 0, xy: 0, xz: 0, yz: 0 };
   for (let x = Math.min(...xs) + step / 2; x < Math.max(...xs); x += step) {
     for (let z = Math.min(...zs) + step / 2; z < Math.max(...zs); z += step) {
       const full = bumperIntervals(g, x, z, false);
@@ -242,6 +246,14 @@ export function bumperTrim(ch, sx) {
           mom.x += x * v;
           mom.y += (a + b) / 2 * v;
           mom.z += z * v;
+          const area = step * step;
+          const y1 = (b * b - a * a) / 2 * area;
+          second.xx += x * x * v;
+          second.yy += (b ** 3 - a ** 3) / 3 * area;
+          second.zz += z * z * v;
+          second.xy += x * y1;
+          second.xz += x * z * v;
+          second.yz += z * y1;
         }
       }
     }
@@ -249,6 +261,7 @@ export function bumperTrim(ch, sx) {
   const result = {
     volume_mm3: volume, mass_g: volume * ch.density_g_cm3 / 1000,
     com_mm: { x: mom.x / volume, y: mom.y / volume, z: mom.z / volume },
+    second_mm5: second,
   };
   trimCache.set(key, result);
   return result;

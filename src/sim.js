@@ -84,7 +84,10 @@ export function createWorld(track) {
   );
 
   const wallHandles = new Set();
-  const flags = RAPIER.TriMeshFlags.FIX_INTERNAL_EDGES;
+  // iter-96：只給 FIX_INTERNAL_EDGES（= 128 | MERGE_DUPLICATE_VERTICES）時，牆面同一平面四邊形的對角線內部邊仍會產生
+  // 落在牆面平面內的錯誤法向（實測 (0.988, 0.154, 0)，牆面法向是 (0, 0, 1)），車殼掠過時被踢出約 20 rad/s 的角速度。
+  // 內部邊修正靠有向的 pseudo-normal；牆與路面網格都是封閉、繞向一致、法向朝外（P16_track_mesh_oriented 驗證），所以加 ORIENTED
+  const flags = RAPIER.TriMeshFlags.FIX_INTERNAL_EDGES | RAPIER.TriMeshFlags.ORIENTED;
   for (const m of track.wallMeshes) {
     const col = world.createCollider(
       RAPIER.ColliderDesc.trimesh(m.vertices, m.indices, flags).setFriction(spec.track.wallFriction).setCollisionGroups(WALL_GROUPS),

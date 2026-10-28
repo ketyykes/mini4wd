@@ -19,7 +19,8 @@ import { polygonCentroid } from './parts/plateGeom.js';
 import { bumperTrim } from './parts/bumperGeom.js';
 import { drivetrainInertia } from './parts/inertia.js';
 import { frontalArea } from './bodies/silhouette.js';
-import { zeroTensor, addTensor, pointTensor, principalAxes, cylinderXTensor } from './massTensor.js';
+import { zeroTensor, addTensor, pointTensor, principalAxes, cylinderXTensor, boxTensor, axisymmetricTensor, flattenedCylinderXTensor, plateTensor } from './massTensor.js';
+import { wheelInertia, axleInertia } from './parts/inertia.js';
 import { chassisSideSolids, sideDamperAdapter } from './parts/chassisGeom.js';
 
 /** @typedef {import('./parts/types').PlacedPart} PlacedPart */
@@ -318,19 +319,27 @@ export function assemble(rawConfig) {
   for (const [slot, sx] of [['frontStay', 1], ['rearStay', -1]]) {
     if (p[slot].chassisTrim) {
       const t = bumperTrim(ch, sx);
-      chassisTrim.push({ slot, end: sx > 0 ? 'front' : 'rear', mass_g: t.mass_g, com_mm: t.com_mm, volume_mm3: t.volume_mm3 });
+      chassisTrim.push({ slot, end: sx > 0 ? 'front' : 'rear', mass_g: t.mass_g, com_mm: t.com_mm, volume_mm3: t.volume_mm3, second_mm5: t.second_mm5 });
     }
   }
   let chMass = ch.mass_g;
   const chMom = { x: ch.mass_g * ch.com_mm.x, y: ch.mass_g * ch.com_mm.y, z: ch.mass_g * ch.com_mm.z };
+  // iter-96（B3）：底盤本體慣性 = 3D 模型網格分布（每 g 中心張量 × 實測質量），對原點；保桿切除區的 ∫rrᵀ dm 同樣扣掉
+  const chOrigin = addTensor(Object.fromEntries(Object.entries(ch.inertiaPerMass_mm2).map(([k, v]) => [k, v * ch.mass_g])), pointTensor(ch.mass_g, ch.com_mm));
   for (const t of chassisTrim) {
     chMass -= t.mass_g;
     chMom.x -= t.mass_g * t.com_mm.x;
     chMom.y -= t.mass_g * t.com_mm.y;
     chMom.z -= t.mass_g * t.com_mm.z;
+    const rho = ch.density_g_cm3 / 1000;
+    const q = t.second_mm5;
+    addTensor(chOrigin, { xx: (q.yy + q.zz) * rho, yy: (q.xx + q.zz) * rho, zz: (q.xx + q.yy) * rho, xy: -q.xy * rho, xz: -q.xz * rho, yz: -q.yz * rho }, -1);
   }
-  place('chassis', chassisTrim.length > 0 ? '底盤本體（保桿切除後）' : '底盤本體', chMass, { x: chMom.x / chMass, y: chMom.y / chMass, z: chMom.z / chMass });
-  place('motor', '雙軸馬達', p.motor.mass_g, { x: comp.motor.x, y: comp.motor.y, z: comp.motor.z });
+  const chCom = { x: chMom.x / chMass, y: chMom.y / chMass, z: chMom.z / chMass };
+  place('chassis', chassisTrim.length > 0 ? '底盤本體（保桿切除後）' : '底盤本體', chMass, chCom, addTensor(chOrigin, pointTensor(chMass, chCom), -1));
+  // iter-96（B3）：馬達外殼（兩側削平的圓柱，軸沿 x）均質中心張量（推估：電樞、磁鐵、外殼的實際分布未實測）
+  place('motor', '雙軸馬達', p.motor.mass_g, { x: comp.motor.x, y: comp.motor.y, z: comp.motor.z },
+    flattenedCylinderXTensor(p.motor.mass_g, comp.motor.dia, comp.motor.flat, comp.motor.length));
   const cells = p.battery.cells;
   comp.battery.zs.slice(0, cells).forEach((z, i) => {
     const cellMass = p.battery.mass_g / cells;
@@ -338,15 +347,21 @@ export function assemble(rawConfig) {
       cylinderXTensor(cellMass, comp.battery.dia / 2, comp.battery.length));
   });
   // 齒輪組：前後各一半；質心取中間齒輪與輪軸齒輪之間（推估）
+  // iter-96（B3）：齒輪組視為軸沿 z、半徑 = 輪軸齒輪節圓的實心圓盤（同 inertia.js 傳動系的推估），厚度取 0（上限：齒輪實際有腹板開孔）
+  const gearR = p.gear.spurPitchRadius_mm;
   for (const sx of [1, -1]) {
     const label = sx > 0 ? '前' : '後';
-    place('gear', `${label}齒輪組`, p.gear.mass_g / 2, { x: sx * (counterX + hw) / 2, y: (comp.motor.y + axleY) / 2, z: 0 });
+    const m = p.gear.mass_g / 2;
+    place('gear', `${label}齒輪組`, m, { x: sx * (counterX + hw) / 2, y: (comp.motor.y + axleY) / 2, z: 0 }, axisymmetricTensor(m, (m * gearR * gearR) / 2, 0, 'z'));
   }
+  // 輪胎＋輪框：繞輪軸 = inertia.js 的傳動系值（同一份），橫向 = 繞軸 / 2 + m·寬² / 12
+  const wheelAxial = wheelInertia(p.wheels).total;
   for (const w of wheels) {
-    place('wheels', `輪胎 ${w.id}`, p.wheels.mass_g, { x: w.x, y: w.y, z: w.z });
+    place('wheels', `輪胎 ${w.id}`, p.wheels.mass_g, { x: w.x, y: w.y, z: w.z }, axisymmetricTensor(p.wheels.mass_g, wheelAxial, p.wheels.width_mm, 'z'));
   }
+  const axleAxial = axleInertia(p.axles);
   for (const sx of [1, -1]) {
-    place('axles', sx > 0 ? '前輪軸' : '後輪軸', p.axles.mass_g, { x: sx * hw, y: axleY, z: 0 });
+    place('axles', sx > 0 ? '前輪軸' : '後輪軸', p.axles.mass_g, { x: sx * hw, y: axleY, z: 0 }, axisymmetricTensor(p.axles.mass_g, axleAxial, p.axles.length_mm, 'z'));
   }
   // 軸承 6 處：輪軸左右支撐 ×4（輪軸支撐座 z = ±23.4，同 model.js）、中間齒輪軸 ×2
   for (const sx of [1, -1]) {
@@ -361,8 +376,10 @@ export function assemble(rawConfig) {
       place('bearings', `中間齒輪軸承 ${sx > 0 ? '前' : '後'}`, p.bearings.counterMass_g, { x: sx * counterX, y: comp.motor.y, z: 0 });
     }
   }
+  // iter-96（B3）：導輪視為軸沿 y 的均質圓柱（外徑、總高取導輪佈局；推估，實際有培林與鋁殼分層）
   for (const r of rollers) {
-    place(r.slot, `導輪 ${r.id}`, p[r.slot].mass_g, { x: r.x, y: r.y, z: r.z });
+    const m = p[r.slot].mass_g;
+    place(r.slot, `導輪 ${r.id}`, m, { x: r.x, y: r.y, z: r.z }, axisymmetricTensor(m, (m * r.r * r.r) / 2, r.h, 'y'));
   }
   // 導輪架質心：板件 = 俯視外形面積形心、板厚中央；塑膠標準件 = 導輪座與底盤端之間（推估：導輪軸往內 8 mm、導輪中心往下 3.5 mm）
   for (const [slot, sx] of [['frontStay', 1], ['rearStay', -1]]) {
@@ -379,7 +396,8 @@ export function assemble(rawConfig) {
       place(slot, `${end}滑動保桿彈簧與螺絲`, st.slide.hardware_g, railPos);
     } else if (st.plate) {
       const [cx, cz] = polygonCentroid(st.plate.outline);
-      place(slot, label, st.mass_g, { x: cx, y: st.plate.y_mm + st.plate.thickness_mm / 2, z: cz });
+      // iter-96（B3）：板件用俯視外形的均質平板張量（開孔不扣；質量仍用零件值）
+      place(slot, label, st.mass_g, { x: cx, y: st.plate.y_mm + st.plate.thickness_mm / 2, z: cz }, plateTensor(st.mass_g, st.plate.outline, st.plate.thickness_mm));
     } else if (sx > 0) {
       place(slot, label, st.mass_g, { x: st.rollerX_mm - 8, y: st.rollerY_mm - 3.5, z: 0 });
     } else {
@@ -416,7 +434,8 @@ export function assemble(rawConfig) {
     place('brakeSponge', opt.sponge.label, opt.sponge.mass_g, opt.sponge.pos);
   }
   if (opt.ballast) {
-    place('ballast', `配重（${opt.ballast.mount}）`, opt.ballast.mass_g, opt.ballast.pos);
+    const b = opt.ballast.solid;
+    place('ballast', `配重（${opt.ballast.mount}）`, opt.ballast.mass_g, opt.ballast.pos, boxTensor(opt.ballast.mass_g, b.max.x - b.min.x, b.max.y - b.min.y, b.max.z - b.min.z));
   }
   for (const st of opt.stabilizers) {
     place('stabilizer', st.label, st.mass_g, st.pos);
@@ -669,6 +688,7 @@ function sliderOf(slot, st, parts, stabilizers) {
     const dy = q.pos.y - com_mm.y;
     const dz = q.pos.z - com_mm.z;
     addTensor(inertia, pointTensor(q.mass_g, { x: dx, y: dy, z: dz }));
+    if (q.inertia_gmm2) addTensor(inertia, q.inertia_gmm2);
   }
   // 滑動板自身（外框方塊）的慣性
   const xs = st.plate.outline.map((/** @type {number[]} */ v) => v[0]);
@@ -702,9 +722,10 @@ function sliderOf(slot, st, parts, stabilizers) {
 }
 
 /**
- * Full parallel-axis tensor. Body uses shell/solid integrals; chassis still
- * uses its estimated uniform box. Explicit component central tensors (currently
- * AA cells) are added once; remaining components still use point masses.
+ * Full parallel-axis tensor. Body uses shell/solid integrals; the chassis and
+ * components carry their own central tensors (iter-96: chassis mesh
+ * distribution, motor, wheels, axles, gears, rollers, plates, ballast, AA
+ * cells); remaining small items (bearings, covers, switch, hardware) are points.
  * @type {(parts: PlacedPart[], ch: any, bodyProps: any) => { mass_g: number, com_mm: Vec3, inertia_kgm2: Vec3 }}
  */
 function massProps(parts, ch, bodyProps) {
@@ -717,13 +738,6 @@ function massProps(parts, ch, bodyProps) {
     mom.z += q.mass_g * q.pos.z;
   }
   const com_mm = { x: mom.x / mass_g, y: mom.y / mass_g, z: mom.z / mass_g };
-  /** @type {(m: number, b: { min: Vec3, max: Vec3 }) => Vec3} 均質方塊對自身中心的慣性（g·mm²） */
-  const boxInertia = (m, b) => {
-    const lx = b.max.x - b.min.x;
-    const ly = b.max.y - b.min.y;
-    const lz = b.max.z - b.min.z;
-    return { x: (m / 12) * (ly * ly + lz * lz), y: (m / 12) * (lx * lx + lz * lz), z: (m / 12) * (lx * lx + ly * ly) };
-  };
   const inertia = zeroTensor();
   for (const q of parts) {
     const dx = q.pos.x - com_mm.x;
@@ -731,16 +745,6 @@ function massProps(parts, ch, bodyProps) {
     const dz = q.pos.z - com_mm.z;
     addTensor(inertia, pointTensor(q.mass_g, { x: dx, y: dy, z: dz }));
     if (q.inertia_gmm2) addTensor(inertia, q.inertia_gmm2);
-  }
-  /** @type {[number, { min: Vec3, max: Vec3 }][]} 底盤本體與車殼（沒裝車殼時只有底盤） */
-  // 底盤本體的質量取零件清單裡的值（保桿切除後的質量）
-  const chPart = parts.find((q) => q.slot === 'chassis');
-  const spread = [[chPart ? chPart.mass_g : ch.mass_g, ch.bbox_mm]];
-  for (const [m, b] of spread) {
-    const bi = boxInertia(m, b);
-    inertia.xx += bi.x;
-    inertia.yy += bi.y;
-    inertia.zz += bi.z;
   }
   if (bodyProps) addTensor(inertia, bodyProps.inertia_gmm2);
   // g·mm² → kg·m²
