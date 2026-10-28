@@ -339,6 +339,8 @@ function makeMaterials() {
     rollerBody: new THREE.MeshPhysicalMaterial({ color: 0x0e0f12, roughness: 0.38, metalness: 0.0, clearcoat: 0.35, clearcoatRoughness: 0.3, side: THREE.DoubleSide }),
     // iter-35：鋁合金導輪（roller 零件 finish = 'aluminum'，例如 roller-19）：車削鋁的亮銀色
     rollerAlu: new THREE.MeshPhysicalMaterial({ name: 'metal-roller-aluminum', color: 0xc4c9d0, roughness: 0.28, metalness: 0.95, side: THREE.DoubleSide }),
+    // iter-99（評審 iter-97：單向輪黑色內轂＋黑色分隔縫看不出兩件）：內轂改槍灰緞面（與淺灰輪框、黑縫三種明度；顏色推估，官方頁沒寫）
+    onewayHub: new THREE.MeshPhysicalMaterial({ name: 'paint-gunmetal-oneway-hub', color: 0x5f656e, roughness: 0.4, metalness: 0.35, clearcoat: 0.3, clearcoatRoughness: 0.3 }),
     screw: new THREE.MeshStandardMaterial({ color: 0xd8d8d8, roughness: 0.25, metalness: 1.0 }),
     // 第三階段改裝零件（material.name 給 Blender 管線分類：frp-*、carbon-*、alu-*、sponge-*、*-weight）
     // iter-47：FRP 板加短玻纖紋（frpFiberTexture）、碳纖板加斜紋貼圖（carbonWeaveTexture）；reviewer iter-46「只是平塗的灰色、黑色」
@@ -567,7 +569,7 @@ function buildWheel(mats, side) {
     // 內轂比一般輪轂大（φ7.4，內含單向離合），外圈一道暗色分隔縫，轂面 8 道棘輪狀凸肋（示意內部棘爪；實際棘爪在內部看不到）
     // iter-82（reviewer：內轂與輪框同色看不出兩件）：內轂用黑色塑膠（顏色推估：官方頁沒寫內轂顏色），分隔縫加寬到 0.7 mm
     // iter-97（評審 iter-84：縫太細、棘輪肋太小）：分隔縫 1.0 mm、棘輪肋放大（外觀示意，不影響質量 / 物理）
-    const clutchHub = new THREE.Mesh(new THREE.CylinderGeometry(3.6, 3.6, 1.9, 32), mats.rollerBody);
+    const clutchHub = new THREE.Mesh(new THREE.CylinderGeometry(3.6, 3.6, 1.9, 32), mats.onewayHub);
     clutchHub.rotation.x = Math.PI / 2;
     clutchHub.position.z = side * 0.15;
     face.add(clutchHub);
