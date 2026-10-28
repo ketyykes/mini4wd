@@ -185,7 +185,9 @@ test('P17_wall_tiers 逐層幾何與摩擦：傾斜後只有上層橡膠環接�
       car.chassis.setTranslation({ ...p, z: face - upperZ - upper.r / 1000 + 0.0002 }, true);
       const contacts = sim.rollerWallContacts(env, car);
       expect(contacts.find((c) => c.tier === 1).mu).toBe(0.1);
-      expect(contacts.find((c) => c.tier === 1).pen).toBeCloseTo(0.0002, 7);
+      // iter-101（B1）：導輪軸跟著車體傾斜，靠牆那一緣的水平伸展 = r·cosφ + (h/2)·sinφ（原本以軸鉛直近似成 r，期望值 0.2 mm 是那個近似的結果）
+      const tiltReach = (upper.r * Math.cos(angle) + (upper.h / 2) * Math.sin(angle)) / 1000;
+      expect(contacts.find((c) => c.tier === 1).pen).toBeCloseTo(0.0002 + tiltReach - upper.r / 1000, 7);
       if (degrees === 0) {
         expect(contacts).toHaveLength(2);
         expect(contacts.find((c) => c.tier === 0).mu).toBe(0.05);

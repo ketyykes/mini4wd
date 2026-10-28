@@ -1242,16 +1242,19 @@ export function rollerWallContacts(env, car) {
       const T = { x: Math.cos(pose.theta), z: Math.sin(pose.theta) };
       const N = { x: -Math.sin(pose.theta), z: Math.cos(pose.theta) };
       const rr = tier.r * MM;
-      // 導輪輪廓（世界 y）：頂面、圓柱段底緣、錐形段底面半徑
-      const top = w.y + (tier.h / 2) * MM;
+      // 導輪輪廓：圓柱段高 hc、錐形段高 hk、錐形段底面半徑 rb
       const hc = (r.taper ? r.taper.cylinderHeight_mm : tier.h) * MM;
       const hk = r.taper ? r.taper.coneHeight_mm * MM : 0;
       const rb = r.taper ? (r.taper.bottomDiameter_mm / 2) * MM : rr;
-      const yCyl = top - hc;
-      const yBot = yCyl - hk;
       const wallTop = (track.roadHeight ? track.roadHeight(pp.s, level) : 0) + wallH;
-      if (wallTop <= yBot) {
-        continue;
+      // iter-101（B1）：導輪軸用車體實際上方向（側傾／俯仰時傾斜），不再假設鉛直。
+      // 導輪輪廓 = 沿軸的幾圈圓環（頂面、圓柱段底緣、錐形段底面）；每圈朝牆的最遠點 = 圈心 + 半徑 × (朝牆方向扣掉軸向分量後的單位向量)。
+      // 側面是相鄰兩圈之間的直線段：對鉛直牆，最深點在端點；跨過牆頂的段在牆頂高度截斷（截點碰的是牆頂邊緣）。
+      const axis = upAxis(car);
+      /** @type {{ y: number, r: number }[]} 沿軸的圓環（相對導輪片中心，m）：由上往下 */
+      const rings = [{ y: (tier.h / 2) * MM, r: rr }, { y: (tier.h / 2) * MM - hc, r: rr }];
+      if (hk > 0) {
+        rings.push({ y: (tier.h / 2) * MM - hc - hk, r: rb });
       }
       for (const side of [1, -1]) {
         const k = side > 0 ? ch.slopeU : ch.slopeL;
@@ -1265,32 +1268,79 @@ export function rollerWallContacts(env, car) {
         const nz = side * (k * T.z - N.z) * cos;
         // 導輪軸到牆面的水平距離
         const gap = side * (face - pp.d) * cos;
-        if (wallTop >= yCyl || hk <= 0) {
-          const pen = rr - gap;
-          if (pen <= 0) {
-            continue;
+        // 朝牆方向 u = −n（水平）；扣掉軸向分量 → 圓環上最靠牆的方向
+        const ua = -nx * axis.x - nz * axis.z;
+        const ex = -nx - ua * axis.x;
+        const ey = -ua * axis.y;
+        const ez = -nz - ua * axis.z;
+        const el = Math.hypot(ex, ey, ez);
+        if (el < 1e-6) {
+          // 導輪軸幾乎水平（車翻倒）：圓環朝牆方向不確定，不產生導輪牆面接觸（車體方塊仍會碰牆）
+          continue;
+        }
+        const pts = rings.map((ring) => {
+          const p = { x: w.x + axis.x * ring.y + (ex / el) * ring.r, y: w.y + axis.y * ring.y + (ey / el) * ring.r, z: w.z + axis.z * ring.y + (ez / el) * ring.r };
+          // 朝牆的水平伸展（相對導輪片中心）
+          return { p, reach: -(p.x - w.x) * nx - (p.z - w.z) * nz };
+        });
+        /** @type {{ p: { x: number, y: number, z: number }, reach: number, cone: boolean }[]} 候選接觸點 */
+        const cand = [];
+        for (let i = 0; i < pts.length - 1; i++) {
+          const a = pts[i];
+          const b = pts[i + 1];
+          const cone = hk > 0 && i === pts.length - 2;
+          for (const q of [a, b]) {
+            if (q.p.y < wallTop) {
+              cand.push({ ...q, cone: false });
+            }
           }
-          out.push({ n: { x: nx, y: 0, z: nz }, p: { x: w.x - nx * rr, y: w.y, z: w.z - nz * rr }, pen, side, mu, restitution: tier.restitution ?? r.restitution, tier: tierIndex, roller: r.id, onSlider: !!r.onSlider, slider: r.slider });
+          if ((a.p.y - wallTop) * (b.p.y - wallTop) < 0) {
+            const f = (wallTop - a.p.y) / (b.p.y - a.p.y);
+            cand.push({
+              p: { x: a.p.x + (b.p.x - a.p.x) * f, y: wallTop, z: a.p.z + (b.p.z - a.p.z) * f },
+              reach: a.reach + (b.reach - a.reach) * f,
+              cone,
+            });
+          }
+        }
+        if (cand.length === 0) {
           continue;
         }
-        // 牆頂邊緣碰錐面
-        const re = rb + ((rr - rb) * (wallTop - yBot)) / hk;
-        const overlap = re - gap;
-        if (overlap <= 0) {
+        const best = cand.reduce((m, c) => (c.reach > m.reach ? c : m));
+        const pen0 = best.reach - gap;
+        if (pen0 <= 0) {
           continue;
         }
+        if (!best.cone) {
+          // 牆面接觸，法向水平。導輪不傾斜時上下緣一樣深（線接觸）：接觸點取伸展在最深 0.05 mm 以內各候選點的加權平均，
+          // 鉛直時落在片中心高度（與 iter-100 以前相同），傾斜後連續移到較深的那一緣
+          const band = 0.05 * MM;
+          let sw = 0;
+          const pc = { x: 0, y: 0, z: 0 };
+          for (const c of cand) {
+            const wgt = c.cone ? 0 : Math.max(0, c.reach - (best.reach - band));
+            sw += wgt;
+            pc.x += c.p.x * wgt;
+            pc.y += c.p.y * wgt;
+            pc.z += c.p.z * wgt;
+          }
+          out.push({ n: { x: nx, y: 0, z: nz }, p: { x: pc.x / sw, y: pc.y / sw, z: pc.z / sw }, pen: pen0, side, mu, restitution: tier.restitution ?? r.restitution, tier: tierIndex, roller: r.id, onSlider: !!r.onSlider, slider: r.slider });
+          continue;
+        }
+        // 牆頂邊緣碰錐面：法向 = cosβ·水平推回車道 + sinβ·向上（β 為錐面相對導輪軸的斜角；導輪傾斜時錐面法向的小幅轉動仍忽略）
         const beta = Math.atan2(rr - rb, hk);
         const cb = Math.cos(beta);
         const sb = Math.sin(beta);
         out.push({
           n: { x: nx * cb, y: sb, z: nz * cb },
-          p: { x: w.x - nx * re, y: wallTop, z: w.z - nz * re },
-          pen: overlap * cb,
+          p: best.p,
+          pen: pen0 * cb,
           roller: r.id,
           mu,
           restitution: tier.restitution ?? r.restitution,
           side,
-          tier: tierIndex,          onSlider: !!r.onSlider,
+          tier: tierIndex,
+          onSlider: !!r.onSlider,
           slider: r.slider,
         });
       }
