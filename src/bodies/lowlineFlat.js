@@ -28,7 +28,8 @@ const T = monoTable([-71, -69, -66, -62, -58, -52, -44, -30, -14, 0, 14, 30, 44,
   yC: [24.8, 25.3, 25.5, 25.6, 25.6, 25.6, 25.6, 25.6, 25.6, 25.6, 25.6, 25.4, 25.0, 24.6, 23.9, 23.0, 21.4, 19.6, 17.0],
   hw: [33, 38, 41.5, 44, 45, 45, 45, 44.5, 44, 44, 44.5, 45.5, 46, 46, 44.5, 41.5, 36, 30, 21],
   ySh: [22.8, 23.2, 23.4, 23.4, 23.4, 23.4, 23.4, 23.4, 23.4, 23.4, 23.4, 23.2, 22.8, 22.4, 21.8, 21.0, 19.6, 17.9, 15.8],
-  yLow: [22.2, 22.2, 22.0, 21.6, 16.0, 11.5, 10.5, 10.5, 10.5, 10.5, 10.5, 10.5, 10.5, 11.5, 13.0, 13.5, 14.0, 14.5, 15.0],
+  // iter-103（評審 iter-73「鼻端正面仍厚」）：鼻段側裙下緣往上收（x 58 → 69：13.0 / 13.5 / 14.0 / 14.5 → 13.6 / 15.0 / 16.6 / 16.4），鼻端只剩薄唇＋窄裙；離前導輪頂 12.5 的間隙變大
+  yLow: [22.2, 22.2, 22.0, 21.6, 16.0, 11.5, 10.5, 10.5, 10.5, 10.5, 10.5, 10.5, 10.5, 11.5, 13.6, 15.0, 16.6, 16.4, 15.0],
 });
 
 /** @type {number} 外緣薄唇的厚度（iter-73，肩稜往下 1.1 mm 就往內收） */
@@ -55,6 +56,19 @@ const fenderFactor = (x) => {
   }
   return f;
 };
+
+/**
+ * 甲板中段起伏係數（iter-103，評審 iter-73「甲板中段仍平」）：前後輪之間 1，靠近輪軸、鼻端、車尾漸減到 0
+ * @type {(x: number) => number}
+ */
+const deckFactor = (x) => {
+  const u = Math.min(1, Math.max(0, (24 - Math.abs(x)) / 10));
+  return (1 - fenderFactor(x)) * (0.5 - 0.5 * Math.cos(Math.PI * u));
+};
+/** @type {number} 中線隆起（mm） */
+const SPINE_RISE = 1.4;
+/** @type {number} 兩側淺溝深度（mm） */
+const CHANNEL_DEPTH = 1.0;
 
 /**
  * 半剖面站位（每 2 mm 一站，8 點）：甲板中線、甲板 1/2、甲板平坦區外緣、葉子板內坡、葉子板頂（|z| 31，輪胎中心面）、
@@ -85,10 +99,11 @@ const STATIONS = (() => {
     const yLip = Math.max(ySh - LIP_T, yLow + 0.3);
     const tuckIn = Math.min(2.6, 0.06 * hw);
     const yChamfer = Math.max(yLip - 1.6, yLow + 0.2);
+    const m = deckFactor(x);
     const pts = [
-      [0, yC],
-      [0.5 * cw, yC - 0.08],
-      [cw, yC - 0.3],
+      [0, yC + SPINE_RISE * m],
+      [0.5 * cw, yC - 0.08 + 0.25 * SPINE_RISE * m],
+      [cw, yC - 0.3 - CHANNEL_DEPTH * m],
       [zIn, yC - 0.3 + 0.9 * f],
       [zCr, yCr],
       [zOut, ySh + 0.62 * (yCr - ySh)],
@@ -119,6 +134,18 @@ const COCKPIT = {
   ],
   depth: 3.5,
 };
+
+/**
+ * 鼻端頭燈凹槽（iter-103，評審 iter-73「鼻端白色燈片太平」）：俯視細長圓角梯形，深 0.9 mm，槽內放透明燈片
+ * @type {{ id: string, view: 'top', shape: 'poly', pts: number[][], depth: number }[]}
+ */
+const HEADLAMP_RECESSES = [1, -1].map((sg) => ({
+  id: sg > 0 ? '右頭燈槽' : '左頭燈槽',
+  view: 'top',
+  shape: 'poly',
+  pts: [[67.6, 17.6], [67.9, 21.0], [67.2, 24.2], [65.4, 24.6], [64.9, 21.0], [65.2, 17.4]].map(([x, z]) => [x, sg * z]),
+  depth: 0.9,
+}));
 
 /**
  * 側裙分色：石墨灰下身 / 深紅上身的分色線（直線，y 17.2；鼻端與尾端沿外形收）
@@ -213,7 +240,7 @@ export const lowlineFlatBody = makePolyBody({
       sd: (x, y, z) => (Math.abs(z) < 40 ? 10 : Math.max(Math.min(...[40, -40].map((ax) => Math.hypot(x - ax, y - 13) - 17.6)), y - 21.2)),
     },
   ],
-  recesses: [COCKPIT],
+  recesses: [COCKPIT, ...HEADLAMP_RECESSES],
   sideZMin: 30,
   innerSkipRecess: true,
   zones: () => [
@@ -277,12 +304,17 @@ export const lowlineFlatBody = makePolyBody({
       mat: 'whiteDecal',
       name: 'decal-number-plate-top',
     });
-    // 鼻端頭燈（貼紙式透明燈片，左右各一條細長燈片）
-    parts.push({
-      geometry: kit.decal((x, y, z) => Math.min(3.6 - Math.abs(Math.abs(z) - 21), 0.9 - Math.abs(x - 66.4), y - 15)),
-      mat: 'head',
-      name: 'decal-headlamps',
+    // 鼻端頭燈（iter-103）：凹槽裡的透明燈片（槽底往上 0.35 mm，沿鼻端斜面傾斜），槽壁深色 → 看得出深度
+    const lens = [1, -1].map((sg) => {
+      const x0 = 66.4;
+      const z0 = sg * 21;
+      const slope = (kit.surf.topY(x0 + 0.5, z0) - kit.surf.topY(x0 - 0.5, z0)) / 1;
+      const g = new THREE.BoxGeometry(2.0, 0.3, 6.2);
+      g.rotateZ(Math.atan(slope));
+      g.translate(x0, kit.surf.topY(x0, z0) - 0.9 + 0.35 + 0.15, z0);
+      return g;
     });
+    parts.push({ geometry: mergeGeos(lens), mat: 'head', solid: true, name: 'lamp-headlamps' });
     // 平直斷尾的尾燈條（左右兩段）
     const lampBar = (z0, z1) => {
       const g = new THREE.BoxGeometry(0.5, 1.2, z1 - z0);

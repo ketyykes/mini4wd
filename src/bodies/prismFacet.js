@@ -358,6 +358,53 @@ export const prismFacetBody = makePolyBody({
         name: `decal-side-spectrum-${i}`,
       });
     });
+    // iter-103（評審 iter-73「prism 缺臉」，對照概念圖 concept_front34_v1 鼻翼前緣的色塊）：箭頭鼻兩翼前緣一條分光色塊帶，
+    // 沿 V 形前緣（俯視 (x 67, |z| 30) → (x 74, |z| 5.5)）往內 0.8–6 mm；由翼尖往鼻尖依序 粉 → 洋紅 → 紫 → 靛 → 藍 → 青（和肩部色帶同一組冷色，不加紅橙黃綠）
+    const EDGE_LEN = Math.hypot(7, 24.5);
+    /** @type {(x: number, az: number) => number} 到 V 形前緣的有號距離（< 0 在殼內） */
+    const edgeDist = (x, az) => ((x - 67) * 24.5 + (az - 30) * 7) / EDGE_LEN;
+    /** @type {(x: number, az: number) => number} 沿前緣由翼尖往鼻尖的座標（mm） */
+    const edgeU = (x, az) => ((x - 67) * 7 - (az - 30) * 24.5) / EDGE_LEN;
+    /** @type {(x: number, y: number, az: number) => number} 鼻翼色帶區（只在頂面：高於側面最寬稜） */
+    const noseRegion = (x, y, az) => {
+      if (x < 58 || y < profileAt(x)[4][1] + 0.15) {
+        return -1;
+      }
+      const d = edgeDist(x, az);
+      const u = edgeU(x, az);
+      return Math.min(d + 6, -0.8 - d, u - 1, 23 - u);
+    };
+    parts.push({
+      geometry: kit.decal((x, y, z) => noseRegion(x, y, Math.abs(z)) + BLOCK_GAP, { offset: 0.07 }),
+      mat: 'dBlack',
+      name: 'decal-nose-spectrum-frame',
+    });
+    [...SPECTRUM].reverse().forEach((mat, i) => {
+      const e0 = 1 + (22 * i) / SPECTRUM.length;
+      const e1 = 1 + (22 * (i + 1)) / SPECTRUM.length;
+      parts.push({
+        geometry: kit.decal((x, y, z) => {
+          const az = Math.abs(z);
+          const u = edgeU(x, az);
+          return Math.min(noseRegion(x, y, az), u - e0 - BLOCK_GAP, e1 - BLOCK_GAP - u);
+        }, { offset: 0.09 + i * 0.002 }),
+        mat,
+        name: `decal-nose-spectrum-${i}`,
+      });
+    });
+    // 細縫頭燈的黑色燈框（iter-103：白殼上的冰藍燈片原本幾乎看不見）
+    parts.push({
+      geometry: kit.decal((x, y, z) => {
+        const az = Math.abs(z);
+        if (x < 57.4 || x > 67.1 || y < 14) {
+          return -1;
+        }
+        const zc = lerp(13.5, 9.5, (x - 58) / 8.5);
+        return 1.25 - Math.abs(az - zc);
+      }, { offset: 0.08 }),
+      mat: 'dBlack',
+      name: 'lamp-slit-bezels',
+    });
     // 刀口鼻上的細縫頭燈（每側一道往外後斜的長條）
     parts.push({
       geometry: kit.decal((x, y, z) => {

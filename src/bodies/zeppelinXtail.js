@@ -196,10 +196,11 @@ export const zeppelinXtailBody = makePolyBody({
     // 觀景窗的兩道橫向窗框（把長窗分成三格）
     const bars = buildRegion(kit.surf, [(x, y, z) => Math.min(0.6 - Math.min(Math.abs(x + 14), Math.abs(x - 8)), 0.5 - windowSd(x, y, z))], { offset: 0.35 });
     parts.push({ geometry: bars.geometry, mat: 'frame', name: 'window-bars' });
-    // 鼻尖繫留錐（石墨灰金屬小圓錐，往前尖出）
-    const cone = new THREE.ConeGeometry(2.0, 1.6, 24);
+    // 鼻尖繫留錐（石墨灰金屬圓錐，往前尖出）
+    // iter-103（評審 iter-73「zeppelin 缺臉」，對照概念圖 concept_front34_v1）：底徑 4 → 6.4、底面往後埋進鼻帽到 x 78.4，錐尖仍在 x 81.2（全長不變）
+    const cone = new THREE.ConeGeometry(3.2, 2.8, 32);
     cone.rotateZ(-Math.PI / 2);
-    cone.translate(79.6 + 0.8, P.yA(79.6), 0);
+    cone.translate(78.4 + 1.4, P.yA(78.4), 0);
     parts.push({ geometry: cone, mat: 'frame', solid: true, outline: true, name: 'mooring-cone' });
 
     // 輪拱內襯（前後，31 mm 大輪拱）：擋住從側面看進去的殼內空腔
@@ -259,9 +260,16 @@ export const zeppelinXtailBody = makePolyBody({
     const numSd = sdNumber('75', { h: 9, w: 4.8, gap: 1.3 });
     parts.push({ geometry: kit.decal(sideDecal((u, v) => numSd(u, v) - 0.7, { x0: NUM.x0, y0: NUM.y0, zMin: 30 })), mat: 'dCream', name: 'decal-number-outline' });
     parts.push({ geometry: kit.decal(sideDecal(numSd, { x0: NUM.x0, y0: NUM.y0, zMin: 30 }), { offset: 0.1 }), mat: 'dOrange', name: 'decal-number' });
-    // 鼻帽兩側一對圓形探照燈（V14）
+    // iter-103：繫留錐底一圈訊號橘同心環（概念圖鼻帽上的橘環），和鼻環、尾環呼應
+    parts.push({ geometry: kit.decal((x) => Math.min(x - 76.9, 78.3 - x)), mat: 'dOrange', name: 'decal-nose-cone-ring' });
+    // 鼻帽兩側一對圓形探照燈（V14）；iter-103：燈片 r 1.5 → 1.7，外加石墨灰燈圈（r 2.3），讀成「一對眼睛」
     parts.push({
-      geometry: kit.decal((x, y, z) => (y > 20 ? -sdCircle(75.8, 4.2, 1.5)(x, Math.abs(z)) : -1), { offset: 0.1 }),
+      geometry: kit.decal((x, y, z) => (y > 20 ? -sdCircle(75.0, 5.0, 2.3)(x, Math.abs(z)) : -1), { offset: 0.1 }),
+      mat: 'dDark',
+      name: 'lamp-searchlight-bezels',
+    });
+    parts.push({
+      geometry: kit.decal((x, y, z) => (y > 20 ? -sdCircle(75.0, 5.0, 1.7)(x, Math.abs(z)) : -1), { offset: 0.2 }),
       mat: 'lamp',
       name: 'lamp-searchlights',
     });
