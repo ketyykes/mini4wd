@@ -413,6 +413,9 @@ function roundedRect(cx, cz, lx, lz, r, seg = 6) {
   return pts;
 }
 
+/** @type {number} slick 胎側壁平面的外緣（佔胎壁高度的比例；其餘是胎肩小圓角），iter-97 */
+const SLICK_SHOULDER = 0.8;
+
 /** 輪子：low profile 輪胎（Lathe）＋ Y 字幅輪框 */
 function buildWheel(mats, side) {
   const g = new THREE.Group();
@@ -435,8 +438,10 @@ function buildWheel(mats, side) {
       // 海綿：幾乎方形的斷面（只有 0.3 mm 小圓角）
       r = rr + (R - rr) * Math.min(1, 0.85 + edge * 6);
     } else if (tread === 'slick') {
-      // 第七階段（iter-76）：slick 胎——和橡膠胎同樣的圓胎肩，但胎面沒有溝槽
-      r = rr + (R - rr) * Math.min(1, 0.55 + edge * 4.5);
+      // 第七階段（iter-76）：slick 胎——胎面沒有溝槽。
+      // iter-97（評審 iter-84：胎壁偏厚、肩部圓角像軟胎）：硬質 slick 用近直角胎肩（側壁平面到 0.8，約 0.25 mm 小圓角），
+      // 側面看得到的胎壁就是資料上的 輪框 / 外徑（24.2 / 31 = 0.78）
+      r = rr + (R - rr) * Math.min(1, SLICK_SHOULDER + edge * 8);
     } else if (tread === 'barrel') {
       // 拱形：圓弧 r = R − (crownR − √(crownR² − y²))，胎肩處不低於輪框外 0.4 mm
       const yy = Math.min(Math.abs(y), crownR * 0.98);
@@ -561,17 +566,18 @@ function buildWheel(mats, side) {
     // 第七階段（iter-79）：單向輪框——輪框與中央內轂是兩件（內轂裝在輪軸上，輪框可以相對內轂往前空轉）：
     // 內轂比一般輪轂大（φ7.4，內含單向離合），外圈一道暗色分隔縫，轂面 8 道棘輪狀凸肋（示意內部棘爪；實際棘爪在內部看不到）
     // iter-82（reviewer：內轂與輪框同色看不出兩件）：內轂用黑色塑膠（顏色推估：官方頁沒寫內轂顏色），分隔縫加寬到 0.7 mm
+    // iter-97（評審 iter-84：縫太細、棘輪肋太小）：分隔縫 1.0 mm、棘輪肋放大（外觀示意，不影響質量 / 物理）
     const clutchHub = new THREE.Mesh(new THREE.CylinderGeometry(3.6, 3.6, 1.9, 32), mats.rollerBody);
     clutchHub.rotation.x = Math.PI / 2;
     clutchHub.position.z = side * 0.15;
     face.add(clutchHub);
-    const gap = new THREE.Mesh(new THREE.RingGeometry(3.6, 4.3, 40), mats.boreDark);
+    const gap = new THREE.Mesh(new THREE.RingGeometry(3.6, 4.6, 40), mats.boreDark);
     gap.position.z = side * 0.62;
     gap.rotation.y = side > 0 ? 0 : Math.PI;
     face.add(gap);
     for (let k = 0; k < 8; k++) {
       const a = (k / 8) * Math.PI * 2;
-      const tooth = new THREE.Mesh(new THREE.BoxGeometry(1.3, 0.45, 0.35), mats.rim);
+      const tooth = new THREE.Mesh(new THREE.BoxGeometry(1.7, 0.6, 0.5), mats.rim);
       tooth.position.set(Math.cos(a) * 2.9, Math.sin(a) * 2.9, side * 1.2);
       // 棘輪齒：沿切線方向略斜，看得出單一旋轉方向
       tooth.rotation.z = a + Math.PI / 2 + 0.5;
@@ -585,6 +591,7 @@ function buildWheel(mats, side) {
   face.position.z = side * (w * 0.32);
   g.add(face);
   // iter-07：外側壁貼片（胎壁平面 r = rr … rr + 0.55 (R − rr)，略浮 0.06 mm）
+  // iter-97：slick 胎肩改方正後，黑色字樣帶仍只到 0.55（評審：拉到胎肩會讓白胎從斜前方看像黑胎），0.55–0.8 露出胎色
   const wallOuter = rr + 0.55 * (R - rr);
   const wall = new THREE.Mesh(new THREE.RingGeometry(rr + 0.05, wallOuter - 0.05, 96, 1), mats.tireWall);
   wall.position.z = side * (w / 2 + 0.06);
@@ -974,6 +981,22 @@ const buildRoller = (mats, r, opt = {}) => {
     [recessR, -H + recessDepth],
     [brgR, -H + recessDepth],
   ];
+  // iter-97（評審 iter-84：9-8 導輪像墊片 / 彈簧疊）：矮片（≤ 3.5 mm，例如 9-8 二段導輪每片 3 mm）不畫中央溝，
+  // 只留上下 0.3 mm 倒角——每片看起來是一段實心圓柱，兩片中間的縮腰與 9 / 8 mm 外徑差才看得出來
+  if (r.h <= 3.5) {
+    prof = [
+      [brgR, H - recessDepth],
+      [recessR, H - recessDepth],
+      [recessR, H],
+      [R - 0.3, H],
+      [R, H - 0.3],
+      [R, -H + 0.3],
+      [R - 0.3, -H],
+      [recessR, -H],
+      [recessR, -H + recessDepth],
+      [brgR, -H + recessDepth],
+    ];
+  }
   // 第四階段：錐形導輪（零件 taper）：上段圓柱 h_c、下段截錐縮到底面半徑 R_b（錐面朝下，與 sim.js rollerWallContacts 同一份幾何）
   const tp = r.taper ?? null;
   if (tp) {
