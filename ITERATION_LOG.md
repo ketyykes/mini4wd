@@ -3485,3 +3485,24 @@
   - 19 mm 前導輪＋FRP 前後板：超長（`LENGTH`），和實車一樣要換小一點的導輪。
 - 截圖：`renders/iter-107-vz_*`（含拿掉車殼的 `iter-107-vz_chassis_front34.png`）。
 - 最終 `score.mjs`（2026-10-29 19:52–20:01 台北）回傳 0：**159/159、P01–P20 20/20**（新增 6 項 VZ 測試）。iter-88 兩張歷史截圖已還原。
+
+## iter-108（2026-10-29 台北）：B14 補完——高速 VZ 調校示範、VZ 側制振器座；15515 品番更正
+
+- 計畫：iter-107 留下兩項（高速 VZ 會飛出、VZ 沒有側制振器座）。照使用者原則（翻車就加／換零件，查不到就照推估）處理。
+- 高速 VZ（`configs/vz-tuned.json`，新增）：
+  - 換 TT2 單軸＋3.7:1 不加零件：0/8；只加 FRP 前後板＋角度板：2/8（iter-107）。
+  - 比照 MA 高速示範 p7-demo 的整套零件（都是官方一覽含 VZ 的零件）：FRP 前後導輪板、前 3° 角度板、前 11 mm 培林導輪、後 19 mm 橡膠環導輪、球頭連桿制振器、1 mm 強力海綿＋碳纖煞車板、單向輪、HG 培林、PC 車殼。
+  - 8 組起跑擾動（`b13-tune`）：TT2＋3.7 **8/8**（4.32–4.67 s，最大穿入 0.44 mm、最低 up.y 0.968）；AT2＋3.7 8/8；HD3＋3.5 4/8；TT2 前後都裝 3° 反而 4/8。採用 TT2＋3.7、只裝前 3°。
+- VZ 側制振器座：
+  - `chassis-vz` 加 `side-damper-mount`。安裝位置推估：FRP 側板直接鎖在中段側壁頂面（y 12.5），不加墊管；中心 z ±28.5，側板橫跨 1.4 mm 壁厚。
+  - 側壁幾何改成零件資料 `sideWalls_mm`／`sideWallHeight_mm`，3D 模型（`buildChassisVZ`）和 `chassisSideSolids`（側制振器與底盤干涉檢查）共用同一份。
+  - `sideDamperAdapter` 的墊管高度可由底盤指定（`spacer_mm`，VZ 為 0）；MA 不變。
+  - 相容表：15490 MA 側制振器（`damper-side-square-32`）官方一覽不含 VZ → `CHASSIS_COMPAT`。
+  - AR 側制振器 15459（φ8 × 20.7 mm 推估圓柱）在 VZ 上只剩車殼干涉；在 MA 上也一樣（所有車殼）→ 與官方註「車種によってはボディの改造が必要」一致，不改尺寸。
+  - 6×6×14 短方形制振器（`damper-side-square`）裝在 VZ＋PC 車殼完全合法，三車道 3 圈跑完（最大穿入 0.38 mm、最低 up.y 0.971）。
+- 品番更正：`damper-side-square` 與 hinge-deck 方形配重原本引用 [T15472]，查證官方 15472 是「FRPフロントワイドステー（フルカウルミニ四駆タイプ）」；6×6×14 短方形制振器是 **15515**（官方頁「1本約3.6g」，一覽含 AR／FM-A／VZ／MA）。數值不變，只改來源；PARTS_RESEARCH 同步加註。
+- 測試（`tests/vzChassis.test.js`）：
+  - `P18_vz_compat`：15490 → `CHASSIS_COMPAT`（原本 VZ 沒有側座所以是 `MOUNT_COMPAT`）；15459 在素組 owl-hush 上只剩 `DAMPER_BODY_CLEARANCE`。
+  - 新增 `P16_vz_tuned`：高速 VZ 合法、三車道 3 圈；側制振器側板壓在壁頂且橫跨壁厚、無墊管；裝 15515 合法並三車道 3 圈。
+- 截圖：`renders/iter-108-vz_*`（vz-tuned＋15515 側制振器）。
+- 最終 `score.mjs`（2026-10-29 20:13–20:23 台北）回傳 0：**160/160、P01–P20 20/20**。iter-88 兩張歷史截圖已還原。

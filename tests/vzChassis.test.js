@@ -72,8 +72,11 @@ test('P18_vz_compat 單／雙軸馬達、齒輪組、MA 專用零件與 VZ 專�
   for (const [slot, id] of [['batteryCover', 'battery-cover-vz'], ['gearCover', 'gear-cover-vz'], ['rearStay', 'stay-rear-vz']]) {
     expect(codes({ ...loadConfig('default'), [slot]: id }), id).toContain('CHASSIS_COMPAT');
   }
-  // 側制振器：VZ 沒有側制振器座（MOUNT_COMPAT）；官方一覽含 VZ 的後滑動保桿 15467、FRP／碳纖導輪板可以裝
-  expect(codes({ ...VZ, massDamper: 'damper-side-square-32' })).toContain('MOUNT_COMPAT');
+  // 側制振器（iter-108）：MA 側制振器 15490 一覽不含 VZ（CHASSIS_COMPAT）；AR 側制振器 15459 一覽含 VZ → 裝在 VZ 側壁上、不碰側壁與其他零件
+  expect(codes({ ...VZ, massDamper: 'damper-side-square-32' })).toContain('CHASSIS_COMPAT');
+  // 素組的 owl-hush 車殼會碰到側制振器：官方一覽 15459 註「車種によってはボディの改造が必要」，只剩車殼干涉、底盤本身裝得上
+  expect(codes({ ...VZ, massDamper: 'damper-ar-side' })).toEqual(['DAMPER_BODY_CLEARANCE']);
+  // 官方一覽含 VZ 的後滑動保桿 15467、FRP／碳纖導輪板可以裝
   for (const [slot, id] of [['rearStay', 'stay-rear-slide-soft'], ['frontStay', 'stay-front-frp'], ['rearStay', 'stay-rear-frp'], ['frontStay', 'stay-front-carbon']]) {
     expect(codes({ ...VZ, [slot]: id }), id).toEqual([]);
   }
@@ -150,8 +153,9 @@ test('P01_vz_top_speed VZ 示範車：理論極速 vs 模擬極速誤差 < 10%�
   expect(err).toBeLessThan(0.1);
 }, 60000);
 
-test('P16_vz_race VZ 示範車三條車道出發各跑官方 3 圈：不穿牆（≤ 1 mm）、不飛出、不翻覆', () => {
-  const asm = assemble(VZ);
+/** @type {(cfg: object, tag: string) => void} 三條車道出發各跑官方 3 圈：不穿牆（≤ 1 mm）、不飛出、不翻覆 */
+function raceThreeLanes(cfg, tag) {
+  const asm = assemble(cfg);
   const track = buildCircuit();
   const L = track.path.length;
   for (const lane of [0, 1, 2]) {
@@ -175,9 +179,40 @@ test('P16_vz_race VZ 示範車三條車道出發各跑官方 3 圈：不穿牆�
       pen = Math.max(pen, wallPenetration(env, car));
     }
     env.world.free();
-    console.log(`[P16_vz] 車道 ${lane}：${(d / L).toFixed(2)} 圈、${(steps * spec.sim.dt_s).toFixed(2)} s、最大穿入 ${(pen * 1000).toFixed(3)} mm、最低 up.y ${up.toFixed(3)}`);
+    console.log(`[${tag}] 車道 ${lane}：${(d / L).toFixed(2)} 圈、${(steps * spec.sim.dt_s).toFixed(2)} s、最大穿入 ${(pen * 1000).toFixed(3)} mm、最低 up.y ${up.toFixed(3)}`);
     expect(d).toBeGreaterThanOrEqual(3 * L);
     expect(pen).toBeLessThanOrEqual(0.001);
     expect(up).toBeGreaterThan(0.8);
   }
+}
+
+test('P16_vz_race VZ 示範車三條車道出發各跑官方 3 圈：不穿牆（≤ 1 mm）、不飛出、不翻覆', () => {
+  raceThreeLanes(VZ, 'P16_vz');
 }, 600000);
+
+test('P16_vz_tuned 高速 VZ（TT2 單軸＋3.7:1，加零件調校）三條車道各跑 3 圈；側制振器座：VZ 側壁上的側制振器安裝與跑圈', () => {
+  const tuned = loadConfig('vz-tuned');
+  expect(codes(tuned)).toEqual([]);
+  raceThreeLanes(tuned, 'P16_vz_tuned');
+  // 側制振器座：AR 側制振器（15459，φ8 × 20.7 mm 推估圓柱）在 MA 與 VZ 上都只剩車殼干涉（官方註「ボディの改造が必要」）；
+  // 15515 方形短制振器（官方一覽含 VZ）裝得進 PC 車殼。側板壓在中段側壁頂面，制振器在壁頂上方
+  expect(codes({ ...tuned, massDamper: 'damper-ar-side' })).toEqual(['DAMPER_BODY_CLEARANCE']);
+  expect(codes({ ...loadConfig('default'), massDamper: 'damper-ar-side' })).toEqual(['DAMPER_BODY_CLEARANCE']);
+  const side = { ...tuned, massDamper: 'damper-side-square' };
+  expect(codes(side)).toEqual([]);
+  const asm = assemble(side);
+  const ch = asm.partsBySlot.chassis;
+  const wallTop = ch.groundClearanceRef_mm + ch.plateThickness_mm + ch.sideWallHeight_mm;
+  const ds = asm.optional.dampers;
+  expect(ds.length).toBe(2);
+  for (const d of ds) {
+    const b = d.adapter.plate;
+    const zs = [Math.abs(b.min.z), Math.abs(b.max.z)];
+    // 側板底面 = 壁頂；側板橫跨整個 1.4 mm 壁厚（中段側壁 |z| 25.6–27）
+    expect(b.min.y).toBeCloseTo(wallTop, 9);
+    expect(Math.min(...zs)).toBeLessThanOrEqual(27 - 1.4);
+    expect(Math.max(...zs)).toBeGreaterThanOrEqual(27);
+    expect(d.adapter.spacers.length).toBe(0);
+  }
+  raceThreeLanes(side, 'P16_vz_side');
+}, 900000);

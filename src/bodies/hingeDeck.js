@@ -30,7 +30,7 @@ const RHO_STEEL = 7.85;
 const RHO_ABS = 1.05;
 
 /**
- * 方形配重（6 × 6 × 14 mm，[T15472] 官方外形尺寸）：長邊沿 z，2 個 Ø2.9 直通螺絲孔（推估）。
+ * 方形配重（6 × 6 × 14 mm，[T15515] 官方外形尺寸）：長邊沿 z，2 個 Ø2.9 直通螺絲孔（推估）。
  * 體積 = 504 − 2 × π × 1.45² × 6 ≈ 424.7 mm³ × 黃銅 8.5 ≈ 3.61 g（官方「1本約3.6g」）
  * @type {{ x: number, z: number, len: number, w: number, h: number, holeR: number, holeZ: number }}
  */
@@ -416,7 +416,7 @@ export const hingeDeckBody = makePolyBody({
     density_g_cm3: 'BODY_RACE_RESEARCH 第 3 節 [COV]：PC 1.20 g/cm³',
     wallThickness_mm: 'BODY_RACE_RESEARCH 第 3 節：官方 PC 透明殼片材 0.4 mm（[T95611] 等）',
     plate: 'BODY_RACE_RESEARCH 4.3：FRP 1.5 mm（Tamiya FRP 架官方厚度）、密度 1.85（PARTS_RESEARCH 3.1）；外形為本專案自訂（推估）',
-    weight: 'BODY_RACE_RESEARCH 4.3 [T15472]：方形配重 6×6×14 mm、1 支約 3.6 g；材質黃銅 8.5 g/cm³、2 個 Ø2.9 螺絲孔為推估（體積 × 密度 ≈ 3.61 g）',
+    weight: 'BODY_RACE_RESEARCH 4.3 [T15515]：方形配重 6×6×14 mm、1 支約 3.6 g；材質黃銅 8.5 g/cm³、2 個 Ø2.9 螺絲孔為推估（體積 × 密度 ≈ 3.61 g）',
     geometry: '本檔縱向控制表（推估）；外形型態依 BODY_RACE_RESEARCH 4.3 [GETNAVI]（車殼前端為支點、後段掛配重）；車殼為剛體，不模擬擺動',
     mounts: '對齊 chassis-midship 的車殼安裝點（SPEC 1.14）；後卡座撐在 FRP 尾板底面',
   },

@@ -11,6 +11,7 @@ import p5TaiwanConfig from '../configs/p5-taiwan.json';
 import p7DemoConfig from '../configs/p7-demo.json';
 import p7PartsConfig from '../configs/p7-parts.json';
 import vzDemoConfig from '../configs/vz-demo.json';
+import vzTunedConfig from '../configs/vz-tuned.json';
 import { spec as globalSpec, deriveParams } from './spec.js';
 import { resolvePart, listParts } from './parts/index.js';
 import { getBody, bodyMassProps, bodyClearance } from './bodies/index.js';
@@ -140,7 +141,7 @@ export function slotChoices(slot) {
 }
 
 /** @type {Record<string, any>} */
-const CONFIGS = { default: defaultConfig, speed: speedConfig, technical: technicalConfig, light: lightConfig, 'race-frp': raceFrpConfig, 'carbon-damper': carbonDamperConfig, 'p4-tech': p4TechConfig, 'p5-taiwan': p5TaiwanConfig, 'p7-demo': p7DemoConfig, 'p7-parts': p7PartsConfig, 'vz-demo': vzDemoConfig };
+const CONFIGS = { default: defaultConfig, speed: speedConfig, technical: technicalConfig, light: lightConfig, 'race-frp': raceFrpConfig, 'carbon-damper': carbonDamperConfig, 'p4-tech': p4TechConfig, 'p5-taiwan': p5TaiwanConfig, 'p7-demo': p7DemoConfig, 'p7-parts': p7PartsConfig, 'vz-demo': vzDemoConfig, 'vz-tuned': vzTunedConfig };
 
 /** @type {() => string[]} 所有組裝設定名稱 */
 export const listConfigs = () => Object.keys(CONFIGS);
@@ -893,7 +894,7 @@ function optionalLayout(p, comp, rollers) {
     let seats = [];
     if (d.mount === 'side') {
       const m = ch.sideDamperMount ?? { x_mm: 0, z_mm: 33 };
-      seats = [{ x: m.x_mm, y: m.y_mm, z: -m.z_mm }, { x: m.x_mm, y: m.y_mm, z: m.z_mm }].slice(0, d.count);
+      seats = [{ x: m.x_mm, y: m.y_mm, z: -m.z_mm, spacer_mm: m.spacer_mm }, { x: m.x_mm, y: m.y_mm, z: m.z_mm, spacer_mm: m.spacer_mm }].slice(0, d.count);
     } else {
       const m = p.rearStay.damperMount ?? { x_mm: -79, z_mm: 0, y_mm: ch.bumperBottomY_mm };
       seats = [{ x: m.x_mm, y: m.y_mm, z: m.z_mm }];

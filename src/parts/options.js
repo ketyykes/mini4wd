@@ -52,8 +52,8 @@ export const massDamperParts = [
     slideFriction_Nspm: 0.02,
     compat: { requires: ['side-damper-mount'] },
     src: {
-      mass_g: 'PARTS_RESEARCH 第三階段 F 節 [T15472] 官方「真ちゅう製、1本約3.6g」',
-      dims: 'PARTS_RESEARCH 第三階段 F 節 [T15472] 官方 6×6×14 mm',
+      mass_g: 'PARTS_RESEARCH 第三階段 F 節 [T15515] 官方「真ちゅう製、1本約3.6g」',
+      dims: 'PARTS_RESEARCH 第三階段 F 節 [T15515] 官方 6×6×14 mm（iter-108 更正品番：原誤記 15472，官方 15472 是 FRP 前寬架；6×6×14 短方形制振器是 15515，官方頁「1本約3.6g」、一覽含 MA／VZ）',
       stroke_mm: '推估：2 mm（側面托架空間較小）',
       mount: 'iter-90 推估：側裙頂面＋6 mm 鋁墊管＋1.5 mm FRP 板＋1 mm 座墊，配重底面 13.8 mm；托板與墊管另計固定質量，尺寸與來源見 chassisGeom.js / SPEC',
     },
@@ -529,8 +529,8 @@ export const ballastParts = [
     defaultMount: 'center',
     compat: {},
     src: {
-      mass_g: 'PARTS_RESEARCH 第三階段 H 節 [T15472] 官方「1本約3.6g」「固定式のウェイトとしても使えます」',
-      dims: '[T15472] 官方 6×6×14 mm',
+      mass_g: 'PARTS_RESEARCH 第三階段 H 節 [T15515] 官方「1本約3.6g」「固定式のウェイトとしても使えます」',
+      dims: '[T15515] 官方 6×6×14 mm',
     },
   },
 ];

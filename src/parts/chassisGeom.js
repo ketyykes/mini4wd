@@ -40,6 +40,14 @@ export function chassisSideGeometry(ch) {
 /** Side structures relevant to attachments. Small ribs/flanges use enclosing
  * boxes; the skirt/window holes and curved wheel relief are kept explicitly. */
 export function chassisSideSolids(ch) {
+  // VZ 這類用簡單立壁的底盤：側壁直接用零件資料（與 model.js 同一份）
+  if (ch.sideWalls_mm) {
+    const floorTop = (ch.groundClearanceRef_mm ?? ch.groundClearance_mm) + ch.plateThickness_mm;
+    return ch.sideWalls_mm.flatMap(([x0, x1, z]) => [-1, 1].map((sign) => ({
+      label: `${sign < 0 ? '左' : '右'}底盤側壁 x ${x0}～${x1}`,
+      solid: box(x0, x1, floorTop, floorTop + ch.sideWallHeight_mm, sign > 0 ? z - 1.4 : -z, sign > 0 ? z : -(z - 1.4)),
+    })));
+  }
   return chassisSideGeometry(ch).flatMap((s) => {
     const sign = s.sign;
     const items = [['側裙', s.skirt], ['側壁', s.wall], ['支撐塊', s.block]];
@@ -61,7 +69,7 @@ export function chassisSideSolids(ch) {
 
 export function sideDamperAdapter(ch, part, seat) {
   const side = Math.sign(seat.z), surfaceY = seat.y ?? chassisSideGeometry(ch)[0].skirt.y1;
-  const spacerHeight = part.mountSpacer_mm ?? 6; // Tamiya 15473, official length.
+  const spacerHeight = seat.spacer_mm ?? part.mountSpacer_mm ?? 6; // Tamiya 15473, official length; 底盤可指定不加墊管（VZ）
   // Estimated straight FRP adapter, matching the 6.5 mm side-skirt width.
   // Unlike the old 0.9 g guessed bracket, mass follows the displayed volume.
   const plateThickness = 1.5, length = 35, width = 6.5;

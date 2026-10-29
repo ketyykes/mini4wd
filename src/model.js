@@ -2441,9 +2441,9 @@ function buildChassisVZ(mats) {
   plate.position.y = y0;
   g.add(plate);
   // 側壁（外緣立壁）：前段、中段、後段
-  const wallH = 8.5;
+  const wallH = ch.sideWallHeight_mm;
   for (const sz of [-1, 1]) {
-    for (const [x0, x1, z] of [[27, 55, 23.5], [-24, 24, 27], [-56, -27, 26.5]]) {
+    for (const [x0, x1, z] of ch.sideWalls_mm) {
       const wall = new THREE.Mesh(new THREE.BoxGeometry(x1 - x0, wallH, 1.4), mats.chassis);
       wall.position.set((x0 + x1) / 2, floorTop + wallH / 2, sz * (z - 0.7));
       g.add(wall);

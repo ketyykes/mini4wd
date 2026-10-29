@@ -13,6 +13,7 @@ export const CHASSIS_ONLY = {
   'brake-rubber': { chassis: ['chassis-midship'], src: '[VZ 3.1] 15413 橡膠煞車組：一覽不含 VZ' },
   'switch-gold-terminal': { chassis: ['chassis-midship'], src: '[VZ 3.1] 15360 MS 金端子、15421 Super II 金端子：一覽不含 VZ' },
   'gear-shaft-ptfe': { chassis: ['chassis-midship'], src: '[VZ 3.1] 15390 含氟塗層齒輪軸：一覽不含 VZ（VZ 沒有 PRO 式中間齒輪軸）' },
+  'damper-side-square-32': { chassis: ['chassis-midship'], src: '[VZ 3.1] 15490 MA 側制振器組：一覽不含 VZ（VZ 的側制振器座給 15459 AR 側制振器用）' },
   'counter-bearing-520': { chassis: ['chassis-midship'], src: '[VZ 3.1] 15347 PRO 齒輪培林組：一覽不含 VZ' },
   'battery-cover-vz': { chassis: ['chassis-vz'], src: 'VZ 底盤附屬的電池扣' },
   'gear-cover-vz': { chassis: ['chassis-vz'], src: 'VZ 底盤附屬的後齒輪蓋' },
