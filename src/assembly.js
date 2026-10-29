@@ -897,7 +897,9 @@ function optionalLayout(p, comp, rollers) {
       seats = [{ x: m.x_mm, y: m.y_mm, z: -m.z_mm, spacer_mm: m.spacer_mm }, { x: m.x_mm, y: m.y_mm, z: m.z_mm, spacer_mm: m.spacer_mm }].slice(0, d.count);
     } else {
       const m = p.rearStay.damperMount ?? { x_mm: -79, z_mm: 0, y_mm: ch.bumperBottomY_mm };
-      seats = [{ x: m.x_mm, y: m.y_mm, z: m.z_mm }];
+      // 墊管（rearSpacer_mm）：制振器整個墊高，墊管本身是固定的安裝五金（B10 iter-109）
+      const spacer = d.rearSpacer_mm ?? 0;
+      seats = [{ x: m.x_mm, y: m.y_mm + spacer, z: m.z_mm, baseY: m.y_mm, rearSpacer: spacer }];
     }
     seats.forEach((s, i) => {
       const adapter = d.mount === 'side' ? sideDamperAdapter(ch, d, s) : null;
@@ -927,6 +929,11 @@ function optionalLayout(p, comp, rollers) {
           // conservative for clearance against unrelated parts and the body.
           solids.push({ group: 'damper', slot: 'massDamper', label: `${label}墊管 ${n + 1}`, mountingHardware: true, solid: { kind: 'cyl', axis: 'y', c: { x: spacer.x, y: (spacer.y0 + spacer.y1) / 2, z: spacer.z }, r: spacer.outerRadius, halfLen: (spacer.y1 - spacer.y0) / 2 } });
         });
+      } else if (s.rearSpacer > 0) {
+        // 15473 鋁墊管（外徑 4、內徑 2.2 mm，同 sideDamperAdapter 的墊管）
+        const spacerMass = Math.PI * (2 ** 2 - 1.1 ** 2) * s.rearSpacer * 2.7 / 1000;
+        damperBrackets.push({ label: `${label}墊管`, mass_g: spacerMass, pos: { x: s.x, y: s.baseY + s.rearSpacer / 2, z: s.z } });
+        solids.push({ group: 'damper', slot: 'massDamper', label: `${label}墊管`, mountingHardware: true, solid: { kind: 'cyl', axis: 'y', c: { x: s.x, y: s.baseY + s.rearSpacer / 2, z: s.z }, r: 2, halfLen: s.rearSpacer / 2 } });
       } else if (d.bracket) {
         const b = d.bracket;
         const side = Math.sign(s.z) || 1;

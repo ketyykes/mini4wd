@@ -1457,7 +1457,7 @@ const buildOptionalParts = (mats) => {
     for (const dx of screwXs) {
       const sxp = d.seat.x + dx;
       // 後制振器：螺絲由導輪板底面（板厚 1.5 mm）往上鎖，板底露出螺絲頭；側制振器：托架很低（離地 1 mm），用平頭螺絲埋在托架內，不畫頭
-      const below = d.adapter ? d.adapter.surfaceY : part.mount === 'side' ? d.seat.y - 1.0 : d.seat.y - 1.5 + 0.01;
+      const below = d.adapter ? d.adapter.surfaceY : part.mount === 'side' ? d.seat.y - 1.0 : (d.seat.baseY ?? d.seat.y) - 1.5 + 0.01;
       const shaftTop = top + 3.2;
       const shaft = new THREE.Mesh(new THREE.CylinderGeometry(0.95, 0.95, shaftTop - below, 12), mats.screw);
       shaft.position.set(sxp, (below + shaftTop) / 2, d.seat.z);
@@ -1477,6 +1477,15 @@ const buildOptionalParts = (mats) => {
       const nylon = new THREE.Mesh(new THREE.CylinderGeometry(1.6, 1.6, 0.6, 16), mats.nylonCap);
       nylon.position.set(sxp, top + 2.3, d.seat.z);
       grp.add(nylon);
+    }
+    if (d.seat.rearSpacer > 0) {
+      // B10（iter-109）：後制振器墊管（15473 鋁墊管，與 assembly 同尺寸）
+      const height = d.seat.rearSpacer;
+      const profile = [[1.1, 0], [2, 0], [2, height], [1.1, height], [1.1, 0]];
+      const spacer = new THREE.Mesh(new THREE.LatheGeometry(profile.map(([r, y]) => new THREE.Vector2(r, y)), 24), mats.aluSpacer);
+      spacer.position.set(d.seat.x, d.seat.baseY, d.seat.z);
+      spacer.name = 'rear-damper-spacer';
+      grp.add(spacer);
     }
     if (part.mount === 'side' && !d.adapter) {
       // 側托架：從底盤側壁伸出的小板（ABS）

@@ -12,6 +12,8 @@ export const massDamperParts = [
     mount: 'rear',
     count: 1,
     shape: 'cylinder',
+    /** B10（iter-109）：φ10 會擋到 MA 後保桿正面（x −72.9～−74.9、頂面 9.6 mm），螺絲上先套 6 mm 鋁墊管把制振器墊高 */
+    rearSpacer_mm: 6,
     diameter_mm: 10,
     height_mm: 7.5,
     stroke_mm: 3,
@@ -26,6 +28,7 @@ export const massDamperParts = [
     compat: { requires: ['rear-damper-mount'] },
     src: {
       mass_g: 'PARTS_RESEARCH 第三階段 F 節 [T15392] 官方「ウエイトは1個4.7g」',
+      rearSpacer_mm: 'B10（iter-109）底盤 3D 網格干涉檢查：板尾制振器座 x −79、φ10 → 外緣 −74，壓進 MA 後保桿正面（x −72.9～−74.9、y 5.4–9.6）0.6 mm。座往後移 1 mm 會讓 carbon-damper 全長 165.5 mm（> 165），所以照實車常見做法在螺絲上墊 15473 鋁墊管（官方長度 6 mm，同側制振器托架），制振器底面 11.4 mm 高過保桿正面 9.6 mm',
       dims: 'PARTS_RESEARCH 第三階段 F 節：推估外徑約 10 × 高約 7.5 mm（由 4.7 g ÷ 黃銅 8.5 g/cm³ 反算體積吻合）',
       stroke_mm: 'PARTS_RESEARCH 第三階段 F 節：推估 3 mm（範圍 2–5 mm，官方只說可用螺帽＋墊片調整）',
       seatDeflection_mm: '推估：與輪胎接地同樣取 0.3 mm 等級的接觸變形（config sim.suspensionStaticDeflection_mm）',

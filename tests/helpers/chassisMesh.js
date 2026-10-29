@@ -39,3 +39,41 @@ export function chassisMeshDistribution(asm) {
   const perMass = Object.fromEntries(Object.entries(second).map(([k, v]) => [k, v / vol]));
   return { volume_mm3: vol, com_mm: com, gyration_mm2: centralTensor(perMass, 1, com) };
 }
+
+/**
+ * B10（iter-109）：底盤本體網格（同上 abs-chassis-gunmetal）的表面取樣點，三角形內以 ≤ step mm 間距取點；
+ * 給附件實體做有號距離檢查（負值 = 底盤表面點在附件實體內 = 穿透）
+ * @type {(asm: any, step?: number) => Float32Array}
+ */
+export function chassisSurfaceSamples(asm, step = 0.7) {
+  const car = buildCarModel(asm, { body: false });
+  car.updateMatrixWorld(true);
+  const inv = new THREE.Matrix4().copy(car.getObjectByName('sprung').matrixWorld).invert();
+  /** @type {number[]} */
+  const out = [];
+  const a = new THREE.Vector3();
+  const b = new THREE.Vector3();
+  const c = new THREE.Vector3();
+  const p = new THREE.Vector3();
+  car.getObjectByName('chassis').traverse((o) => {
+    if (!o.isMesh) return;
+    const mat = Array.isArray(o.material) ? o.material[0] : o.material;
+    if (mat.name !== 'abs-chassis-gunmetal') return;
+    const g = o.geometry.index ? o.geometry.toNonIndexed() : o.geometry;
+    const pos = g.attributes.position;
+    const m = new THREE.Matrix4().multiplyMatrices(inv, o.matrixWorld);
+    for (let i = 0; i < pos.count; i += 3) {
+      a.fromBufferAttribute(pos, i).applyMatrix4(m);
+      b.fromBufferAttribute(pos, i + 1).applyMatrix4(m);
+      c.fromBufferAttribute(pos, i + 2).applyMatrix4(m);
+      const n = Math.max(1, Math.ceil(Math.max(a.distanceTo(b), b.distanceTo(c), c.distanceTo(a)) / step));
+      for (let u = 0; u <= n; u++) {
+        for (let v = 0; v <= n - u; v++) {
+          p.copy(a).multiplyScalar((n - u - v) / n).addScaledVector(b, u / n).addScaledVector(c, v / n);
+          out.push(p.x, p.y, p.z);
+        }
+      }
+    }
+  });
+  return Float32Array.from(out);
+}

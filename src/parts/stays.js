@@ -39,8 +39,12 @@ const plateHoles = (sx, outline, rollerX, rollerZ, mountX, rows) => {
 };
 
 // ---- 前導輪板：橫跨車頭的窄長條（深約 10 mm）＋往後鎖在保桿下方的中央舌片（ref_aero-avante-ar 的 FRP 前寬板）----
+// B10（iter-109）：中央舌片在車殼卡榫柱（x ±52／−50、3.2 × 6.4 mm，底盤 3D 模型）處開缺口 [52, 54.2] × [−3.8, 3.8]，
+// 原本舌片壓在柱子底部 0.6 mm（底盤網格干涉診斷 scripts/diag/b10-chassis-mesh.test.js）；缺口尺寸 = 柱子外框＋0.3 mm（推估）
+const POST_NOTCH_X = 54.2;
+const POST_NOTCH_Z = 3.8;
 const FRONT_FRP_OUTLINE = symmetricOutline(
-  [[79, 0], [79, -36], [78.2, -44.5], [75.5, -47.6], [72, -47.8], [69.4, -45.5], [69, -40], [69, -14], [52, -14], [52, 0]],
+  [[79, 0], [79, -36], [78.2, -44.5], [75.5, -47.6], [72, -47.8], [69.4, -45.5], [69, -40], [69, -14], [52, -14], [52, -POST_NOTCH_Z], [POST_NOTCH_X, -POST_NOTCH_Z], [POST_NOTCH_X, 0]],
   1,
 );
 const FRONT_FRP_HOLES = plateHoles(1, FRONT_FRP_OUTLINE, 74, 42.5, 56, [
@@ -49,7 +53,7 @@ const FRONT_FRP_HOLES = plateHoles(1, FRONT_FRP_OUTLINE, 74, 42.5, 56, [
 ]);
 const FRONT_FRP_T = 1.5;
 const FRONT_CARBON_OUTLINE = symmetricOutline(
-  [[79, 0], [79, -38], [77.6, -45.2], [74.5, -47.8], [71, -47.4], [69, -44], [69, -14.5], [52, -14.5], [52, 0]],
+  [[79, 0], [79, -38], [77.6, -45.2], [74.5, -47.8], [71, -47.4], [69, -44], [69, -14.5], [52, -14.5], [52, -POST_NOTCH_Z], [POST_NOTCH_X, -POST_NOTCH_Z], [POST_NOTCH_X, 0]],
   1,
 );
 const FRONT_CARBON_HOLES = plateHoles(1, FRONT_CARBON_OUTLINE, 74, 42.5, 56, [
@@ -61,7 +65,7 @@ const FRONT_CARBON_T = 1.5;
 // ---- 後導輪板：中央舌片（鎖在後保桿下方，尾端延伸成制振器座）＋兩支斜臂伸到導輪座 ----
 // FRP 後板：根部較寬（±21）、斜臂靠近後輪 → 換 31 mm 大徑輪時臂會碰到輪胎（STAY_TIRE_CLEARANCE）
 const REAR_FRP_OUTLINE = symmetricOutline(
-  [[82.5, 0], [82.5, -5.5], [79, -8], [66, -11], [75.6, -37.5], [76.2, -42.5], [74.5, -46.8], [71, -48], [67.6, -46.4], [50, -21], [50, 0]],
+  [[82.5, 0], [82.5, -5.5], [79, -8], [66, -11], [75.6, -37.5], [76.2, -42.5], [74.5, -46.8], [71, -48], [67.6, -46.4], [50, -21], [50, -POST_NOTCH_Z], [POST_NOTCH_X - 2, -POST_NOTCH_Z], [POST_NOTCH_X - 2, 0]],
   -1,
 );
 const REAR_FRP_HOLES = plateHoles(-1, REAR_FRP_OUTLINE, 71.5, 42.5, 54, [
