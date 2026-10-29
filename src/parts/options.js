@@ -598,3 +598,25 @@ export const brakePlateParts = [
     },
   },
 ];
+
+/**
+ * B13（iter-105）：導輪角度調整板（田宮 15373「ローラー角度調整プレートセット」，台灣 TAIWAN_SOURCES TW38）。
+ * 夾在導輪板（FRP 等）與底盤之間，讓導輪軸頂端往車頭方向傾（ダウンスラスト）。導輪沿牆前進時，導輪軸方向的滑動分量 v·sinθ
+ * 受滑動摩擦（spec.track.wallFriction）→ 產生把車往下壓的分力（PARTS_RESEARCH AK 節預期 P17）。官方：1°／2°／3° 三種板，組合出 −3°～+3°
+ * @type {import('./types').PartBase[]}
+ */
+export const rollerAnglePlateParts = [1, 2, 3].map((deg) => ({
+  id: `roller-angle-plate-${deg}`,
+  category: 'roller-angle-plate',
+  name: `導輪角度調整板 ${deg}°（ダウンスラスト，15373）`,
+  angle_deg: deg,
+  mass_g: 0.3,
+  compat: {},
+  src: {
+    grade: 'PARTS_RESEARCH AK 節 [T15373] 官方：「ローラーを取り付けるFRPなどとシャーシに間に挟み込んでダウンスラスト角を調節」「1度、2度、3度の3種類の角度調整プレートにより、＋3度から－3度まで1度単位」；適用含 MA',
+    angle_deg: `[T15373] 官方：${deg}°`,
+    mass_g: '推估（AK 節）：約 20×15×1 mm 塑膠楔形板 0.3 g',
+    mount: '[T15373]「FRPなどとシャーシに間に挟み込んで」→ 只能裝在板狀導輪架（FRP／碳纖／滑動保桿），原廠塑膠保桿不行（ROLLER_ANGLE_MOUNT，推估判讀）',
+    taiwan: 'TAIWAN_SOURCES TW38',
+  },
+}));

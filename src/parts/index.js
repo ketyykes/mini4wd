@@ -8,7 +8,7 @@ import { rollerParts } from './rollers.js';
 import { stayParts } from './stays.js';
 import { batteryParts } from './batteries.js';
 import { miscParts } from './misc.js';
-import { massDamperParts, brakeSpongeParts, ballastParts, brakePlateParts } from './options.js';
+import { massDamperParts, brakeSpongeParts, rollerAnglePlateParts, ballastParts, brakePlateParts } from './options.js';
 import { stabilizerParts } from './stabilizers.js';
 import { counterShaftParts } from './counterShafts.js';
 
@@ -32,6 +32,7 @@ export const allParts = [
   ...stabilizerParts,
   ...counterShaftParts,
   ...brakePlateParts,
+  ...rollerAnglePlateParts,
 ];
 
 /** @type {Map<string, PartBase>} */

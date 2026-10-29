@@ -46,6 +46,7 @@ export const VIOLATION_CODES = {
   BODY_ROLLER_CLEARANCE: '車殼與導輪干涉',
   GEAR_CHASSIS: '齒輪組不適用這個底盤',
   MOUNT_COMPAT: '零件需要的安裝點不存在',
+  ROLLER_ANGLE_MOUNT: '導輪角度調整板只能夾在板狀導輪架（FRP／碳纖／滑動保桿）與底盤之間',
   STAY_TIRE_CLEARANCE: '導輪板與輪胎干涉',
   ROLLER_TIRE_CLEARANCE: '導輪與輪胎干涉',
   ROLLER_ROLLER_CLEARANCE: '導輪互相干涉（例如雙層導輪裝在上下兩層的導輪架）',
@@ -190,6 +191,12 @@ export function validateAssembly(asm) {
     const missing = req.filter((f) => !features.has(f));
     if (missing.length > 0) {
       fail('MOUNT_COMPAT', `${part.name} 需要安裝點「${missing.map((f) => FEATURE_NAMES[f] ?? f).join('、')}」，目前的底盤 / 導輪架沒有（slot ${slot}）`);
+    }
+  }
+  // B13（iter-105）：導輪角度調整板（15373）「FRPなどとシャーシに間に挟み込んで」→ 該端導輪架要是板狀（有 plate），原廠塑膠保桿裝不上
+  for (const [slot, stay] of [['frontRollerAngle', 'frontStay'], ['rearRollerAngle', 'rearStay']]) {
+    if (p[slot] && !p[stay]?.plate) {
+      fail('ROLLER_ANGLE_MOUNT', `${p[slot].name} 要夾在板狀導輪架與底盤之間，${p[stay]?.name ?? stay} 不是板狀導輪架（slot ${slot}）`);
     }
   }
   const bal = p.ballast;

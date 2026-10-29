@@ -64,7 +64,7 @@
     "bridgeHeight_mm": 80.0,
     "bridgeHeight_mm_src": "SPEC 1.10：橋面約 80 mm（推估）",
     "wallFriction": 0.3,
-    "wallFriction_src": "SPEC 1.8：塑膠對塑膠滑動約 0.3"
+    "wallFriction_src": "推估（2026-10-29 查證，見 shared/reference/MEASURED_DATA.md 末節）：牆是 ABS（田宮 69579 官方「ABS樹脂製」）；導輪對牆的滑動摩擦沒有迷你四驅實測（Mini4Science 2024-07-15 原文「We haven't measured the kinetic frictional coefficient」）。工程資料：Delrin（POM）對自身 0.4、對鋼 0.30（DuPont）、POM 對 POM 0.25（名古屋市工業研究所）→ 取 0.3。用途：導輪軸向（上下，不能滾）的滑動摩擦、導輪角度調整板的下壓力。敏感度：0.1–0.45 與依材質分開（鋁 0.15–0.2、橡膠 0.5–0.7）下，p5-taiwan／p7-demo 示範設定 8 組起跑都跑完"
   },
   "sim": {
     "dt_s": 0.00025,

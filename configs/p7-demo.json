@@ -1,5 +1,5 @@
 {
-  "_readme": "示範（第七階段）：第七階段新零件組合——球頭連桿擺動式制振器（FRP 後導輪板）、單向輪框＋low profile 胎（26 mm）、HG 620 培林、前硬彈簧滑動保桿、後 19 mm 橡膠環導輪（iter-83：後 13 mm 鋁導輪在起跑位置 / 車道小擾動下 8 次有 2 次在換道器翻車，換 19 mm 橡膠環後 8 / 8），其餘同第五階段示範；車殼 pc-box（透明殼看得到底盤）",
+  "_readme": "示範（第七階段）：第七階段新零件組合——球頭連桿擺動式制振器（FRP 後導輪板）、單向輪框＋low profile 胎（26 mm）、HG 620 培林、前硬彈簧滑動保桿、後 19 mm 橡膠環導輪（iter-83：後 13 mm 鋁導輪在起跑位置 / 車道小擾動下 8 次有 2 次在換道器翻車，換 19 mm 橡膠環後 8 / 8），其餘同第五階段示範；車殼 pc-box（透明殼看得到底盤）；B13（iter-105）：導輪 μ 改用實測滾動阻力（約 0.003）後彎道損耗變小、過換道橋頂時車速約 5.5 m/s 會飛出牆外 → 依實車做法加導輪角度調整板（15373）前 3° 下推角（2026-10-29 敏感度驗證：後導輪是橡膠環，後面也加 3° 時，橡膠的軸向摩擦若取 0.6–0.7（推估）會壓過頭、8 組只剩 1 組跑完；只裝前面在軸向 μ 0.1–0.45 及依材質分開的組合下都 8/8）",
   "chassis": "chassis-midship",
   "motor": "motor-rev",
   "gear": "gear-3.7",
@@ -21,5 +21,7 @@
   "brakeSponge": "sponge-1mm-strong",
   "brakePlate": "brake-plate-carbon",
   "ballast": null,
-  "stabilizer": null
+  "stabilizer": null,
+  "frontRollerAngle": "roller-angle-plate-3",
+  "rearRollerAngle": null
 }

@@ -6,7 +6,7 @@ import RAPIER from '@dimforge/rapier3d-compat';
 import { dropTest, carMechanicalEnergy } from './helpers/drop.js';
 import { assemble, loadConfig, listConfigs, SLOTS, OPTIONAL_SLOTS } from '../src/assembly.js';
 import { validateAssembly } from '../src/regulation.js';
-import { listParts } from '../src/parts/index.js';
+import { listParts, getPart } from '../src/parts/index.js';
 import { listBodies, bodyMassProps } from '../src/bodies/index.js';
 import { theoreticalTopSpeed, longitudinalForce, motorOperatingPoint, batteryResistanceAt, Battery } from '../src/powertrain.js';
 import * as powertrainApi from '../src/powertrain.js';
@@ -332,12 +332,22 @@ describe('P17 新零件的物理效果（只透過組裝設定替換）', () => 
     const rubberMu05 = corner({ rollers: { base: 'roller-19-rubber', wallFriction: 0.05 } });
     const plasticMu05 = corner({ rollers: { base: 'roller-19-plastic-ring', wallFriction: 0.05 } });
     console.log(`[P17] 4 s 前進距離 / 彎道平均速度：塑膠環 ${f3(plastic.dist)} m / ${f3(plastic.arcV)}、鋁 19 ${f3(alu.dist)} / ${f3(alu.arcV)}、橡膠環 ${f3(rubber.dist)} / ${f3(rubber.arcV)}；對照 μ=0.05：橡膠環款 ${f3(rubberMu05.dist)} / ${f3(rubberMu05.arcV)}、塑膠環款 ${f3(plasticMu05.dist)} / ${f3(plasticMu05.arcV)}`);
+    // iter-105（B13）：μ 改成實測（[M4S-R]：19mm 塑膠環碟形 0.0031、HG 19mm 鋁 0.002675；橡膠環推估 0.00535）。
+    // 實測下三款的 μ 只差約 0.003，彎道速度差 < 0.2%，主要來自導輪質量與尺寸不同（塑膠環 > 鋁 > 橡膠環的彎道速度仍成立，但 4 s 距離不再單調），
+    // 原本「塑膠環 < 鋁 < 橡膠環」的跨款排序來自舊推估（0.03 / 0.05 / 0.10）。改成控制變因：同一顆導輪只換 μ，μ 越小過彎越快、走得越遠
+    const rubberAtPlasticMu = corner({ rollers: { base: 'roller-19-rubber', wallFriction: getPart('roller-19-plastic-ring').wallFriction } });
+    expect(getPart('roller-19-rubber').wallFriction).toBeGreaterThan(getPart('roller-19-plastic-ring').wallFriction);
+    // 橡膠環的煞車效果：同一顆橡膠環導輪，μ 換成塑膠環的值就變快
+    expect(rubberAtPlasticMu.arcV).toBeGreaterThan(rubber.arcV);
+    expect(rubberAtPlasticMu.dist).toBeGreaterThan(rubber.dist);
+    // 實測 μ（約 0.003–0.005）比舊推估 0.05 小一個數量級：兩款都明顯變快
+    expect(rubber.arcV).toBeGreaterThan(rubberMu05.arcV);
+    expect(rubber.dist).toBeGreaterThan(rubberMu05.dist);
+    expect(plastic.arcV).toBeGreaterThan(plasticMu05.arcV);
+    expect(plastic.dist).toBeGreaterThan(plasticMu05.dist);
+    // 跨款：彎道平均速度仍依 塑膠環 > 鋁 > 橡膠環（質量與 μ 共同決定）
     expect(plastic.arcV).toBeGreaterThan(alu.arcV);
     expect(alu.arcV).toBeGreaterThan(rubber.arcV);
-    expect(plastic.dist).toBeGreaterThan(alu.dist);
-    expect(alu.dist).toBeGreaterThan(rubber.dist);
-    expect(rubber.arcV).toBeLessThan(rubberMu05.arcV);
-    expect(plastic.arcV).toBeGreaterThan(plasticMu05.arcV);
 
     // 直線（不碰牆）：摩擦不同、其他相同的兩台車極速相同（接觸類零件只在實際接觸時受力）
     const straightRubber = flatTopSpeed(assemble(cfg({ rollers: 'roller-19-rubber' })), 4);
@@ -1460,7 +1470,14 @@ describe('P17 第四階段接觸零件（穩定零件、錐形導輪）', () => 
         r.tiers = r.tiers.map((tier) => ({ ...tier, wallFriction: 0 }));
       }
       const vy0 = car.chassis.linvel().y;
-      sim.wallContactImpulses(env, car);
+      // iter-105（B13）：導輪軸向（上下）滑動摩擦用 spec.track.wallFriction，這個案例只看幾何法向 → 一起歸零
+      const axial0 = spec.track.wallFriction;
+      spec.track.wallFriction = 0;
+      try {
+        sim.wallContactImpulses(env, car);
+      } finally {
+        spec.track.wallFriction = axial0;
+      }
       return { contacts, dvy: car.chassis.linvel().y - vy0 };
     };
     const tTop = pose(tapered, true);
@@ -2072,13 +2089,23 @@ function slideWallImpact(asm, psiDeg, V) {
   let Emax = E0;
   let E = E0;
   let peakF = 0;
+  let peakAll = 0;
+  let frontPhase = true;
   let uMax = 0;
   let springMax = 0;
   let vz = car.chassis.linvel().z;
   for (let i = 0; i < 0.1 / dt; i++) {
     sim.stepCar(env, car);
     const vzNow = car.chassis.linvel().z;
-    peakF = Math.max(peakF, (m * Math.abs(vzNow - vz)) / dt);
+    // iter-105（B13）：只計「前撞階段」（後導輪還沒碰牆之前）的峰值——要比的是前保桿吸收前導輪撞擊；
+    // 車頭擦牆後車身偏轉、後導輪再撞牆的第二次撞擊和前保桿種類無直接關係（診斷：μ 改實測後軟保桿 6° 4 m/s 的整段峰值出現在只有 RR / RUR 接觸的那一步）
+    const rearHit = sim.rollerWallContacts(env, car).some((c) => c.roller.startsWith('R'));
+    frontPhase = frontPhase && !rearHit;
+    const f = (m * Math.abs(vzNow - vz)) / dt;
+    peakAll = Math.max(peakAll, f);
+    if (frontPhase) {
+      peakF = Math.max(peakF, f);
+    }
     vz = vzNow;
     const st = sim.sliderState(car);
     if (st) {
@@ -2088,7 +2115,7 @@ function slideWallImpact(asm, psiDeg, V) {
     E = energy();
     Emax = Math.max(Emax, E);
   }
-  return { peakF, E0, Emax, Eend: E, uMax, springMax, dampingWork: sim.sliderState(car)?.dampingWork ?? 0, pen0 };
+  return { peakF, peakAll, E0, Emax, Eend: E, uMax, springMax, dampingWork: sim.sliderState(car)?.dampingWork ?? 0, pen0 };
 }
 
 describe('P17 / P18 / P11 第五階段前寬滑動保桿（iter-61）', () => {

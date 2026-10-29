@@ -2195,8 +2195,18 @@ function buildChassis(mats) {
   g.add(buildStayPlates(mats));
   for (const r of rollerLayoutOf(spec)) {
     const onPlate = r.x > 0 ? !!asmCur.partsBySlot.frontStay.plate : !!asmCur.partsBySlot.rearStay.plate;
-    const roller = buildRollerStack(mats, r, { bare: onPlate });
+    let roller = buildRollerStack(mats, r, { bare: onPlate });
     const slot = r.x > 0 ? 'frontStay' : 'rearStay';
+    // B13（iter-105）：導輪角度調整板（15373）→ 導輪組以導輪中心為支點，頂端往車頭方向傾 θ（與 sim.js 的導輪軸同一個角度）
+    const plate = asmCur.partsBySlot[r.x > 0 ? 'frontRollerAngle' : 'rearRollerAngle'];
+    if (plate) {
+      const pivot = new THREE.Group();
+      pivot.position.set(r.x, r.y, r.z);
+      roller.position.set(-r.x, -r.y, -r.z);
+      pivot.add(roller);
+      pivot.rotation.z = -(plate.angle_deg * Math.PI) / 180;
+      roller = pivot;
+    }
     if (asmCur.partsBySlot[slot].slide) roller.userData.sliderSlot = slot;
     g.add(roller);
   }

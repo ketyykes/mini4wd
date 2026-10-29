@@ -184,13 +184,15 @@ test('P17_wall_tiers 逐層幾何與摩擦：傾斜後只有上層橡膠環接�
       const upperZ = ((r.y + upper.y) * Math.sin(angle) + r.z * Math.cos(angle)) / 1000;
       car.chassis.setTranslation({ ...p, z: face - upperZ - upper.r / 1000 + 0.0002 }, true);
       const contacts = sim.rollerWallContacts(env, car);
-      expect(contacts.find((c) => c.tier === 1).mu).toBe(0.1);
+      // iter-105（B13）：μ 改成零件實測／推估值，期望值改讀零件資料（測的是「用上層自己的 μ」，不是某個固定數字）；上層橡膠環仍大於下層鋁
+      expect(contacts.find((c) => c.tier === 1).mu).toBe(upper.wallFriction);
+      expect(upper.wallFriction).toBeGreaterThan(r.tiers[0].wallFriction);
       // iter-101（B1）：導輪軸跟著車體傾斜，靠牆那一緣的水平伸展 = r·cosφ + (h/2)·sinφ（原本以軸鉛直近似成 r，期望值 0.2 mm 是那個近似的結果）
       const tiltReach = (upper.r * Math.cos(angle) + (upper.h / 2) * Math.sin(angle)) / 1000;
       expect(contacts.find((c) => c.tier === 1).pen).toBeCloseTo(0.0002 + tiltReach - upper.r / 1000, 7);
       if (degrees === 0) {
         expect(contacts).toHaveLength(2);
-        expect(contacts.find((c) => c.tier === 0).mu).toBe(0.05);
+        expect(contacts.find((c) => c.tier === 0).mu).toBe(r.tiers[0].wallFriction);
       } else {
         expect(contacts).toHaveLength(1);
         expect(contacts[0].tier).toBe(1);

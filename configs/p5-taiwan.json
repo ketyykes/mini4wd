@@ -1,5 +1,5 @@
 {
-  "_readme": "示範（第五階段）：台灣買得到的比賽零件（來源見 shared/reference/TAIWAN_SOURCES.md）——前硬彈簧滑動保桿＋11 mm 培林導輪、後 19 mm 橡膠環導輪、Rev-Tuned 2 PRO＋3.7:1、31 mm 低摩擦胎、中間齒輪培林組、MA 側制振器組、1 mm 海綿＋碳纖大面積煞車架，車殼 pc-box（透明殼看得到底盤）",
+  "_readme": "示範（第五階段）：台灣買得到的比賽零件（來源見 shared/reference/TAIWAN_SOURCES.md）——前硬彈簧滑動保桿＋11 mm 培林導輪、後 19 mm 橡膠環導輪、Rev-Tuned 2 PRO＋3.7:1、31 mm 低摩擦胎、中間齒輪培林組、MA 側制振器組、1 mm 海綿＋碳纖大面積煞車架，車殼 pc-box（透明殼看得到底盤）；B13（iter-105）：導輪 μ 改用實測滾動阻力（約 0.003）後彎道損耗變小、過換道橋頂時車速約 5.5 m/s 會飛出牆外 → 依實車做法加導輪角度調整板（15373）前 3° 下推角（後導輪在原廠保桿上，調整板裝不上）",
   "chassis": "chassis-midship",
   "motor": "motor-rev",
   "gear": "gear-3.7",
@@ -21,5 +21,6 @@
   "brakeSponge": "sponge-1mm-strong",
   "brakePlate": "brake-plate-carbon",
   "ballast": null,
-  "stabilizer": null
+  "stabilizer": null,
+  "frontRollerAngle": "roller-angle-plate-3"
 }

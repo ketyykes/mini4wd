@@ -50,6 +50,8 @@ const SLOT_LABELS = {
   massDamper: '制振器',
   brakeSponge: '煞車海綿',
   ballast: '配重',
+  frontRollerAngle: '前導輪角度調整板',
+  rearRollerAngle: '後導輪角度調整板',
 };
 
 /** @type {Record<string, string>} 安裝點的中文名稱 */

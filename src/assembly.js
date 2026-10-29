@@ -55,10 +55,13 @@ export const SLOTS = {
   brakePlate: 'brake-plate',
   ballast: 'ballast',
   stabilizer: 'stabilizer',
+  // B13（iter-105）：前／後導輪角度調整板（ダウンスラスト，15373）
+  frontRollerAngle: 'roller-angle-plate',
+  rearRollerAngle: 'roller-angle-plate',
 };
 
 /** 選配 slot：值可為 null（不裝）；組裝設定沒寫這個 slot 時也視為 null */
-export const OPTIONAL_SLOTS = ['massDamper', 'brakeSponge', 'ballast', 'stabilizer'];
+export const OPTIONAL_SLOTS = ['massDamper', 'brakeSponge', 'ballast', 'stabilizer', 'frontRollerAngle', 'rearRollerAngle'];
 
 /**
  * 舊組裝設定欄位 → 新 slot（相容層）：iter-56 起導輪拆成 frontRollers / rearRollers，
@@ -386,6 +389,16 @@ export function assemble(rawConfig) {
     const m = p[r.slot].mass_g;
     place(r.slot, `導輪 ${r.id}`, m, { x: r.x, y: r.y, z: r.z }, axisymmetricTensor(m, (m * r.r * r.r) / 2, r.h, 'y'));
   }
+  // B13（iter-105）：導輪角度調整板夾在導輪架與底盤之間，每端一片；位置取該端導輪的 x 平均、往內 8 mm，高度同導輪中心往下 3.5 mm（同塑膠導輪架質心的推估）
+  for (const [slot, rollerSlot, sx] of [['frontRollerAngle', 'frontRollers', 1], ['rearRollerAngle', 'rearRollers', -1]]) {
+    const plate = p[slot];
+    const own = rollers.filter((r) => r.slot === rollerSlot);
+    if (plate && own.length > 0) {
+      const x = own.reduce((a, r) => a + r.x, 0) / own.length - sx * 8;
+      const y = own.reduce((a, r) => a + r.y, 0) / own.length - 3.5;
+      place(slot, `${sx > 0 ? '前' : '後'}導輪角度調整板 ${plate.angle_deg}°`, plate.mass_g, { x, y, z: 0 });
+    }
+  }
   // 導輪架質心：板件 = 俯視外形面積形心、板厚中央；塑膠標準件 = 導輪座與底盤端之間（推估：導輪軸往內 8 mm、導輪中心往下 3.5 mm）
   for (const [slot, sx] of [['frontStay', 1], ['rearStay', -1]]) {
     const st = p[slot];
@@ -587,7 +600,8 @@ export function assemble(rawConfig) {
     P: deriveParams({ ...s, frontalArea_mm2 }, mass_g),
     layout: {
       wheels: wheels.map((w) => ({ ...lifted(w, lift), id: w.id, r: R, width: p.wheels.width_mm })),
-      rollers: rollers.map((r) => ({ ...r, y: r.y + lift })),
+      // B13（iter-105）：thrust_deg = 該端導輪角度調整板的下推角（沒裝為 0）
+      rollers: rollers.map((r) => ({ ...r, y: r.y + lift, thrust_deg: p[r.slot === 'frontRollers' ? 'frontRollerAngle' : 'rearRollerAngle']?.angle_deg ?? 0 })),
     },
     chassisMounts: ch.bodyMounts.map((m) => ({ ...lifted(m, lift), id: m.id })),
     // 底盤本體外框（車體座標）：沒裝車殼時物理碰撞方塊用這個

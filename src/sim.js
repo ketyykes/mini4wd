@@ -1250,7 +1250,12 @@ export function rollerWallContacts(env, car) {
       // iter-101（B1）：導輪軸用車體實際上方向（側傾／俯仰時傾斜），不再假設鉛直。
       // 導輪輪廓 = 沿軸的幾圈圓環（頂面、圓柱段底緣、錐形段底面）；每圈朝牆的最遠點 = 圈心 + 半徑 × (朝牆方向扣掉軸向分量後的單位向量)。
       // 側面是相鄰兩圈之間的直線段：對鉛直牆，最深點在端點；跨過牆頂的段在牆頂高度截斷（截點碰的是牆頂邊緣）。
-      const axis = upAxis(car);
+      // B13（iter-105）：導輪角度調整板（田宮 15373，ダウンスラスト）：導輪軸頂端往車頭方向傾 thrust_deg（車體座標繞橫軸轉），θ = 0 時與原本相同
+      const th = ((r.thrust_deg ?? 0) * Math.PI) / 180;
+      const axis = th === 0 ? upAxis(car) : rotate(car.chassis.rotation(), { x: Math.sin(th), y: Math.cos(th), z: 0 });
+      // B13（iter-105）：導輪只能繞自己的軸轉 → 沿牆滾動方向用實測滾動阻力 mu；沿導輪軸方向（上下）不會滾、只能滑，用塑膠對塑膠滑動摩擦（spec.track.wallFriction）
+      // r.axialFriction：只給敏感度診斷用（scripts/diag/b13-tune.test.js 依前後導輪材質分開設定）；零件資料沒有這個欄位，一律用 spec.track.wallFriction
+      const muAxial = r.axialFriction ?? spec.track.wallFriction;
       /** @type {{ y: number, r: number }[]} 沿軸的圓環（相對導輪片中心，m）：由上往下 */
       const rings = [{ y: (tier.h / 2) * MM, r: rr }, { y: (tier.h / 2) * MM - hc, r: rr }];
       if (hk > 0) {
@@ -1324,7 +1329,7 @@ export function rollerWallContacts(env, car) {
             pc.y += c.p.y * wgt;
             pc.z += c.p.z * wgt;
           }
-          out.push({ n: { x: nx, y: 0, z: nz }, p: { x: pc.x / sw, y: pc.y / sw, z: pc.z / sw }, pen: pen0, side, mu, restitution: tier.restitution ?? r.restitution, tier: tierIndex, roller: r.id, onSlider: !!r.onSlider, slider: r.slider });
+          out.push({ n: { x: nx, y: 0, z: nz }, p: { x: pc.x / sw, y: pc.y / sw, z: pc.z / sw }, pen: pen0, side, mu, restitution: tier.restitution ?? r.restitution, tier: tierIndex, roller: r.id, onSlider: !!r.onSlider, slider: r.slider, muAxial, axis });
           continue;
         }
         // 牆頂邊緣碰錐面：法向 = cosβ·水平推回車道 + sinβ·向上（β 為錐面相對導輪軸的斜角；導輪傾斜時錐面法向的小幅轉動仍忽略）
@@ -1337,6 +1342,8 @@ export function rollerWallContacts(env, car) {
           pen: pen0 * cb,
           roller: r.id,
           mu,
+          muAxial,
+          axis,
           restitution: tier.restitution ?? r.restitution,
           side,
           tier: tierIndex,
@@ -1632,6 +1639,23 @@ function sliderContactImpulses(car, contacts) {
     for (const k of ['x', 'y', 'z']) t[k] /= len;
     const t2 = { x: c.n.y * t.z - c.n.z * t.y, y: c.n.z * t.x - c.n.x * t.z, z: c.n.x * t.y - c.n.y * t.x };
     c.tangents = [jacobian(t, c.p, c.slid), jacobian(t2, c.p, c.slid)];
+    // B13（iter-105）：導輪接觸用橢圓摩擦錐 (f_axial / μ_axial)² + (f_roll / μ_roll)² ≤ J_n²：
+    // 兩條切向改成「導輪軸在切平面上的投影」與「滾動方向」，各乘自己的 μ，再把 μ 設成 1，求解器的圓盤投影就等於橢圓錐
+    if (c.muAxial !== undefined) {
+      const a = c.axis;
+      const roll = { x: a.y * c.n.z - a.z * c.n.y, y: a.z * c.n.x - a.x * c.n.z, z: a.x * c.n.y - a.y * c.n.x };
+      const rl = Math.hypot(roll.x, roll.y, roll.z);
+      if (rl > 1e-9) {
+        for (const k of ['x', 'y', 'z']) roll[k] /= rl;
+        const ax = { x: c.n.y * roll.z - c.n.z * roll.y, y: c.n.z * roll.x - c.n.x * roll.z, z: c.n.x * roll.y - c.n.y * roll.x };
+        // μ = 0 的方向不加切向列（全 0 的列會讓求解器的對角項為 0）；兩個方向都是 0 就是無摩擦接觸
+        const rows = [[ax, c.muAxial], [roll, c.mu]].filter(([, m]) => m > 0);
+        if (rows.length > 0) {
+          c.tangents = rows.map(([d, m]) => jacobian(d, c.p, c.slid).map((x) => x * m));
+          c.mu = 1;
+        }
+      }
+    }
   }
   // 行程端點硬止擋（滑動板靠在止擋上時）：單邊約束「不再往止擋外滑」，與牆面接觸一起解，
   // 牆把導輪推向止擋的衝量才會在同一步經止擋傳到車體（否則要等下一步 Rapier 的 joint 限位）；每塊滑動板各自判斷
@@ -1661,7 +1685,14 @@ function sliderContactImpulses(car, contacts) {
   }
   const initial = [...q];
   // iter-98（B1）：傳入質量矩陣啟用能量保證（同時恢復碰撞不得增加 ½qᵀMq，見 contactSolver.js）
-  car.wallSolve = solveContactVelocities(q, Minv, contacts, stops, { M: system.M });
+  // B13（iter-105）：導輪橢圓摩擦錐（滾動 μ ≈ 0.003、軸向 0.3）＋上下兩層導輪同時碰牆（法向、切向方向相同、只差高度）時，
+  // 兩組摩擦約束幾乎線性相關，逐接觸 Gauss-Seidel 收斂很慢：p7-demo {s 0.15, lane 0, soc 0.9} 第 19477 步 RR＋RUR 同時撞牆，
+  // 殘差 16 次 7.3e-5 → 256 次 8.8e-8 → 1602 次 9.95e-10 收斂（單調下降、不是振盪，能量守門未觸發，該步約 17 ms；scripts/diag/b13-solver*.test.js）。
+  // 收斂門檻 1e-9 不變，迭代上限 64 → 4096（約 1602 的 2.5 倍；計算預算，已收斂的步數提早跳出、結果不變）
+  // diagSnap：只有診斷腳本設定 globalThis.__wallSolveDiag 時才抓未收斂那一步的輸入
+  const diagSnap = globalThis.__wallSolveDiag ? { q: [...q], Minv: Minv.map((r) => [...r]), M: system.M.map((r) => [...r]), contacts: contacts.map((c) => ({ j: [...c.j], tangents: c.tangents.map((t) => [...t]), mu: c.mu, target: c.target, roller: c.roller, tier: c.tier })), stops: stops.map((c) => ({ j: [...c.j], target: c.target })) } : null;
+  car.wallSolve = solveContactVelocities(q, Minv, contacts, stops, { M: system.M, maxIterations: 4096 });
+  if (diagSnap && !car.wallSolve.converged) globalThis.__wallSolveDiag(diagSnap);
   for (const c of contacts) {
     if (c.stab) c.stab.normalForce += c.acc / spec.sim.dt_s;
   }
