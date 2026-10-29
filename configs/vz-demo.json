@@ -1,0 +1,20 @@
+{
+  "_readme": "B14（iter-107）：第二款底盤示範——後置單軸馬達＋傳動軸四驅（結構參考 Tamiya VZ，見 shared/reference/VZ_RESEARCH.md）。照 VZ 套件素組：單軸普通馬達、標配 3.5:1 單軸齒輪（[CS]）、14 mm 新形狀導輪、VZ 前保桿與後導輪架、電池扣與後齒輪蓋。換高轉速單軸馬達時和 MA 一樣需要加零件調校（iter-107 診斷：MA 裝 TT2 PRO＋3.7:1 也是 0/8 跑完）。雙軸 PRO 馬達、PRO 齒輪組、MA 專用零件裝不上（MOTOR_CLASS／GEAR_CHASSIS／CHASSIS_COMPAT）。",
+  "chassis": "chassis-vz",
+  "motor": "motor-single-standard",
+  "gear": "gear-ss-3.5",
+  "wheels": "wheel-26-lowprofile",
+  "bearings": "bearing-620",
+  "counterShaft": "counter-shaft-standard",
+  "frontRollers": "roller-14",
+  "rearRollers": "roller-14",
+  "frontStay": "stay-front-standard",
+  "rearStay": "stay-rear-vz",
+  "battery": "battery-aa-nimh-950",
+  "batteryCover": "battery-cover-vz",
+  "switch": "switch-standard",
+  "axles": "axle-hex-60",
+  "body": "body-owl-hush",
+  "gearCover": "gear-cover-vz",
+  "hardware": "hardware-standard"
+}

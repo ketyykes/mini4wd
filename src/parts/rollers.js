@@ -22,6 +22,25 @@ export const rollerParts = [
       mass_g: 'PARTS_RESEARCH [T15551] 官方：13 mm 塑膠導輪（壓入培林）0.45 g',
     },
   },
+  // B14（iter-107）：VZ 標配的新形狀 14 mm 塑膠導輪
+  {
+    id: 'roller-14',
+    category: 'roller',
+    name: '14 mm 塑膠導輪（新形狀，VZ 套件標配）',
+    finish: 'plastic',
+    diameter_mm: 14.0,
+    height_mm: 5.0,
+    wallFriction: 0.009225,
+    restitution: 0.1,
+    mass_g: 0.5,
+    src: {
+      diameter_mm: '[VZ 2.4] [T18094]「新形状の14mmローラーを採用。最大幅が広がって、VZシャーシの安定性を高めます」',
+      height_mm: '推估：同 roller-13（5 mm；[VZ 4] 第 3 點：14 mm 導輪高度查不到）',
+      wallFriction: 'B13 實測（iter-105）：[M4S-R] Mini4Science 2024-07-15 導輪滾動阻力（https://www.mini4science.com/2024/07/which-tamiya-mini-4wd-roller-is-the-best-summer2024/ Annex A）：Kit 14mm 0.009225',
+      restitution: '推估：同 roller-13',
+      mass_g: '推估（[VZ 2.4]）：[SAGANO] 19 mm 低摩擦塑膠導輪 0.5 g，14 mm 較小但多半含金屬襯套，取相同值',
+    },
+  },
   {
     id: 'roller-13-alu',
     category: 'roller',

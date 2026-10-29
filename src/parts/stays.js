@@ -263,6 +263,7 @@ export const stayParts = [
       rollerY_mm: 'SPEC 1.8：與牆接觸高度離地約 8–15 mm（推估）',
       mass_g: 'PARTS_RESEARCH：MA 類前保桿與底盤一體成型（0 g，含在底盤 24.4 g）',
       clearance: '與底盤一體，干涉檢查只看導輪（底盤本身依 22–35 mm 輪胎設計）',
+      vz: 'B14（iter-107）：VZ 的前保桿（螺絲固定、可拆）也用這一款，質量含在 chassis-vz；照片量測前導輪 x ≈ +71、z ±42（[VZ 2.4] 推估），和本款差 0.5 mm，在量測誤差內',
     },
   },
   {
@@ -326,6 +327,27 @@ export const stayParts = [
       upperRollerHeight_mm: 'SPEC 1.8：後保桿上下 2 顆疊放（推估高度）',
       mass_g: 'PARTS_RESEARCH 推估：碳纖後導輪架 2.46 g（[MYF2] 玩家實測）換算成 ABS 2 mm 厚 ≈ 2.1 g，取 2.0 g',
       brakeMount: '推估：後保桿中央橋接板下緣（model.js 保桿下緣 y = 5.4 mm）',
+    },
+  },
+  // B14（iter-107）：VZ 後導輪架（螺絲固定的分件，單層導輪）
+  {
+    id: 'stay-rear-vz',
+    category: 'stay-rear',
+    name: 'VZ 後導輪架（螺絲固定，左右各 1 顆導輪）',
+    material: 'abs',
+    rollerX_mm: 73,
+    rollerZ_mm: 42,
+    lowerRollerHeight_mm: 10,
+    upperRollerHeight_mm: null,
+    mass_g: 2.0,
+    features: [],
+    src: {
+      rollerX_mm: '推估（[VZ 2.4]）：照片量得後導輪在後軸後約 34 mm（x ≈ −73）；以官方全長 158 mm 驗算 (71 + 7) − (−73 − 7) = 158',
+      rollerZ_mm: '推估（[VZ 2.4]）：官方全寬 98 mm（14 mm 導輪）→ ±42',
+      lowerRollerHeight_mm: '推估：導輪高度查不到，沿用 stay-rear-standard 下層 10 mm（[VZ 2.4]「沿用專案 MA 現值」）',
+      upperRollerHeight_mm: '[VZ 2.4]：照片可見 4 顆導輪（前 2、後 2），後導輪單層（推估）',
+      mass_g: '推估（[VZ 2.5]）：同 stay-rear-standard 2.0 g',
+      features: '推估：原廠後導輪架沒有煞車座與制振器座（官方說明只寫「ビス穴は各種FRPプレートやカーボンプレートに対応」[T18094]）；要裝煞車或後制振器時換 FRP／碳纖後導輪板',
     },
   },
   {

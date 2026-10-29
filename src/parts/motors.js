@@ -241,4 +241,55 @@ export const motorParts = [
       mass_g: '同 motor-standard（推估）',
     },
   },
+  // ---- B14（iter-107）：單軸馬達（給後置單軸底盤 VZ；[VZ 3.1] 官方一覽 15477／15484／15486 含 VZ）----
+  // 擬合方法同 PRO 馬達（PARTS_RESEARCH 第 2 節／第三階段 M 節：範圍兩端對應 2.4／3.0 V、I0 = 0.25 A、4 條方程相對誤差最小平方解 k、R）；
+  // 同一支程式重算 15487／15489／15375 得到與既有值相同的 k、R（差 ≤ 0.2%），再套到單軸款
+  singleShaftMotor('motor-single-hyper', 'Hyper-Dash 3 單軸馬達（130 尺寸，15477）', 31200, 0.00587, 6.89, {
+    grade: 'Hyper-Dash 3（15477）：官方建議負載下 2.4–3.0 V、1.4–1.9 mN·m、17,200–21,200 rpm、1.6–3.0 A（SPEC 1.4；https://tamiya.com/english/products/15477/index.html）。官方數值與 Hyper-Dash PRO 15375 完全相同（PARTS_RESEARCH 第四階段 O 節）',
+    fit: '同 motor-hyper：k = 0.885×10⁻³、R = 0.436 Ω（I0 = 0.25 A）→ ω0 ≈ 31,200 rpm、τ_stall ≈ 5.87 mN·m、I_stall ≈ 6.89 A @3 V；官方端點相同所以模型相同（推估）',
+  }),
+  singleShaftMotor('motor-single-torque', 'Torque-Tuned 2 單軸馬達（130 尺寸，15484）', 24200, 0.00537, 5.02, {
+    grade: 'Torque-Tuned 2（15484）：官方建議負載下 2.4–3.0 V、1.6–2.0 mN·m、12,300–14,700 rpm、1.7–2.0 A（SPEC 1.4；https://tamiya.com/english/products/15484/index.html）',
+    fit: '推估：k = 1.125×10⁻³、R = 0.598 Ω（I0 = 0.25 A）→ ω0 ≈ 24,200 rpm、τ_stall ≈ 5.37 mN·m、I_stall ≈ 5.02 A @3 V；回代轉速 −3.3%／+3.3%、電流 −1.6%／+1.4%',
+  }),
+  singleShaftMotor('motor-single-atomic', 'Atomic-Tuned 2 單軸馬達（130 尺寸，15486）', 28500, 0.00405, 4.51, {
+    grade: 'Atomic-Tuned 2（15486）：官方建議負載下 2.4–3.0 V、1.5–1.8 mN·m、12,700–14,900 rpm、1.8–2.2 A（SPEC 1.4；https://tamiya.com/english/products/15486/index.html）。與 PRO 版 15489 數值不同（PARTS_RESEARCH [T15489] 註）',
+    fit: '推估：k = 0.949×10⁻³、R = 0.665 Ω（I0 = 0.25 A）→ ω0 ≈ 28,500 rpm、τ_stall ≈ 4.05 mN·m、I_stall ≈ 4.51 A @3 V；回代轉速 −6.2%／+6.2%、電流 +1.7%／−2.5%。無載轉速高於 PRO 版（21,500），是官方單軸版轉速較高、電流較大的結果；沒有玩家實測可交叉驗證',
+  }),
 ];
+
+/**
+ * 單軸 130 馬達（B14）：外殼、電樞、摩擦模型同 PRO 馬達，只有軸是單軸
+ * @type {(id: string, name: string, rpm: number, stallTorque: number, stallCurrent: number, src: { grade: string, fit: string }) => import('./types').PartBase}
+ */
+function singleShaftMotor(id, name, rpm, stallTorque, stallCurrent, src) {
+  return {
+    id,
+    category: 'motor',
+    name,
+    sizeClass: '130',
+    shaft: 'single',
+    ratedVoltage_V: 3.0,
+    noLoadRpm_atRated: rpm,
+    stallTorque_atRated_Nm: stallTorque,
+    stallCurrent_atRated_A: stallCurrent,
+    noLoadCurrent_A: 0.25,
+    coastMotorDrag: true,
+    frictionCoulombFraction: 0.5,
+    mass_g: 17.5,
+    armature: ARMATURE_130,
+    body_mm: { diameter: 20.1, flat: 15.1, length: 25.0, shaftDiameter: 2.0 },
+    src: {
+      armature: ARMATURE_130_SRC,
+      electricalModel: ELECTRICAL_MODEL_SRC,
+      grade: src.grade,
+      noLoadRpm_atRated: src.fit,
+      stallTorque_atRated_Nm: src.fit,
+      stallCurrent_atRated_A: src.fit,
+      noLoadCurrent_A: '推估：0.25 A（同 PRO 調校馬達）',
+      shaft: '[VZ 3.1]：單軸馬達，官方一覽含 VZ；「ミニ四駆PROシリーズには使用できません」→ 中置雙軸底盤裝不上（MOTOR_CLASS）',
+      mass_g: '推估：同一 130 尺寸外殼 17.5 g',
+      body_mm: '同 motor-standard（130 尺寸外殼）',
+    },
+  };
+}

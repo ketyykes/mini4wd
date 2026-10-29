@@ -80,6 +80,8 @@ const CODE_SLOTS = {
   MOTOR_CLASS: ['motor', 'chassis'],
   BATTERY: ['battery'],
   DRIVE_4WD: ['chassis'],
+  // B14：零件不適用目前底盤；實際零件的 slot 由訊息裡的「slot X」另外標紅
+  CHASSIS_COMPAT: ['chassis'],
   TERMINAL_MOD: ['switch'],
   // 穩定零件裝在前導輪上方，只和前導輪有關
   STABILIZER_ROLLER_SIZE: ['stabilizer', 'frontRollers'],
@@ -725,6 +727,10 @@ const markBadFields = (violations) => {
       // 安裝點不相容：訊息寫明「slot X」；配重安裝點錯誤的訊息沒有 slot，屬於 ballast
       const m = /slot (\w+)/.exec(v.message);
       bad.add(m ? m[1] : 'ballast');
+    }
+    if (v.code === 'CHASSIS_COMPAT') {
+      const m = /slot (\w+)/.exec(v.message);
+      if (m) bad.add(m[1]);
     }
   }
   for (const [slot, sel] of selects) {

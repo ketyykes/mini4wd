@@ -41,24 +41,41 @@ export function wheelLayout(s) {
   const c = s.chassis;
   const y = c.refWheelDiameter_mm / 2;
   const hx = c.wheelbase_mm / 2;
+  // B14：前後輪距可以不同（VZ 前 59.5／後 65.5 mm）；沒有寫後輪距的底盤前後相同
   const hz = c.trackWidth_mm / 2;
+  const hzR = (c.trackWidthRear_mm ?? c.trackWidth_mm) / 2;
   return [
     { id: 'FL', x: hx, y, z: -hz },
     { id: 'FR', x: hx, y, z: hz },
-    { id: 'RL', x: -hx, y, z: -hz },
-    { id: 'RR', x: -hx, y, z: hz },
+    { id: 'RL', x: -hx, y, z: -hzR },
+    { id: 'RR', x: -hx, y, z: hzR },
   ];
 }
 
-/** @type {(s: any) => any} 主要零件位置（雙軸馬達置中、兩側電池） */
+/**
+ * 主要零件位置：中置雙軸底盤 = 馬達置中（軸沿 x）、兩側電池；
+ * 後置單軸底盤（B14，VZ）= 馬達橫置在後軸前方（軸沿 z）、兩顆電池縱向並排在中前段（位置見 chassis.js chassis-vz，推估）
+ * motor.axis：馬達軸方向（'x' | 'z'）
+ * @type {(s: any) => any}
+ */
 export function componentLayout(s) {
   const c = s.chassis;
   const m = s.motor.body_mm;
   const floor = c.groundClearance_mm + c.plateThickness_mm;
   const cellR = s.battery.cellDiameter_mm / 2;
+  if (c.motorPosition === 'rear') {
+    const mp = c.motorMount_mm;
+    const bp = c.batteryBay_mm;
+    return {
+      floorY: floor,
+      motor: { x: mp.x, y: floor + m.flat / 2 + 0.5, z: mp.z, length: m.length, dia: m.diameter, flat: m.flat, axis: 'z' },
+      battery: { x: bp.x, y: floor + cellR, zs: [-bp.z, bp.z], length: s.battery.cellLength_mm, dia: s.battery.cellDiameter_mm },
+      rollerX: c.frontRollerX_mm,
+    };
+  }
   return {
     floorY: floor,
-    motor: { x: 0, y: floor + m.flat / 2 + 0.5, z: 0, length: m.length, dia: m.diameter, flat: m.flat },
+    motor: { x: 0, y: floor + m.flat / 2 + 0.5, z: 0, length: m.length, dia: m.diameter, flat: m.flat, axis: 'x' },
     battery: { x: 0, y: floor + cellR, zs: [-(m.diameter / 2 + cellR + 2), m.diameter / 2 + cellR + 2], length: s.battery.cellLength_mm, dia: s.battery.cellDiameter_mm },
     rollerX: c.frontRollerX_mm,
   };

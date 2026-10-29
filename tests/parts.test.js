@@ -1790,6 +1790,13 @@ function expectedCompatCodes(asm) {
   if ((p.motor.shaft === 'dual') !== (p.chassis.motorLayout === 'dual-shaft')) {
     codes.add('MOTOR_CLASS');
   }
+  // B14：零件的 compat.chassis 沒有列目前底盤（以 base id 判斷）
+  const chassisBase = p.chassis.id.split('+')[0];
+  for (const part of Object.values(p)) {
+    if (part?.compat?.chassis && !part.compat.chassis.includes(chassisBase)) {
+      codes.add('CHASSIS_COMPAT');
+    }
+  }
   return codes;
 }
 
@@ -1822,7 +1829,8 @@ function slotOptions() {
 }
 
 const CLEARANCE_RE = /_CLEARANCE$/;
-const COMPAT_CODES = new Set(['GEAR_CHASSIS', 'MOUNT_COMPAT', 'MOTOR_CLASS']);
+// B14（iter-107）：新增 CHASSIS_COMPAT（零件只適用某些底盤，parts/chassisCompat.js）
+const COMPAT_CODES = new Set(['GEAR_CHASSIS', 'MOUNT_COMPAT', 'MOTOR_CLASS', 'CHASSIS_COMPAT']);
 
 describe('P18 干涉與安裝相容性', () => {
   test('P18_configs 所有 configs/*.json 都合法（含第三階段示範設定）', () => {

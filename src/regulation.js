@@ -45,6 +45,7 @@ export const VIOLATION_CODES = {
   BODY_TIRE_CLEARANCE: '車殼與輪胎干涉',
   BODY_ROLLER_CLEARANCE: '車殼與導輪干涉',
   GEAR_CHASSIS: '齒輪組不適用這個底盤',
+  CHASSIS_COMPAT: '零件不適用這個底盤（官方商品頁適用底盤一覽，B14）',
   MOUNT_COMPAT: '零件需要的安裝點不存在',
   ROLLER_ANGLE_MOUNT: '導輪角度調整板只能夾在板狀導輪架（FRP／碳纖／滑動保桿）與底盤之間',
   STAY_TIRE_CLEARANCE: '導輪板與輪胎干涉',
@@ -183,6 +184,14 @@ export function validateAssembly(asm) {
   const layouts = g.compat?.chassisLayouts;
   if (layouts && !layouts.includes(p.chassis.motorLayout)) {
     fail('GEAR_CHASSIS', `齒輪組 ${g.name} 只適用 ${layouts.join('、')} 底盤，裝不上 ${p.chassis.name}（${p.chassis.motorLayout}）`);
+  }
+  // B14（iter-107）：零件只能裝在某些底盤（parts/chassisCompat.js，官方「シャーシ一覧」）
+  for (const [slot, part] of Object.entries(p)) {
+    const only = part?.compat?.chassis;
+    // 覆寫欄位的自訂零件 id 是「base+custom」，以 base 判斷是哪一款底盤
+    if (only && !only.includes(p.chassis.id.split('+')[0])) {
+      fail('CHASSIS_COMPAT', `${part.name} 只適用 ${only.join('、')}，裝不上 ${p.chassis.name}（slot ${slot}）`);
+    }
   }
   // 安裝點：零件需要的安裝點（compat.requires）必須由底盤或導輪架提供（asm.features）
   const features = new Set(asm.features ?? []);

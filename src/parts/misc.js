@@ -113,6 +113,21 @@ export const miscParts = [
     mass_g: 5.5,
     src: { mass_g: 'PARTS_RESEARCH [NAO] 玩家實測：齒輪蓋 5.5 g' },
   },
+  // B14（iter-107）：VZ 底盤附屬的蓋子（[VZ 2.5]、[VZ 2.6]）
+  {
+    id: 'battery-cover-vz',
+    category: 'battery-cover',
+    name: '電池扣（VZ，上方扣住兩顆縱向電池）',
+    mass_g: 1.0,
+    src: { mass_g: '推估（[VZ 2.5]）：VS 有「ヒンジで開閉できるスイッチカバーとバッテリーホルダー」、VZ「VSから引き継ぐシャーシのレイアウト」→ 推估 VZ 也有；質量取 MA 電池蓋 1.6 g × 約 0.6' },
+  },
+  {
+    id: 'gear-cover-vz',
+    category: 'gear-cover',
+    name: '後齒輪蓋（VZ，蓋住馬達後方的齒輪）',
+    mass_g: 1.5,
+    src: { mass_g: '推估（[VZ 2.5]）：[T18094]「ギヤカバーはワンタッチで取り外しOK」，只蓋後方齒輪，面積約 MA 齒輪蓋（5.5 g）的 1/4' },
+  },
   {
     id: 'hardware-standard',
     category: 'hardware',

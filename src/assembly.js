@@ -10,6 +10,7 @@ import p4TechConfig from '../configs/p4-tech.json';
 import p5TaiwanConfig from '../configs/p5-taiwan.json';
 import p7DemoConfig from '../configs/p7-demo.json';
 import p7PartsConfig from '../configs/p7-parts.json';
+import vzDemoConfig from '../configs/vz-demo.json';
 import { spec as globalSpec, deriveParams } from './spec.js';
 import { resolvePart, listParts } from './parts/index.js';
 import { getBody, bodyMassProps, bodyClearance } from './bodies/index.js';
@@ -139,7 +140,7 @@ export function slotChoices(slot) {
 }
 
 /** @type {Record<string, any>} */
-const CONFIGS = { default: defaultConfig, speed: speedConfig, technical: technicalConfig, light: lightConfig, 'race-frp': raceFrpConfig, 'carbon-damper': carbonDamperConfig, 'p4-tech': p4TechConfig, 'p5-taiwan': p5TaiwanConfig, 'p7-demo': p7DemoConfig, 'p7-parts': p7PartsConfig };
+const CONFIGS = { default: defaultConfig, speed: speedConfig, technical: technicalConfig, light: lightConfig, 'race-frp': raceFrpConfig, 'carbon-damper': carbonDamperConfig, 'p4-tech': p4TechConfig, 'p5-taiwan': p5TaiwanConfig, 'p7-demo': p7DemoConfig, 'p7-parts': p7PartsConfig, 'vz-demo': vzDemoConfig };
 
 /** @type {() => string[]} 所有組裝設定名稱 */
 export const listConfigs = () => Object.keys(CONFIGS);
@@ -177,11 +178,13 @@ function buildSpec(p) {
     drivetrain: {
       gearRatio: g.ratio,
       gearEfficiency: g.efficiency,
-      counterGearCount: 2,
+      // 中置雙軸：前後各 1 組中間齒輪；後置單軸（VZ）：只有後方 1 組，前輪經傳動軸＋冠狀齒輪驅動
+      counterGearCount: ch.motorPosition === 'rear' ? 1 : 2,
       pinionPitchRadius_mm: g.pinionPitchRadius_mm,
       counterLargePitchRadius_mm: g.counterLargePitchRadius_mm,
       counterSmallPitchRadius_mm: g.counterSmallPitchRadius_mm,
       spurPitchRadius_mm: g.spurPitchRadius_mm,
+      crownPitchRadius_mm: g.crownPitchRadius_mm ?? null,
     },
     bearings: {
       kind: p.bearings.kind,
@@ -194,6 +197,11 @@ function buildSpec(p) {
     chassis: {
       wheelbase_mm: ch.wheelbase_mm,
       trackWidth_mm: ch.trackWidth_mm,
+      // B14（VZ）：後輪距、馬達位置（rear = 後置橫置單軸）、馬達與電池座位置
+      trackWidthRear_mm: ch.trackWidthRear_mm ?? ch.trackWidth_mm,
+      motorPosition: ch.motorPosition ?? 'mid',
+      motorMount_mm: ch.motorMount_mm ?? null,
+      batteryBay_mm: ch.batteryBay_mm ?? null,
       refWheelDiameter_mm: ch.refWheelDiameter_mm,
       groundClearance_mm: ch.groundClearanceRef_mm,
       plateThickness_mm: ch.plateThickness_mm,
@@ -264,6 +272,26 @@ export function rollerLayoutOf(s) {
   return [...front, ...rear];
 }
 
+/**
+ * B14：後置單軸底盤的齒輪列位置（底盤座標，與 model.js 相同）：小齒輪在馬達軸端（z = 馬達 z + 長度/2 + 3），
+ * 中間齒輪中心同時距小齒輪 (小齒輪 + 中間大齒) 節圓、距後輪軸 (中間小齒 + 輪軸齒輪) 節圓，取兩圓交點中較高的一點
+ * @type {(g: any, motor: any, axleX: number, axleY: number) => { z: number, counter: { x: number, y: number } }}
+ */
+export function singleShaftTrain(g, motor, axleX, axleY) {
+  const r1 = g.pinionPitchRadius_mm + g.counterLargePitchRadius_mm;
+  const r2 = g.counterSmallPitchRadius_mm + g.spurPitchRadius_mm;
+  const dx = axleX - motor.x;
+  const dy = axleY - motor.y;
+  const d = Math.hypot(dx, dy);
+  const a = (r1 * r1 - r2 * r2 + d * d) / (2 * d);
+  const h = Math.sqrt(Math.max(0, r1 * r1 - a * a));
+  const mx = motor.x + (a * dx) / d;
+  const my = motor.y + (a * dy) / d;
+  const cands = [{ x: mx - (h * dy) / d, y: my + (h * dx) / d }, { x: mx + (h * dy) / d, y: my - (h * dx) / d }];
+  const counter = cands[0].y >= cands[1].y ? cands[0] : cands[1];
+  return { z: motor.z + motor.length / 2 + 3, counter };
+}
+
 /** @type {(v: Vec3, dy: number) => Vec3} */
 const lifted = (v, dy) => ({ x: v.x, y: v.y + dy, z: v.z });
 
@@ -309,6 +337,9 @@ export function assemble(rawConfig) {
   // 中間齒輪位置：中間齒輪小齒與輪軸齒輪中心距 = 小齒 + 輪軸齒輪節圓半徑；中間齒輪軸與馬達軸同高（與 model.js gearTrainLayout 相同）
   const centerDist = p.gear.counterSmallPitchRadius_mm + p.gear.spurPitchRadius_mm;
   const counterX = hw - Math.sqrt(Math.max(0, centerDist * centerDist - (axleY - comp.motor.y) ** 2));
+  // B14：後置單軸底盤（VZ）只有後方一組齒輪（位置見 singleShaftTrain）
+  const rearMotor = comp.motor.axis === 'z';
+  const ssTrain = rearMotor ? singleShaftTrain(p.gear, comp.motor, -hw, axleY) : null;
 
   /** @type {PlacedPart[]} */
   const parts = [];
@@ -325,7 +356,8 @@ export function assemble(rawConfig) {
   // 切除質量 = 切除幾何（parts/bumperGeom.js，與 3D 模型同一份）× 底盤密度，從底盤本體的質量與重心扣除
   const chassisTrim = [];
   for (const [slot, sx] of [['frontStay', 1], ['rearStay', -1]]) {
-    if (p[slot].chassisTrim) {
+    // B14：VZ 的 FRP 前寬架與保桿一起鎖（ch.bumperTrim = false），不切保桿
+    if (p[slot].chassisTrim && ch.bumperTrim !== false) {
       const t = bumperTrim(ch, sx);
       chassisTrim.push({ slot, end: sx > 0 ? 'front' : 'rear', mass_g: t.mass_g, com_mm: t.com_mm, volume_mm3: t.volume_mm3, second_mm5: t.second_mm5 });
     }
@@ -346,8 +378,15 @@ export function assemble(rawConfig) {
   const chCom = { x: chMom.x / chMass, y: chMom.y / chMass, z: chMom.z / chMass };
   place('chassis', chassisTrim.length > 0 ? '底盤本體（保桿切除後）' : '底盤本體', chMass, chCom, addTensor(chOrigin, pointTensor(chMass, chCom), -1));
   // iter-96（B3）：馬達外殼（兩側削平的圓柱，軸沿 x）均質中心張量（推估：電樞、磁鐵、外殼的實際分布未實測）
-  place('motor', '雙軸馬達', p.motor.mass_g, { x: comp.motor.x, y: comp.motor.y, z: comp.motor.z },
-    flattenedCylinderXTensor(p.motor.mass_g, comp.motor.dia, comp.motor.flat, comp.motor.length));
+  if (rearMotor) {
+    // B14：橫置馬達（軸沿 z）：同一顆扁圓柱張量，把 x、z 軸對調
+    const t = flattenedCylinderXTensor(p.motor.mass_g, comp.motor.dia, comp.motor.flat, comp.motor.length);
+    place('motor', '單軸馬達（後置橫置）', p.motor.mass_g, { x: comp.motor.x, y: comp.motor.y, z: comp.motor.z },
+      { xx: t.zz, yy: t.yy, zz: t.xx, xy: t.yz, xz: t.xz, yz: t.xy });
+  } else {
+    place('motor', '雙軸馬達', p.motor.mass_g, { x: comp.motor.x, y: comp.motor.y, z: comp.motor.z },
+      flattenedCylinderXTensor(p.motor.mass_g, comp.motor.dia, comp.motor.flat, comp.motor.length));
+  }
   const cells = p.battery.cells;
   comp.battery.zs.slice(0, cells).forEach((z, i) => {
     const cellMass = p.battery.mass_g / cells;
@@ -357,10 +396,27 @@ export function assemble(rawConfig) {
   // 齒輪組：前後各一半；質心取中間齒輪與輪軸齒輪之間（推估）
   // iter-96（B3）：齒輪組視為軸沿 z、半徑 = 輪軸齒輪節圓的實心圓盤（同 inertia.js 傳動系的推估），厚度取 0（上限：齒輪實際有腹板開孔）
   const gearR = p.gear.spurPitchRadius_mm;
-  for (const sx of [1, -1]) {
-    const label = sx > 0 ? '前' : '後';
-    const m = p.gear.mass_g / 2;
-    place('gear', `${label}齒輪組`, m, { x: sx * (counterX + hw) / 2, y: (comp.motor.y + axleY) / 2, z: 0 }, axisymmetricTensor(m, (m * gearR * gearR) / 2, 0, 'z'));
+  if (ssTrain) {
+    // B14：單軸齒輪組拆成「後齒輪列（小齒輪＋中間齒輪＋輪軸齒輪）」「前後冠狀齒輪」「傳動軸」三處（質量來自 inertiaMasses_g，合計 = 齒輪組質量）
+    const gm = p.gear.inertiaMasses_g;
+    const ps = ch.propShaft_mm;
+    // 裝錯齒輪組（例如雙軸 PRO 組，GEAR_CHASSIS 違規）時沒有冠狀齒輪與傳動軸資料：整組質量都放在後齒輪列，只為了讓組裝與規則檢查能完成
+    const hasCrown = (gm.crown ?? 0) > 0 && (gm.propShaft ?? 0) > 0;
+    const mTrain = hasCrown ? gm.pinion + gm.counter + gm.spur : p.gear.mass_g;
+    place('gear', '後齒輪列', mTrain, { x: (ssTrain.counter.x - hw) / 2, y: (ssTrain.counter.y + axleY) / 2, z: ssTrain.z }, axisymmetricTensor(mTrain, (mTrain * gearR * gearR) / 2, 0, 'z'));
+    if (hasCrown) {
+      const cr = p.gear.crownPitchRadius_mm;
+      for (const sx of [1, -1]) {
+        place('gear', `${sx > 0 ? '前' : '後'}冠狀齒輪`, gm.crown, { x: sx * hw, y: axleY, z: ps.z - 1 }, axisymmetricTensor(gm.crown, (gm.crown * cr * cr) / 2, 0, 'z'));
+      }
+      place('gear', '傳動軸', gm.propShaft, { x: 0, y: ps.y, z: ps.z }, cylinderXTensor(gm.propShaft, 1, 2 * hw - 8));
+    }
+  } else {
+    for (const sx of [1, -1]) {
+      const label = sx > 0 ? '前' : '後';
+      const m = p.gear.mass_g / 2;
+      place('gear', `${label}齒輪組`, m, { x: sx * (counterX + hw) / 2, y: (comp.motor.y + axleY) / 2, z: 0 }, axisymmetricTensor(m, (m * gearR * gearR) / 2, 0, 'z'));
+    }
   }
   // 輪胎＋輪框：繞輪軸 = inertia.js 的傳動系值（同一份），橫向 = 繞軸 / 2 + m·寬² / 12
   const wheelAxial = wheelInertia(p.wheels).total;
@@ -371,17 +427,21 @@ export function assemble(rawConfig) {
   for (const sx of [1, -1]) {
     place('axles', sx > 0 ? '前輪軸' : '後輪軸', p.axles.mass_g, { x: sx * hw, y: axleY, z: 0 }, axisymmetricTensor(p.axles.mass_g, axleAxial, p.axles.length_mm, 'z'));
   }
-  // 軸承 6 處：輪軸左右支撐 ×4（輪軸支撐座 z = ±23.4，同 model.js）、中間齒輪軸 ×2
+  // 軸承 6 處：輪軸左右支撐 ×4（輪軸支撐座 z = ±(輪距/2 − 6.35)：MA ±23.4，同 model.js）、中間齒輪軸 ×2
+  // B14：VZ 後輪距較寬，後輪軸承跟著往外；中間齒輪只有後方 1 組，2 個軸承都在中間齒輪軸兩端
   for (const sx of [1, -1]) {
+    const bz = (sx > 0 ? ch.trackWidth_mm : (ch.trackWidthRear_mm ?? ch.trackWidth_mm)) / 2 - 6.35;
     for (const sz of [1, -1]) {
-      place('bearings', `輪軸軸承 ${sx > 0 ? '前' : '後'}${sz > 0 ? '右' : '左'}`, p.bearings.mass_g, { x: sx * hw, y: axleY, z: sz * 23.4 });
+      place('bearings', `輪軸軸承 ${sx > 0 ? '前' : '後'}${sz > 0 ? '右' : '左'}`, p.bearings.mass_g, { x: sx * hw, y: axleY, z: sz * bz });
     }
+    const cpos = ssTrain ? { x: ssTrain.counter.x, y: ssTrain.counter.y, z: ssTrain.z + sx * 2 } : { x: sx * counterX, y: comp.motor.y, z: 0 };
+    const clabel = ssTrain ? (sx > 0 ? '右' : '左') : sx > 0 ? '前' : '後';
     // iter-59：中間齒輪軸 slot 自帶培林（中間齒輪培林組）時，中間齒輪軸承改由它提供（取代輪軸軸承 slot 的中間齒輪軸承）
     const cb = p.counterShaft.counterBearing;
     if (cb) {
-      place('counterShaft', `中間齒輪培林 ${sx > 0 ? '前' : '後'}`, cb.mass_g, { x: sx * counterX, y: comp.motor.y, z: 0 });
+      place('counterShaft', `中間齒輪培林 ${clabel}`, cb.mass_g, cpos);
     } else {
-      place('bearings', `中間齒輪軸承 ${sx > 0 ? '前' : '後'}`, p.bearings.counterMass_g, { x: sx * counterX, y: comp.motor.y, z: 0 });
+      place('bearings', `中間齒輪軸承 ${clabel}`, p.bearings.counterMass_g, cpos);
     }
   }
   // iter-96（B3）：導輪視為軸沿 y 的均質圓柱（外徑、總高取導輪佈局；推估，實際有培林與鋁殼分層）
@@ -423,10 +483,17 @@ export function assemble(rawConfig) {
       place(slot, label, st.mass_g, { x: -(st.rollerX_mm - 8), y: (st.lowerRollerHeight_mm + upper) / 2 - 3.5, z: 0 });
     }
   }
-  place('batteryCover', '電池蓋', p.batteryCover.mass_g, { x: 0, y: ch.groundClearanceRef_mm + 0.5, z: 0 });
+  if (rearMotor) {
+    // B14：VZ 電池扣跨在兩顆電池上方；後齒輪蓋蓋住馬達後方的齒輪列（推估位置）
+    place('batteryCover', '電池扣', p.batteryCover.mass_g, { x: comp.battery.x, y: comp.battery.y + comp.battery.dia / 2 + 0.5, z: 0 });
+    place('gearCover', '後齒輪蓋', p.gearCover.mass_g, { x: (ssTrain.counter.x - hw) / 2, y: ssTrain.counter.y + p.gear.counterLargePitchRadius_mm + 1, z: ssTrain.z });
+  } else {
+    place('batteryCover', '電池蓋', p.batteryCover.mass_g, { x: 0, y: ch.groundClearanceRef_mm + 0.5, z: 0 });
+    // 齒輪蓋蓋住馬達與前後齒輪上方（質心推估：馬達頂面上方 2 mm）
+    place('gearCover', '齒輪蓋', p.gearCover.mass_g, { x: 0, y: comp.motor.y + comp.motor.flat / 2 + 2, z: 0 });
+  }
   place('switch', '開關＋端子', p.switch.mass_g, ch.switchPos_mm);
-  // 齒輪蓋蓋住馬達與前後齒輪上方（質心推估：馬達頂面上方 2 mm）；小五金分散在底盤上，質心取底盤本體質心（推估）
-  place('gearCover', '齒輪蓋', p.gearCover.mass_g, { x: 0, y: comp.motor.y + comp.motor.flat / 2 + 2, z: 0 });
+  // 小五金分散在底盤上，質心取底盤本體質心（推估）
   place('hardware', '小五金', p.hardware.mass_g, ch.com_mm);
 
   // ---- 選配零件（第三階段）：制振器、煞車海綿、配重。實體形狀（底盤座標）同時給干涉檢查、外框、離地高度、3D 模型 ----

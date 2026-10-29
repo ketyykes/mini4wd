@@ -93,15 +93,22 @@ export function drivetrainInertia(p) {
   const nCounter = g.spurPitchRadius_mm / g.counterSmallPitchRadius_mm;
   const pinion = ringInertia(gm.pinion, g.pinionPitchRadius_mm, 0);
   const arm = armatureInertia(p.motor);
+  // B14：後置單軸底盤（VZ）只有 1 顆小齒輪、1 組中間齒輪、1 顆輪軸齒輪（後軸），另有前後冠狀齒輪 ×2 與傳動軸（gm.crown、gm.propShaft）
+  const single = p.chassis.motorPosition === 'rear';
+  const nTrain = single ? 1 : 2;
+  /** 冠狀齒輪隨輪軸轉；傳動軸視為 φ2 實心細軸、以 1:1 換算（推估：冠狀齒輪與傳動軸小齒輪的齒比查不到，≤ 3 倍時這項仍 < 0.5% 總慣量） */
+  const crown = single ? ringInertia(gm.crown ?? 0, g.crownPitchRadius_mm ?? 0, 0) : 0;
+  const prop = single ? ringInertia(gm.propShaft ?? 0, 1, 0) : 0;
   /** 各項換算到輪軸後的值（g·mm²） */
   const parts = {
     wheels: 4 * wheel,
     axles: 2 * axle,
-    spurGears: 2 * spur,
-    counterGears: 2 * counter * nCounter * nCounter,
-    motor: (arm + 2 * pinion) * G * G,
+    spurGears: nTrain * spur,
+    counterGears: nTrain * counter * nCounter * nCounter,
+    motor: (arm + nTrain * pinion) * G * G,
+    ...(single ? { crownGears: 2 * crown, propShaft: prop } : {}),
   };
-  const total_gmm2 = parts.wheels + parts.axles + parts.spurGears + parts.counterGears + parts.motor;
+  const total_gmm2 = Object.values(parts).reduce((a, v) => a + v, 0);
   const r = p.wheels.diameter_mm / 2;
   return {
     perItem_gmm2: { wheel, axle, spur, counter, pinion, armature: arm },

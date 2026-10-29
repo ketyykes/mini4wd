@@ -11,12 +11,13 @@ import { miscParts } from './misc.js';
 import { massDamperParts, brakeSpongeParts, rollerAnglePlateParts, ballastParts, brakePlateParts } from './options.js';
 import { stabilizerParts } from './stabilizers.js';
 import { counterShaftParts } from './counterShafts.js';
+import { CHASSIS_ONLY } from './chassisCompat.js';
 
 /** @typedef {import('./types').PartBase} PartBase */
 /** @typedef {import('./types').SlotValue} SlotValue */
 
 /** @type {PartBase[]} */
-export const allParts = [
+const catalog = [
   ...chassisParts,
   ...motorParts,
   ...gearParts,
@@ -34,6 +35,16 @@ export const allParts = [
   ...brakePlateParts,
   ...rollerAnglePlateParts,
 ];
+
+/** B14：底盤相容表（chassisCompat.js）併入各零件的 compat.chassis / src.chassisCompat */
+/** @type {PartBase[]} */
+export const allParts = catalog.map((p) => {
+  const only = CHASSIS_ONLY[p.id];
+  if (!only) {
+    return p;
+  }
+  return { ...p, compat: { ...(p.compat ?? {}), chassis: only.chassis }, src: { ...(p.src ?? {}), chassisCompat: only.src } };
+});
 
 /** @type {Map<string, PartBase>} */
 const byId = new Map(allParts.map((p) => [p.id, p]));
