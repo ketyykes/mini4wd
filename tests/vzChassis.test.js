@@ -74,8 +74,8 @@ test('P18_vz_compat 單／雙軸馬達、齒輪組、MA 專用零件與 VZ 專�
   }
   // 側制振器（iter-108）：MA 側制振器 15490 一覽不含 VZ（CHASSIS_COMPAT）；AR 側制振器 15459 一覽含 VZ → 裝在 VZ 側壁上、不碰側壁與其他零件
   expect(codes({ ...VZ, massDamper: 'damper-side-square-32' })).toContain('CHASSIS_COMPAT');
-  // 素組的 owl-hush 車殼會碰到側制振器：官方一覽 15459 註「車種によってはボディの改造が必要」，只剩車殼干涉、底盤本身裝得上
-  expect(codes({ ...VZ, massDamper: 'damper-ar-side' })).toEqual(['DAMPER_BODY_CLEARANCE']);
+  // iter-111：15459 尺寸重估（φ11.5 × 11.4）＋外掛式側座後，素組的 owl-hush 車殼裝得下；官方「一部のボディは加工が必要」改由寬側裙車殼（pc-box 等）表現
+  expect(codes({ ...VZ, massDamper: 'damper-ar-side' })).toEqual([]);
   // 官方一覽含 VZ 的後滑動保桿 15467、FRP／碳纖導輪板可以裝
   for (const [slot, id] of [['rearStay', 'stay-rear-slide-soft'], ['frontStay', 'stay-front-frp'], ['rearStay', 'stay-rear-frp'], ['frontStay', 'stay-front-carbon']]) {
     expect(codes({ ...VZ, [slot]: id }), id).toEqual([]);
@@ -194,10 +194,10 @@ test('P16_vz_tuned 高速 VZ（TT2 單軸＋3.7:1，加零件調校）三條車�
   const tuned = loadConfig('vz-tuned');
   expect(codes(tuned)).toEqual([]);
   raceThreeLanes(tuned, 'P16_vz_tuned');
-  // 側制振器座：AR 側制振器（15459，φ8 × 20.7 mm 推估圓柱）在 MA 與 VZ 上都只剩車殼干涉（官方註「ボディの改造が必要」）；
-  // 15515 方形短制振器（官方一覽含 VZ）裝得進 PC 車殼。側板壓在中段側壁頂面，制振器在壁頂上方
+  // 側制振器座（iter-111 重估）：AR 側制振器 15459（φ11.5 × 11.4 mm 推估）外掛在側壁外、貼近底盤底面；
+  // 官方「一部のボディは加工が必要」：PC 車殼 pc-box 側裙碰到（車殼干涉），預設 owl-hush 裝得下。15515 方形短制振器裝得進 PC 車殼
   expect(codes({ ...tuned, massDamper: 'damper-ar-side' })).toEqual(['DAMPER_BODY_CLEARANCE']);
-  expect(codes({ ...loadConfig('default'), massDamper: 'damper-ar-side' })).toEqual(['DAMPER_BODY_CLEARANCE']);
+  expect(codes({ ...loadConfig('default'), massDamper: 'damper-ar-side' })).toEqual([]);
   const side = { ...tuned, massDamper: 'damper-side-square' };
   expect(codes(side)).toEqual([]);
   const asm = assemble(side);
@@ -208,10 +208,11 @@ test('P16_vz_tuned 高速 VZ（TT2 單軸＋3.7:1，加零件調校）三條車�
   for (const d of ds) {
     const b = d.adapter.plate;
     const zs = [Math.abs(b.min.z), Math.abs(b.max.z)];
-    // 側板底面 = 壁頂；側板橫跨整個 1.4 mm 壁厚（中段側壁 |z| 25.6–27）
-    expect(b.min.y).toBeCloseTo(wallTop, 9);
-    expect(Math.min(...zs)).toBeLessThanOrEqual(27 - 1.4);
-    expect(Math.max(...zs)).toBeGreaterThanOrEqual(27);
+    // iter-111 外掛式：側板底面 = 底盤底面（不降低離地高度）、比壁頂低；從中段側壁外緣（|z| 27）外側伸到配重外緣
+    expect(b.min.y).toBeCloseTo(ch.groundClearanceRef_mm, 9);
+    expect(b.max.y).toBeLessThan(wallTop);
+    expect(Math.min(...zs)).toBeGreaterThan(27);
+    expect(Math.max(...zs)).toBeGreaterThanOrEqual(Math.abs(d.seat.z) + d.part.width_mm / 2);
     expect(d.adapter.spacers.length).toBe(0);
   }
   raceThreeLanes(side, 'P16_vz_side');

@@ -72,16 +72,20 @@ export function sideDamperAdapter(ch, part, seat) {
   const spacerHeight = seat.spacer_mm ?? part.mountSpacer_mm ?? 6; // Tamiya 15473, official length; 底盤可指定不加墊管（VZ）
   // Estimated straight FRP adapter, matching the 6.5 mm side-skirt width.
   // Unlike the old 0.9 g guessed bracket, mass follows the displayed volume.
-  const plateThickness = 1.5, length = 35, width = 6.5;
-  const plateMass = length * width * plateThickness * 1.85 / 1000;
+  const plateThickness = 1.5, length = seat.plateLength_mm ?? 35;
   const centerZ = seat.z;
+  // iter-111 外掛式（seat.plateInnerZ_mm）：側板從底盤側壁外側伸到制振器外緣，制振器在側壁外面、貼近離地高度
+  const zIn = seat.plateInnerZ_mm !== undefined ? side * seat.plateInnerZ_mm : centerZ - side * 3.25;
+  const zOut = centerZ + side * 3.25;
+  const width = Math.abs(zOut - zIn);
+  const plateMass = length * width * plateThickness * 1.85 / 1000;
   const plateY = surfaceY + spacerHeight;
-  const plate = box(-length / 2 + seat.x, length / 2 + seat.x, plateY, plateY + plateThickness, centerZ - width / 2, centerZ + width / 2);
+  const plate = box(-length / 2 + seat.x, length / 2 + seat.x, plateY, plateY + plateThickness, Math.min(zIn, zOut), Math.max(zIn, zOut));
   // Realize the existing 1 mm compressible seat above the rigid plate, so its
   // lower joint stop never places brass inside FRP. Foam density follows the
   // existing sponge estimate (0.12 g/cm³); this pad is an estimated installation.
   const padHeight = 1, padY = plate.max.y;
-  const padWidth = Math.min(width, part.width_mm ?? part.diameter_mm);
+  const padWidth = Math.min(6.5, part.width_mm ?? part.diameter_mm);
   const padLength = Math.min(length, part.length_mm ?? part.diameter_mm);
   const pad = part.shape === 'box'
     ? box(seat.x - padLength / 2, seat.x + padLength / 2, padY, padY + padHeight, seat.z - padWidth / 2, seat.z + padWidth / 2)

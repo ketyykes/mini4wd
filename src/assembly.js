@@ -894,7 +894,8 @@ function optionalLayout(p, comp, rollers) {
     let seats = [];
     if (d.mount === 'side') {
       const m = ch.sideDamperMount ?? { x_mm: 0, z_mm: 33 };
-      seats = [{ x: m.x_mm, y: m.y_mm, z: -m.z_mm, spacer_mm: m.spacer_mm }, { x: m.x_mm, y: m.y_mm, z: m.z_mm, spacer_mm: m.spacer_mm }].slice(0, d.count);
+      const extra = { spacer_mm: m.spacer_mm, plateInnerZ_mm: m.plateInnerZ_mm, plateLength_mm: m.plateLength_mm };
+      seats = [{ x: m.x_mm, y: m.y_mm, z: -m.z_mm, ...extra }, { x: m.x_mm, y: m.y_mm, z: m.z_mm, ...extra }].slice(0, d.count);
     } else {
       const m = p.rearStay.damperMount ?? { x_mm: -79, z_mm: 0, y_mm: ch.bumperBottomY_mm };
       // 墊管（rearSpacer_mm）：制振器整個墊高，墊管本身是固定的安裝五金（B10 iter-109）

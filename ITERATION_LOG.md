@@ -3556,3 +3556,22 @@
 - 截圖：`renders/iter-110-before_*`（trail 改動前）、`iter-110-after*`。
 - dartfrog／trail 的 render/out 全視角（front34、side、rear34、top、bottom、track）都用最終設定重出。
 - 最終 `score.mjs`（2026-10-29 22:47–22:58 台北）回傳 0：**161/161、P01–P20 20/20**（之後只改根目錄 `render/showcase.py`，app 沒有再動）。iter-88 兩張歷史截圖已還原。
+
+## iter-111（2026-10-30 台北）：AR 側制振器 15459 尺寸重估＋側制振器座改外掛式；dartfrog 色調映射回歸檢查
+
+- 起因：側代理回報 `damper-ar-side`（15459）在 MA 與 VZ 上和全部 19 款車殼都干涉 2–4 mm；形狀是 φ8 × 20.7 mm 的隨意估值（直徑亂取、高度由質量反算）。官方頁只寫「一部のボディは加工が必要です」（部分車殼需要加工）。使用者：「請主代理查實物尺寸或重新估高度」。
+- 查來源（都沒有零件尺寸）：官方 [T15459]、[T95288]（只有碗 3.4 g、筒 4.2 g、適用車種）；Tamiya USA、rou-blog（提到圓筒有螺帽沉頭孔）。細節與連結在 `shared/reference/PARTS_RESEARCH.md` iter-111 節。
+- 直徑：兩張官方商品照（1000×750）以同框 M2 墊圈／螺帽／長螺絲當比例尺量像素 → 11.1–11.8 mm，取 **φ11.5（推估 ±0.5）**。高度：官方重量＋黃銅 8.5 g/cm³ 反算，圓筒（扣 φ2.2 中心孔與沉頭孔）約 5.2、碗形（半球 R5.75＋裙邊）約 6.2 → 疊成 **11.4 mm**。3D 仍用圓柱包住（體積偏大、干涉判定偏保守）。
+- 只改尺寸：MA 18/19、VZ 18/19 仍干涉（`scripts/diag/ar-side-bodies.test.js`）。用 `ar-side-where.test.js` 看干涉落點：配重掃掠範圍（MA y 12.8–27.2、|z| 27–39）正好是車殼側裙高度與寬度。連官方 MA 專用的 15490 也撞 13/19 款、6×6 方塊 12/19 → 是安裝位置的問題，不是 15459 單一零件。
+- 玩家實裝（ameblo jojojojon0524、ameblo eoohdi）：側板盡量放到最低離地高度、用墊片把安裝位置往下放；沒有 mm 數值，孔位查不到。
+- 改成**外掛式側制振器座（推估）**：`sideDamperAdapter` 新增 `plateInnerZ_mm`／`plateLength_mm`，側板從側壁外側伸到配重外緣；MA 座 `{z 44, y 2.2, spacer 0, plateInnerZ 36.4, plateLength 19}`（側板底面齊底盤底面、不降低離地高度；19 mm 長避開 x −20～−10 的側面凸塊）、VZ 座 `{z 44, y 2.5, plateInnerZ 27.2, plateLength 19}`。配重中心 z 試過 40／42.5／43.5／44：43.5 時 15459 離倒角條 1.07 mm、8×8 方塊離支撐塊 0.7 mm（< 1 mm 擋下）→ 取 44（15459 離倒角條 1.6、8 mm 方塊離凸塊 1.2 mm）。不用墊管。
+- 結果：15459 **MA 9/19、VZ 9/19**（原 17/19、19/19）；15490 6/19（原 13/19）；6×6 方塊 4–5/19。仍干涉的是側裙最寬的車殼（halo-orbit、cicada-veil、lowline-flat、prism-facet、fastback-cabin、pc-box、tortoise-dome、zeppelin-xtail、gazelle-leap）→ 對應官方「一部のボディは加工が必要」。預設 owl-hush 在 MA、VZ 都裝得下。
+- 測試期望值更新（都是座位改變的直接結果，不是放寬容許）：
+  - `chassis-clearance` P18_side_mount：座高 13.8 → 2.2＋1.5＋1；「缺墊管被擋下」改用舊座（chassis 覆寫 `sideDamperMount: {z 33}`）檢查。P14_side_geometry：墊管 4 → 0 支、側板質量照新尺寸。
+  - `parts` P17_phase5：固定硬體質量照新側板（19 × 10.85 × 1.5）、無墊管。P18_known_cases：加長 60 mm 的側制振器現在只進禁裝區、不碰輪胎（間隙 6.75 mm）→ 只剩 `SIDE_PART_TIRE_ZONE`；「預期干涉」的 aero-wing／owl-hush 現在裝得下 → 改用 halo-orbit。
+  - `modular` P11 同上（60 mm 案例）。`vzChassis` P18_vz_compat：VZ＋15459 預設車殼合法；P16_vz_tuned：MA 預設合法、pc-box 仍干涉；側板幾何斷言改成外掛式（底面 = 底盤底面、在側壁外）。
+- 3D：`model.js` 本來就照 `adapter.plate`／`pad`／`spacers` 畫，外掛側板自動對上。截圖 `renders/iter-111_*`（MA owl-hush 側／前 3/4／底）、`iter-111-vz_*`、`iter-111-pcbox_*`（仍干涉的例子）。
+- dartfrog 色調映射回歸檢查（側代理提醒：`BODY_TONEMAP` 的中性色曲線是在 iter-110 燈光下由 front34 一個角度擬合，改燈光不會自動更新、也沒有測試擋）：新增 `render/check_tonemap.sh`＋`tonemap_diff.py`——同款車殼各算一次單款設定與 AgX 對照組（`TONEMAP_OFF=1`），比較所有視角中性色亮度差（中位數 ≤ 3、p90 ≤ 8／255），超出就 exit 1 並提示重新擬合。`run.sh` 新增 `OUT_DIR`、`RES` 環境變數。本輪實際跑一次當基準，結果見下。
+- dartfrog 回歸檢查結果（16 samples、800×450、5 視角，02:10–02:11）：**全部通過**——中性色佔 84–91% 像素，|Δ亮度| 中位數 0.6–1.7、p90 2.0（上限 3／8）；暗部與中間調單款圖比 AgX 低 1–2，只有 176–255 的高光（每視角 15–240 px）單款圖亮 9–12，是鏡面反射點、像素極少，不影響一致性。目前燈光下曲線仍有效；之後改燈光就跑 `render/check_tonemap.sh`。
+- 截圖確認（`renders/iter-111_body-owl-hush_front34.png`）：黃銅配重掛在底盤外側、貼近地面，owl-hush 側裙在上方不碰；`iter-111-pcbox_*`：pc-box 側裙直接壓到配重（仍干涉的例子）。
+- 最終 `score.mjs`（2026-10-30 01:58–02:10 台北）回傳 0：**161/161、P01–P20 20/20**。iter-88 兩張歷史截圖已還原。

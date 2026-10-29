@@ -35,7 +35,7 @@ export const chassisParts = [
     /** 底盤提供的安裝點（選配零件的 compat.requires 要對得上） */
     features: ['side-damper-mount'],
     /** 側制振器固定中心；安裝面高度由共用側裙幾何推導（底盤座標） */
-    sideDamperMount: { x_mm: 0, z_mm: 33 },
+    sideDamperMount: { x_mm: 0, z_mm: 44, y_mm: 2.2, spacer_mm: 0, plateInnerZ_mm: 36.4, plateLength_mm: 19 },
     /** 前後保桿下緣高度（底盤座標，與 model.js 保桿一致）：導輪板、煞車海綿、前後配重都鎖在這個面下方 */
     bumperBottomY_mm: 5.4,
     /** 前後保桿（底盤一體）上的導輪座位置：保桿外形以此為準；FRP / 碳纖導輪板另外決定導輪位置 */
@@ -60,7 +60,7 @@ export const chassisParts = [
       inertiaPerMass_mm2: '推估分布：3D 模型（與外觀同一份）底盤本體網格的體積權重；網格體積 × ABS 密度約 38.9 g，大於實測 24.4 g（模型偏厚、零件重疊），所以只取分布形狀、總質量用實測值。尚無實測慣性',
       bbox_mm: '由 iter-31 模型量測（不含導輪架上的導輪座）',
       bodyMounts: '本專案定義（SPEC 1.14，第 0 輪決定）',
-      sideDamperMount: '推估：x=0、z=±33；安裝面由 chassisGeom 側裙頂面（5.3 mm）推導。搭配 15473 的 6 mm 鋁墊管（官方長度）、1.5 mm FRP 側板及 1 mm 可壓縮座墊（推估），配重底面 13.8 mm；不再把舊 y=2 mm 當成可穿過側裙的座位。外側壁實際 z=±35–36.2，由共用幾何檢查間隙。',
+      sideDamperMount: '推估（iter-111 重估，取代 iter-90「側裙頂面 5.3＋6 mm 墊管 → 配重底面 13.8 mm」）：玩家實裝做法是側板用側導輪孔固定、用墊片把側板往下放，「マスダンパーステーは最低地上高ギリギリにすることをお勧め」（ameblo jojojojon0524 第 6 話）、「アルミスペーサーを使って取り付け位置を下げ」（ameblo eoohdi）；舊做法把配重架高，正好落在車殼側面高度（15490 也撞 13/19 款車殼）。改成外掛式：側板底面與底盤底面齊平（y 2.2，不降低離地高度），從側壁外側 z 36.4（側壁外緣 36.2）伸到制振器；配重中心 z ±44（φ11.5 的 AR 制振器內緣 38.25、離側面倒角條 1.6 mm；最寬的 8 mm 方塊〔15437／GP.430 系〕內緣 40、離 x −20～−10 的側面凸塊外緣 38.8 有 1.2 mm）；側板長 19 mm（x ±9.5，避開 x −20～−10 的側面凸塊，仍墊到 15490 兩根螺絲 x ±8）。實際孔位與側板外形查不到',
       density_g_cm3: 'SPEC 1.14 / PARTS_RESEARCH 3.1：ABS 1.05 g/cm³（MA 底盤材質以 ABS 推估）',
       bumperThickness_mm: '推估：模型保桿板厚 2.4 mm（iter-35 外形）',
       ballastMounts: '推估：配重常見貼在前後保桿下方或底盤上方；本專案提供前、中、後三處',
@@ -100,8 +100,8 @@ export const chassisParts = [
     /** 側壁（外緣立壁）：[x0, x1, 外緣 |z|]，厚 1.4、高 8.5 mm，立在底板上；3D 模型與側制振器干涉檢查共用 */
     sideWalls_mm: [[27, 55, 23.5], [-24, 24, 27], [-50, -27, 26.5]],
     sideWallHeight_mm: 8.5,
-    /** 側制振器座（AR 側制振器 15459）：FRP 側板直接鎖在中段側壁頂面（y = 離地 2.5＋底板 1.4＋壁高 8.5），不加墊管 */
-    sideDamperMount: { x_mm: 0, z_mm: 28.5, y_mm: 12.4, spacer_mm: 0 },
+    /** 側制振器座（AR 側制振器 15459）：外掛式，側板底面與底盤底面齊平、從中段側壁外側伸出（iter-111） */
+    sideDamperMount: { x_mm: 0, z_mm: 44, y_mm: 2.5, spacer_mm: 0, plateInnerZ_mm: 27.2, plateLength_mm: 19 },
     bumperBottomY_mm: 5.4,
     bumperRollerX_mm: 71.5,
     bumperRollerZ_mm: 42,
@@ -127,7 +127,7 @@ export const chassisParts = [
       bodyMounts: '本專案的車殼安裝點（SPEC 1.14）。VZ 實車前卡榫約 x +50、後卡榫在後導輪架內側約 x −55（[VZ 2.6] 推估），與本專案定義差 2–5 mm；為了讓同一批車殼都能裝上，VZ 底盤的卡榫柱放在專案定義的位置（推估，等同換用對應的卡榫座）',
       features: '[VZ 3.1]：AR 側制振器 15459 官方一覽含 VZ → 提供側制振器座；MA 側制振器 15490 一覽不含 VZ（chassisCompat.js 擋下）',
       sideWalls_mm: '推估：由 VZ 套件照片目測的底盤外形（前段窄、中段最寬、後段配合後輪距），官方沒有尺寸圖。後段尾端原取 x −56，B10（iter-109）底盤網格干涉診斷發現官方一覽含 VZ 的 FRP 後板根部會壓在側壁底下 0.73 mm，改收到 x −50（後導輪架鎖附區之前）',
-      sideDamperMount: '推估（使用者 2026-10-28：查不到就照推估）：15459 的 FRP 側板要鎖在底盤側面，VZ 上的實際孔位查不到；取中段側壁（x ±24、外緣 z 27、頂面 y 12.4）——側板 6.5 mm 寬、中心 z 28.5 → z 25.25–31.75，完整壓在 1.4 mm 厚的壁頂上，不另加墊管；制振器（φ8）中心 z 28.5，內緣 24.5 在壁頂上方、不碰側壁，外緣 32.5 比 MA（37）窄',
+      sideDamperMount: '推估（iter-111 重估，同 chassis-midship 的外掛式；取代 iter-108「側板壓在中段側壁頂 y 12.4、配重中心 z 28.5」）：側板底面與 VZ 底盤底面齊平（y 2.5），從中段側壁外側 z 27.2（外緣 27）伸到制振器，配重中心 z ±44（和 MA 同一位置，車寬不變）。VZ 上的實際孔位查不到',
       bumperBottomY_mm: '推估：同 chassis-midship（前保桿下緣 5.4 mm），VZ 保桿高度查不到',
       bumperRollerX_mm: '推估（[VZ 2.4]）：照片量得前導輪在前軸前約 30.6 mm → x ≈ +71；取 stay-front-standard 的 71.5（差 0.5 mm，在照片量測誤差內），保桿外形與導輪位置一致',
       bumperRollerZ_mm: '推估（[VZ 2.4]）：官方全寬 98 mm（14 mm 導輪）→ (98 − 14)/2 = 42',

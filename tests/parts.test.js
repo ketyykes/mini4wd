@@ -431,10 +431,10 @@ describe('P17 新零件的物理效果（只透過組裝設定替換）', () => 
     const d32 = assemble(cfg({ body: null, massDamper: 'damper-side-square-32' }));
     const movable = d32.movable.reduce((sum, m) => sum + m.mass_g, 0);
     console.log(`[P17] 側制振器組：總重 ${f3(noD.mass_g)} → ${f3(d32.mass_g)} g，可滑動 ${f3(movable)} g（${d32.movable.length} 顆）`);
-    const plateMass = 35 * 6.5 * 1.5 * 1.85 / 1000;
-    const spacerMass = Math.PI * (2 ** 2 - 1.1 ** 2) * 6 * 2.7 / 1000;
-    const padMass = 32 * 6 * 1 * 0.12 / 1000;
-    expect(Math.abs(d32.mass_g - noD.mass_g - 2 * (8.3 + plateMass + padMass) - 4 * spacerMass)).toBeLessThan(1e-6);
+    // iter-111 外掛式：側板 19 mm 長、z 36.4 → 47.25（配重中心 44＋3.25），不用墊管；座墊長同側板
+    const plateMass = 19 * (44 + 3.25 - 36.4) * 1.5 * 1.85 / 1000;
+    const padMass = 19 * 6 * 1 * 0.12 / 1000;
+    expect(Math.abs(d32.mass_g - noD.mass_g - 2 * (8.3 + plateMass + padMass))).toBeLessThan(1e-6);
     expect(d32.movable.length).toBe(2);
     expect(Math.abs(movable - 2 * 8.3)).toBeLessThan(1e-9);
   }, 240000);
@@ -1877,11 +1877,11 @@ describe('P18 干涉與安裝相容性', () => {
       { over: { rearStay: 'stay-rear-carbon-wide', rearRollers: 'roller-19-rubber' }, codes: ['WIDTH'] },
       // ---- 第五階段（iter-58）----
       // 側制振器加長到 60 mm（自訂）→ 伸進前 / 後輪的輪胎外側禁裝區（官方 Sec.3 腳註）且碰到輪胎
-      { over: { massDamper: { base: 'damper-side-square-32', length_mm: 60 }, body: null }, codes: ['SIDE_PART_TIRE_ZONE', 'DAMPER_TIRE_CLEARANCE'] },
-      // 32 mm 側制振器比 14 mm 長 → 碰到 aero-wing 車殼側裙（14 mm 款合法，見下方合法對照）
-      { over: { massDamper: 'damper-side-square-32', body: 'body-aero-wing' }, codes: ['DAMPER_BODY_CLEARANCE'] },
-      // iter-90: the shared elevated adapter plate also intersects this shell.
-      { over: { massDamper: 'damper-side-square', body: 'body-aero-wing' }, codes: ['DAMPER_BODY_CLEARANCE'] },
+      // iter-111 外掛式側座：配重在輪胎外側面外 6.75 mm，加長只進禁裝區、不碰輪胎
+      { over: { massDamper: { base: 'damper-side-square-32', length_mm: 60 }, body: null }, codes: ['SIDE_PART_TIRE_ZONE'] },
+      // iter-111 外掛式側座（配重在側壁外、貼近底盤底面）：aero-wing 側裙已不碰；改用側裙最寬的 halo-orbit（14 mm 款在 aero-wing 仍合法，見下方合法對照）
+      { over: { massDamper: 'damper-side-square-32', body: 'body-halo-orbit' }, codes: ['DAMPER_BODY_CLEARANCE'] },
+      { over: { massDamper: 'damper-side-square', body: 'body-halo-orbit' }, codes: ['DAMPER_BODY_CLEARANCE'] },
       // ---- 第七階段（iter-75）：新制振器 ----
       // 球頭連桿、重型制振器要裝在後導輪板的制振器座（標準塑膠後架沒有）
       { over: { massDamper: 'damper-balllink-square' }, codes: ['MOUNT_COMPAT'] },
@@ -1890,8 +1890,8 @@ describe('P18 干涉與安裝相容性', () => {
       { over: { rearStay: 'stay-rear-frp', massDamper: 'damper-balllink-square', ballast: 'ballast-hex-1g@rear' }, codes: ['BALLAST_DAMPER_CLEARANCE'] },
       // 擺動掃過的範圍碰到 mantis 車殼尾部
       { over: { rearStay: 'stay-rear-frp', massDamper: 'damper-balllink-square', body: 'body-mantis-scythe' }, codes: ['DAMPER_BODY_CLEARANCE'] },
-      // 8×8 方塊比 6×6 寬 2 mm、高 2 mm → 碰到 owl 車殼側裙（6×6×14 在 aero-wing 合法，見合法對照）
-      { over: { massDamper: 'damper-square-8x8x14', body: 'body-owl-hush' }, codes: ['DAMPER_BODY_CLEARANCE'] },
+      // 8×8 方塊比 6×6 寬 2 mm、高 2 mm → 碰到 halo-orbit 車殼側裙（iter-111 外掛式座後 owl-hush 裝得下；6×6×14 在 aero-wing 合法，見合法對照）
+      { over: { massDamper: 'damper-square-8x8x14', body: 'body-halo-orbit' }, codes: ['DAMPER_BODY_CLEARANCE'] },
       // ---- 第七階段（iter-76）：雙層導輪、31 mm 新輪胎 ----
       { over: { rearRollers: 'roller-13-12-alu-double' }, codes: ['ROLLER_ROLLER_CLEARANCE'] },
       { over: { frontRollers: 'roller-19-19-plastic-double', body: 'body-owl-hush' }, codes: ['BODY_ROLLER_CLEARANCE'] },
@@ -1904,7 +1904,8 @@ describe('P18 干涉與安裝相容性', () => {
       { over: { stabilizer: 'stabilizer-head-15', frontRollers: 'roller-19' }, codes: ['STABILIZER_BODY_CLEARANCE'] },
       { over: { rearStay: 'stay-rear-frp', brakeSponge: 'sponge-3type-a' }, codes: ['GROUND_CLEARANCE'] },
       // ---- 第七階段（iter-80）：制振器 4 款 ----
-      { over: { massDamper: 'damper-square-8x8x32' }, codes: ['DAMPER_BODY_CLEARANCE'] },
+      // iter-111 外掛式側座後，預設車殼 owl-hush 裝得下 8×8×32；改用側裙最寬的 halo-orbit 檢查車殼干涉
+      { over: { massDamper: 'damper-square-8x8x32', body: 'body-halo-orbit' }, codes: ['DAMPER_BODY_CLEARANCE'] },
       { over: { massDamper: 'damper-slim' }, codes: ['MOUNT_COMPAT'] },
       { over: { massDamper: 'damper-ar-side', body: 'body-pc-box' }, codes: ['DAMPER_BODY_CLEARANCE'] },
     ];
