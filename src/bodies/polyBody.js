@@ -33,6 +33,7 @@ import { makeLoftKit, createPolySurface, cachedBuild, buildRegion, buildMountTab
  * @property {any} [canopy] 座艙泡站位（同 sections.json 的 canopy 格式），null = 無
  * @property {number} [sideZMin] 側視開口 / 凹陷只作用在 |z| ≥ sideZMin
  * @property {(kit: any) => { mat: string, keep: KeepFn }[]} zones 外表面塗裝分區（依序取第一個符合的區）
+ * @property {{ yMin?: number, mat: string }[]} [capFrontBands] 前封口分段上色（由上往下，每段到下一段的 yMin；iter-110）
  * @property {{ outer?: string, inner: string, edge: string, cap: string, recess?: string, recessWall?: string, glass?: string, cockpit?: string, mount: string }} mats 結構件用的材質鍵
  * @property {() => Record<string, THREE.Material>} materials
  * @property {(kit: any) => BodyPart[]} [extras] 鰭片、尾翼、貼紙、燈具等
@@ -406,7 +407,16 @@ export function makePolyBody(cfg) {
     const innerGeo = cfg.innerSkipRecess ? buildRegion(surf, [...kit.holes, kit.notRecess], { offset: -kit.t }).geometry : st.inner;
     parts.push({ geometry: innerGeo, mat: cfg.mats.inner, name: 'shell-inner' });
     parts.push({ geometry: st.rim, mat: cfg.mats.edge, name: 'shell-edge' });
-    parts.push({ geometry: mergeGeos([st.capFront, st.capRear]), mat: cfg.mats.cap, shell: true, name: 'caps' });
+    if (cfg.capFrontBands) {
+      // iter-110：前封口照側面分色線分段上色（由上往下：各段 yMin，最後一段到底）
+      cfg.capFrontBands.forEach((band, i) => {
+        const yMax = i === 0 ? undefined : cfg.capFrontBands[i - 1].yMin;
+        parts.push({ geometry: st.capFrontBand({ yMin: band.yMin, yMax }), mat: band.mat, shell: true, name: `cap-front-${i}` });
+      });
+      parts.push({ geometry: st.capRear, mat: cfg.mats.cap, shell: true, name: 'caps' });
+    } else {
+      parts.push({ geometry: mergeGeos([st.capFront, st.capRear]), mat: cfg.mats.cap, shell: true, name: 'caps' });
+    }
     parts.push({ geometry: mergeGeos([st.capFrontIn, st.capRearIn]), mat: cfg.mats.inner, name: 'cap-inner' });
     st.recessFloor.forEach((g, i) => parts.push({ geometry: g, mat: cfg.mats.recess ?? cfg.mats.inner, shell: true, name: `recess-floor-${i}` }));
     st.recessWall.forEach((g, i) => parts.push({ geometry: g, mat: cfg.mats.recessWall ?? cfg.mats.recess ?? cfg.mats.inner, shell: true, name: `recess-wall-${i}` }));

@@ -252,6 +252,14 @@ export const lowlineFlatBody = makePolyBody({
     { mat: 'red', keep: () => 1 },
   ],
   mats: { inner: 'inner', edge: 'edge', cap: 'graphite2', recess: 'tub', recessWall: 'tubWall', mount: 'mount' },
+  // iter-110（評審 iter-106「黑色鼻面兩端是垂直切口，沒有繞到側面；正面紅黑分界沒有白線」）：
+  // 前封口原本整片石墨灰（從甲板頂到底），側面卻只有分色線以下是灰 → 鼻角變成垂直切口。
+  // 改成照側面同一條分色線分段：上段深紅（薄唇）、白色細線（同側面 decal-side-pinstripe 的 y 範圍）、下段石墨灰下巴
+  capFrontBands: [
+    { yMin: splitY(72) + 0.4, mat: 'red' },
+    { yMin: splitY(72) - 0.2, mat: 'whiteDecal' },
+    { mat: 'graphite2' },
+  ],
   materials,
   extras: (kit) => {
     const parts = [];
@@ -288,7 +296,9 @@ export const lowlineFlatBody = makePolyBody({
       name: 'decal-twin-pinstripes',
     });
     // 側面白色細分色線（沿石墨灰 / 深紅分色線）
-    parts.push({ geometry: kit.decal((x, y, z) => (Math.abs(z) < 30 ? -1 : 0.3 - Math.abs(y - splitY(x) - 0.1))), mat: 'whiteDecal', name: 'decal-side-pinstripe' });
+    // iter-110（評審 iter-110「白線在鼻角斷開」）：原本只畫 |z| ≥ 30，鼻端半寬收到 21–30 mm 那段沒有線 →
+    // 改成只排除離側緣 5 mm 以內以外的區域（分色線所在的側裙離側緣 ≤ 2.6 mm），一路畫到鼻端，接上前封口的白線
+    parts.push({ geometry: kit.decal((x, y, z) => (Math.abs(z) < T('hw', x) - 5 ? -1 : 0.3 - Math.abs(y - splitY(x) - 0.1))), mat: 'whiteDecal', name: 'decal-side-pinstripe' });
     // iter-73：側面號碼圓底下移到唇下內收側裙的垂直段（y 16.4），不跨過倒角折線
     // 號碼 42（iter-70：88 和 aero-wing 重號 → 42）：側面白色圓形號碼底＋黑字（前後輪拱之間）；前甲板黑字（雙細線外側）
     const roundel = (u, v) => Math.hypot(u, v) - 3.4;

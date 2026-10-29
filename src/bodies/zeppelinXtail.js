@@ -264,14 +264,24 @@ export const zeppelinXtailBody = makePolyBody({
     parts.push({ geometry: kit.decal((x) => Math.min(x - 76.9, 78.3 - x)), mat: 'dOrange', name: 'decal-nose-cone-ring' });
     // 鼻帽兩側一對圓形探照燈（V14）；iter-103：燈片 r 1.5 → 1.7，外加石墨灰燈圈（r 2.3），讀成「一對眼睛」
     parts.push({
-      geometry: kit.decal((x, y, z) => (y > 20 ? -sdCircle(75.0, 5.0, 2.3)(x, Math.abs(z)) : -1), { offset: 0.1 }),
+      // iter-110（評審 iter-106「斜看時白色內圓有視差」）：燈圈 r 2.3 → 2.5、燈片 r 1.9 → 1.8；
+      // 燈圈原本是整片圓、燈片墊高 0.35 mm 蓋在上面，鼻帽斜面上燈片沿法線外移 → 一側露出白圓（評審 iter-110 仍見左眼 9–11 點缺框）。
+      // 改成燈圈只畫 r 1.8–2.5 的環、燈片同高（offset 0.1），兩者不重疊：沒有視差，也沒有深度緩衝打架（iter-106 俯視問題的原因）
+      geometry: kit.decal((x, y, z) => {
+        if (y <= 20) {
+          return -1;
+        }
+        const d = sdCircle(75.0, 5.0, 2.5)(x, Math.abs(z));
+        return Math.min(-d, d + 0.7);
+      }, { offset: 0.1 }),
       mat: 'dDark',
       name: 'lamp-searchlight-bezels',
     });
     parts.push({
       // iter-106（評審 iter-103／104「俯視兩眼仍是實心黑點」）：近距離正上方看燈片是白的；整車俯視時相機很遠，
       // 燈片只比燈圈高 0.1 mm（offset 0.2 對 0.1），深度緩衝分不出前後，燈圈蓋過燈片 → 燈片 offset 0.2 → 0.45
-      geometry: kit.decal((x, y, z) => (y > 20 ? -sdCircle(75.0, 5.0, 1.9)(x, Math.abs(z)) : -1), { offset: 0.45 }),
+      // iter-110：燈圈改成環、和燈片不重疊 → 燈片回到 offset 0.1（同燈圈），不再墊高
+      geometry: kit.decal((x, y, z) => (y > 20 ? -sdCircle(75.0, 5.0, 1.8)(x, Math.abs(z)) : -1), { offset: 0.1 }),
       mat: 'lamp',
       name: 'lamp-searchlights',
     });

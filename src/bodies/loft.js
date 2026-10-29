@@ -1169,7 +1169,7 @@ export function buildRim(region, o1, o2) {
  * 前 / 後端封口：在 x = xEnd 的剖面多邊形（含底部直線）；offset 往車內偏移（內封口用），dir 為朝外方向（+1 前、−1 後）
  * @type {(surf: LoftSurface, xEnd: number, dir: number, inset?: number) => THREE.BufferGeometry}
  */
-export function buildCap(surf, xEnd, dir, inset = 0) {
+export function buildCap(surf, xEnd, dir, inset = 0, clipY = null) {
   const o = [0, 0];
   const n = [0, 0, 0];
   /** @type {THREE.Vector2[]} */
@@ -1194,7 +1194,28 @@ export function buildCap(surf, xEnd, dir, inset = 0) {
     }
   });
   // 去除重複點
-  const pts = contour.filter((p, i) => i === 0 || p.distanceTo(contour[i - 1]) > 1e-6);
+  let pts = contour.filter((p, i) => i === 0 || p.distanceTo(contour[i - 1]) > 1e-6);
+  // iter-110：封口只取 yMin ≤ y ≤ yMax 的一段（Sutherland–Hodgman 對水平半平面裁切），讓封口能照側面分色線分段上色
+  if (clipY) {
+    for (const [bound, keepAbove] of [[clipY.yMin, true], [clipY.yMax, false]]) {
+      if (bound === undefined) continue;
+      const inside = (p) => (keepAbove ? p.y >= bound : p.y <= bound);
+      const out = [];
+      for (let i = 0; i < pts.length; i++) {
+        const a = pts[i];
+        const b = pts[(i + 1) % pts.length];
+        if (inside(a)) out.push(a);
+        if (inside(a) !== inside(b)) {
+          const k = (bound - a.y) / (b.y - a.y);
+          out.push(new THREE.Vector2(a.x + (b.x - a.x) * k, bound));
+        }
+      }
+      pts = out.filter((p, i) => i === 0 || p.distanceTo(out[i - 1]) > 1e-6);
+    }
+    if (pts.length < 3) {
+      return new THREE.BufferGeometry().setAttribute('position', new THREE.Float32BufferAttribute([], 3));
+    }
+  }
   const faces = THREE.ShapeUtils.triangulateShape(pts, []);
   const pos = [];
   for (const [a, b, c] of faces) {
@@ -1739,6 +1760,8 @@ export function makeLoftKit(data, opt) {
         inner: inner.geometry,
         rim,
         capFront: buildCap(surf, surf.xMax, 1),
+        /** iter-110：前封口依 y 分段（polyBody 的 capFrontBands 用） @type {(clipY: { yMin?: number, yMax?: number }) => THREE.BufferGeometry} */
+        capFrontBand: (clipY) => buildCap(surf, surf.xMax, 1, 0, clipY),
         capRear: buildCap(surf, surf.xMin, -1),
         capFrontIn: buildCap(surf, surf.xMax, 1, t),
         capRearIn: buildCap(surf, surf.xMin, -1, t),

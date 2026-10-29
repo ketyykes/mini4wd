@@ -37,20 +37,23 @@ const T = monoTable([-71, -66, -60, -52, -42, -30, -18, -6, 2, 10, 18, 26, 31, 3
   yLow: [20.5, 19.0, 17.0, 14.5, 11.5, 10.0, 9.5, 9.5, 9.5, 9.5, 10.0, 10.5, 11.13, 11.5, 12.0, 12.0, 12.0, 12.0, 12.0, 12.0, 12.0],
 });
 
+/** @type {(a: number, b: number, x: number) => number} 0 → 1 平滑過渡 */
+const smoothstep = (a, b, x) => {
+  const t = Math.min(1, Math.max(0, (x - a) / (b - a)));
+  return t * t * (3 - 2 * t);
+};
+
 /** @type {{ x: number, pts: number[][] }[]} */
 /**
- * 側窗微弧（iter-71）：在第 2 點（罩頂邊）與第 3 點（罩下緣）之間插入一點，沿外法線鼓出 0.7 mm（x 4 → 28 全量，前後各 4 mm 漸收）。
+ * 側窗微弧（iter-71）：在第 2 點（罩頂邊）與第 3 點（罩下緣）之間插入一點，沿外法線鼓出 0.7 mm（iter-110 起 x 4 → 38 全量，後端 0–4、前端 38–47.5 平滑漸收）。
  * iter-69 的側窗是兩個稜線點之間的直線 → 平面，Blender 側視把燈光整片反射成白色長方形；微弧讓反光縮成一道漸層帶。
  * 共用的 cabinStations 不動，只在本檔對它的結果插點（第 3 點以後的索引 +1）
  * @type {(x: number) => number}
  */
-const sideBulge = (x) => {
-  if (x < 0 || x > 32) {
-    return 0;
-  }
-  const w = Math.min(1, x / 4, (32 - x) / 4);
-  return 0.7 * w;
-};
+// iter-110（評審 iter-110「A 柱旁仍有一條直立沙漏形亮帶」）：Blender 純自發光洋紅逐層測試——亮帶在近側側窗表面（側窗換成不透明洋紅就消失、
+// 座艙／殼內面／黑框換色都還在），是側窗反光。微弧原本只做到 x 32、在 28–32 線性收掉，往前是平面：曲面轉平面的折線正好在亮帶處，
+// 平面段把燈箱反成一整片。側窗已延伸到 x 47.5（見 sideWindowKeep），微弧跟著延伸到側窗前端，兩端改 smoothstep 收尾（不留折線）
+const sideBulge = (x) => 0.7 * smoothstep(0, 4, x) * (1 - smoothstep(38, 47.5, x));
 
 /** @type {{ x: number, pts: number[][] }[]} */
 const STATIONS = cabinStations(T, X_TAIL, X_NOSE).map(({ x, pts }) => {
@@ -88,8 +91,10 @@ const shieldFrameKeep = (x, y, z) => {
  * 和透明的擋風、罩頂分開；回傳 > 0 = 在側窗內
  * @type {KeepFn}
  */
-const sideWindowKeep = (x, y, z) => Math.min(canopyKeep(x, y, z), Math.abs(z) - T('cw', x) - 0.6, 30.2 - x);
-
+// iter-110（評審 iter-106「A 柱旁直立白色反光」）：側窗前端 x 30.2 到擋風下緣 x 47.5 那一段側面原本是透明 PC（反射全量），
+// 夾在煙燻側窗（反射 × 0.15，見 render/showcase.py thin_pc_material）與 A 柱之間反成一道白條。
+// 改成實車結構：A 柱（罩頂邊稜線）以外的側面整片都是淡煙燻側窗，透明只留在 A 柱之間的擋風與罩頂；剩下的折線反光見 sideBulge
+const sideWindowKeep = (x, y, z) => Math.min(canopyKeep(x, y, z), Math.abs(z) - T('cw', x) - 0.6);
 /**
  * 側窗分格窗框（iter-71）：x 14 一道 1 mm 寬的直框，把側窗分成前後兩格（內噴黑）
  * @type {KeepFn}
@@ -216,6 +221,7 @@ export const trailCanopyBody = makePolyBody({
     const drv = buildDriver(20, kit.innerYAt(20) - 12.5, 1.2);
     parts.push({ geometry: drv.body, mat: 'driver', solid: true, name: 'cockpit-driver' });
     parts.push({ geometry: drv.helmet, mat: 'helmet', solid: true, name: 'cockpit-helmet' });
+
 
     // 單支柱單片低位平板擾流（PC，實心件）：平板 x −57 → −68、半翼展 25（翼端後掠），板面 y 34.6（比座艙罩頂低 7 mm，離尾甲板約 7 mm）；
     // 中央單支柱（前後寬 6 mm）插進尾段殼面
