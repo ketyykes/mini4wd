@@ -269,7 +269,9 @@ export const zeppelinXtailBody = makePolyBody({
       name: 'lamp-searchlight-bezels',
     });
     parts.push({
-      geometry: kit.decal((x, y, z) => (y > 20 ? -sdCircle(75.0, 5.0, 1.9)(x, Math.abs(z)) : -1), { offset: 0.2 }),
+      // iter-106（評審 iter-103／104「俯視兩眼仍是實心黑點」）：近距離正上方看燈片是白的；整車俯視時相機很遠，
+      // 燈片只比燈圈高 0.1 mm（offset 0.2 對 0.1），深度緩衝分不出前後，燈圈蓋過燈片 → 燈片 offset 0.2 → 0.45
+      geometry: kit.decal((x, y, z) => (y > 20 ? -sdCircle(75.0, 5.0, 1.9)(x, Math.abs(z)) : -1), { offset: 0.45 }),
       mat: 'lamp',
       name: 'lamp-searchlights',
     });

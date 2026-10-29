@@ -130,8 +130,10 @@ const materials = () => ({
   //   iter-61 起用 paint-bright- 開頭 → web/export.js 分到 paint_bright，showcase.py 以較高的明度上限算亮面漆（真正的高明度實色漆）
   // - iter-62：Blender 實測（AgX Punchy、曝光 −1.9）：這個場景的黃色受光面明度已在 AgX 肩部（約 0.76），底色再亮只會更白、更像奶油；
   //   底色改成 R = G 的純黃（線性 0.52 / 0.50 / 0，sRGB #bfbc00）→ 色相 53° → 56°（往檸檬黃、離開芥末的橘黃）、飽和 0.49 → 0.57
-  yellow: namedMaterial('paint-bright-lemon-yellow-body', { color: 0xbfbc00, roughness: 0.3, clearcoat: 0.4, clearcoatRoughness: 0.05, envMapIntensity: 0.4 }),
-  yellow2: namedMaterial('paint-bright-lemon-yellow-body', { color: 0xbfbc00, roughness: 0.3, clearcoat: 0.4, envMapIntensity: 0.4, side: THREE.DoubleSide }),
+  // - iter-106（評審 iter-71／104「主色偏黃綠」；DESIGN「鮮黃底黑斑」＝箭毒蛙的金黃）：#bfbc00（色相 59°）太綠；改 #e0c000（色相 51°），
+  //   明度 0.75 → 0.88 → 不會回到芥末色（芥末 = 低明度的橘黃）。Blender 原色另見 render/showcase.py BLENDER_COLOR_SRGB
+  yellow: namedMaterial('paint-bright-lemon-yellow-body', { color: 0xe0c000, roughness: 0.3, clearcoat: 0.4, clearcoatRoughness: 0.05, envMapIntensity: 0.4 }),
+  yellow2: namedMaterial('paint-bright-lemon-yellow-body', { color: 0xe0c000, roughness: 0.3, clearcoat: 0.4, envMapIntensity: 0.4, side: THREE.DoubleSide }),
   black: namedMaterial('paint-gloss-black', { color: 0x121316, roughness: 0.28, clearcoat: 0.9 }),
   black2: namedMaterial('paint-gloss-black', { color: 0x121316, roughness: 0.28, clearcoat: 0.9, side: THREE.DoubleSide }),
   // 蹼翼膜面（iter-59）：深土耳其藍緞面（原本淺藍綠 1 mm 薄片讀成半透明；黑色在灰色攝影棚背景前也讀不出來）
