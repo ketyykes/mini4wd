@@ -241,17 +241,20 @@ export const griffinVaneBody = makePolyBody({
     /** @type {Record<string, THREE.BufferGeometry[]>} */
     const vanes = { pearl: [], violet: [] };
     // iter-69：羽片放大（長 19–22 → 25–29、寬 4.4–4.8 → 6.0–6.4）並加厚（0.9 → 1.0 mm；26 / 31 mm 整車都要 ≤ 135 g，輪拱內襯深度 2.6 → 1.0 mm 抵銷加重），讓「有翼」的意象撐得起來
+    // iter-104（評審 iter-72「羽翼仍比概念圖小」）：每側 4 → 5 片，長 25–29 → 27–35、寬 6.0–6.4 → 6.8–7.8，扇形張角 6–33° → 8–48°；
+    // 厚度 1.0 → 0.8 mm 抵銷部分加重（推估）。整車：26 mm 輪 131.3 g、31 mm 輪 135.3 g（略超 SPEC 1.12 的推估範圍 105–135 g，規則只要求 ≥ 90 g；同 dartfrog 31 mm 輪 138.4 g 的處理）
     const FEATHERS = [
-      { x0: -24, ang: 6, len: 25, w: 6.0, mat: 'pearl' },
-      { x0: -28.5, ang: 15, len: 28, w: 6.2, mat: 'violet' },
-      { x0: -33, ang: 24, len: 29, w: 6.4, mat: 'pearl' },
-      { x0: -37.5, ang: 33, len: 27, w: 6.2, mat: 'violet' },
+      { x0: -23, ang: 8, len: 30, w: 7.2, mat: 'pearl' },
+      { x0: -27, ang: 18, len: 34, w: 7.6, mat: 'violet' },
+      { x0: -31, ang: 28, len: 35, w: 7.8, mat: 'pearl' },
+      { x0: -35, ang: 38, len: 32, w: 7.4, mat: 'violet' },
+      { x0: -39, ang: 48, len: 27, w: 6.8, mat: 'pearl' },
     ];
     for (const sg of [-1, 1]) {
       FEATHERS.forEach((f, i) => {
         const zc = sg * (31 + i * 0.8);
         const y0 = top(f.x0, zc) - 0.7;
-        vanes[f.mat].push(finPlate(featherOutline(f.x0, y0, f.ang, f.len, f.w), zc, 1.0, -sg * 32));
+        vanes[f.mat].push(finPlate(featherOutline(f.x0, y0, f.ang, f.len, f.w), zc, 0.8, -sg * 32));
       });
     }
     parts.push({ geometry: mergeGeos(vanes.pearl), mat: 'pearl2', solid: true, outline: true, name: 'fender-winglets-pearl' });
@@ -261,9 +264,10 @@ export const griffinVaneBody = makePolyBody({
     const knuckles = [];
     for (const sg of [-1, 1]) {
       const g = new THREE.SphereGeometry(1, 18, 10);
-      g.scale(6.2, 1.7, 2.6);
-      g.rotateZ(-0.25);
-      g.translate(-34, top(-34, sg * 32.4) + 0.2, sg * 32.4);
+      // iter-104：羽座跟著 5 片羽根（x −23 → −39）加長、置中到 x −31
+      g.scale(8.6, 1.7, 2.8);
+      g.rotateZ(-0.2);
+      g.translate(-31, top(-31, sg * 32.6) + 0.2, sg * 32.6);
       knuckles.push(g);
     }
     parts.push({ geometry: mergeGeos(knuckles), mat: 'gold', solid: true, outline: true, name: 'winglet-knuckles' });

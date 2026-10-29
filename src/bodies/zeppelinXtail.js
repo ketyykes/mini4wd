@@ -269,7 +269,7 @@ export const zeppelinXtailBody = makePolyBody({
       name: 'lamp-searchlight-bezels',
     });
     parts.push({
-      geometry: kit.decal((x, y, z) => (y > 20 ? -sdCircle(75.0, 5.0, 1.7)(x, Math.abs(z)) : -1), { offset: 0.2 }),
+      geometry: kit.decal((x, y, z) => (y > 20 ? -sdCircle(75.0, 5.0, 1.9)(x, Math.abs(z)) : -1), { offset: 0.2 }),
       mat: 'lamp',
       name: 'lamp-searchlights',
     });
