@@ -3,7 +3,7 @@
 // 設計：shared/design/body-pc-box/DESIGN.md。剖面為本檔站位表（推估，依外框限制與底盤高度掃描）。
 // 塗裝全為自創：螢光粉＋白條紋、號碼「17」；不含任何廠商名稱、商標。
 import * as THREE from 'three';
-import { makePolyBody, buildDriver, flatPlate, finPlate } from './polyBody.js';
+import { makePolyBody, buildDriver } from './polyBody.js';
 import { namedMaterial, decalMaterial, buildRegion, sdNumber, sdRoundRect, sideDecal, topDecal, mergeGeos } from './loft.js';
 
 /** @typedef {import('./loft.js').KeepFn} KeepFn */
