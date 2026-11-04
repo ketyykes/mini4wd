@@ -3606,3 +3606,17 @@
 - 8 款 body-check（26 mm 全合法；31 mm 不切輪拱合法：trojan-horse、serpent-longship、gullinbursti-boar、kunpeng、khepri-scarab、kitsune-ninetail）：車殼 10.5–17.35 g、整車 126.2–133.1 g（26 mm）、對全部車殼最大 IoU 0.81（kitsune × trail-canopy 俯視）。
 - 整車質量 135 g 上限依 SPEC 1.12 以預設組裝（26 mm）判定（既有 dartfrog-hop 換 31 mm 輪也是 138.4 g）；kitsune 31 mm 135.47 g、sleipnir 31 mm 136.24 g 記錄在 1.14b，不另判違規。
 - 外觀初看（主 agent，Blender front34）：木馬馬頭偏小；三頭犬三吻像管子、黑色亮面有波浪反光；長船船身窄、四輪外露（像船放在底盤上）；羽蛇方頭＋白牙像鱷魚；鯤鵬魚眼像圓形徽章。等評審意見後在 iter-113 修。
+
+## iter-113（開始 2026-11-04 16:00，TZ=Asia/Taipei date）：第 1 輪——神話 14 款到位、P20 第八階段定義啟用、三款辨識度修正
+
+- 計畫：合併第二批 6 款（希臘 minotaur-maze；北歐 sleipnir-stride、tanngrisnir-chariot、gjallarhorn；美索不達米亞 mushussu-gate；凱爾特 gundestrup-stag），把 P20 第八階段定義 `P20_myth_variety` 加進 `tests/bodies.test.js`；修正 subagent 處理 iter-112 外觀問題（三頭犬管狀吻、羽蛇像鱷魚、木馬馬頭小）。預期 20/20。
+- 改名：`body-gjallarhorn` → **`body-heimdall-horn`**（海姆達爾的號角）：Gjallarhorn 也是一份極端團體刊物的名稱，依 GOAL 黑名單原則避開；造型不變。
+- 10 款計分（16:0x–16:2x）**19/20**：P16 `body-minotaur-maze` 3 圈車殼穿入 2.09 mm（門檻 1 mm）。原因：車殼碰撞體寬度取車殼外框，牛肩半寬 51.4、牛角 |z| 51.7，比導輪外緣 ±48.5 寬，擦牆。
+  - 修正（不動測試）：牛肩收到 47.8；收窄後俯視 IoU 對 tortoise-dome 0.848–0.851 → 牛角改往前伸過牛鼻、牛頭面加寬成鈍方形 → 最大 IoU 0.837（× sleipnir-stride）。單跑 3 圈通過。
+  - 同理 `body-mushussu-gate`（塔樓半寬 50.5）3 圈跑不完（17.8 / 19.8 m）→ 塔樓收到 47.8、城牆 33.5 → 37.5（避開和 gundestrup-stag 俯視 IoU 0.854）→ 最大 IoU 0.843（× tortoise-dome）。單跑 3 圈通過。
+  - 之後的車殼 subagent 說明加上「外框半寬 ≤ 48.0 mm」。
+- 修正 subagent（三款，詳見各 DESIGN.md「iter-113 修改」）：cerberus 三根管改三顆犬頭（顱、額段、短吻、微張下顎、三角耳）、黑釉改緞面、去掉頸環；quetzal 改水滴蛇頭、張口毒牙蛇信、繞頭一圈放射羽毛領、車尾 5 片羽扇；trojan 馬頸從前軸升起、長方馬臉＋雙耳＋口勒，並修掉剖面過衝造成的殼面反折。
+- P20 第八階段（單跑）：14 款；希臘 3、北歐 5；其他體系 6 個（埃及、美索不達米亞、凱爾特、日本、中國、阿茲特克／馬雅）；form 14 種、roof 4 種、wing 14 種；31 mm 不切輪拱合法 11 款（含希臘 trojan、北歐 4 款）。
+- 計分：主線 `c53d1db`（14 款）score.mjs 16:38–16:52 **20/20**。
+- Blender 5 視角（64 samples）：mushussu-gate、gundestrup-stag、tanngrisnir-chariot、heimdall-horn、cerberus-trihead、quetzal-serpent、trojan-horse、minotaur-maze 全部輸出；陣容圖 `render/out/lineup_myth_{greek,norse,others}.png`、`lineup_myth.png`。
+- 保留：分數持平 20/20，第八階段新增款數 0 → 14、P20 第八階段定義通過。
