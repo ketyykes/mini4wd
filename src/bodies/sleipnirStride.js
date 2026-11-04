@@ -11,6 +11,8 @@
 // 設計：shared/design/body-sleipnir-stride/DESIGN.md（MYTH_RESEARCH N9、N10、N11、N12：《散文埃達》灰色八足馬、哥特蘭圖像石）。
 // iter-121（第九階段炫砲化）：前低後高的楔形、馬頭壓低（頂 49.9 → 45.1）、耳朵後貼；上半身改成珍珠銀白 → 金屬銀 → 風暴灰 → 槍鐵深灰的
 // 前上斜分段漸層；八條腿改成同一步態週期的 8 個連續相位（前後組錯開半個週期）；頸鬃與鬃冠拉長、壓低往後飄；車頭改寬平切鼻、腰腹 36.8。
+// iter-121 第二版：鬃冠後方加一片俯視扇形、後緣鬃尖鋸齒的貼身尾翼（翼頂比座艙罩頂高約 0.6 mm）；八條腿提亮成珍珠銀白 / 淺銀灰，
+// 襯在前後輪之間的近黑底襯貼紙上。
 // 剖面為本檔站位產生器（推估）；塗裝全為自創，不含任何文字、號碼或商標。
 import * as THREE from 'three';
 import { makePolyBody, finPlate, sweepEllipse } from './polyBody.js';
@@ -291,8 +293,10 @@ const materials = () => ({
   slate: namedMaterial('paint-charcoal-slate', { color: 0x2c3138, roughness: 0.62, clearcoat: 0.05 }),
   slate2: namedMaterial('paint-charcoal-slate', { color: 0x2c3138, roughness: 0.62, clearcoat: 0.05, side: THREE.DoubleSide }),
   // 腿：近側淺銀灰、遠側中灰（緞面）；蹄用青銅（iter-116）
-  leg: namedMaterial('paint-leg-greylight', { color: 0xc3c7cc, roughness: 0.55, clearcoat: 0.1 }),
-  legFar: namedMaterial('paint-leg-greymid', { color: 0x868c93, roughness: 0.58, clearcoat: 0.08 }),
+  // iter-121 第二版：腿提亮（近側珍珠銀白、遠側淺銀灰），襯在近黑的底襯上，對比加強
+  leg: namedMaterial('paint-leg-pearl', { color: 0xe6e9ed, roughness: 0.3, metalness: 0.2, clearcoat: 0.8 }),
+  legFar: namedMaterial('paint-leg-greylight', { color: 0xa9afb6, roughness: 0.4, metalness: 0.2, clearcoat: 0.5 }),
+  dBacking: decalMaterial('decal-relief-backing', { color: 0x0d0f12, roughness: 0.7 }),
   // 籠頭與韁繩（真金屬：名稱含 -brass）
   bronze: namedMaterial('trim-bronze-brass', { color: 0xa8763e, roughness: 0.32, metalness: 0.8, clearcoat: 0.2 }),
   dBronze: decalMaterial('decal-bridle-bronze', { color: 0xb07c40, roughness: 0.35, metalness: 0.7 }),
@@ -533,7 +537,7 @@ const CONFIG = {
     // ── 鬃冠尾翼（mane-crest）：座艙後方背脊（x −34 → −72）三列交疊的長鬃束（中列 + 兩側外傾 16° 的短列），往後越來越高（中列最高約 8.6 mm），鬃尖往後順梳、不超出車尾 ──
     {
       /** @type {(x: number) => number} 鬃冠高度：前端 1.4 → x −62 起 6.6（iter-121 由 8.6 壓低，鬃束拉長往後飄） */
-      const crestH = (x) => lerp(1.4, 6.6, Math.pow(Math.min(1, (-34 - x) / 28), 1.2));
+      const crestH = (x) => lerp(1.4, 8.6, Math.pow(Math.min(1, (-34 - x) / 28), 1.2));
       parts.push({
         geometry: mergeGeos([
           maneRow(-34, -58, 4, 13, crestH, 0, 1.3, 0),
@@ -545,6 +549,22 @@ const CONFIG = {
         outline: true,
         name: 'mane-crest-wing',
       });
+      // iter-121 第二版：鬃冠往後拉成貼身尾翼——俯視是往後散開的鬃束扇形（後緣 5 個鬃尖鋸齒），厚 1.2，
+      // 翼面 y 39.6 → 40.8（翼頂比座艙罩頂約 40.2 高 0.6 mm，V7），中央壓在鬃冠尖上
+      {
+        /** @type {number[][]} 俯視外形 [x, z]（右半，左右鏡射） */
+        const half = [[-58, 0], [-58.5, 7.5], [-61, 14.5], [-64.5, 19], [-72.4, 20.5], [-69.6, 15.5], [-73.2, 10.5], [-70.2, 5.5], [-73.6, 0]];
+        const pts = [...half, ...half.slice(1, -1).reverse().map(([x, z]) => [x, -z])];
+        const shape = new THREE.Shape(pts.map(([x, z]) => new THREE.Vector2(x, -z)));
+        const wing = new THREE.ExtrudeGeometry(shape, { depth: 1.2, bevelEnabled: false });
+        // (X, Y, Z) → (X, Z, −Y)：形狀平面轉成水平，厚度朝上
+        wing.rotateX(-Math.PI / 2);
+        // 後緣微翹 2°
+        wing.translate(58, 0, 0);
+        wing.rotateZ((-2 * Math.PI) / 180);
+        wing.translate(-58, 39.6, 0);
+        parts.push({ geometry: wing, mat: 'silver', solid: true, outline: true, name: 'mane-tail-wing' });
+      }
     }
 
     // ── 八條腿（iter-115：每側 8 條立體浮雕腿，前後各 4 條＝各兩對）：扁橢圓斷面沿腿線掃掠（上段寬 2.5 → 下段 1.45 mm），近側淺灰、遠側深一階，膝 / 跗與球節是關節球，蹄是深色楔形 ──
@@ -708,6 +728,17 @@ const CONFIG = {
     }
 
     // ── 貼紙 ──
+    // iter-121 第二版：八條腿的近黑底襯（前後輪之間、腰線下 0.6 到側裙下緣上 0.4，避開輪拱），把淺色腿襯出來
+    parts.push({
+      geometry: kit.decal((x, y, z) => {
+        if (!onSide(x, z) || x > 24 || x < -24) {
+          return -1;
+        }
+        return Math.min(ySideAt(x) - 0.6 - y, y - P.yLow(x) - 0.4, archRingDist(x, y) - 1.0, 23 - Math.abs(x));
+      }, { offset: 0.06 }),
+      mat: 'dBacking',
+      name: 'decal-relief-backing',
+    });
     // Urnes 風格交織帶（iter-115）：上半身兩側各一條，從車尾沿肩走到馬臉前（避開背脊、座艙與腰線以下）
     parts.push({
       geometry: kit.decal((x, y, z) => (!isLower(x, y) && Math.abs(z) > P.nw(x) + 1.4 && kit.underCanopy(x, z) < 0 ? knotSd(x, y, z) : -1)),
