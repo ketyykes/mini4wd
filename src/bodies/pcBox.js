@@ -209,15 +209,17 @@ export const pcBoxBody = makePolyBody({
     // 鼻下黑色分流唇（PC 平板實心件，內噴黑）。iter-125 加大：前緣 x 66.5 → 69.5、半寬 23 → 27、厚 0.7 → 1.0，
     // 板頂 y 11.2 貼齊鼻端下緣；兩端加黑色直立擋板（高 4 mm，前低後高），前緣一道粉紅色線。
     // 前導輪（x 71.5、|z| 42、半徑 6.5）離分流唇外緣仍 ≥ 9 mm
+    // iter-124 修正：前緣 69.5 → 64（＝基準車殼最前緣），半寬 27 → 25、後緣 x 57。分流唇伸出車鼻會讓碰撞外包絡（各碰撞格 AABB 的凸包）多出一個前角，
+    // P17_phase7_laps 的 31 mm 輪 pc-box 組裝穿牆 1.497 mm（基準 0.204）；收回車鼻範圍內後 0.854 mm（≤ 1 mm）；後緣若往前到 x 55，31 mm 輪間隙會變 −0.25 mm
     parts.push({
       geometry: flatPlate(
         [
-          [69.5, -16],
-          [69.5, 16],
-          [67, 24],
-          [57, 27],
-          [57, -27],
-          [67, -24],
+          [64, -14],
+          [64, 14],
+          [62, 22],
+          [57, 25],
+          [57, -25],
+          [62, -22],
         ],
         10.2,
         1.0,
@@ -229,19 +231,19 @@ export const pcBoxBody = makePolyBody({
     });
     const fencePts = [
       [57, 11.2],
-      [67, 11.2],
-      [66, 13.2],
+      [62.5, 11.2],
+      [61.5, 13.2],
       [57, 15.2],
     ];
     parts.push({
-      geometry: mergeGeos([finPlate(fencePts, -25.6, 1.0), finPlate(fencePts, 25.6, 1.0)]),
+      geometry: mergeGeos([finPlate(fencePts, -23.6, 1.0), finPlate(fencePts, 23.6, 1.0)]),
       mat: 'frame',
       solid: true,
       outline: true,
       name: 'chin-fences',
     });
-    const chinEdge = new THREE.BoxGeometry(0.5, 0.5, 32);
-    chinEdge.translate(69.3, 11.45, 0);
+    const chinEdge = new THREE.BoxGeometry(0.5, 0.5, 28);
+    chinEdge.translate(63.7, 11.45, 0);
     parts.push({ geometry: chinEdge, mat: 'pink', name: 'chin-edge' });
     // 斜分割線上方 1.4 mm 白色細線（iter-123，只在側面與肩部）
     parts.push({ geometry: kit.decal((x, y, z) => (Math.abs(z) < 30 ? -1 : Math.min(y - splitY(x), splitY(x) + 1.4 - y))), mat: 'whiteDecal', name: 'decal-split-line' });
