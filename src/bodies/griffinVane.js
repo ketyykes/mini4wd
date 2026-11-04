@@ -1,7 +1,7 @@
 // 獅鷲（body-griffin-vane，第六階段 LG2 致敬款）：高姿態全罩、四個高聳大輪拱（31 mm 輪為造型重點）、往下勾的鷹勾鼻、
 // 中線一列鋸齒「頸羽脊」、不透明珍珠白面罩座艙、左右後擋泥板頂上各一組四片羽片小翼（可調下壓力的外露機能件，沒有中央尾翼）。
 // 設計：shared/design/body-griffin-vane/DESIGN.md（HOMAGE_RESEARCH 第 6 節 LG2 語彙、和劇中車 / 市售車殼的差異）。剖面為本檔站位產生器（推估）。
-// 塗裝全為自創：薰衣草紫＋珍珠白＋金細線、兩道平行金色儀仗飾帶、號碼「36」；不含任何廠商 / 作品名稱、商標、隊徽、國旗或角色圖像。
+// 塗裝全為自創：深皇家紫金屬漆（iter-123 前為薰衣草紫）＋珍珠白＋金、兩道平行金色儀仗飾帶、金色羽片尖端、號碼「36」；不含任何廠商 / 作品名稱、商標、隊徽、國旗或角色圖像。
 import * as THREE from 'three';
 import { makePolyBody, finPlate, sweepEllipse } from './polyBody.js';
 import { namedMaterial, decalMaterial, sdNumber, sdBar, sdRoundRect, sdConvexPolygon, sideDecal, mergeGeos, lerp, smoothstep } from './loft.js';
@@ -81,14 +81,16 @@ const faceEll = (x, z) => Math.hypot((x - FACE.cx) / FACE.a, z / FACE.b);
 
 /** @type {() => Record<string, THREE.Material>} */
 const materials = () => ({
-  lavender: namedMaterial('paint-lavender', { color: 0x9a78d8, roughness: 0.22, clearcoat: 1.0, clearcoatRoughness: 0.06 }),
-  lavender2: namedMaterial('paint-lavender', { color: 0x9a78d8, roughness: 0.22, clearcoat: 1.0, side: THREE.DoubleSide }),
+  // iter-123（第九階段，評審「淡紫＋白太柔，缺對比」）：薰衣草紫 0x9a78d8 → 深皇家紫金屬漆（名稱含 metallic → Blender 金屬漆類）
+  lavender: namedMaterial('paint-royal-violet-metallic', { color: 0x3c1874, roughness: 0.26, metalness: 0.45, clearcoat: 1.0, clearcoatRoughness: 0.05 }),
+  lavender2: namedMaterial('paint-royal-violet-metallic', { color: 0x3c1874, roughness: 0.26, metalness: 0.45, clearcoat: 1.0, side: THREE.DoubleSide }),
   pearl: namedMaterial('paint-pearl-white', { color: 0xf5f1f7, roughness: 0.2, clearcoat: 1.0, sheen: 0.6, sheenColor: 0xe6d8ff }),
   pearl2: namedMaterial('paint-pearl-white', { color: 0xf5f1f7, roughness: 0.2, clearcoat: 1.0, side: THREE.DoubleSide }),
   gold: namedMaterial('metal-gold', { color: 0xd8aa45, roughness: 0.28, metalness: 0.85, clearcoat: 0.6 }),
   gold2: namedMaterial('metal-gold', { color: 0xd8aa45, roughness: 0.28, metalness: 0.85, clearcoat: 0.6, side: THREE.DoubleSide }),
-  violet: namedMaterial('paint-deep-violet', { color: 0x3a2560, roughness: 0.3, clearcoat: 0.8 }),
-  violet2: namedMaterial('paint-deep-violet', { color: 0x3a2560, roughness: 0.3, clearcoat: 0.8, side: THREE.DoubleSide }),
+  // iter-123：深紫羽片 0x3a2560 → 近黑紫（車身改深紫後，羽片仍要和車身分得開）
+  violet: namedMaterial('paint-deep-violet', { color: 0x1e0c36, roughness: 0.3, clearcoat: 0.8 }),
+  violet2: namedMaterial('paint-deep-violet', { color: 0x1e0c36, roughness: 0.3, clearcoat: 0.8, side: THREE.DoubleSide }),
   inner: namedMaterial('shell-inner-dark', { color: 0x1d1a22, roughness: 0.85, side: THREE.BackSide }),
   // iter-69：切口厚度面改珍珠白（輪拱邊緣和白飾邊連成一圈，不再露出紫色碎邊）
   edge: namedMaterial('shell-edge-pearl', { color: 0xe9e4ee, roughness: 0.4, side: THREE.DoubleSide }),
@@ -127,6 +129,42 @@ const featherOutline = (x0, y0, angDeg, len, w) => {
     at(len * 0.58, -w * 0.42),
     at(len * 0.3, -w * 0.5),
   ];
+};
+
+/**
+ * iter-123：羽片在 70% 長度處分成根部件與尖端件（外形和 featherOutline 相同，分件線兩側共用端點）
+ * @type {(x0: number, y0: number, angDeg: number, len: number, w: number) => { base: number[][], tip: number[][] }}
+ */
+const featherSplit = (x0, y0, angDeg, len, w) => {
+  const a = (angDeg * Math.PI) / 180;
+  const ux = -Math.cos(a);
+  const uy = Math.sin(a);
+  const nx = Math.sin(a);
+  const ny = Math.cos(a);
+  /** @type {(s: number, h: number) => number[]} */
+  const at = (s, h) => [x0 + ux * s + nx * h, y0 + uy * s + ny * h];
+  // 分件線在 s = 0.7 len：上緣在 (0.45, 0.55w)–(0.8, 0.32w) 之間內插、下緣在 (0.66, −0.12w)–(0.82, −0.3w) 之間內插
+  const cutUp = at(len * 0.7, w * 0.386);
+  const cutLo = at(len * 0.7, -w * 0.165);
+  return {
+    base: [at(0, -w * 0.45), at(0, w * 0.45), at(len * 0.45, w * 0.55), cutUp, cutLo, at(len * 0.66, -w * 0.12), at(len * 0.58, -w * 0.42), at(len * 0.3, -w * 0.5)],
+    tip: [cutUp, at(len * 0.8, w * 0.32), at(len, 0), at(len * 0.82, -w * 0.3), cutLo],
+  };
+};
+
+/**
+ * 立板（同 polyBody.finPlate），但外傾支點高度由呼叫端指定（分件的羽片根部件與尖端件要繞同一支點外傾才會密接）
+ * @type {(pts: number[][], zc: number, thick: number, tiltDeg: number, yPivot: number) => THREE.BufferGeometry}
+ */
+const finPlateAt = (pts, zc, thick, tiltDeg, yPivot) => {
+  const shape = new THREE.Shape(pts.map(([x, y]) => new THREE.Vector2(x, y)));
+  const bev = Math.min(0.2, thick / 4);
+  const g = new THREE.ExtrudeGeometry(shape, { depth: thick - 2 * bev, bevelEnabled: true, bevelThickness: bev, bevelSize: bev, bevelSegments: 1 });
+  g.translate(0, 0, -thick / 2 + bev);
+  g.translate(0, -yPivot, 0);
+  g.rotateX((-tiltDeg * Math.PI) / 180);
+  g.translate(0, yPivot, zc);
+  return g;
 };
 
 /**
@@ -204,7 +242,8 @@ export const griffinVaneBody = makePolyBody({
     { mat: 'pearl', keep: (x, y, z) => headKeep(x, z) },
     // 珍珠白下半車身（獅身腹部）：分色線在金色飾帶下方 3.2 mm，跟著飾帶從鼻側上掃到後擋泥板
     // iter-69：輪拱圓外 3 mm 內一律珍珠白（白飾邊和白色下身連成一片，分色線不再從輪拱邊上穿過而破碎）
-    { mat: 'pearl', keep: (x, y, z) => (Math.abs(z) > 20 ? Math.max(SASH(x) - 3.2 - y, Math.abs(z) > 22 ? 3 - archRingDist(x, y) : -1) : -1) },
+    // iter-123：分色線 SASH − 3.2 → SASH − 2.5，貼齊下金線的下緣（珍珠白｜金｜深紫｜金｜深紫 的高對比分割，中間不再夾一條細紫縫）
+    { mat: 'pearl', keep: (x, y, z) => (Math.abs(z) > 20 ? Math.max(SASH(x) - 2.5 - y, Math.abs(z) > 22 ? 3 - archRingDist(x, y) : -1) : -1) },
     { mat: 'lavender', keep: () => 1 },
   ],
   mats: { inner: 'inner', edge: 'edge', cap: 'lavender', recess: 'recess', recessWall: 'recessWall', mount: 'mount' },
@@ -239,7 +278,7 @@ export const griffinVaneBody = makePolyBody({
 
     // 擋泥板羽片小翼（L2-1 外露機能件）：左右後擋泥板頂各四片，往後上扇形展開、往外 32° 傾，兩組不相連、沒有中央主翼
     /** @type {Record<string, THREE.BufferGeometry[]>} */
-    const vanes = { pearl: [], violet: [] };
+    const vanes = { pearl: [], violet: [], gold: [] };
     // iter-69：羽片放大（長 19–22 → 25–29、寬 4.4–4.8 → 6.0–6.4）並加厚（0.9 → 1.0 mm；26 / 31 mm 整車都要 ≤ 135 g，輪拱內襯深度 2.6 → 1.0 mm 抵銷加重），讓「有翼」的意象撐得起來
     // iter-104（評審 iter-72「羽翼仍比概念圖小」）：每側 4 → 5 片，長 25–29 → 27–35、寬 6.0–6.4 → 6.8–7.8，扇形張角 6–33° → 8–48°；
     // 厚度 1.0 → 0.8 mm 抵銷部分加重（推估）。整車：26 mm 輪 131.3 g、31 mm 輪 135.3 g（略超 SPEC 1.12 的推估範圍 105–135 g，規則只要求 ≥ 90 g；同 dartfrog 31 mm 輪 138.4 g 的處理）
@@ -254,11 +293,16 @@ export const griffinVaneBody = makePolyBody({
       FEATHERS.forEach((f, i) => {
         const zc = sg * (31 + i * 0.8);
         const y0 = top(f.x0, zc) - 0.7;
-        vanes[f.mat].push(finPlate(featherOutline(f.x0, y0, f.ang, f.len, f.w), zc, 0.8, -sg * 32));
+        // iter-123（評審「翼片尖端漆金」）：每片羽片在 70% 長度處分件，尖端 30% 換成金色件（同一外傾支點，兩件密接）
+        const { base, tip } = featherSplit(f.x0, y0, f.ang, f.len, f.w);
+        const yPivot = Math.min(...featherOutline(f.x0, y0, f.ang, f.len, f.w).map((q) => q[1]));
+        vanes[f.mat].push(finPlateAt(base, zc, 0.8, -sg * 32, yPivot));
+        vanes.gold.push(finPlateAt(tip, zc, 0.8, -sg * 32, yPivot));
       });
     }
     parts.push({ geometry: mergeGeos(vanes.pearl), mat: 'pearl2', solid: true, outline: true, name: 'fender-winglets-pearl' });
     parts.push({ geometry: mergeGeos(vanes.violet), mat: 'violet2', solid: true, outline: true, name: 'fender-winglets-violet' });
+    parts.push({ geometry: mergeGeos(vanes.gold), mat: 'gold2', solid: true, outline: true, name: 'fender-winglets-gold-tips' });
     // 羽片根部的金色羽座（可調角度的樞軸蓋）
     /** @type {THREE.BufferGeometry[]} */
     const knuckles = [];
@@ -328,18 +372,20 @@ export const griffinVaneBody = makePolyBody({
     const numSd = sdNumber('36', { h: 5.6, w: 3.0, gap: 0.8 });
     parts.push({
       geometry: kit.decal(sideDecal((u, v) => Math.max(plateSd(u, v), -numSd(u, v)), { x0: -60.5, y0: 26, zMin: 26 }), { offset: 0.1 }),
-      mat: 'dViolet',
+      // iter-123：車身改深紫後，號碼板改珍珠白底、號碼深紫
+      mat: 'dPearl',
       name: 'decal-number-plate',
       // iter-71：號碼板墊高到 0.1、號碼 0.15（原本號碼板和肌肉線、飾帶同為 0.06，下緣交疊處 z-fighting 出白紫碎點）
     });
-    parts.push({ geometry: kit.decal(sideDecal(numSd, { x0: -60.5, y0: 26, zMin: 26 }), { offset: 0.15 }), mat: 'dPearl', name: 'decal-number' });
+    parts.push({ geometry: kit.decal(sideDecal(numSd, { x0: -60.5, y0: 26, zMin: 26 }), { offset: 0.15 }), mat: 'dViolet', name: 'decal-number' });
     // 鷹勾喙（上喙）：從鼻樑隆起、越過鼻尖往前下勾的金色實心件
+    // iter-123：喙尖更往下勾（x 82 → 80.2、尖端往下 0.6 mm），車殼外框長 154.6 → 153（立體橋卡橋上限，見 SPEC 1.14a）
     const beakPath = [
       [62, 23.6, 0],
       [70, 23.2, 0],
-      [76, 21.2, 0],
-      [80, 17.8, 0],
-      [82, 14.2, 0],
+      [75.5, 21.4, 0],
+      [78.8, 18.2, 0],
+      [80.2, 13.6, 0],
     ];
     parts.push({
       geometry: smoothNormals(sweepEllipse(beakPath, 40, (t) => [lerp(6.5, 0.7, t ** 0.9), lerp(2.6, 0.7, t)], 20)),
@@ -379,7 +425,8 @@ export const griffinVaneBody = makePolyBody({
         kit.decal(sideDecal(haunch, { x0: 0, y0: 0, zMin: 40, side: 1 })),
         kit.decal(sideDecal((u, v) => haunch(-u, v), { x0: 0, y0: 0, zMin: 40, side: -1 })),
       ]),
-      mat: 'dViolet',
+      // iter-123：深紫車身上改成金色肌肉線
+      mat: 'dGold',
       name: 'decal-haunch-line',
     });
     return parts;

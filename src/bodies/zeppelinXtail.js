@@ -14,11 +14,17 @@ const XS = [-72, -66, -60, -50, -40, -28, -14, 0, 14, 28, 40, 50, 58, 65, 70.5, 
 /** @type {Record<string, (x: number) => number>} */
 const P = {
   // 雪茄軸線高度（iter-69：前段 21.5 → 23，配合加高的圓斷面；圓錐尾往上收到 28.5，讓下兩片 X 舵離開後保桿）
-  yA: monoCurve(XS, [28.5, 27.5, 26, 24.5, 23.5, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23]),
+  // iter-123（第九階段，評審「前後一樣高、最不像跑車」）：前 1/3 軸線略往下壓（23 → 22.5）；鼻尖不再更低——
+  // 正面投影會把鼻尖到船腹之間的空隙補滿，鼻尖壓到 19.5 時整車正面面積反而 +3.5%（量測），所以楔形靠頂線下降來做
+  yA: monoCurve(XS, [28.5, 27.5, 26, 24.5, 23.5, 23, 23, 23, 22.9, 22.8, 22.6, 22.5, 22.5, 22.5, 22.5, 22.5, 22.5, 22.5]),
   // 垂直半軸（iter-69：最大 16.4 → 21.5，斷面由扁橢圓改成接近 1.8 : 1 的圓胖雪茄）：最粗處在前 1/3，鼻部改成尖拱（ogive）收尖、往後收成圓錐尾
-  ry: monoCurve(XS, [2.5, 6, 9.5, 13.5, 16.5, 19, 20.5, 21.2, 21.5, 21.3, 20.5, 18.5, 16, 12.8, 9.4, 5.8, 3, 0.8]),
+  // iter-123：頂線改成前低後高的楔形——最高點留在 x −14 ~ 0（44.3），往前一路下降（x 40：43.5 → 38.3、x 58：39 → 32.3、x 70.5：32.4 → 26.5、
+  // 鼻尖 23.8 → 22.8）；鼻部斷面變成扁平的楔形吊艙（x 70.5 寬 15 × 高 4）；最大斷面 21.5 → 21.3（正面面積不變大）
+  ry: monoCurve(XS, [2.5, 6, 9.5, 13.5, 16.5, 19, 20.6, 21.3, 20.0, 18.0, 15.7, 12.8, 9.8, 6.8, 4.0, 1.7, 0.8, 0.3]),
   // 水平半軸（iter-69：最寬 47.2 → 39，俯視不再是方肥皂盒）：鼻、尾都提早收窄成尖拱 / 圓錐
-  hw: monoCurve(XS, [4.5, 11, 18, 26, 31.5, 35.5, 37.8, 38.8, 39, 38.8, 37.8, 34.8, 30.2, 24.4, 18, 11, 5.6, 1.6]),
+  // iter-123：前 1/3 俯視也收尖（x 58：30.2 → 28、x 70.5：18 → 15），楔形吊艙從上面看是尖鼻
+  // 圓錐尾也略收（x −50：26 → 24.5），和 prism-facet 的俯視 IoU 拉開（0.846 → 量測見 DESIGN.md）
+  hw: monoCurve(XS, [4.5, 11, 17, 24.5, 30.5, 35, 37.8, 38.8, 39, 38.8, 37.6, 33.8, 28, 21.5, 15, 8.5, 4, 1.2]),
 };
 
 /** @type {number[]} 剖面 7 點在橢圓上的角度（度；90 = 中線頂，負值 = 側面往下內收的「腹部」） */
@@ -62,6 +68,8 @@ const materials = () => ({
   edge: namedMaterial('shell-edge-pewter', { color: 0x5d6167, roughness: 0.5, side: THREE.DoubleSide }),
   glass: namedMaterial('pc-smoke-tint', { color: 0x2a3440, roughness: 0.05, specularIntensity: 0.6, transparent: true, opacity: 0.4, envMapIntensity: 0.5, depthWrite: false, side: THREE.DoubleSide }),
   frame: namedMaterial('paint-graphite', { color: 0x2c2f34, roughness: 0.4, metalness: 0.3, side: THREE.DoubleSide }),
+  // iter-123：圓錐尾的石墨灰金屬漆（橘色 X 舵的深色底）
+  graphite: namedMaterial('paint-graphite', { color: 0x2c2f34, roughness: 0.32, metalness: 0.35, clearcoat: 0.9, clearcoatRoughness: 0.08 }),
   lamp: namedMaterial('lamp-ice', { color: 0xfff6dc, emissive: 0xffe2a0, emissiveIntensity: 0.6, roughness: 0.08, clearcoat: 1.0 }),
   tail: namedMaterial('lamp-red', { color: 0xd0142a, emissive: 0x900010, emissiveIntensity: 0.6, roughness: 0.1, clearcoat: 1.0 }),
   dDark: decalMaterial('decal-graphite', { color: 0x2c2f34, roughness: 0.45 }),
@@ -178,6 +186,8 @@ export const zeppelinXtailBody = makePolyBody({
     { mat: 'cream', keep: (x) => x - 73.8 },
     // 訊號橘鼻環
     { mat: 'orange', keep: (x) => x - 70.5 },
+    // iter-123：圓錐尾（尾環之後）整段石墨灰，讓加大的訊號橘 X 舵和車身形成強對比
+    { mat: 'graphite', keep: (x) => -53.8 - x },
     // 奶油白下半船身：軸線以下（飛船吊艙側的分色）
     { mat: 'cream', keep: (x, y, z) => (Math.abs(z) > 16 ? P.yA(x) - 0.6 - y : -1) },
     { mat: 'pewter', keep: () => 1 },
@@ -198,9 +208,10 @@ export const zeppelinXtailBody = makePolyBody({
     parts.push({ geometry: bars.geometry, mat: 'frame', name: 'window-bars' });
     // 鼻尖繫留錐（石墨灰金屬圓錐，往前尖出）
     // iter-103（評審 iter-73「zeppelin 缺臉」，對照概念圖 concept_front34_v1）：底徑 4 → 6.4、底面往後埋進鼻帽到 x 78.4，錐尖仍在 x 81.2（全長不變）
-    const cone = new THREE.ConeGeometry(3.2, 2.8, 32);
+    // iter-123：錐高 2.8 → 2.5（錐尖 x 81.2 → 80.9，車殼外框長 153.2 → 152.9，回到 ≤ 153 的卡橋上限內）；分段 32 → 16
+    const cone = new THREE.ConeGeometry(3.2, 2.5, 16);
     cone.rotateZ(-Math.PI / 2);
-    cone.translate(78.4 + 1.4, P.yA(78.4), 0);
+    cone.translate(78.4 + 1.25, P.yA(78.4), 0);
     parts.push({ geometry: cone, mat: 'frame', solid: true, outline: true, name: 'mooring-cone' });
 
     // 輪拱內襯（前後，31 mm 大輪拱）：擋住從側面看進去的殼內空腔
@@ -220,11 +231,13 @@ export const zeppelinXtailBody = makePolyBody({
     });
     // X 形尾舵（L2-1 外露機能件「穩定舵」）：上兩片外上 45°、下兩片外下 45°（下片較短，保持離地與導輪間隙），後緣不超出車尾
     // iter-69：圓錐尾軸線抬高到 27.5、下片 11.5 → 9 mm，下舵尖離開後保桿（舵尖約 y 21）
+    // iter-123（評審「X 尾翼加大並漆對比橘」）：上片展長 21 → 25、弦長 10 → 12（根部前緣 −55 → −50）；下片 9 → 10.5；
+    // 後緣仍停在 x −72（車長不變）。舵面維持訊號橘，圓錐尾改成石墨灰（見 zones），橘舵在深色尾錐上跳出來
     const rudders = [
-      buildRudder([-55, -71.5], [-65, -72], 21, 1, -45),
-      buildRudder([-55, -71.5], [-65, -72], 21, 1, 45),
-      buildRudder([-58, -71.5], [-66, -72], 9, -1, -45),
-      buildRudder([-58, -71.5], [-66, -72], 9, -1, 45),
+      buildRudder([-50, -71.5], [-62, -72], 25, 1, -45),
+      buildRudder([-50, -71.5], [-62, -72], 25, 1, 45),
+      buildRudder([-54, -71.5], [-64, -72], 10.5, -1, -45),
+      buildRudder([-54, -71.5], [-64, -72], 10.5, -1, 45),
     ];
     parts.push({ geometry: mergeGeos(rudders), mat: 'orange2', solid: true, outline: true, name: 'x-tail-rudders' });
 
@@ -240,7 +253,7 @@ export const zeppelinXtailBody = makePolyBody({
       const ph = ((u % 3) + 3) % 3;
       const du = Math.min(ph, 3 - ph);
       const vy = P.yA(u) + 0.62 * P.ry(u);
-      return Math.max(Math.hypot(du, v - vy) - 0.42, u - 66, -56 - u);
+      return Math.max(Math.hypot(du, v - vy) - 0.42, u - 56, -50 - u);
     };
     parts.push({
       geometry: mergeGeos([
@@ -284,6 +297,19 @@ export const zeppelinXtailBody = makePolyBody({
       geometry: kit.decal((x, y, z) => (y > 20 ? -sdCircle(75.0, 5.0, 1.8)(x, Math.abs(z)) : -1), { offset: 0.1 }),
       mat: 'lamp',
       name: 'lamp-searchlights',
+    });
+    // iter-123：楔形吊艙側面一排 4 扇石墨灰吊艙窗（飛船吊艙的窗列，鼻部讀成「下壓的吊艙」），在前輪拱之前
+    parts.push({
+      geometry: kit.decal((x, y, z) => {
+        if (Math.abs(z) < 0.6 * P.hw(x)) {
+          return -1;
+        }
+        const ph = (((x - 59) % 3.3) + 3.3) % 3.3;
+        const d = Math.max(Math.abs(ph - 1.4) - 1.05, Math.abs(y - (P.yA(x) + 2.3)) - 0.75, 59 - x, x - 72);
+        return -d;
+      }, { offset: 0.1 }),
+      mat: 'dDark',
+      name: 'decal-gondola-windows',
     });
     // 圓錐尾前的訊號橘尾環＋奶油白細邊（和鼻環呼應）
     parts.push({ geometry: kit.decal((x) => 1.6 - Math.abs(x + 52)), mat: 'dOrange', name: 'decal-tail-ring' });
