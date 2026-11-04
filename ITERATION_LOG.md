@@ -3577,3 +3577,18 @@
 - dartfrog 回歸檢查結果（16 samples、800×450、5 視角，02:10–02:11）：**全部通過**——中性色佔 84–91% 像素，|Δ亮度| 中位數 0.6–1.7、p90 2.0（上限 3／8）；暗部與中間調單款圖比 AgX 低 1–2，只有 176–255 的高光（每視角 15–240 px）單款圖亮 9–12，是鏡面反射點、像素極少，不影響一致性。目前燈光下曲線仍有效；之後改燈光就跑 `render/check_tonemap.sh`。
 - 截圖確認（`renders/iter-111_body-owl-hush_front34.png`）：黃銅配重掛在底盤外側、貼近地面，owl-hush 側裙在上方不碰；`iter-111-pcbox_*`：pc-box 側裙直接壓到配重（仍干涉的例子）。
 - 最終 `score.mjs`（2026-10-30 01:58–02:10 台北）回傳 0：**161/161、P01–P20 20/20**。iter-88 兩張歷史截圖已還原。
+
+---
+
+# 第八階段：神話主題車殼（2026-11-04 起，見根目錄 GOAL.md）
+
+## iter-112（開始 2026-11-04 13:58，TZ=Asia/Taipei date）：第 0 輪——基準、神話研究、P20 第八階段定義、希臘 / 北歐第一批
+
+- 計畫：
+  - 基準：主線 `c78a4a8` 跑 `score.mjs`（取 `/tmp/heavy-lock.sh` 鎖）；`shared/REVIEWER_BRIEF.md` 改第八階段版（第 2 項「致敬風格感」→「神話辨識度」，原創性加現代作品與仇恨符號檢查）；既有 19 款陣容圖評一次當第八階段基準。
+  - 研究 subagent：新檔 `shared/design/MYTH_RESEARCH.md`（8 個體系、主題、文物語彙、黑名單、市售車殼撞名）。
+  - 規格：BodyDef 加 `style: 'myth'`、`mythSeries`、`mythTheme`（`types.d.ts`）；體系清單 `src/bodies/mythSeries.js`（網頁選單、P20 共用）；網頁車殼選單依神話體系分群；P20 加 `P20_myth_variety`（第八階段定義，神話款湊齊前會失敗，是預期的）。
+  - 12 款主題（主 agent 決定、研究員查證）：希臘 trojan-horse / cerberus-trihead / minotaur-maze；北歐 drakkar-prow / sleipnir-stride / gullinbursti-boar；埃及 khepri-scarab；美索不達米亞 mushussu-gate；凱爾特 cernunnos-stag；日本 kitsune-ninetail；中國 kunpeng；阿茲特克／馬雅 quetzal-serpent。
+    - 原本想做雷神之鎚：ADL 仇恨符號資料庫收錄被挪用的 Thor's hammer → 依 GOAL 黑名單原則換成 Freyr 的金鬃野豬；北歐款一律不用盧恩字母。
+  - 本輪車殼 subagent 2 個（worktree 建在 app repo：`iter112-greek`、`iter112-norse`）：trojan-horse＋cerberus-trihead、drakkar-prow＋gullinbursti-boar。預期：四款 26 mm 合法、trojan-horse / drakkar-prow 31 mm 不切輪拱合法、車殼 ≤ 17.5 g（整車 ≤ 133 g）、對既有 19 款 IoU < 0.85。
+  - 概念圖：本階段時間有限，改用「文字＋手寫三視圖 SVG」（GOAL 允許的替代做法），不呼叫 AI 生圖。

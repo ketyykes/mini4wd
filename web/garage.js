@@ -4,6 +4,7 @@
 import * as Assembly from '../src/assembly.js';
 import { listParts } from '../src/parts/index.js';
 import { listBodies, bodyMassProps } from '../src/bodies/index.js';
+import { MYTH_SERIES, mythGroupLabel } from '../src/bodies/mythSeries.js';
 import { validateAssembly } from '../src/regulation.js';
 import { theoreticalTopSpeed } from '../src/powertrain.js';
 import { buildCarModel } from '../src/model.js';
@@ -360,12 +361,16 @@ const buildPresetSelect = () => {
   }
 };
 
-/** @type {{ label: string, pick: (b: import('../src/bodies/types').BodyDef) => boolean }[]} 車殼選單分組（第六階段：比賽型 / 致敬 LG1 / 致敬 LG2） */
+/** @type {{ label: string, pick: (b: import('../src/bodies/types').BodyDef) => boolean }[]} 車殼選單分組（第六階段：比賽型 / 致敬 LG1 / 致敬 LG2；第八階段：神話組依體系各一組） */
 const BODY_GROUPS = [
   { label: '比賽常用車殼', pick: (b) => b.style === 'race' },
   { label: '致敬《爆走兄弟》1', pick: (b) => b.style === 'homage' && b.homageSeries === 'lg1' },
   { label: '致敬《爆走兄弟》2（WGP）', pick: (b) => b.style === 'homage' && b.homageSeries === 'lg2' },
-  { label: '其他', pick: (b) => !(b.style === 'race' || b.homageSeries === 'lg1' || b.homageSeries === 'lg2') },
+  ...MYTH_SERIES.map((s) => ({ label: mythGroupLabel(s.key), pick: (/** @type {import('../src/bodies/types').BodyDef} */ b) => b.style === 'myth' && b.mythSeries === s.key })),
+  {
+    label: '其他',
+    pick: (b) => !(b.style === 'race' || b.homageSeries === 'lg1' || b.homageSeries === 'lg2' || (b.style === 'myth' && MYTH_SERIES.some((s) => s.key === b.mythSeries))),
+  },
 ];
 
 /** 建立車殼選單（依 BODY_GROUPS 分群；質量在預先計算後補上） */

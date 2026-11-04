@@ -2,11 +2,15 @@
 import { listBodies, bodyMassProps } from '../../src/bodies/index.js';
 import { assemble, loadConfig } from '../../src/assembly.js';
 import { validateAssembly } from '../../src/regulation.js';
+import { mythGroupLabel } from '../../src/bodies/mythSeries.js';
 
 /** @type {(b: import('../../src/bodies/types').BodyDef) => string} */
 const groupOf = (b) => {
   if (b.style === 'race') {
     return `比賽型（${b.raceType}）`;
+  }
+  if (b.style === 'myth') {
+    return `${mythGroupLabel(b.mythSeries)}（${b.mythTheme}）`;
   }
   if (b.homageSeries === 'lg1') {
     return 'LG1 致敬';

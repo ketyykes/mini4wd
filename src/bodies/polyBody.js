@@ -12,7 +12,7 @@ import { makeLoftKit, createPolySurface, cachedBuild, buildRegion, buildMountTab
  * @typedef {object} PolyBodyConfig
  * @property {string} id
  * @property {string} name
- * @property {'homage' | 'race'} style 致敬《爆走兄弟》風格 / 常見比賽車殼型式
+ * @property {'homage' | 'race' | 'myth'} style 致敬《爆走兄弟》風格 / 常見比賽車殼型式 / 神話主題（第八階段）
  * @property {string} theme 一句話主題
  * @property {number} [phase] 上線階段（第四階段新致敬款 = 4）
  * @property {import('./types').BodyDef['roof']} [roof] 車頂型態
@@ -20,6 +20,8 @@ import { makeLoftKit, createPolySurface, cachedBuild, buildRegion, buildMountTab
  * @property {import('./types').BodyDef['homageSeries']} [homageSeries] 致敬哪一部作品（第六階段）
  * @property {string} [raceType] 比賽車殼型態代號（第六階段）
  * @property {string} [form] 車身型態代號（第六階段）
+ * @property {import('./types').MythSeries} [mythSeries] 神話體系（第八階段）
+ * @property {string} [mythTheme] 神話主題代號（第八階段）
  * @property {'ABS' | 'PC'} material
  * @property {number} density_g_cm3
  * @property {number} wallThickness_mm
@@ -440,6 +442,8 @@ export function makePolyBody(cfg) {
     wing: cfg.wing,
     homageSeries: cfg.homageSeries,
     raceType: cfg.raceType,
+    mythSeries: cfg.mythSeries,
+    mythTheme: cfg.mythTheme,
     form: cfg.form,
     name: cfg.name,
     material: cfg.material,

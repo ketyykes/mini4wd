@@ -9,6 +9,7 @@ import { createServer } from 'vite';
 import { chromium } from 'playwright';
 import { assemble } from '../src/assembly.js';
 import { validateAssembly } from '../src/regulation.js';
+import { mythGroupLabel } from '../src/bodies/mythSeries.js';
 
 /** 網頁數值與 Node 端的容許誤差（g、mm） */
 const TOL = 0.01;
@@ -129,7 +130,7 @@ describe('P19 網頁換件', () => {
     }
     // 車殼：目錄中每款車殼＋「不裝車殼」；預設組裝設定：listConfigs()
     expect(await page.locator('select[data-slot="body"] option').count()).toBe(listBodies().length + 1);
-    // 第六階段：車殼選單依三組分群（比賽型 / 致敬 LG1 / 致敬 LG2），每款都在自己那一組
+    // 第六階段：車殼選單依三組分群（比賽型 / 致敬 LG1 / 致敬 LG2）；第八階段加神話組（依體系分群），每款都在自己那一組
     /** @type {{ label: string, ids: string[] }[]} */
     const bodyGroups = await page.locator('select[data-slot="body"] optgroup').evaluateAll((gs) =>
       gs.map((g) => ({ label: /** @type {HTMLOptGroupElement} */ (g).label, ids: [...g.querySelectorAll('option')].map((o) => o.value) })),
@@ -149,6 +150,9 @@ describe('P19 網頁換件', () => {
         expected = '致敬《爆走兄弟》1';
       } else if (b.homageSeries === 'lg2') {
         expected = '致敬《爆走兄弟》2（WGP）';
+      } else if (b.style === 'myth') {
+        // 第八階段：神話組依體系各一組
+        expected = mythGroupLabel(b.mythSeries);
       }
       expect(groupOf[b.id], `${b.id} 的選單分組`).toBe(expected);
     }
