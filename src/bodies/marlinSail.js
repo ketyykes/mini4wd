@@ -90,8 +90,13 @@ const STATIONS = (() => {
   });
 })();
 
-/** @type {(x: number) => number} 石油藍綠（上）／銀白（下）分色線：鼻尖低、往後斜升（V13），後輪上方之後整段銀白 */
-const splitY = (x) => 15.5 + 0.17 * (60 - x);
+/**
+ * 石油藍綠（上）／銀白（下）分色線：鼻尖低、往後斜升（V13）
+ * iter-123（第九階段，評審：「側面大片白色像泡泡」）：原本後輪上方之後整段銀白（分色線升到車頂以上）；
+ * 改成升到 y 21.5 後封頂 → 後輪裙板上半與車尾側面都是石油藍綠，銀白只剩下緣一道往後收窄的腹帶（旗魚的銀腹）
+ * @type {(x: number) => number}
+ */
+const splitY = (x) => Math.min(15.5 + 0.17 * (60 - x), 21.5 - 0.06 * Math.max(0, -20 - x));
 
 /** @type {() => Record<string, THREE.Material>} */
 const materials = () => ({
@@ -113,6 +118,8 @@ const materials = () => ({
   dark: decalMaterial('decal-black', { color: 0x111214, roughness: 0.5 }),
   lamp: namedMaterial('lamp-amber', { color: 0xffb347, emissive: 0xff7a1a, emissiveIntensity: 0.8, roughness: 0.1, clearcoat: 1.0 }),
   mount: namedMaterial('abs-mount-black', { color: 0x222326, roughness: 0.6 }),
+  // iter-123：鏟形前唇（亮黑）
+  lip2: namedMaterial('paint-gloss-black-lip', { color: 0x101214, roughness: 0.25, clearcoat: 1.0, side: THREE.DoubleSide }),
 });
 
 /**
@@ -233,8 +240,10 @@ export const marlinSailBody = makePolyBody({
     // 背帆（V8 鰭的變形，iter-55 改成刀形帆）：從座艙後緣沿背脊升起、前緣長斜線往後上掠到 x −57、y 45.5 的尖端，
     // 後緣往後傾；翼型斷面（根部厚 2.6 mm、尖端收到 40%），根部埋進殼內；藍綠帆面＋珊瑚橘帆尖帶（共用同一外傾支點，接縫對齊）
     // iter-67：後緣跟著車尾內收（根 −60 → −58、尖 −67.5 → −64.5）
+    // iter-123（第九階段，評審：「帆鰭直立」→「帆鰭後傾 15°」）：帆尖整段往後推 h·tan15°（約 4.6 mm）、帆尖高 45.5 → 44.5，
+    // 後緣由後傾約 20° 變成約 34°，整片帆像高速時往後壓平的旗魚背鰭
     const sailRoot = [-3, -58, 27.4];
-    const sailTip = [-55, -64.5, 45.5];
+    const sailTip = [-59.6, -69.2, 44.5];
     /** @type {(f: number) => number[]} 弦線在展向比例 f 的 [前緣 x, 後緣 x, y] */
     const sailAt = (f) => [lerp(sailRoot[0], sailTip[0], f), lerp(sailRoot[1], sailTip[1], f), lerp(sailRoot[2], sailTip[2], f)];
     /** @type {(f0: number, f1: number) => THREE.BufferGeometry} */
@@ -360,9 +369,10 @@ export const marlinSailBody = makePolyBody({
       canards.push(
         flatPlate(
           [
+            // iter-123：翼尖往外伸 4 mm（|z| 28 → 32），和鏟形前唇一起讓車頭俯視是「劍吻＋兩側前翼」的箭頭
             [66.5, sg * 8],
-            [59.5, sg * 27.5],
-            [55.8, sg * 28],
+            [60.6, sg * 31.5],
+            [56.6, sg * 32],
             [55.3, sg * 12],
           ].map(([x, z]) => [x, z]),
           14.6,
@@ -372,10 +382,10 @@ export const marlinSailBody = makePolyBody({
       canardTips.push(
         flatPlate(
           [
-            [61.1, sg * 23],
-            [59.5, sg * 27.5],
-            [55.8, sg * 28],
-            [55.7, sg * 23],
+            [62.1, sg * 27],
+            [60.6, sg * 31.5],
+            [56.6, sg * 32],
+            [56.2, sg * 27],
           ],
           14.55,
           1.0,
@@ -426,13 +436,38 @@ export const marlinSailBody = makePolyBody({
       mat: 'coral',
       name: 'decal-coral',
     });
+    // iter-123（第九階段，評審：「劍吻往前下延伸成鏟形前唇」）：針尖鼻下方一片亮黑鏟形前唇（實心 1.2 mm 板，y 11.4–12.6）：
+    // 從前輪前方（x 58、半寬 11）沿鼻底往前，鼻尖之前收成圓頭鏟（x 75 半寬 6 → 尖端 x 79），像劍吻往前下伸出的下顎；
+    // 俯視寬度都在鼻部半寬以內或鼻尖之前（俯視平面不往兩側變寬）
+    /** @type {number[][]} 鏟形前唇俯視多邊形 (x, z)：先右側由後往前、再繞圓頭、再左側由前往後 */
+    const spade = [];
+    /** @type {(x: number) => number} 鏟形前唇半寬：x 58 → 11、x 73 → 6，x 75 之後圓頭收到 x 79 */
+    const spadeHw = (x) => {
+      if (x <= 75) {
+        return lerp(11, 6, smoothstep(58, 73, x));
+      }
+      return 6 * Math.sqrt(Math.max(0, 1 - ((x - 75) / 4) ** 2));
+    };
+    for (let i = 0; i <= 14; i++) {
+      const x = lerp(58, 79, i / 14);
+      spade.push([x, spadeHw(x)]);
+    }
+    for (let i = 14; i >= 0; i--) {
+      const x = lerp(58, 79, i / 14);
+      spade.push([x, -spadeHw(x)]);
+    }
+    parts.push({ geometry: flatPlate(spade, 11.4, 1.2), mat: 'lip2', solid: true, outline: true, name: 'spade-lip' });
     // 頭燈（V14）：鼻側一對往後掠的細長菱形燈
     const lampSd = sdConvexPolygon([[68, 5.2], [61.5, 11.6], [58.5, 12.6], [63.5, 6.2]]);
     parts.push({ geometry: kit.decal((x, y, z) => -lampSd(x, Math.abs(z)), { offset: 0.1 }), mat: 'lamp', name: 'lamp-head' });
     // 號碼 7：後輪裙板（銀白底）與鼻頂
     parts.push({
       geometry: mergeGeos([
-        kit.decal(sideDecal(sdNumber('7', { h: 7.5, w: 4.2, gap: 0 }), { x0: -40, y0: 18.5, zMin: 30 })),
+        // iter-123：後輪裙板上半改成石油藍綠 → 號碼移到裙板下緣的銀白腹帶（後輪分件弧內）
+        // iter-125（評審「號碼 7 被裙板弧線和珊瑚橘細線切掉一半」）：iter-123 位置（x −43、y 11.05–16.55）下緣低於裙板下緣（約 12.7）、
+        // 中段壓到珊瑚橘尾紋（y 14.2–16）→ 移到後輪分件弧內、珊瑚橘尾紋之上、分色線之下的銀白腹帶（x −36、y 15.6–20.1）：
+        // 下緣離尾紋上緣 ≥ 0.6 mm、上緣離石油藍綠分色線（y 20.5）≥ 0.4 mm、前緣離最後一道藍綠斑條（x ≈ −29）≥ 4 mm、離分件弧與珊瑚橘弧線 ≥ 6 mm
+        kit.decal(sideDecal(sdNumber('7', { h: 4.4, w: 2.8, gap: 0 }), { x0: -36, y0: 17.85, zMin: 30 })),
         kit.decal(topDecal(sdNumber('7', { h: 5.5, w: 3.2, gap: 0 }), { x0: 50, yMin: 18 })),
       ]),
       mat: 'dark',
@@ -445,7 +480,7 @@ export const marlinSailBody = makePolyBody({
     wallThickness_mm: '推估：射出 ABS 殼 0.8 mm（同第三階段各款）',
     geometry: '本檔 T 表與 STATIONS（推估，依 HOMAGE_RESEARCH 4-1：長約 152、背帆頂約 34–38；iter-67 依第 6 節 P5 縮短到 147 mm；外框與輪胎間隙用 body-check 掃描）',
     wheels: '只對應 26 mm 輪：前輪外露（車身半寬 22.5）、後輪裙板內面距 26 mm 輪胎外側面 ≥ 2.9 mm；31 mm 輪會頂到後輪上方殼面（設計上不支援）',
-    sail: '背帆、背脊整流條、新月平尾視為 ABS 實心件（推估），質量 = 封閉體積 × ABS 1.05 g/cm³',
+    sail: '背帆、背脊整流條、新月平尾、鏟形前唇（1.2 mm 板）視為 ABS 實心件（推估），質量 = 封閉體積 × ABS 1.05 g/cm³；iter-123 車殼長約 150（≤ 153）',
     mounts: '對齊 chassis-midship 的車殼安裝點（SPEC 1.14）',
   },
 });
