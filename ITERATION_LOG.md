@@ -3798,3 +3798,25 @@
     - dartfrog × 基準 sleipnir 俯視 0.850；合併 J 的新 sleipnir 後降回上限內。
     - **minotaur（K）× 新 sleipnir（J）俯視 0.859**：K 是用基準 sleipnir 量的；已交回 K 只改 minotaur 的俯視平面。
 - 17 款 Blender 3 視角出圖；評審資料夾 `shared/reviews/iter-123/`（`mkreview.sh` 加上重出比賽型 / LG1 / LG2 陣容圖）。
+- 04:13–04:29 計分 **18/20**：
+  - halo 前分流板伸到 x 83.5，race-frp 全長 167.1 mm 超過 165 mm 規則，連帶 P17 brake_sponge / brake_plate_carbon / coast_energy 與 P18_configs 失敗 → 鼻尖回到基準 x 81。
+  - `P17_phase7_laps` 的 31 mm 輪 pc-box 組裝最大穿牆 1.497 mm。單跑探針：基準 0.204、第一版 2.395、第二版 1.497。
+    - 原因：分流唇伸出車鼻（基準最前緣 x 64），碰撞外包絡（各碰撞格 AABB 的凸包）多出前角。
+    - 修正：前緣收回 x 64、後緣 x 57，探針 0.854 mm。後緣若放到 x 55，31 mm 輪間隙會變 −0.25 mm。
+- 逐款 A/B（`shared/reviews/iter-123/REVIEW.md`；7.5 / 7 / 7.5 / 7.5 / 7.5 / 7 / 7.5，平均 7.36，對照 6.93）：
+  - 保留 cerberus、sleipnir、firebird、pc-box、trail-canopy、aero-wing、dartfrog、zeppelin、halo、griffin。
+  - revert kitsune、quetzal、trojan、minotaur、yaga、owl、marlin（iter-125 修）。
+
+## iter-125（開始 2026-11-05 04:16）：7 款修正＋LG1 新改 2 款
+- L：
+  - kitsune：尾束斷面 12 段平滑，尾尖改 7 階漸層。
+  - quetzal：外側尾羽翹 33°，加眉脊與羽領凸肋。
+  - minotaur：前彎粗新月角、杏仁黑眼，加公牛肩峰（獨立 commit）。
+- M：
+  - trojan：霧面胡桃木馬尾翼、等距直木縫、加寬陶土帶。
+  - yaga：封簷板判定錯誤把圓木塗成白色，已修好；加圓木陰影帶，車頭收齊，加木窗框。
+  - marlin：號碼 7 移到銀腹帶。
+- N：
+  - owl：恢復大圓琥珀眼，尾翼收成 2 層羽片，拿掉端板。
+  - cicada：翅罩改煙燻琥珀，後緣分叉；基準對 prism 的俯視 IoU 0.848 超標，改後降到 0.840。
+  - tortoise：後半壓低成淚滴形，加古銅鋸齒裙邊。
