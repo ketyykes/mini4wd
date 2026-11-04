@@ -477,7 +477,7 @@ export const marlinSailBody = makePolyBody({
     wallThickness_mm: '推估：射出 ABS 殼 0.8 mm（同第三階段各款）',
     geometry: '本檔 T 表與 STATIONS（推估，依 HOMAGE_RESEARCH 4-1：長約 152、背帆頂約 34–38；iter-67 依第 6 節 P5 縮短到 147 mm；外框與輪胎間隙用 body-check 掃描）',
     wheels: '只對應 26 mm 輪：前輪外露（車身半寬 22.5）、後輪裙板內面距 26 mm 輪胎外側面 ≥ 2.9 mm；31 mm 輪會頂到後輪上方殼面（設計上不支援）',
-    sail: '背帆、背脊整流條、新月平尾視為 ABS 實心件（推估），質量 = 封閉體積 × ABS 1.05 g/cm³',
+    sail: '背帆、背脊整流條、新月平尾、鏟形前唇（1.2 mm 板）視為 ABS 實心件（推估），質量 = 封閉體積 × ABS 1.05 g/cm³；iter-123 車殼長約 150（≤ 153）',
     mounts: '對齊 chassis-midship 的車殼安裝點（SPEC 1.14）',
   },
 });
