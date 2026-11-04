@@ -6,7 +6,7 @@
 // 設計：shared/design/body-mushussu-gate/DESIGN.md（典故與文物對應 MYTH_RESEARCH 第 4 節 M1–M5；黑名單 4-3、第 9 節 Dragon Jr. / Beat-Magnum）。剖面為本檔站位產生器（推估）。
 // 配色取自 M2 / 4-2（青金石釉藍、黃釉、黑白金邊框與玫瑰花飾）；圖形全部自繪；不做龍頭車身、不放龍形駕駛、不做紅龍徽章、玫瑰花飾只用圓瓣（不做放射閃電）；不含任何文字。
 import * as THREE from 'three';
-import { makePolyBody } from './polyBody.js';
+import { makePolyBody, sweepEllipse } from './polyBody.js';
 import { namedMaterial, decalMaterial, mergeGeos, lerp } from './loft.js';
 import { monoCurve, buildStations } from './gazelleLeap.js';
 import { buildProfileLiner } from './khepriScarab.js';
@@ -16,20 +16,22 @@ import { buildArchWell, chassisBlockedNearArch } from './kitsuneNinetail.js';
 
 /** @type {number} 車尾封口 x */
 const X_REAR = -72;
-/** @type {number} 車頭（鼻端封口）x */
-const X_FRONT = 60;
+/** @type {number} 車頭（鼻端封口）x；iter-121：60 → 74（往前伸出細長的頸鼻） */
+const X_FRONT = 74;
 /** @type {number[]} 站位參數表（x 由後到前，前後軸 x = ±40） */
-const XS = [-72, -68, -60, -50, -40, -28, -14, 0, 14, 28, 40, 48, 55, 60];
+const XS = [-72, -68, -60, -50, -40, -28, -14, 0, 14, 28, 40, 48, 55, 60, 66, 70, 74];
 /** @type {Record<string, (x: number) => number>} */
 const P = {
   // 俯視半寬（肩稜線）：前後輪上方微鼓的翼子板 44、腰 41；短鼻（輪胎前緣往前 7 mm，鼻端 22）、長尾（後軸往後 32 mm 的長尾段收到 22，尾翼架在上面）
-  hw: monoCurve(XS, [22, 28, 33.5, 40, 44, 42.5, 41.5, 41, 41.5, 42.5, 44, 40.5, 31, 22]),
+  // iter-121（第九階段）：前輪拱之後收成細長的頸鼻（穆修胡修的長頸蛇首，x 60 → 74 半寬 22 → 6.5）
+  hw: monoCurve(XS, [22, 28, 33.5, 40, 44, 42.5, 41.5, 41, 41.5, 42.5, 44, 40.5, 31, 22, 13.5, 9.5, 6.5]),
   // 中線殼頂：座艙段低駝峰 37.8（x 0），往前一路下斜成楔形鼻端（21），往後緩降成長尾（25）
-  yTop: monoCurve(XS, [25, 26.5, 28.5, 30.2, 31.8, 34.5, 37.2, 37.8, 36.6, 33, 30.6, 28.2, 24.5, 21]),
+  // iter-121：駝峰 37.8 → 34.6，車頭到座艙是一條連續斜面，一路下到頸鼻尖 15.4（LG1 低尖鼻 V3）
+  yTop: monoCurve(XS, [25, 26.5, 28.4, 30, 31.2, 32.9, 34.2, 34.6, 33.9, 32, 29.8, 27.3, 24.6, 22.4, 19.6, 17.6, 15.4]),
   // 肩稜線（頂面與側牆交界，銳利）：輪上 30、腰 28.5（R17.5 輪拱頂 30.5 切進肩線，俯視在四個輪位留下缺口，同 kitsune 做法）
-  yS: monoCurve(XS, [22.5, 24, 26.2, 28.4, 30, 29.5, 28.5, 28.5, 28.8, 29.6, 30, 28.2, 24, 20.5]),
+  yS: monoCurve(XS, [22.5, 24, 26.2, 28.4, 30, 29.5, 28.5, 28.5, 28.8, 29.6, 29.4, 26.6, 23.2, 20.6, 17.8, 16.2, 14.4]),
   // 側裙下緣（腰段 10.5，loft 自動讓開底盤側框）
-  yLow: monoCurve(XS, [16, 15.5, 14.5, 12.5, 10.6, 10.5, 10.5, 10.5, 10.5, 10.5, 10.6, 11.5, 13, 14.5]),
+  yLow: monoCurve(XS, [16, 15.5, 14.5, 12.5, 10.6, 10.5, 10.5, 10.5, 10.5, 10.5, 10.6, 11.5, 13, 13.4, 13, 12.8, 12.8]),
 };
 
 /** @type {number} 側牆往下的外張量（牆腳比肩線外 0.6 mm） */
@@ -57,7 +59,7 @@ const profile = (x) => {
 };
 
 /** @type {{ x: number, pts: number[][] }[]} 車尾與鼻端每 0.75 mm 一站，中段每 2 mm */
-const STATIONS = [...buildStations(X_REAR, -62, 0.75, profile).slice(0, -1), ...buildStations(-62, 52, 2, profile).slice(0, -1), ...buildStations(52, X_FRONT, 0.75, profile)];
+const STATIONS = [...buildStations(X_REAR, -62, 0.75, profile).slice(0, -1), ...buildStations(-62, 52, 2, profile).slice(0, -1), ...buildStations(52, X_FRONT, 1, profile)];
 
 /** @type {{ x: number, y: number, radius: number, cutZFrom: number }[]} 前後輪拱（R17.5：31 mm 輪胎半徑 15.5 + 2 mm） */
 const ARCHES = [
@@ -224,36 +226,6 @@ const materials = () => ({
 });
 
 /**
- * 在 (z, y) 平面畫的形狀沿 +x 擠出 depth（城垛等直立板，邊緣 0.2 mm 倒角）
- * @type {(outer: number[][], x0: number, depth: number) => THREE.BufferGeometry}
- */
-const extrudeFront = (outer, x0, depth) => {
-  const bev = 0.2;
-  const shape = new THREE.Shape(outer.map(([z, y]) => new THREE.Vector2(z, y)));
-  const g = new THREE.ExtrudeGeometry(shape, { depth: depth - 2 * bev, bevelEnabled: true, bevelThickness: bev, bevelSize: bev, bevelSegments: 1, curveSegments: 12 });
-  g.translate(0, 0, bev);
-  // 擠出方向（局部 z）轉成車頭方向 +x；局部 x → 世界 −z（形狀左右對稱，不影響）
-  g.rotateY(Math.PI / 2);
-  g.translate(x0, 0, 0);
-  return g;
-};
-
-/**
- * 階梯形城垛（單一垛口）：(a, y) 兩階或三階，底寬 w、每階高 h、每階兩側各內收 s
- * @type {(ac: number, y0: number, w: number, h: number, steps: number, s: number) => number[][]}
- */
-const merlonOutline = (ac, y0, w, h, steps, s) => {
-  const half = w / 2;
-  /** @type {number[][]} */
-  const right = [];
-  for (let i = 0; i < steps; i++) {
-    right.push([ac + half - i * s, y0 + i * h], [ac + half - i * s, y0 + (i + 1) * h]);
-  }
-  const left = right.map(([a, y]) => [2 * ac - a, y]).reverse();
-  return [[ac - half, y0], ...right.slice(0, 1).map(([a]) => [a, y0]), ...right, ...left].filter((p, i, arr) => i === 0 || p[0] !== arr[i - 1][0] || p[1] !== arr[i - 1][1]);
-};
-
-/**
  * 穆修胡修浮雕（實體件）：每段膠囊沿 z 壓扁成凸起 RELIEF_H 的半膠囊，中心貼在側牆外表面（內半埋進殼裡）
  * @type {(sg: number) => THREE.BufferGeometry}
  */
@@ -269,7 +241,8 @@ const buildBeastRelief = (sg) => {
     const x1 = BEAST.x0 + bx * BEAST.s;
     const y1 = BEAST.y0 + by * BEAST.s;
     const len = Math.hypot(x1 - x0, y1 - y0);
-    const g = new THREE.CapsuleGeometry(r, len, 4, 14);
+    // iter-121：低分段（cap 3、徑向 10；原本 4 × 14）
+    const g = new THREE.CapsuleGeometry(r, len, 3, 10);
     // 膠囊預設沿 y 軸 → 轉到線段方向
     g.rotateZ(Math.atan2(y1 - y0, x1 - x0) - Math.PI / 2);
     g.scale(1, 1, Math.min(1, RELIEF_H / r));
@@ -310,7 +283,8 @@ const buildBeastScales = (sg) => {
         const o = off * r + (i % 2 === 0 ? 0 : 0.12 * r);
         const x = lerp(x0, x1, q) + nx * o;
         const y = lerp(y0, y1, q) + ny * o;
-        const g = new THREE.SphereGeometry(0.36, 8, 6);
+        // iter-121：低分段（6 × 4；原本 8 × 6）
+        const g = new THREE.SphereGeometry(0.36, 6, 4);
         g.scale(1, 1, 0.55);
         g.translate(x, y, sg * (wallZ(x, y) + top - 0.05));
         geos.push(g);
@@ -320,8 +294,8 @@ const buildBeastScales = (sg) => {
   return mergeGeos(geos);
 };
 
-/** @type {{ x0: number, x1: number, yPlate: number, thick: number, half: number }} 尾翼（crenel-tail）：弦 x −71 → −62、板頂 y 36.4、厚 1.4、半翼展 28 */
-const WING = { x0: -71, x1: -62, yPlate: 36.4, thick: 1.4, half: 28 };
+/** @type {{ yMain: number, yFlap: number, thick: number, half: number }} 尾翼（crenel-tail，iter-121 後掠雙層翼）：主翼底 y 32.4、厚 1.4；副翼底 y 34.6；半翼展 24（端板外緣 25.2） */
+const WING = { yMain: 32.4, yFlap: 34.6, thick: 1.4, half: 24 };
 
 export const mushussuGateBody = makePolyBody({
   id: 'body-mushussu-gate',
@@ -403,38 +377,17 @@ export const mushussuGateBody = makePolyBody({
       name: 'decal-wall-band-lines',
     });
 
-    // 肩線上的玫瑰花飾帶（M2：黑邊框裡一列白瓣金心圓瓣花）：沿車頂外緣（肩線往內 0.8 → 6.2 mm），每 6.2 mm 一朵
-    /** @type {number} 花飾間距 */
-    const ROS_STEP = 6.2;
-    /** @type {(x: number, y: number, z: number) => boolean} 花飾帶（車頂外緣） */
-    const onCrest = (x, y, z) => y > P.yS(x) + 0.05 && Math.abs(z) > P.hw(x) - 6.4 && x > -68 && x < 52 && archDist(x, y) > 0.8;
-    /** @type {(x: number) => number} 花飾中線的 |z| */
-    const rosZ = (x) => P.hw(x) - 3.5;
-    /** @type {(x: number, z: number) => { petal: number, core: number }} 最近的一朵玫瑰花飾 */
-    const nearestRosette = (x, z) => {
-      const xc = Math.round(x / ROS_STEP) * ROS_STEP;
-      return rosetteSd(x - xc, Math.abs(z) - rosZ(x));
-    };
+    // iter-121：肩線上原本的兩列玫瑰花飾帶移到車頂中線當貫穿全車的賽車條紋（見下方），肩線只留一道黃釉細邊（沿肩稜線內側 0.3 → 1.5 mm）
     parts.push({
       geometry: kit.decal((x, y, z) => {
-        if (!onCrest(x, y, z)) {
+        if (y < P.yS(x) + 0.05 || x < X_REAR + 2 || x > 58 || archDist(x, y) < 0.8) {
           return -1;
         }
-        const dz = Math.abs(Math.abs(z) - rosZ(x));
-        return 0.35 - Math.abs(dz - 2.65);
+        const dz = P.hw(x) - Math.abs(z);
+        return Math.min(dz - 0.3, 1.5 - dz);
       }),
-      mat: 'dBlack',
-      name: 'decal-rosette-band-lines',
-    });
-    parts.push({
-      geometry: kit.decal((x, y, z) => (onCrest(x, y, z) ? -nearestRosette(x, z).petal : -1), { offset: 0.12 }),
-      mat: 'dWhite',
-      name: 'decal-rosette-petals',
-    });
-    parts.push({
-      geometry: kit.decal((x, y, z) => (onCrest(x, y, z) ? -nearestRosette(x, z).core : -1), { offset: 0.14 }),
-      mat: 'dGold',
-      name: 'decal-rosette-cores',
+      mat: 'dYellow',
+      name: 'decal-crest-pinstripe',
     });
 
     // 磚縫：側牆（兩道黃框之間，避開拱框、穆修胡修）
@@ -455,7 +408,7 @@ export const mushussuGateBody = makePolyBody({
     parts.push({
       geometry: kit.decal((x, y, z) => {
         const az = Math.abs(z);
-        if (y < P.yS(x) + 0.05 || az > P.hw(x) - 6.8 || az < 6 || x < X_REAR + 2 || x > X_FRONT - 3) {
+        if (y < P.yS(x) + 0.05 || az > P.hw(x) - 2.2 || az < 6 || x < X_REAR + 2 || x > 57) {
           return -1;
         }
         return brickJoint(x, az + 1);
@@ -489,77 +442,143 @@ export const mushussuGateBody = makePolyBody({
       parts.push({ geometry: mergeGeos(eyes), mat: 'eye', solid: true, name: 'mushussu-eyes' });
     }
 
-    // 車頂中線：遊行大道（M2：黃黑釉磚）
-    /** @type {(x: number, y: number, z: number) => boolean} 車頂中線帶 */
-    const onRoof = (x, y, z) => y > P.yS(x) + 1 && Math.abs(z) < 6 && x > X_REAR + 2 && x < X_FRONT - 3;
+    // iter-121：車頂中線的玫瑰花飾賽車條紋（M2 花飾帶改成 V12 / V13 配置：從頸鼻上的蛇首一路往後貫穿到車尾）——
+    // 深藍底（|z| < 3.3）＋一列白瓣金心玫瑰花飾（每 6.2 mm 一朵）＋兩側黃釉邊（3.3 → 4.5）＋黑細線（4.5 → 5.1）
+    /** @type {(x: number, y: number) => boolean} 車頂中線帶（肩線以上；蛇首後緣 x 57 到車尾） */
+    const onStripe = (x, y) => y > P.yS(x) + 0.5 && x > X_REAR + 1.5 && x < 57.5;
+    parts.push({ geometry: kit.decal((x, y, z) => (onStripe(x, y) ? 3.3 - Math.abs(z) : -1)), mat: 'dNavy', name: 'decal-rosette-stripe-base' });
     parts.push({
-      geometry: kit.decal((x, y, z) => (onRoof(x, y, z) ? 4.4 - Math.abs(z) : -1)),
+      geometry: kit.decal((x, y, z) => (onStripe(x, y) ? Math.min(Math.abs(z) - 3.3, 4.5 - Math.abs(z)) : -1)),
       mat: 'dYellow',
-      name: 'decal-procession-way',
+      name: 'decal-rosette-stripe-borders',
     });
     parts.push({
-      geometry: kit.decal(
-        (x, y, z) => {
-          if (!onRoof(x, y, z)) {
-            return -1;
-          }
-          const az = Math.abs(z);
-          if (az > 4.4) {
-            return Math.min(az - 4.4, 5.3 - az);
-          }
-          // 磚縫：沿 x 每 5 mm 一道、中線一道（兩列錯縫）
-          const row = z > 0 ? 1 : 0;
-          const ph = (((x + row * 2.5) % 5) + 5) % 5;
-          return Math.max(0.3 - Math.min(ph, 5 - ph), 0.3 - az);
-        },
-        { offset: 0.12 },
-      ),
+      geometry: kit.decal((x, y, z) => (onStripe(x, y) ? Math.min(Math.abs(z) - 4.5, 5.1 - Math.abs(z)) : -1)),
       mat: 'dBlack',
-      name: 'decal-procession-joints',
+      name: 'decal-rosette-stripe-lines',
+    });
+    /** @type {number} 花飾間距 */
+    const ROS_STEP = 6.2;
+    /** @type {(x: number, z: number) => { petal: number, core: number }} 最近的一朵玫瑰花飾（條紋中線上） */
+    const nearestRosette = (x, z) => {
+      const xc = Math.min(54, Math.max(-68, Math.round(x / ROS_STEP) * ROS_STEP));
+      return rosetteSd(x - xc, z);
+    };
+    parts.push({
+      geometry: kit.decal((x, y, z) => (onStripe(x, y) ? -nearestRosette(x, z).petal : -1), { offset: 0.12 }),
+      mat: 'dWhite',
+      name: 'decal-rosette-petals',
+    });
+    parts.push({
+      geometry: kit.decal((x, y, z) => (onStripe(x, y) ? -nearestRosette(x, z).core : -1), { offset: 0.14 }),
+      mat: 'dGold',
+      name: 'decal-rosette-cores',
     });
 
-    // 鼻端封口：一朵金色玫瑰花飾（8 片圓瓣，凸出 0.5）
+    // iter-121：頸鼻頂面的穆修胡修蛇首（黃釉、黑描邊、黑眼；M1 的細長蛇首，只做平面圖形，不做立體龍頭）
+    /** @type {(x: number, z: number) => number} 蛇首輪廓距離（正值 = 外）：x 57 → 鼻尖，半寬為殼半寬的 0.62 */
+    const headSd = (x, z) => Math.max(57 - x, Math.abs(z) - 0.62 * P.hw(x));
+    /** @type {(x: number, y: number) => boolean} 頸鼻頂面 */
+    const onSnout = (x, y) => x > 55 && y > P.yS(x) + 0.05;
+    parts.push({ geometry: kit.decal((x, y, z) => (onSnout(x, y) ? -headSd(x, z) : -1)), mat: 'dYellow', name: 'decal-snake-head' });
+    parts.push({
+      geometry: kit.decal((x, y, z) => {
+        if (!onSnout(x, y)) {
+          return -1;
+        }
+        const d = headSd(x, z);
+        return Math.min(d, 0.6 - d);
+      }),
+      mat: 'dBlack',
+      name: 'decal-snake-head-outline',
+    });
+    parts.push({
+      geometry: kit.decal((x, y, z) => (onSnout(x, y) ? 0.85 - Math.hypot(x - 65.5, Math.abs(z) - 0.36 * P.hw(65.5)) : -1), { offset: 0.12 }),
+      mat: 'dBlack',
+      name: 'decal-snake-eyes',
+    });
+
+    // iter-121：蛇首的一對直角（M1：頭上往後的直角）做成頸鼻頂面往後上方掃的導流角（實體件、金屬金）：角根在 x 66、往後掃到 x 52，
+    // 根粗 R1.1 → 角尖 R0.6（直徑 ≥ 1.2）；低分段（12 × 6）
     {
-      const yRos = (P.yLow(X_FRONT) + P.yTop(X_FRONT)) / 2;
       /** @type {THREE.BufferGeometry[]} */
-      const petals = [];
-      for (let k = 0; k < 8; k++) {
-        const a = (k * Math.PI) / 4;
-        const c = new THREE.CylinderGeometry(0.62, 0.62, 0.5, 14);
-        c.rotateZ(Math.PI / 2);
-        c.translate(X_FRONT + 0.2, yRos + 1.42 * Math.sin(a), 1.42 * Math.cos(a));
-        petals.push(c);
+      const horns = [];
+      for (const sg of [-1, 1]) {
+        /** @type {number[][]} */
+        const pts = [];
+        for (let i = 0; i <= 6; i++) {
+          const u = i / 6;
+          const x = lerp(66.5, 51.5, u);
+          const z = sg * lerp(4.2, 10.5, u ** 1.2);
+          const y = kit.surf.topY(x, z) - 0.4 + 3.2 * u ** 1.4;
+          pts.push([x, y, z]);
+        }
+        horns.push(sweepEllipse(pts, 12, (t) => {
+          const r = lerp(1.1, 0.6, t);
+          return [r, r];
+        }, 6));
       }
-      parts.push({ geometry: mergeGeos(petals), mat: 'gold2', solid: true, name: 'nose-rosette' });
+      parts.push({ geometry: mergeGeos(horns), mat: 'gold2', solid: true, outline: true, name: 'snout-horns' });
     }
 
-    // 車尾尾翼（crenel-tail）：兩片直立支柱（藍釉）＋弦 9 mm 的翼板（未上釉泥磚色）＋翼板後緣一排 9 個兩階小城垛齒＋前緣金線
+    // 車尾尾翼（crenel-tail，iter-121 改款）：後掠雙層翼——主翼板（黃釉）＋上後方的副翼（藍釉）＋兩側階梯城垛形端板（泥磚色，往車尾一階階升高）；
+    // 原本的一排 9 個城垛齒拿掉，城垛語彙集中到端板；兩片藍釉支柱從車尾頂面立起接主翼
     {
-      const { x0, x1, yPlate, thick, half } = WING;
+      const { half, thick } = WING;
+      /** @type {(outline: number[][], y0: number, t: number) => THREE.BufferGeometry} 平面 (x, z) 的翼板，沿 y 擠出厚度 t */
+      const plate = (outline, y0, t) => {
+        const shape = new THREE.Shape(outline.map(([x, z]) => new THREE.Vector2(x, z)));
+        const g = new THREE.ExtrudeGeometry(shape, { depth: t, bevelEnabled: false });
+        // 局部 (x, y, z) → 世界 (x, z, −y)：形狀平面躺平、擠出方向朝上
+        g.rotateX(-Math.PI / 2);
+        g.translate(0, y0, 0);
+        return g;
+      };
+      // 主翼：中線弦 x −63 → −70、翼端（z ±half）弦 x −67 → −73（後掠）
+      const main = plate([[-63, 0], [-67, half], [-73, half], [-70, 0], [-73, -half], [-67, -half]], WING.yMain, thick);
+      // 副翼：主翼上後方 2.2 mm，中線弦 x −68.5 → −72.5、翼端 x −71.5 → −75.5
+      const flap = plate([[-68.5, 0], [-71.5, half - 0.6], [-75.5, half - 0.6], [-72.5, 0], [-75.5, -(half - 0.6)], [-71.5, -(half - 0.6)]], WING.yFlap, 1.2);
+      parts.push({ geometry: main, mat: 'yellow', solid: true, outline: true, name: 'wing-main' });
+      parts.push({ geometry: flap, mat: 'lapis2', solid: true, outline: true, name: 'wing-flap' });
+      // 主翼前緣金線
+      /** @type {THREE.BufferGeometry[]} */
+      const gilt = [];
+      for (const sg of [-1, 1]) {
+        const len = Math.hypot(4, half);
+        const b = new THREE.BoxGeometry(len, 0.5, 0.7);
+        b.rotateY(-sg * Math.atan2(half, 4) + sg * Math.PI / 2);
+        b.translate(-65, WING.yMain + thick + 0.2, sg * half / 2);
+        gilt.push(b);
+      }
+      parts.push({ geometry: mergeGeos(gilt), mat: 'gold2', solid: true, name: 'wing-gilt' });
+      // 端板：側視為往車尾升高的兩階城垛（底 y 30.6、前階頂 = 主翼頂 + 0.6、後階頂 = 副翼頂 + 0.8），厚 1.2
+      /** @type {THREE.BufferGeometry[]} */
+      const ends = [];
+      const yA = WING.yMain + thick + 0.6;
+      const yB = WING.yFlap + 1.2 + 0.8;
+      for (const sg of [-1, 1]) {
+        const sh = new THREE.Shape([
+          [-66, 30.6], [-66, yA], [-70.6, yA], [-70.6, yB], [-76, yB], [-76, 32.8], [-73.5, 30.6],
+        ].map(([x, y]) => new THREE.Vector2(x, y)));
+        const g = new THREE.ExtrudeGeometry(sh, { depth: 1.2, bevelEnabled: false });
+        g.translate(0, 0, sg * (half + 0.6) - 0.6);
+        ends.push(g);
+      }
+      parts.push({ geometry: mergeGeos(ends), mat: 'mud2', solid: true, outline: true, name: 'wing-crenel-endplates' });
+      // 支柱：車尾頂面 → 主翼底（z ±12）
       /** @type {THREE.BufferGeometry[]} */
       const struts = [];
       for (const sg of [-1, 1]) {
         const xs0 = -69.5;
-        const xs1 = -64;
-        const yb = P.yTop(xs1) - 1.2 - 0.004 * 14 * 14;
-        const sh = new THREE.Shape([new THREE.Vector2(xs0, yb - 0.6), new THREE.Vector2(xs1, yb), new THREE.Vector2(xs1 - 1.2, yPlate - thick + 0.2), new THREE.Vector2(xs0 - 0.6, yPlate - thick + 0.2)]);
+        const xs1 = -64.5;
+        const yb0 = kit.surf.topY(xs0, 12) - 0.8;
+        const yb1 = kit.surf.topY(xs1, 12) - 0.8;
+        const sh = new THREE.Shape([new THREE.Vector2(xs0, yb0), new THREE.Vector2(xs1, yb1), new THREE.Vector2(xs1 - 1.6, WING.yMain + 0.2), new THREE.Vector2(xs0 - 0.4, WING.yMain + 0.2)]);
         const g = new THREE.ExtrudeGeometry(sh, { depth: 1.4, bevelEnabled: false });
-        g.translate(0, 0, sg * 14 - 0.7);
+        g.translate(0, 0, sg * 12 - 0.7);
         struts.push(g);
       }
       parts.push({ geometry: mergeGeos(struts), mat: 'lapis2', solid: true, outline: true, name: 'wing-struts' });
-      const plate = new THREE.BoxGeometry(x1 - x0, thick, 2 * half);
-      plate.translate((x0 + x1) / 2, yPlate - thick / 2, 0);
-      /** @type {THREE.BufferGeometry[]} */
-      const teeth = [plate];
-      for (let i = 0; i < 9; i++) {
-        const zc = lerp(-half + 3, half - 3, i / 8);
-        teeth.push(extrudeFront(merlonOutline(zc, yPlate - 0.1, 3.6, 0.9, 2, 0.8), x0, 1.6));
-      }
-      parts.push({ geometry: mergeGeos(teeth), mat: 'mud2', solid: true, outline: true, name: 'crenel-tail' });
-      const gilt = new THREE.BoxGeometry(0.6, 0.5, 2 * half - 0.4);
-      gilt.translate(x1 - 0.2, yPlate + 0.15, 0);
-      parts.push({ geometry: gilt, mat: 'gold2', solid: true, name: 'crenel-gilt' });
     }
     return parts;
   },
