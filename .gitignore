@@ -87,3 +87,6 @@ playwright/.cache/
 .vite/
 dist/
 *.tsbuildinfo
+
+# ===== 每輪截圖（2026-11-04 起預設不提交；要當證據的用 git add -f）=====
+renders/*

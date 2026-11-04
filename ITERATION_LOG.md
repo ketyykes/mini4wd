@@ -1,5 +1,7 @@
 # Track A 迭代紀錄（Three.js ＋ Rapier ＋ vitest ＋ Playwright）
 
+> 註（2026-11-04）：`renders/` 截圖已從 git 歷史移除以縮小 repo，只保留 FINAL_REPORT、SPEC、PROGRESS、DESIGN.md 引用的 220 張；下文其他 `renders/iter-NN_*` 是當時的紀錄，檔案已不存在，需要時用 `npm run render` 從對應版本重出。commit hash 已同步改成改寫後的新值。
+
 ## iter-00（開始 2026-10-20 00:00:49 / 結束 2026-10-20 00:26:14，TZ=Asia/Taipei date）
 
 ### 探索
@@ -348,7 +350,7 @@
 3. P06：若要再處理，方向是牆面接觸改用解析牆面（自寫導輪–牆約束或 penalty），避開 trimesh 三角形交界的接觸重建。
 
 ### iter-04 迭代決策（主 agent，01:33）
-- reviewer 評分 6.25（比例 6／底盤 6／車殼 7／材質 6），與 iter-03 持平，總分 81.25 未進步 → 依 GOAL 規則 **revert 整輪改動**（程式碼回到 iter-03；本段 log 保留；iter-04 截圖保存在 commit 701018d）。
+- reviewer 評分 6.25（比例 6／底盤 6／車殼 7／材質 6），與 iter-03 持平，總分 81.25 未進步 → 依 GOAL 規則 **revert 整輪改動**（程式碼回到 iter-03；本段 log 保留；iter-04 截圖保存在 commit 1af731d）。
 - reviewer 意見：車頭細節（NACA 下凹、百葉立體、LED 頭燈分段）是進步；但引擎蓋/車頭反光扭曲（新瑕疵）、rear34 暴露車尾純黑平板粗糙、底盤無變化。
 - 下一輪建議：從 iter-03 出發，只重新套用確定有效的局部改動（NACA 真實下凹、立體鰭片、LED 頭燈），避免動到引擎蓋曲面法線；另做車尾（LED 尾燈、分件線、擾流、立體後保桿）。
 
@@ -357,7 +359,7 @@
 ### 探索
 - iter-04 外觀 6.25 與 iter-03 持平而被 revert，目前程式碼＝iter-03（比例 6／底盤 6／車殼 7／材質 6）。
 - reviewer（`shared/reviews/iter-04_A.md`）：車頭細節（NACA 下凹、立體百葉、LED 分段頭燈）是進步；退步主因是引擎蓋／車頭反光扭曲；rear34 暴露車尾純黑平板、缺 LED 尾燈／擾流／分件線，後保桿只是平黑板；頭燈分段線歪斜像牙齒；比例：車頭太長太扁、車殼底緣離底盤太近、輪拱開口小。
-- 比對 iter-04（`git show 701018d`）：反光扭曲來自金屬粒子法線貼圖（平面投影 UV）＋ metalness 0.72＋兩條細長燈箱，不是 NACA 下凹本身 → 本輪只重新套用幾何細節，不動車漆材質與棚拍環境。
+- 比對 iter-04（`git show 1af731d`）：反光扭曲來自金屬粒子法線貼圖（平面投影 UV）＋ metalness 0.72＋兩條細長燈箱，不是 NACA 下凹本身 → 本輪只重新套用幾何細節，不動車漆材質與棚拍環境。
 - 對照 ref rear34 / ma-chassis：後方上層導輪架是有斜伸臂、圓孔、螺絲的立體件，以立板／斜臂連到下層保桿；尾燈為車尾上緣兩角的細長 LED。
 
 ### 規劃（3 項，含預期效果）
@@ -443,7 +445,7 @@
   - 試過 metalness 0.7＋clearcoatRoughness 0.04：俯視引擎蓋高光邊緣變銳、開始出現波紋 → 退到 0.62／0.12，俯視與 iter-05 對比無新波紋。
   - 第一版掠射色 0x1c0c4a＋iridescence 0.35，rear34 引擎蓋掠射處偏灰髒 → 改飽和紫＋iridescence 0.25。
 - 黑塑膠（`src/model.js`）：底盤 chassis 改 MeshPhysical 0x34373d、roughness 0.4＋clearcoat 0.3（半光，邊緣有亮線）；深色內層件 roughness 0.6 → 0.75（平光）；輪胎 0x232325、roughness 0.96、envMapIntensity 0.6（全霧）。
-- 賽道：牆面 `flatColorPerQuad`（lineToMesh 依序推入的兩個三角形＝一個四邊形，取 6 頂點中心的顏色，整塊單色）；路面取樣點加入每個片件交界 s（彎道每 45°、直線段兩端），每段四邊形取段中點單一顏色、不共用頂點 → 色塊交界精確落在接縫；交界處鋪 1.2 mm 深色接縫（參考 701018d 做法，但改為精確分段，不用 5 mm 取樣）。
+- 賽道：牆面 `flatColorPerQuad`（lineToMesh 依序推入的兩個三角形＝一個四邊形，取 6 頂點中心的顏色，整塊單色）；路面取樣點加入每個片件交界 s（彎道每 45°、直線段兩端），每段四邊形取段中點單一顏色、不共用頂點 → 色塊交界精確落在接縫；交界處鋪 1.2 mm 深色接縫（參考 1af731d 做法，但改為精確分段，不用 5 mm 取樣）。
 
 **3. 車門後方黑色立板（`src/bodyShell.js`）**
 - 側進氣口：唇邊 1.0 → 0.45 mm、拿掉唇邊頂面板與第二道立牆；內面縮小（x −19.4 → −24.2、u 0.62–0.84）並加 4 片橫向灰色鰭片（`raisedPad`），讀起來是進氣格柵而非黑色立板。
@@ -611,7 +613,7 @@
 3. 輪框面目前比胎壁內縮約 1.6 mm，ref 幾乎齊平，可再往外推。
 
 ### iter-08 迭代決策（主 agent，02:17）
-- reviewer 評分 7.00（比例 6／底盤 7／車殼 8／材質 7），與 iter-07 持平，總分 85.00 未進步 → 依 GOAL 規則 **revert 整輪改動**（程式碼與 config 回到 iter-07；本段 log 保留；iter-08 實作與截圖在 commit 3614e32）。
+- reviewer 評分 7.00（比例 6／底盤 7／車殼 8／材質 7），與 iter-07 持平，總分 85.00 未進步 → 依 GOAL 規則 **revert 整輪改動**（程式碼與 config 回到 iter-07；本段 log 保留；iter-08 實作與截圖在 commit 019f997）。
 - reviewer 意見：Y 字分岔輪框、車頂板加厚、前翼子板鰭片算小幅進步但不足加分；比例仍 6：上視細腰收得太誇張、前懸偏長、車頭壓得太低、座艙偏後偏平（參考為前窗隆起、靠前的泡泡座艙）；車頂板直角平板與後甲板未融合。
 - 主 agent 註記：iter-07 reviewer 說車頭「圓鈍、應更尖更低」，iter-08 reviewer 說「壓得太低」——比例項存在評分雜訊。下一輪比例改動建議以參考圖量測為依據（在 log 寫數字），不要追單一 reviewer 的方向。
 
@@ -747,7 +749,7 @@
 2. 若 rear34 檯面變亮被扣分，可把後側柔光箱改成只影響車漆（例如檯面 envMapIntensity 再降）。
 
 ### iter-10 迭代決策（主 agent，02:45）
-- reviewer 評分 7.25（比例 6／底盤 7／車殼 8／材質 8），與 iter-09 持平，總分 86.25 未進步 → 依 GOAL 規則 **revert 整輪改動**（程式碼回到 iter-09；本段 log 保留；iter-10 實作在 commit 8f65e0c）。
+- reviewer 評分 7.25（比例 6／底盤 7／車殼 8／材質 8），與 iter-09 持平，總分 86.25 未進步 → 依 GOAL 規則 **revert 整輪改動**（程式碼回到 iter-09；本段 log 保留；iter-10 實作在 commit c6c69a5）。
 - reviewer：兩項改動（可辨識的雙軸馬達、香檳古銅透明車窗）都被認定是實質但小幅的改善，未跨級（底盤 7 偏上緣）。
 - 下一輪建議：帶回這兩項（低風險），**同時**做一項以參考圖量測為依據的比例改動，才有機會跨級。iter-08、iter-10 兩位 reviewer 一致指出：前段車殼太低太長、前葉子板到座艙凹腰太深、座艙泡偏小、輪子在輪拱內顯小（輪拱空隙大）、後輪拱肩膀感不夠。
 
@@ -758,11 +760,11 @@
 - 比例連 10 輪停在 6。iter-08、iter-10 reviewer 一致：前段車殼太低太長、前葉子板到座艙凹腰太深、座艙泡偏小、輪子在輪拱內顯小、後輪拱肩膀感不夠。
 
 ### 規劃（2 項）
-1. 從 `8f65e0c` 帶回 iter-10 的兩項（`src/model.js` 馬達、`src/bodyShell.js` 車漆／車窗參數、`web/main.js` 後側柔光箱、賽道塑膠）。預期：底盤 7 偏上、材質 8 維持。
+1. 從 `c6c69a5` 帶回 iter-10 的兩項（`src/model.js` 馬達、`src/bodyShell.js` 車漆／車窗參數、`web/main.js` 後側柔光箱、賽道塑膠）。預期：底盤 7 偏上、材質 8 維持。
 2. 比例：先在 ref side-high 上量測，再依量測值改 `bodyShell.js` 輪廓表（全高 ≤ 38 mm）。預期：比例 6 → 6.5–7。
 
 ### 執行
-**1. 帶回 iter-10**：`git checkout 8f65e0c -- src/bodyShell.js src/model.js web/main.js`，之後才改輪廓表。
+**1. 帶回 iter-10**：`git checkout c6c69a5 -- src/bodyShell.js src/model.js web/main.js`，之後才改輪廓表。
 
 **2. 參考照量測方法（推估：由參考照像素量測）**
 - 新增 `web/main.js` 的 `?view=sidehigh`（仰角 23°、距離 410 mm、fov 20°，只用於比對，不影響其他視角）。
@@ -828,7 +830,7 @@
 2. 同仰角比對下，真正的形狀差異在「體積感」而不是高度：參考照的前葉子板是圓鼓的一大塊、引擎蓋中央有凸起的進氣罩、車門後方有深凹的側進氣口。這些需要改截面形狀（`sectionPoints`），不是調高度表。
 
 ### iter-11 迭代決策（主 agent，03:00）
-- reviewer 評分 7.25（比例 6／底盤 7／車殼 8／材質 8），與 iter-09 持平 → 依 GOAL 規則 **revert**（程式碼回 iter-09；log 保留；iter-11 實作在 commit e4b8baa，含 sidehigh 視角與量測腳本）。
+- reviewer 評分 7.25（比例 6／底盤 7／車殼 8／材質 8），與 iter-09 持平 → 依 GOAL 規則 **revert**（程式碼回 iter-09；log 保留；iter-11 實作在 commit 4d9f05b，含 sidehigh 視角與量測腳本）。
 - reviewer（以 sidehigh 同角度比對）：整體輪廓已抓到；剩下的比例差：(a) 參考前保桿/導輪架往車頭前方伸出很長，前導輪離車鼻有距離，模型前導輪幾乎貼車鼻（車殼前段相對太長或保桿太短），車尾導輪架也比參考短；(b) 參考車門下方露出黑色底盤側裙與兩輪間側邊支撐塊，模型只有一條細線；(c) 參考座艙罩較小、前擋與側窗分開有 A 柱轉折，模型是一整片大玻璃。車殼：缺前輪後方到車門的立體凹陷導流溝；sidehigh 玻璃內有不明深色斑。
 - 下一輪建議：帶回 iter-11 全部（馬達、車窗、清漆、量測輪廓、sidehigh 視角），同時做 (a)+(b)：依 sidehigh 量測車鼻到前導輪的距離，縮短車殼前後懸（導輪位置屬物理規格不動），並加外露黑色底盤側裙與側邊支撐塊。
 
@@ -838,7 +840,7 @@
 - iter-10、iter-11 都因外觀持平（7.25）被 revert，程式碼回到 iter-09。reviewer（`shared/reviews/iter-11_A.md`）認為 iter-11 的方向正確，只是不夠跨級。比例的扣分有三點：(a) 前導輪幾乎貼著車鼻、車尾導輪架短；(b) 車門下方沒有外露的黑色底盤側裙和側邊支撐塊；(c) 座艙罩偏大。車殼另一個扣分是 sidehigh 玻璃內有一塊不明深色斑。
 
 ### 規劃（2 項）
-1. 帶回 iter-11 全部（`git checkout e4b8baa -- src/bodyShell.js src/model.js web/main.js scripts/diag renders/iter-11_*`），並處理玻璃深色斑。預期：保住 iter-10／11 的小幅進步（馬達、車窗、輪廓）。
+1. 帶回 iter-11 全部（`git checkout 4d9f05b -- src/bodyShell.js src/model.js web/main.js scripts/diag renders/iter-11_*`），並處理玻璃深色斑。預期：保住 iter-10／11 的小幅進步（馬達、車窗、輪廓）。
 2. 比例：先在 sidehigh 上量測，再 (a) 縮短車殼前懸（導輪不動）、(b) 加外露底盤側裙與側邊支撐塊。預期：比例 6 → 7。
 
 ### 執行
@@ -909,7 +911,7 @@
 2. 支撐塊的顏色可以比側裙更黑、更亮（參考照為光澤黑），現在兩者都用底盤灰。
 
 ### iter-12 迭代決策（主 agent，03:21）
-- reviewer 評分 7.25（比例 6／底盤 7／車殼 8／材質 8），與 iter-09 持平 → 依 GOAL 規則 **revert**（程式碼回 iter-09；log 保留；iter-12 實作在 commit dae16b5，含 iter-11 全部、擬合相機 sidehigh、車鼻縮短、黑色側裙支撐塊、玻璃改善）。
+- reviewer 評分 7.25（比例 6／底盤 7／車殼 8／材質 8），與 iter-09 持平 → 依 GOAL 規則 **revert**（程式碼回 iter-09；log 保留；iter-12 實作在 commit adfaf61，含 iter-11 全部、擬合相機 sidehigh、車鼻縮短、黑色側裙支撐塊、玻璃改善）。
 - reviewer（sidehigh 同角度）：模型偏扁偏長；**兩側前葉子板像浮筒高鼓、中間引擎蓋凹成深谷**，車頭鈍偏高（參考為引擎蓋到擋風玻璃連續上揚的楔形）；輪拱上方黑色內襯空隙明顯（參考輪胎填滿輪拱）；座艙玻璃隆起不足。車頭下緣上收、露出前保桿（接近參考，正面）。材質：古銅透明玻璃明顯更接近參考（8 分範圍內進步）；漆面偏亮偏粉偏霧。
 - 主 agent 註：Track B 以擬合相機量得參考車引擎蓋中央約 31 mm、前葉子板頂約 32.5 mm（兩者接近），可交叉印證「引擎蓋深谷」是本模型主要比例誤差。
 - 下一輪建議：帶回 iter-12 全部，同時**填高引擎蓋中央**（接近葉子板高度、形成連續楔形上揚到擋風玻璃），縮小輪拱上方空隙（輪胎外徑 26 mm 不可改，改輪拱半徑/間隙）。
@@ -920,11 +922,11 @@
 - iter-10～12 都因外觀持平（7.25）被 revert，程式碼回到 iter-09。reviewer（`shared/reviews/iter-12_A.md`）在 sidehigh 同角度下指出的主要比例誤差：**前葉子板像浮筒高鼓、中間引擎蓋凹成深谷**（參考是引擎蓋連續上揚到擋風玻璃的楔形），以及**輪拱上方黑色內襯空隙明顯**。主 agent 附註：Track B 獨立量得引擎蓋中央約 31 mm、前葉子板頂約 32.5 mm（兩者接近）。
 
 ### 規劃（2 項）
-1. 帶回 iter-12 全部（`git checkout dae16b5 -- src/bodyShell.js src/model.js web/main.js scripts/diag`）。預期：保住 iter-10～12 的小幅進步（馬達、古銅玻璃、擬合相機 sidehigh、車鼻、側裙）。
+1. 帶回 iter-12 全部（`git checkout adfaf61 -- src/bodyShell.js src/model.js web/main.js scripts/diag`）。預期：保住 iter-10～12 的小幅進步（馬達、古銅玻璃、擬合相機 sidehigh、車鼻、側裙）。
 2. 比例：先用擬合相機自己量一次，再填高引擎蓋中央、降低前葉子板、縮小輪拱間隙。預期：比例 6 → 7。
 
 ### 執行
-**1. 帶回 iter-12**：checkout 上述 4 個路徑後，與 `dae16b5` 比對 `git diff dae16b5 -- src web scripts` 沒有差異，確認完整。
+**1. 帶回 iter-12**：checkout 上述 4 個路徑後，與 `adfaf61` 比對 `git diff adfaf61 -- src web scripts` 沒有差異，確認完整。
 
 **2. 量測（推估：擬合相機 θ 25.75°、φ 1°、d 700 mm，rms 4.3 px；參考照像素目視 ±2 px）**
 - 新增 `scripts/diag/overlay_profile.mjs`：用 vite ssrLoadModule 載入 `bodyShell.js`，把模型的中線（黃）、近側前葉子板稜線（紅）、遠側輪廓（青，每個截面在畫面上最高的點）用擬合相機投影到參考照上。先把線疊在自己的 iter-12 sidehigh 截圖上驗證：三條線都落在對應的渲染特徵上，代表投影流程和截圖一致。
@@ -979,7 +981,7 @@
 
 ### 迭代決策（保留 / revert，理由）
 - 保留，等主 agent 評分。物理 10/10、P09 外框不變；自檢沒發現退步。
-- 若評分持平，兩組改動可分開判斷：(1) iter-12 帶回項（`dae16b5` 的 src/web/scripts）；(2) 本輪 `bodyShell.js` 的引擎蓋／葉子板／輪拱改動（只有 `CENTER_Y`、`FENDER_Y`、`FENDER_Z`、`ARCH_R`、`sectionPoints`）。
+- 若評分持平，兩組改動可分開判斷：(1) iter-12 帶回項（`adfaf61` 的 src/web/scripts）；(2) 本輪 `bodyShell.js` 的引擎蓋／葉子板／輪拱改動（只有 `CENTER_Y`、`FENDER_Y`、`FENDER_Z`、`ARCH_R`、`sectionPoints`）。
 
 ### 生圖紀錄
 - 無，使用程序化材質。
@@ -990,7 +992,7 @@
 3. NACA 進氣口在 front34 變得不明顯；參考照是「隆起進氣罩＋後方開口」，可考慮改成凸起的罩子而不是下凹。
 
 ### iter-13 迭代決策（主 agent，03:35）
-- reviewer 評分 7.25（比例 6／底盤 7／車殼 8 上緣／材質 8），與 iter-09 持平 → 依 GOAL 規則 **revert**（程式碼回 iter-09；log 保留；iter-13 實作在 commit 5d5a93b，含 iter-12 全部與引擎蓋填高、輪拱間隙縮小、overlay_profile 工具）。
+- reviewer 評分 7.25（比例 6／底盤 7／車殼 8 上緣／材質 8），與 iter-09 持平 → 依 GOAL 規則 **revert**（程式碼回 iter-09；log 保留；iter-13 實作在 commit 0026614，含 iter-12 全部與引擎蓋填高、輪拱間隙縮小、overlay_profile 工具）。
 - reviewer：比例 6——車身太扁、輪子陷在車殼裡、導輪雙層灰色視覺份量太重；**前葉子板峰值變低、S 形起伏比基準弱（小退步）**——與 iter-12 reviewer「引擎蓋深谷要填平」方向相反，比例項評分雜訊大。車殼 8 上緣（葉子板斜置格柵、茶色窗明顯進步）。材質：rear34 引擎蓋/葉子板出現斑駁不連續亮塊（法線）。
 - 主 agent 判斷：比例項 reviewer 意見反覆，下一輪改做**各輪 reviewer 一致要求、A 尚未做過**的項目：車門後方深凹立體側進氣口、立體頭燈燈罩、導輪改黑色（尺寸為 SPEC 13 mm 不改）。引擎蓋取 iter-12 與 iter-13 的中間值（葉子板保留約 1.5–2 mm 的 S 形起伏）。
 
@@ -1001,7 +1003,7 @@
 - 主 agent 決策：帶回 iter-13，引擎蓋／葉子板取中間值（稜線比中線高約 1.5–2 mm），並做各輪 reviewer 一致要求、A 尚未做過的立體細節。
 
 ### 規劃（3 項）
-1. 帶回 iter-13（`git checkout 5d5a93b -- src/bodyShell.js src/model.js web/main.js scripts/diag`），前葉子板／引擎蓋取中間值，並修 rear34 法線斑駁。預期：比例不再被扣「S 形變弱」，材質項去掉斑駁扣分。
+1. 帶回 iter-13（`git checkout 0026614 -- src/bodyShell.js src/model.js web/main.js scripts/diag`），前葉子板／引擎蓋取中間值，並修 rear34 法線斑駁。預期：比例不再被扣「S 形變弱」，材質項去掉斑駁扣分。
 2. 深凹立體側進氣口（車殼曲面本身內凹＋深色腔體）。預期：車殼 8 上緣 → 跨級。
 3. 立體頭燈（鍍鉻反射底＋分格 LED＋隆起透明燈罩）＋導輪改黑色。預期：車殼細節、比例（導輪份量）小幅加分。
 
@@ -1060,7 +1062,7 @@
 3. 比例：仍是車身偏扁、座艙罩不夠高圓（iter-13 建議 1、2 尚未處理）。
 
 ### iter-14 迭代決策（主 agent，03:49）
-- reviewer 評分 7.25（比例 6／底盤 7／車殼 8 偏高／材質 8），與 iter-09 持平 → 依 GOAL 規則 **revert**（程式碼回 iter-09；log 保留；iter-14 實作在 commit 5b6c865，含 iter-13＋中間值引擎蓋、側進氣深槽、立體頭燈、黑導輪、法線修正）。
+- reviewer 評分 7.25（比例 6／底盤 7／車殼 8 偏高／材質 8），與 iter-09 持平 → 依 GOAL 規則 **revert**（程式碼回 iter-09；log 保留；iter-14 實作在 commit 0e990b8，含 iter-13＋中間值引擎蓋、側進氣深槽、立體頭燈、黑導輪、法線修正）。
 - reviewer：車殼（葉子板斜向百葉、雕塑感側凹進氣、前唇）與材質（古銅窗、黑導輪）都是 8 分區間內的進步；**比例 6 是唯一瓶頸**：sidehigh 車殼太扁太平；參考前後輪拱鼓很高、輪胎幾乎頂到肩線；座艙泡較高較前且連到後段；尾部缺上翹後甲板與兩側鰭片。
 - 下一輪：帶回 iter-14 全部，做一次**大幅度**比例實驗（輪拱冠點大幅升高讓輪胎頂到肩線、座艙泡加高前移，全高 ≤ 38 mm），用 sidehigh 疊圖驗證。
 
@@ -1073,7 +1075,7 @@
   - 真正差很多的是**形體分配**：(a) 參考的車頂塊後緣分件線在 x ≈ −27（像素 790，輪心間 7.56 px/mm 換算），本模型車頂塊一路延伸到 x −48，車頂又平又長；(b) 參考前輪上方葉子板是一個鼓包、冠點在輪胎正上方，本模型稜線在輪胎內側、肩部是一大片緩圓弧；(c) 參考 front34 前輪外側面幾乎與葉子板齊平，本模型前段半寬 40 mm、輪胎外側面 z 34.25，輪胎陷在車殼內 5.8 mm；(d) 參考座艙窄而高、側窗近乎直立，本模型座艙又寬又斜。
 
 ### 規劃（3 項，允許大改動）
-1. **帶回 iter-14 全部**（`git checkout 5b6c865 -- src web scripts`），並把輪拱冠點大幅升高、稜線移到輪胎上方、肩部變直立、車門收腰、前段收窄。預期：sidehigh／front34 輪拱鼓起、輪胎不再陷在車殼裡。
+1. **帶回 iter-14 全部**（`git checkout 0e990b8 -- src web scripts`），並把輪拱冠點大幅升高、稜線移到輪胎上方、肩部變直立、車門收腰、前段收窄。預期：sidehigh／front34 輪拱鼓起、輪胎不再陷在車殼裡。
 2. **座艙泡加高前移、縮短**：擋風玻璃前移 3 mm 且更立、車頂平台往前延伸、座艙收窄且側窗更直立、車頂塊縮短到 x −31。預期：座艙讀起來較高較前，車頂不再平又長。
 3. **後甲板加高＋尾端上翹**：座艙後方改由加高的後甲板接續（兩側後葉子板稜線高、中間略凹），尾端微微上翹；車尾立面開口加大。預期：消除「尾部垂直切平」。
 
@@ -1135,15 +1137,15 @@
 3. 後輪拱後方藍色小翼片（iter-05 起）仍未處理。
 
 ### iter-15 迭代決策（主 agent，04:04）
-- reviewer 評分 7.00（比例 6／底盤 7／車殼 8／材質 7↓），低於 iter-09 的 7.25 → **revert**（程式碼回 iter-09；log 保留；iter-15 實作在 commit f3d856c）。
+- reviewer 評分 7.00（比例 6／底盤 7／車殼 8／材質 7↓），低於 iter-09 的 7.25 → **revert**（程式碼回 iter-09；log 保留；iter-15 實作在 commit 2d22deb）。
 - reviewer：比例仍 6——「座艙頂要明顯拱起、擋風玻璃大而立、腰線到車頂落差大」；同相機下模型露出車頂面積遠多於參考；輪胎占車長 14%（參考 17%）、輪拱平；前鼻圓鈍、車尾厚方箱。**材質退步**：rear34/top 後車蓋與後葉子板反光斑駁（曲面不平）。另：MIDSHIP AERO 一側顛倒、騎士 logo 後有多餘深色菱形底。
 - 主 agent 註：本輪升高肩線是照前幾輪「車側太扁」意見做的，本輪 reviewer 改要求「腰線低、座艙高拱」——比例項意見再次相互矛盾。
-- 下一輪：**從 iter-14（5b6c865）出發**（不要帶回 iter-15），試「壓低腰線/肩線、座艙泡高拱、擋風玻璃更大更立」（全高 ≤ 38 mm），引擎蓋中央進氣口改往前開的長形導風槽；確認後甲板反光平順。
+- 下一輪：**從 iter-14（0e990b8）出發**（不要帶回 iter-15），試「壓低腰線/肩線、座艙泡高拱、擋風玻璃更大更立」（全高 ≤ 38 mm），引擎蓋中央進氣口改往前開的長形導風槽；確認後甲板反光平順。
 
 ## iter-16（開始 2026-10-20 04:04:42 / 結束 2026-10-20 04:18，TZ=Asia/Taipei date）
 
 ### 探索
-- 程式碼等於 iter-09（7.25）。依主 agent 決策從 iter-14（`5b6c865`）出發：`git checkout 5b6c865 -- src web scripts`，iter-15（`f3d856c`，後甲板加高造成 rear34／top 反光斑駁）不帶回。
+- 程式碼等於 iter-09（7.25）。依主 agent 決策從 iter-14（`0e990b8`）出發：`git checkout 0e990b8 -- src web scripts`，iter-15（`2d22deb`，後甲板加高造成 rear34／top 反光斑駁）不帶回。
 - reviewer iter-15：比例 6 是瓶頸。參考座艙頂明顯拱起、擋風玻璃大而立、腰線到車頂落差大；同一相機下，模型露出的車頂平面面積遠多於參考；引擎蓋中央進氣口是小圓筒，參考是往前開的長形導風槽。
 - 用擬合相機（`scripts/diag/overlay_full.mjs`，新增：把 iter-13 的 overlay 延伸到全長，並加上座艙遠側緣與側窗下緣）疊在 ref side-high 上量測：
   - 近側特徵（中線、近側稜線、側窗下緣、車頂遠緣）與參考差 ≤ 15 px。
@@ -1307,14 +1309,14 @@
 3. 側進氣口前緣鋸齒（hull 網格在深槽前緣加密）。
 
 ### iter-17 迭代決策（主 agent，04:32）
-- reviewer 評分 7.38（比例 6／底盤 7／車殼 8.5／材質 8），與 iter-16 持平 → 依 GOAL 規則 **revert**（程式碼回 iter-16；log 保留；iter-17 實作在 commit a4b1ac9）。
+- reviewer 評分 7.38（比例 6／底盤 7／車殼 8.5／材質 8），與 iter-16 持平 → 依 GOAL 規則 **revert**（程式碼回 iter-16；log 保留；iter-17 實作在 commit e303614）。
 - reviewer：保桿桁架與側框圓孔細節增加但未達半分（參考前保桿是寬翼形開孔板，不是 X 桁架）；TAMIYA 單色版明顯更像參考（正向）；**座艙改成整片泡泡罩、車身色 A 柱不見是退步**（與 iter-16「側窗只剩細縫」意見相反）。
 - 多輪一致的意見（iter-12、13、15、16、17）：**輪拱上緣把輪胎蓋掉太多、輪子埋太深顯小**（參考輪框幾乎整圈露出、輪胎上緣接近腰線）。下一輪：從 iter-16 出發，帶回單色 TAMIYA，主攻加大輪拱開口讓輪胎露出（輪胎外徑 26 mm 不變），保留車身色 A 柱。
 
 ## iter-18（開始 2026-10-20 04:32 / 結束 2026-10-20 04:42，TZ=Asia/Taipei date）
 
 ### 探索
-- 程式碼等於 iter-16（7.38）。iter-17（`a4b1ac9`）持平被 revert。reviewer 對 iter-17 的正向意見只有「TAMIYA 單色版更像參考」；座艙整片泡泡罩、A 柱消失是退步。
+- 程式碼等於 iter-16（7.38）。iter-17（`e303614`）持平被 revert。reviewer 對 iter-17 的正向意見只有「TAMIYA 單色版更像參考」；座艙整片泡泡罩、A 柱消失是退步。
 - iter-12、13、15、16、17 五位 reviewer 一致指出：輪拱上緣把輪胎蓋掉太多，輪子埋太深、看起來偏小。
 - 新增 `scripts/diag/overlay_wheel.mjs`：用擬合相機把輪胎外側面圓（黃）與輪拱開口邊（紅）投影到 ref side-high，量測輪心正上方「輪拱邊 v − 輪胎頂 v」。
 - 原因：
@@ -1325,7 +1327,7 @@
 
 ### 規劃（2 項）
 1. **輪拱開口**：開口圓改成「圓心上移＋半徑加大」，前後輪分開設定，讓唇邊高過「輪胎頂外緣往相機的視線」。開口邊加一圈車身色捲邊圓珠，做出唇邊厚度。預期：sidehigh 前輪上緣 0 px 被遮、後輪 ≤ 4 px；側視上緣只多出約 2 mm 深色縫，不會變成大黑洞。
-2. **TAMIYA 標誌**：從 `a4b1ac9` 帶回單色版（`drawTamiya`＋`tamiyaMat` 的 alphaTest）。iter-16 的車身色 A 柱與座艙不動。
+2. **TAMIYA 標誌**：從 `e303614` 帶回單色版（`drawTamiya`＋`tamiyaMat` 的 alphaTest）。iter-16 的車身色 A 柱與座艙不動。
 
 ### 執行
 **1. 輪拱（`src/bodyShell.js`）**
@@ -1398,14 +1400,14 @@
 2. 輪胎胎壁稍亮、帶一點光澤（目前 0x232325、roughness 0.96，逆光面幾乎全黑），讓輪胎輪廓在全圖尺寸下讀得出來。
 
 ### iter-18 迭代決策（主 agent，04:44）
-- reviewer 評分 7.38（6/7/8.5/8），與 iter-16 持平 → 依 GOAL 規則 **revert**（程式碼回 iter-16；log 保留；iter-18 實作在 commit 1e02378，含輪拱開口抬高＋捲邊、單色 TAMIYA、overlay_wheel 工具）。
+- reviewer 評分 7.38（6/7/8.5/8），與 iter-16 持平 → 依 GOAL 規則 **revert**（程式碼回 iter-16；log 保留；iter-18 實作在 commit b220c9b，含輪拱開口抬高＋捲邊、單色 TAMIYA、overlay_wheel 工具）。
 - reviewer：輪廓「逐張對照完全一樣」（輪拱開口抬高未被察覺）；TAMIYA 單色版更接近參考但不足半分。比例：座艙太低太長、輪拱與座艙間形成深谷；**俯視腰身太窄、輪拱鼓太大成啞鈴形**（參考側面較平直）；胎壁偏厚。材質：藍色偏亮偏紫像緞面，參考為深色金屬藍、暗部深、反射銳利。
 - 主 agent：iter-18 量到輪胎外側面比車殼側面內縮 6–9 mm（參考近乎齊平），與「啞鈴形、輪拱鼓太大」一致。下一輪：帶回 iter-18（輪拱開口＋TAMIYA），收窄輪拱處車殼半寬讓輪胎接近齊平、減輕收腰；車漆改深色金屬藍（暗部更深、反射更銳利，避免 iter-04 的粒子法線扭曲）。
 
 ## iter-19（開始 2026-10-20 04:44 / 結束 2026-10-20 04:51，TZ=Asia/Taipei date）
 
 ### 探索
-- 程式碼等於 iter-16（7.38）。iter-18（`1e02378`）持平被 revert：輪拱開口抬高未被察覺；TAMIYA 單色版更接近參考。
+- 程式碼等於 iter-16（7.38）。iter-18（`b220c9b`）持平被 revert：輪拱開口抬高未被察覺；TAMIYA 單色版更接近參考。
 - reviewer iter-18：俯視「啞鈴形、腰身太窄、輪拱鼓太大」；藍色偏亮偏紫像緞面，參考是深色金屬藍、暗部深、反射銳利。
 - iter-18 量測：輪胎外側面 z 34.25 mm，車殼側面前 40／後 43 mm，內縮 6–9 mm（參考近乎齊平）。
 - 車漆取樣（sRGB，ref side-high vs iter-18 同區域）：車門中間調 ref #292E80／#202869、受光面 #3A51D3／#414DBD；
@@ -1413,7 +1415,7 @@
 - 診斷：拿掉清漆（clearcoat 0）淡紫大高光仍在 → 來自底漆層（metalness 0.62、roughness 0.24）對主光的寬鏡面高光，經 ACES 後偏白偏紫，就是「緞面感」來源。
 
 ### 規劃（2 項）
-1. **帶回 iter-18＋收窄輪拱處車殼**：`git checkout 1e02378 -- src/bodyShell.js web/main.js scripts/diag/overlay_wheel.mjs`；
+1. **帶回 iter-18＋收窄輪拱處車殼**：`git checkout b220c9b -- src/bodyShell.js web/main.js scripts/diag/overlay_wheel.mjs`；
    `HALF_WIDTH` 前輪拱 40 → 37、後輪拱 43 → 39、座艙下方 38 → 36.3（收腰差由 2／5 mm 減到 0.7／2.7 mm）。
    條紋、百葉、側進氣、貼紙都以 bodyPoint(x, u) 定位，會跟著移動。唇邊變窄後輪拱開口重新量測調低。預期：top 輪廓平直、輪胎外側面接近葉子板。
 2. **深色金屬藍**：降明度、去紫偏、清漆更銳利；不用粒子法線貼圖。預期：中間調接近 ref #292E80，淡紫緞面高光消失。
@@ -1583,7 +1585,7 @@
 3. 側進氣口在 ref 是從車窗下方一路延伸到側裙的高「)」形缺口，我們的只有下半段。要延長得先處理側面橘條紋（ref 的條紋停在進氣口前緣）。
 
 ### iter-20 迭代決策（主 agent，05:05）
-- reviewer 評分 7.50（6/7/8.5/8.5），與 iter-19 持平 → 依 GOAL 規則 **revert**（程式碼回 iter-19；log 保留；iter-20 實作在 commit ea0bf92）。
+- reviewer 評分 7.50（6/7/8.5/8.5），與 iter-19 持平 → 依 GOAL 規則 **revert**（程式碼回 iter-19；log 保留；iter-20 實作在 commit bed9551）。
 - reviewer：TAMIYA 白底方塊更接近參考（小幅，不足加分）；底盤改純黑使鏤空肋條明暗層次變弱（抵銷）；漆色變均勻飽和寶藍，reviewer 認為參考是偏紫金屬靛藍、離參考更遠（與 iter-19 reviewer「去紫更接近」相反）。
 - 多輪一致：座艙偏後偏扁（應往前往上）、引擎蓋中段凹陷太深成駝峰、輪胎未填滿輪拱。
 - 下一輪：帶回 TAMIYA 白底標誌（只此一項小修），主攻座艙前移拱高＋引擎蓋凹陷適度填淺（介於 iter-12 與 iter-13 之間）；漆色與底盤顏色維持 iter-19。
@@ -1591,7 +1593,7 @@
 ## iter-21（開始 2026-10-20 05:05:52 / 結束 2026-10-20 05:09，TZ=Asia/Taipei date）
 
 ### 探索
-- 程式碼等於 iter-19（7.50）。iter-20（`ea0bf92`）持平被 revert；reviewer 唯一正向意見是 TAMIYA 白底方塊更接近參考。
+- 程式碼等於 iter-19（7.50）。iter-20（`bed9551`）持平被 revert；reviewer 唯一正向意見是 TAMIYA 白底方塊更接近參考。
 - 多輪 reviewer 一致：座艙偏後偏扁、後段平頂方盒；引擎蓋中段凹陷太深成駝峰（參考從前往後平順上爬到擋風玻璃）。
 - 原因（設計座標）：中線含隆起在 x 36–40 約 29.4 mm 達峰後往擋風玻璃下降到約 27.5（x 15），形成駝峰；座艙最高點在 x ≈ −26，後段 −34 仍 36.6，讀成平頂盒。
 
@@ -1600,7 +1602,7 @@
 2. 座艙前移拱高＋引擎蓋填淺：預期 sidehigh 座艙讀成前高後低的拱泡，引擎蓋平順上爬接擋風玻璃。
 
 ### 執行（全部在 `src/bodyShell.js`；數值為推估，依據為 reviewer 意見與擬合相機疊圖）
-1. `drawTamiya` 與貼片範圍（x 17.0–22.6、u 0.80–0.97）整段取自 `ea0bf92`。
+1. `drawTamiya` 與貼片範圍（x 17.0–22.6、u 0.80–0.97）整段取自 `bed9551`。
 2. 比例：
    - `CENTER_Y` x 56/46/36/24/12：23.5/26.9/28.3/27.9/26.4 → 25.0/27.6/28.2/28.7/27.0；`BULGE_H` 1.2 → 0.8。
      中線含隆起 x 56→24 約 25.3/28.3/28.9/29.0，單調上升，不再在 x 40 隆起後下降。前葉子板稜線（x 46／36）比中線高約 2.2／1.8 mm（iter-12 深谷 6–7 mm、iter-13 幾乎填平）。
@@ -1648,7 +1650,7 @@
 2. 輪胎填滿輪拱、前輪拱鼓包略降（reviewer iter-20）。
 
 ### iter-21 迭代決策（主 agent，05:11）
-- reviewer 評分 7.50（6/7/8.5/8.5），與 iter-19 持平 → 依 GOAL 規則 **revert**（程式碼回 iter-19；log 保留；iter-21 實作在 commit 370ac99）。
+- reviewer 評分 7.50（6/7/8.5/8.5），與 iter-19 持平 → 依 GOAL 規則 **revert**（程式碼回 iter-19；log 保留；iter-21 實作在 commit 9ea690b）。
 - reviewer：只看到車頂後緣段差與 TAMIYA 白框盒（小幅）；比例意見為「前葉子板隆起應更高、車頭短鈍、座艙罩加高」——與 iter-20「前輪拱鼓包太高」相反，比例項雜訊明確。
 - **底盤項各輪意見一致**：底面平板＋淺浮雕、缺 MA 肋條/鏤空/開孔層次；齒輪箱外露太乾淨像示意圖；導輪單一黑圓柱、缺上下疊放的金屬軸承與墊片。A 尚未正面處理過（iter-14 黑導輪、iter-17 保桿都隨整輪 revert）。
 - 下一輪：主攻底盤（底面肋條/鏤空/分件、導輪疊放＋金屬墊片軸承），帶回 TAMIYA 白框盒標誌；不動比例。
@@ -1663,7 +1665,7 @@
    - 底面肋格內凹加深（BOTTOM_RIB_H 0.6 → 1.0 mm，仍不低於 y0 = 離地 2.2 mm）；前後段加斜向桁架肋（電池段角落 → 保桿根部）＋三角減重孔、圓孔（上方加深色內層板）。
    - 齒輪箱：窗外端加 2.2 mm 寬的橫向箍帶（部分遮住輪軸齒輪，附螺絲）、窗框上方加一圈淺色殼壁（chassisMid）、小齒輪後方擋板。
    - 導輪：本體 0x0e0f12 → 0x3a3e46 槍灰（不再純黑吃細節）；頂部大墊片 r 2.3 → 3.3 再疊一片 r 2.6 小墊片；底部 r 5.0 金屬墊片；輪緣中段細溝槽。尺寸 13 mm（SPEC）不變。
-2. 帶回 TAMIYA 白底深框盒標誌（只取 `370ac99` 中 drawTamiya 與貼片位置兩段 hunk，引擎蓋/座艙比例改動不帶）。
+2. 帶回 TAMIYA 白底深框盒標誌（只取 `9ea690b` 中 drawTamiya 與貼片位置兩段 hunk，引擎蓋/座艙比例改動不帶）。
 
 ### 執行
 - `src/model.js`：makeMaterials 加 `chassisMid`、改 `rollerBody`；buildRoller 加墊片/溝槽；buildChassis 加開孔、`lineRib` 桁架肋與箍帶、齒輪箱殼壁、三角孔內層板。
@@ -1697,20 +1699,20 @@
 無，使用程序化材質。
 
 ### iter-22 迭代決策（主 agent，05:19）
-- reviewer 評分 7.50（6/7/8.5/8.5），與 iter-19 持平 → 依 GOAL 規則 **revert**（程式碼回 iter-19；log 保留；iter-22 實作在 commit 1523ce8）。
+- reviewer 評分 7.50（6/7/8.5/8.5），與 iter-19 持平 → 依 GOAL 規則 **revert**（程式碼回 iter-19；log 保留；iter-22 實作在 commit b3fd085）。
 - reviewer（逐像素比對）：bottom 新增 X 型斜向補強肋，但**細桿橫越齒輪觀察窗擋住齒輪、還有浮著的螺絲**（參考肋條是一體成形板件，不跨開口），抵掉加分；導輪灰藍＋多層墊片接近官方照灰色導輪疊墊片（小幅）；TAMIYA 外框貼紙更接近（小幅）。另：reviewer 認為側面露出的黑色底盤側條「參考幾乎被車殼遮住」——與 C iter-13 因露出底盤側邊而加分相反（評分雜訊）。
 - 下一輪：iter-22 的乾淨版——保留導輪墊片層次與 TAMIYA 外框貼紙，底面補強肋改成與底板一體的板肋（不跨越觀察窗、無浮動螺絲）。
 
 ## iter-23（開始 05:20 / 結束 05:23，TZ=Asia/Taipei）
 ### 探索
-- 程式碼等於 iter-19（7.50）。iter-22（`1523ce8`）持平被 revert：導輪墊片層次、TAMIYA 外框貼紙小幅加分，但 X 型斜肋與跨窗箍帶橫越齒輪觀察窗、窗中央有浮著的螺絲，抵銷加分。
+- 程式碼等於 iter-19（7.50）。iter-22（`b3fd085`）持平被 revert：導輪墊片層次、TAMIYA 外框貼紙小幅加分，但 X 型斜肋與跨窗箍帶橫越齒輪觀察窗、窗中央有浮著的螺絲，抵銷加分。
 
 ### 規劃（2 項；不動車殼比例）
-1. 從 `1523ce8` 帶回導輪多層墊片／十字螺絲／溝槽、TAMIYA 外框貼紙、齒輪箱殼壁與小齒輪擋板、肋格加深（BOTTOM_RIB_H 1.0）、三角減重孔＋內層板；**不帶回** X 型斜肋 `lineRib`、跨窗箍帶與窗中央螺絲，也拿掉 iter-22 前後段兩個小圓孔（讓位給新凸緣）。改成沿齒輪箱蓋外圍一圈與底板一體的板肋凸緣（厚 BOTTOM_RIB_H、寬約 1.5–2 mm，外端 2 mm 當箍帶並鎖兩顆螺絲，螺絲坐在凸緣面上），不跨越開口。預期底盤細節 7 → 7.5。
+1. 從 `b3fd085` 帶回導輪多層墊片／十字螺絲／溝槽、TAMIYA 外框貼紙、齒輪箱殼壁與小齒輪擋板、肋格加深（BOTTOM_RIB_H 1.0）、三角減重孔＋內層板；**不帶回** X 型斜肋 `lineRib`、跨窗箍帶與窗中央螺絲，也拿掉 iter-22 前後段兩個小圓孔（讓位給新凸緣）。改成沿齒輪箱蓋外圍一圈與底板一體的板肋凸緣（厚 BOTTOM_RIB_H、寬約 1.5–2 mm，外端 2 mm 當箍帶並鎖兩顆螺絲，螺絲坐在凸緣面上），不跨越開口。預期底盤細節 7 → 7.5。
 2. 導輪本體 0x3a3e46 槍灰 → 0x212328 深灰偏黑（reviewer：side-high 參考導輪接近純黑；比 iter-14 的 0x0e0f12 略亮保留層次）。預期材質項不再被扣「灰藍」。
 
 ### 執行
-- `src/model.js`、`src/bodyShell.js` 由 `1523ce8` 取回後修改：刪 `lineRib` 段與兩個 circlePts 開孔，新增 `flange`（外框 roundedRect(gcx ± 0.6, −3.5, 35.4, 22.6)，內孔 = 齒輪箱蓋外形 32.6 × 19.6）與 2 顆 screwHead；`rollerBody` 改色。
+- `src/model.js`、`src/bodyShell.js` 由 `b3fd085` 取回後修改：刪 `lineRib` 段與兩個 circlePts 開孔，新增 `flange`（外框 roundedRect(gcx ± 0.6, −3.5, 35.4, 22.6)，內孔 = 齒輪箱蓋外形 32.6 × 19.6）與 2 顆 screwHead；`rollerBody` 改色。
 
 ### 驗證（P01–P10；`npx vitest run`，10/10 通過，數值與 iter-22 相同）
 | ID | 結果 | 關鍵數值 |
@@ -1739,7 +1741,7 @@
 無，使用程序化材質。
 
 ### iter-23 迭代決策（主 agent，05:24）
-- reviewer 評分 7.50（6/7/8.5/8.5），與 iter-19 持平 → 依 GOAL 規則 **revert**（程式碼回 iter-19；log 保留；iter-23 實作在 commit 9dea86c）。
+- reviewer 評分 7.50（6/7/8.5/8.5），與 iter-19 持平 → 依 GOAL 規則 **revert**（程式碼回 iter-19；log 保留；iter-23 實作在 commit d4f0694）。
 - reviewer：只看出 TAMIYA 白底方牌（小幅）與 pinion 位置變化；導輪墊片層次、凸緣板肋未被察覺為進步。比例意見再度要求「車殼下緣往下包住底盤」——與 C iter-13 加分理由及 B iter-13 reviewer 意見相反。
 - 共通且可操作的意見：側條應為**橘黃兩色漸層＋細白線**（Track B iter-12 以此在車殼細節 +0.5）；前葉子板格柵應為**斜向長條**。
 - 下一輪（最後一輪大改）：TAMIYA 白底方牌（已兩次被評為較接近）＋橘黃漸層側條＋細白線＋前葉子板斜向長條格柵；不動比例與底盤。
@@ -1752,10 +1754,10 @@
 ### 規劃（3 項；只動貼紙層，不動車殼比例與底盤）
 1. 側條改橘黃漸層＋細白線（Canvas 貼圖 `drawStripeGradient`：v 0–0.74 橘 #ff5a08 → #ff8a14 → 黃橘 #ffb414，0.74–0.82 透明間隙，0.82–0.92 細白線；車門主條紋前端 24% 淡成白藍）。套用在前葉子板條紋、車門主條紋、後葉子板條紋；車門下方銀線改成主條紋上方的細橘尖條（x 14 → −8、u 0.64 → 0.53，終點在側進氣口唇邊前）。預期車殼細節 +0.5。
 2. 前葉子板頂格柵（6 條）與前輪後方側格柵（5 條）由 raisedPad 短方塊改為 `slantSlat` 斜向長條：沿 x 前進 1.8 mm、u 位移 0.076–0.082（內側／上端往車尾偏），沿法向隆起中央 0.4 mm、邊緣 0.07 mm 貼回車殼、兩端收回（不懸空、不穿出曲面）。
-3. 從 `9dea86c`（＝`370ac99`）帶回 TAMIYA 白底方牌（`drawTamiya` 與 5.6 × 5.1 mm 擺位）。
+3. 從 `d4f0694`（＝`9ea690b`）帶回 TAMIYA 白底方牌（`drawTamiya` 與 5.6 × 5.1 mm 擺位）。
 
 ### 執行
-- `src/bodyShell.js`：新增 `drawStripeGradient`、`slantSlat`、`stripeMat`／`stripeTipMat`（Node 測試環境無 canvas → 退回單色橘）；TAMIYA 函式與擺位由 `9dea86c` 取回。
+- `src/bodyShell.js`：新增 `drawStripeGradient`、`slantSlat`、`stripeMat`／`stripeTipMat`（Node 測試環境無 canvas → 退回單色橘）；TAMIYA 函式與擺位由 `d4f0694` 取回。
 - 自檢第一次發現：車門主條紋（x −24…−36）與後葉子板條紋重疊處 z-fighting，白藍尖頭碎成白色碎片 → 後葉子板條紋改用無白尖頭版本、lift 0.05，主條紋 lift 0.09 在上，重渲後重疊處乾淨（呈兩層尖條合流）。
 
 ### 驗證（P01–P10；`npx vitest run`，10/10 通過，數值與 iter-19/23 相同）
@@ -1785,7 +1787,7 @@
 無，使用程序化材質（Canvas 漸層貼圖）。
 
 ### iter-24 迭代決策（主 agent，05:32）
-- reviewer 評分 7.50（6/7/8.5/8.5），與 iter-19 持平 → 依 GOAL 規則 **revert**（程式碼回 iter-19；log 保留；iter-24 實作在 commit 3e46a32）。
+- reviewer 評分 7.50（6/7/8.5/8.5），與 iter-19 持平 → 依 GOAL 規則 **revert**（程式碼回 iter-19；log 保留；iter-24 實作在 commit 8a45e04）。
 - reviewer：斜向鰭片「確實的改進」、細白線「加分」；但漸層尾端黃色太飽和（top/front34 明顯），實車以單一亮橘為主——抵銷，未達整級（車殼 8.5 → 9 需接近實物照）。
 - 下一輪（最後一輪）：iter-24 修正版——條紋以亮橘為主、黃色只留極窄過渡或拿掉，保留細白線、斜向鰭片、TAMIYA 白底方牌；條紋前端改尖銳折角箭形（參考 front34、hood-detail）。
 
@@ -1795,12 +1797,12 @@
 - 重看 ref side-high：三道側條都是亮橘、只在下緣略暖，下方細白線；車門主條紋前端是上緣直、下緣斜切的尖角。
 
 ### 規劃（3 項；只動貼紙/塗裝）
-1. 從 `3e46a32` 帶回 `src/bodyShell.js`（斜向鰭片/格柵、細白線、TAMIYA 白底方牌、條紋重疊的 lift 分層修正）。
+1. 從 `8a45e04` 帶回 `src/bodyShell.js`（斜向鰭片/格柵、細白線、TAMIYA 白底方牌、條紋重疊的 lift 分層修正）。
 2. 側條改亮橘為主：漸層 #ff5a08 → #ff640a（v 0.85）→ #ff7c12（只有下緣 15% 極窄暖橘過渡，不出現黃）；白藍尖頭由 24% 縮到 12%、不透明度 0.9 → 0.75。預期消除「黃色過飽和」扣分。
 3. 箭形尖頭：車門主條紋前端由「前 35% 上下對稱漸細」改成「上緣直線到尖端、下緣在前 10% 斜切收成一點」；前葉子板條紋前端斜切 12% → 6%。
 
 ### 執行
-- `src/bodyShell.js`：`git checkout 3e46a32 -- src/bodyShell.js` 後修改 `drawStripeGradient` 色標與白藍尖頭、主條紋 band 函式、前葉子板條紋 taper 參數。後葉子板條紋（lift 0.05）與主條紋（lift 0.09）分層維持不變。
+- `src/bodyShell.js`：`git checkout 8a45e04 -- src/bodyShell.js` 後修改 `drawStripeGradient` 色標與白藍尖頭、主條紋 band 函式、前葉子板條紋 taper 參數。後葉子板條紋（lift 0.05）與主條紋（lift 0.09）分層維持不變。
 
 ### 驗證（P01–P10；`npx vitest run`，10/10 通過，數值與 iter-19/24 相同）
 | ID | 結果 | 關鍵數值 |
@@ -1829,9 +1831,9 @@
 無，使用程序化材質（Canvas 漸層貼圖）。
 
 ### iter-25 迭代決策（主 agent，05:35）— Track A 停止大改
-- reviewer 評分 7.50（6/7/8.5/8.5），與 iter-19 持平 → 依 GOAL 規則 **revert**（程式碼回 iter-19；log 保留；iter-25 實作在 commit f6c3e62）。
+- reviewer 評分 7.50（6/7/8.5/8.5），與 iter-19 持平 → 依 GOAL 規則 **revert**（程式碼回 iter-19；log 保留；iter-25 實作在 commit 1aba5a3）。
 - reviewer：斜向鰭片、白描邊分段飾條、帶框雙星 TAMIYA 皆「方向正確但不到半級」；並說參考側飾條是「橘＋淺橘/黃雙色漸層」——與 iter-24 reviewer「黃色太飽和、實車以亮橘為主」相反。
-- **Track A 最終版本 = iter-19（commit 8c5f370 的程式碼，外觀 6/7/8.5/8.5 = 7.50，總分 87.50）**。iter-20～25 共 6 輪皆持平 revert；比例項（自 iter-01 起停在 5–6）是唯一瓶頸，且 reviewer 意見反覆。之後僅做文件整理。
+- **Track A 最終版本 = iter-19（commit e2dca13 的程式碼，外觀 6/7/8.5/8.5 = 7.50，總分 87.50）**。iter-20～25 共 6 輪皆持平 revert；比例項（自 iter-01 起停在 5–6）是唯一瓶頸，且 reviewer 意見反覆。之後僅做文件整理。
 
 ## iter-26（開始 06:04 / 結束 06:08，TZ=Asia/Taipei）
 ### 探索
@@ -1877,7 +1879,7 @@
 無，使用程序化材質。
 
 ### iter-26 迭代決策（主 agent，06:10）
-- reviewer 評分 7.50（6/7/8.5/8.5），與 iter-19 持平 → 依 GOAL 規則 **revert**（程式碼回 iter-19；log 保留；iter-26 實作在 commit d8ede9f）。
+- reviewer 評分 7.50（6/7/8.5/8.5），與 iter-19 持平 → 依 GOAL 規則 **revert**（程式碼回 iter-19；log 保留；iter-26 實作在 commit 6d33c4c）。
 - reviewer：細長弧形尾燈是實質改善（未達半級）；背景暗角更接近參考，但 sidehigh 引擎蓋出現波浪狀高光——一正一負。
 - **Track A 最終版本維持 iter-19（87.50）**。
 
@@ -1888,10 +1890,10 @@
 
 ### 規劃（2 項）
 1. 車頂板與座艙曲面連續：抬高量改為 `roofLift(x, u)`，兩側 u 0.38→0.46、前緣 x −9.5→−6、後緣 x −41→−48 以 smoothstep 降到 0.04 mm（邊緣斜率 0 → 與座艙面相切）；拿掉黑色側面／前緣立面。法向用解析曲面 `roofPoint` 的差分（`ROOF_SURF`），不用粒子法線（iter-04 教訓）、不加燈箱（iter-15 教訓）。碳纖網格改為沿 ROOF_SURF 的 ribbon（左右各半寬 10 mm，V 以中線 0.5 接續），MIDSHIP AERO 字樣沿 roofPoint＋法向 0.12 mm 貼合。預期：屋頂讀成車身一體的隆起，而不是貼上去的平方板。
-2. 帶回 iter-26 細楔形 LED 尾燈（`git show d8ede9f -- src/bodyShell.js`，只取 bodyShell 尾燈段；不帶 web/main.js 的條燈／黑旗／暗角）。預期：消除「尾燈粗大方塊」扣分。
+2. 帶回 iter-26 細楔形 LED 尾燈（`git show 6d33c4c -- src/bodyShell.js`，只取 bodyShell 尾燈段；不帶 web/main.js 的條燈／黑旗／暗角）。預期：消除「尾燈粗大方塊」扣分。
 
 ### 執行
-- `src/bodyShell.js`：套用 d8ede9f 尾燈段（tailBaseMat、tailInnerU 楔形帶、3 條細 LED、燈罩；移除 lens）。
+- `src/bodyShell.js`：套用 6d33c4c 尾燈段（tailBaseMat、tailInnerU 楔形帶、3 條細 LED、燈罩；移除 lens）。
 - `src/bodyShell.js`：新增 `ROOF_EDGE_EPS`、`smoothStep01`、`roofLift`、`roofPoint`、`roofNormal`、`ROOF_SURF`、`cabinUAtZ`；車頂板 ribbon 改用 ROOF_SURF（nu 24）；刪除 liftWall 與兩處呼叫；車頂塊後端封口改用 roofLift；碳纖網格改 ribbon＋ROOF_SURF；roofDecal 改沿 roofPoint／roofNormal。
 - 第一版倒圓從 u 0.36 開始，字樣（u 0.33–0.43）大半落在下降段，side 視角在車頂稜線露出白色字樣殘片 → 倒圓改 u 0.38→0.46、字樣帶改 u 0.32–0.41 後殘片消失。
 
@@ -1926,22 +1928,22 @@
 無，使用程序化材質。
 
 ### iter-27 迭代決策（主 agent，06:25）
-- reviewer 評分 7.50（6/7/8.5/8.5），與 iter-19 持平 → 依 GOAL 規則 **revert**（程式碼回 iter-19；log 保留；iter-27 實作在 commit e7081af）。
+- reviewer 評分 7.50（6/7/8.5/8.5），與 iter-19 持平 → 依 GOAL 規則 **revert**（程式碼回 iter-19；log 保留；iter-27 實作在 commit 7ed8d6e）。
 - reviewer：細長弧形尾燈與車頂板圓滑接合皆「比較接近參考，但局部修飾、未達半級」。
 - **Track A 最終版本維持 iter-19（87.50）**。
 
 ## iter-28（開始 06:35 / 結束 06:38，TZ=Asia/Taipei）
 ### 探索
-- 程式碼等於 iter-19（7.50，總分 87.50）。iter-27（e7081af）的細楔形 LED 尾燈與車頂板曲面銜接皆被評為實質改善但各自未達半級。
+- 程式碼等於 iter-19（7.50，總分 87.50）。iter-27（7ed8d6e）的細楔形 LED 尾燈與車頂板曲面銜接皆被評為實質改善但各自未達半級。
 - 最終盲評 #4（shared/reviews/blind-4.md，A 段）：前導輪做成高的雙層（參考照前方是單顆低導輪）；塗裝與尾燈與參考不符。
 - 比對 `ref_chevalier-ma_front34_tamiya.jpg`：前方左右各一顆扁平、平直側壁的黑色導輪，頂部只有墊片＋螺絲；後方才是上下兩顆。iter-19 前導輪沿用 iter-06 的「上下輪緣凸出、中段內縮」截面＋6.5 mm 厚，在 front34 看起來像疊了兩層。
 
 ### 規劃（合併 2 項小改善，爭取跨過半級）
-1. 帶回 e7081af 的細楔形 LED 尾燈＋車頂板曲面銜接（`git checkout e7081af -- src/bodyShell.js`，內容與 iter-27 完全相同）。
+1. 帶回 7ed8d6e 的細楔形 LED 尾燈＋車頂板曲面銜接（`git checkout 7ed8d6e -- src/bodyShell.js`，內容與 iter-27 完全相同）。
 2. 前導輪外觀改單顆扁平：只對 FL/FR，外觀厚度 6.5 → 4.2 mm（`FRONT_ROLLER_VISUAL_H_MM`，推估：參考照目視厚度約直徑 1/3），截面去掉中段腰身改為平直側壁＋上下 0.35 mm 倒角；底面維持原位（底部墊片／螺帽不動），頂面與頂部墊片、螺絲隨之下移。直徑 13 mm、安裝位置（rollerLayout）與 sim.js 碰撞體完全不動；後導輪（上下兩顆）維持原樣。預期：front34／sidehigh 前方讀成一顆低矮導輪，對應盲評 #4 的扣分。
 
 ### 執行
-- `src/bodyShell.js`：還原為 e7081af 版本。
+- `src/bodyShell.js`：還原為 7ed8d6e 版本。
 - `src/model.js`：新增常數 `FRONT_ROLLER_VISUAL_H_MM = 4.2`；`buildRoller` 外層 group 定位、內層 group 依外觀厚度下移 `(r.h − visualH)/2`；前導輪截面去掉腰身四點。
 
 ### 驗證（P01–P10；`npx vitest run`，10/10 通過）
@@ -1973,14 +1975,14 @@
 無，使用程序化材質。
 
 ### iter-28 迭代決策（主 agent，06:39）
-- reviewer 評分 7.50（6/7/8.5/8.5），與 iter-19 持平 → 依 GOAL 規則 **revert**（程式碼回 iter-19；log 保留；iter-28 實作在 commit 10e60ec）。
+- reviewer 評分 7.50（6/7/8.5/8.5），與 iter-19 持平 → 依 GOAL 規則 **revert**（程式碼回 iter-19；log 保留；iter-28 實作在 commit 7b7ef5d）。
 - reviewer：前導輪變薄變低、細長尾燈＋分件線、車頂板後緣收邊，三項皆局部進步未達半級；細尾燈在 side/sidehigh 幾乎看不到，車尾側面變空。
 - **Track A 最終版本維持 iter-19（87.50）**。
 
 ---
 
 ## 最終狀態摘要（主 agent，06:56）
-- **最終版本：iter-19**（程式碼 = commit 8c5f370；HEAD 為之後 iter-20～28 的 revert 鏈）。
+- **最終版本：iter-19**（程式碼 = commit e2dca13；HEAD 為之後 iter-20～28 的 revert 鏈）。
 - 逐輪評分：外觀 6 / 7 / 8.5 / 8.5 = 7.50，物理 10/10，總分 **87.50**。
 - 無錨定盲評：#1 6.75（第一）、#2 7.25（第一）、#3 7.13（第二）、#4 7.38（第一，最終版本）。
 - 最終驗證：程式碼與 iter-19 完全一致，`npx vitest run` 10/10，工作區乾淨。
@@ -2157,7 +2159,7 @@
 ### 驗證
 - 測試 16/16。
 - 外觀（`shared/reviews/iter-37/REVIEW.md`）：錨點 6.75（和 iter-36 相同）；本輪 7/7.5/7/7.5 = **7.25**（iter-36：7.50）。比例 7.5→7（wedge Blender 側視鼻部下垂、尾端斷崖、保桿板過長）、車殼設計 7.5→7（wedge 仍像平板＋貼紙）。
-- **總分 = 50.00 + 7.25 × 5 = 86.25 < iter-36 的 87.50 → 依規則 revert**（app：revert 257bf81、be7dd9b；根目錄：revert 29a87f8）。截圖 `renders/iter-37_*` 與評語保留作紀錄。
+- **總分 = 50.00 + 7.25 × 5 = 86.25 < iter-36 的 87.50 → 依規則 revert**（app：revert 9860527、b53bcce；根目錄：revert 8d7f70a）。截圖 `renders/iter-37_*` 與評語保留作紀錄。
 
 ### 迭代決策
 - 本輪三條線同時改，無法分辨哪一項扣分。下一輪改成**小步、可歸因**的改動：一次只動一款車殼或一個區塊，並對照 iter-36 的圖。
@@ -2414,7 +2416,7 @@
 - 概念圖：Codex 依序生 12 張（02:12 起），9 張遇 429，改為失敗後等 180 s 重試，02:45 全數完成（失敗紀錄 `codex_log_*_fail429_*.txt` 保留）。
 - A 組（tortoise-dome 13.81 g、marlin-sail 14.56 g、owl-hush 14.99 g）、B 組（gazelle-leap 12.94 g、halo-orbit 16.10 g、dartfrog-hop 14.11 g）上線；31 mm 合法：tortoise、gazelle、dartfrog。
 - 整合（主 agent）：刪除 wedge / beast / fork（＋`data/body-wedge.json`）；`configs/default.json` 車殼先改 marlin-sail → `P17_ballast` 失敗（`ballast-hex-1g@center` 在 marlin 低矮車殼下 BALLAST_BODY_CLEARANCE，是真實干涉，不是測試問題）→ 預設改 **owl-hush**（各安裝點配重皆合法、31 mm 不合法，P11 的 BODY_TIRE_CLEARANCE 案例成立）；speed → marlin-sail、race-frp → halo-orbit；P19 不合法案例改 skeleton＋31 mm；render / export 預設清單更新。
-- 驗證方式：零件 subagent 同時在工作區改 sim.js 等檔案，所以在乾淨 worktree（HEAD＋只有車殼整合）跑 score：**20/20**（P20 新定義通過）。commit a2a033c 後主線 HEAD 以 `reset --mixed` 移過去，零件工作區變更保留未提交。
+- 驗證方式：零件 subagent 同時在工作區改 sim.js 等檔案，所以在乾淨 worktree（HEAD＋只有車殼整合）跑 score：**20/20**（P20 新定義通過）。commit 688cace 後主線 HEAD 以 `reset --mixed` 移過去，零件工作區變更保留未提交。
 - 零件工作流回報：工作區曾出現 `P17_brake_sponge` 失敗（平地極速差 0.57%），根因是新加的純滾動約束只算摩擦圓的正向剩餘容量，起步打滑時傳動系與車體脫鉤、車速超過理論極速；改為縱向摩擦衝量雙向限制在 ±μN，並加 `P17_traction_limit` 防回歸（未放寬容許值）。
 - 零件工作流（subagent，同輪並行）：完成第 1–8 項（可動保桿未做）；新檔 `src/parts/inertia.js`、`src/parts/stabilizers.js`；預設車 J_eq 2557 g·mm²（等效 15.1 g），起步 0.3 s 模擬 1.129 vs 含 J 解析 1.133 m/s；motor-sprint 依玩家實測修正（ω0 49,700 → 31,000 rpm，電流回代 −35% 已註明）；P11 / P14 / P17 / P18 / P19 新增案例，既有測試只有新增、沒有放寬。示範設定 `configs/p4-tech.json`（初版 2 mm 海綿離地 0.40 mm 被 GROUND_CLEARANCE 擋下 → 改 1 mm）。
 - 測試 **20/20**（主線工作區 03:09 與 p4-tech 加入後各跑一次）。
@@ -2429,7 +2431,7 @@
 1. A 組（tortoise-dome / marlin-sail / owl-hush）與 B 組（gazelle-leap / halo-orbit / dartfrog-hop）：首要修正退步的「比例」「材質」——車尾平切收成曲面、前輪拱補側裙 / 內襯、dartfrog 檸檬黃、halo 光環 app / Blender 一致、marlin 去灰；其次把招牌造型件做到概念圖份量（光環、角、蹼翼、眼泡、背帆、新月尾、鋸齒翼）、貼紙改立體（甲片、眼燈）。各款用 Blender 32 samples 預覽確認材質。
 2. 零件 subagent：輕量輪框鏤空、中空軸中孔、煞車海綿質感（只改外觀，物理不變）。
 - 預期：比例、材質回到 ≥ 7，設計完成度提升；零件細節 ≥ 8。
-- 04:20 左右所有 subagent 因 API 登入失敗（authentication_failed）中斷；10:04 主 agent 接手，A / B 組的工作區狀態 body-check 全合法、20/20 → 暫定提交 `fbaeed7`，外觀 A/B 留到第五階段工作 B。
+- 04:20 左右所有 subagent 因 API 登入失敗（authentication_failed）中斷；10:04 主 agent 接手，A / B 組的工作區狀態 body-check 全合法、20/20 → 暫定提交 `5563f12`，外觀 A/B 留到第五階段工作 B。
 
 ---
 
@@ -2459,7 +2461,7 @@
   - P14：前導輪 2 顆、後導輪 4 顆；前換 19 mm → 質量差 = 2 × 單顆差、重心往前；後換 19 mm → 4 × 單顆差、重心往後；前 19＋後鋁 13 混裝的質量差與重心加權一致。
   - P18 known_cases：前後分開的 6 個違規＋舊欄位 `rollers` 錐形；合法對照多 3 組。P18_pairwise 因為 slot 分開，自動涵蓋前 × 後兩兩組合。
   - P19：網頁依序切前錐形（違規、只標紅前導輪＋前導輪架、停用上賽道）→ FRP 前板（合法）→ 後鋁 13；網址列有 `frontRollers` / `rearRollers`；新參數、舊參數 `rollers=`、舊＋新混用的 URL 都能還原且與 `assemble()` 一致。
-- 新 P19 第一次跑失敗：切到 FRP 前板要 1298 ms（上限 1000 ms，**未放寬**）。查證：FRP / 碳纖板第一次裝上時 `bumperTrim()`（保桿切除幾何 0.1 mm 格點積分）約 1.1 s，之後走快取 72 ms；這是 fbaeed7 就存在的首次卡頓，舊 P19 沒切導輪架所以沒測到。修正：網頁背景預先計算（`warmBodies`）除了 9 款車殼，也把前 / 後導輪架每個選項組裝一次；物理與幾何數值不變。
+- 新 P19 第一次跑失敗：切到 FRP 前板要 1298 ms（上限 1000 ms，**未放寬**）。查證：FRP / 碳纖板第一次裝上時 `bumperTrim()`（保桿切除幾何 0.1 mm 格點積分）約 1.1 s，之後走快取 72 ms；這是 5563f12 就存在的首次卡頓，舊 P19 沒切導輪架所以沒測到。修正：網頁背景預先計算（`warmBodies`）除了 9 款車殼，也把前 / 後導輪架每個選項組裝一次；物理與幾何數值不變。
 - 截圖：`renders/iter-56-rollers_garage.png`、`iter-56-rollers_garage_race.png`（前 19 mm 錐形＋FRP 前板、後 13 mm 鋁導輪）。
 
 ### 驗證
@@ -2492,7 +2494,7 @@
 - 決策：**保留**（新零件物理方向正確、全部測試通過）。
 
 ## iter-55 外觀評審收尾（第五階段工作 B，11:18–11:25）
-- Blender 64 samples：6 款 × front34 / side / rear34 / bottom / track 共 30 張（10:56–11:17，主線程式碼；車殼程式與 `fbaeed7` 相同，`/tmp/wt55` 已移除）→ `shared/reviews/iter-55/本輪/blender/`。
+- Blender 64 samples：6 款 × front34 / side / rear34 / bottom / track 共 30 張（10:56–11:17，主線程式碼；車殼程式與 `5563f12` 相同，`/tmp/wt55` 已移除）→ `shared/reviews/iter-55/本輪/blender/`。
 - reviewer（`shared/reviews/iter-55/REVIEW.md`）：錨點 5.83；對照（iter-54 版）6 / 7 / 8 / 6 / 6 / 7 = 6.67；本輪 6.5 / 7.5 / 8 / 7 / 6.5 / 7 = **7.08** → **85.42**（20/20）。原創性 6 款全判「否」、無商標。
 - 逐款嚴格 A/B（比例 / 風格感 / 原創性 / 設計 / 材質）：tortoise 好 / 持平 / 持平 / 好 / 持平；marlin 好 / 好 / 持平 / 好 / 持平；owl 持平 / 好 / 持平 / 好 / 好；gazelle 好 / 好 / 持平 / 好 / 持平；halo 持平 / 好 / 持平 / 好 / 好；dartfrog 持平 / 好 / 持平 / 好 / 持平。**沒有任何一款、任何一項「差」→ 6 款 iter-55 改動全部保留**。
 - 仍待改（評審）：dartfrog 主色偏橄欖暗黃（不是檸檬黃）、蹼翼太細；marlin 銀白偏灰、前輪罩像厚圓餅且與鼻部有黑縫；gazelle / dartfrog 鼻部折面粗；tortoise 車尾頂端鋸齒白邊；owl 羽紋太細。第五階段以零件為主，這些列為下一步。
@@ -2565,7 +2567,7 @@
 
 ### 執行
 - 車殼：body-check 5 款合法、31 mm 與 32 mm 側制振器相容性與修改前相同（31 mm：tortoise / gazelle / dartfrog；側制振器：gazelle / dartfrog）；dartfrog 15.4 → 18.45 g。
-- 前滑動保桿（subagent）：第一次的成果放在 root repo 的 Agent worktree 內另 clone 的 app，subagent 結束後該 worktree 因 root 無變更被自動清除、commit 遺失 → 主 agent 建 `/tmp/wt-slide`（app worktree，基底 2882117），請同一個 subagent 重新套用（數據逐位相同），合併後移除 worktree。**教訓：Agent 的 worktree 隔離要在 app repo 下建立，成果合併前不要讓 worktree 被清理。**
+- 前滑動保桿（subagent）：第一次的成果放在 root repo 的 Agent worktree 內另 clone 的 app，subagent 結束後該 worktree 因 root 無變更被自動清除、commit 遺失 → 主 agent 建 `/tmp/wt-slide`（app worktree，基底 14c2fde），請同一個 subagent 重新套用（數據逐位相同），合併後移除 worktree。**教訓：Agent 的 worktree 隔離要在 app repo 下建立，成果合併前不要讓 worktree 被清理。**
   - 物理：滑動板＋前導輪＋穩定零件為獨立剛體，prismatic joint 沿車體 z、±2.5 mm 硬止擋；前導輪碰撞體掛在滑動板上 → 牆力只能經彈簧 / 止擋傳到車身。彈簧 F(u) = −[k·u + sign(u)·min(F0, k_seat·|u|)]（保守力，有對應位能），阻尼 c = 2ζ√(km)；隱式 Euler 以衝量施加；牆面衝量改在「車體＋滑動板」7 自由度系統求解（恢復係數 0）；沒有滑動保桿時沿用原程式。
   - P17_slide_bumper：10°、1.5 m/s 撞牆車身峰值側向力 軟 1.28 / 硬 3.29 / FRP 板 28.06 N；20°、2 m/s 106.5 / 110.1 / 203.2 N；動能＋彈簧位能整段最大值等於撞前值（153.147 mJ → 0.1 s 後 136 mJ）；平地極速與同質量 FRP 差 0.038%；主賽道一圈最大穿牆 0.22 / 0.17 mm、不翻車。P18_slide_bumper_width：行程端點外框（推估規則）13 mm 導輪 103 mm 合法、17 mm 107 / 19 mm 109 mm → WIDTH。P11_slide_bumper。P19：網頁切換滑動保桿（17 mm 前導輪 WIDTH、換 13 mm 合法）與 URL 還原。
 - Blender 64 samples 5 款 × 5 視角（12:26–12:47）、app 截圖 `renders/iter-61_*`；評分資料夾 `shared/reviews/iter-61/`（對照 = iter-55 本輪）。
@@ -2620,7 +2622,7 @@
 
 ## iter-65（14:00 起）：合併後滑動保桿；依使用者要求查證 `roller-19` 質量與 `wheel-31-large` 來源
 ### 規劃
-- 合併 subagent 的後滑動保桿（`/tmp/wt-rear`，commit `1cbc0f9`）。
+- 合併 subagent 的後滑動保桿（`/tmp/wt-rear`，commit `7bb8780`）。
 - 使用者要求：「幫我多方確認之後，貼近物理的實際狀況改善」（針對 `roller-19` 1.9 g 與 `wheel-31-large` 引用 15544 兩個疑點）。
 
 ### 查證（實際開啟頁面；Tamiya 官方頁為 Shift_JIS，以 cp932 解碼）
@@ -2646,7 +2648,7 @@
 
 ## iter-66（14:29 起）：第 0 輪——第五階段收尾（車殼第二輪 A/B）、LG1 / LG2 研究分組、比賽常用車殼研究、P20 第六階段定義
 ### 規劃
-1. 第五階段收尾：車殼第二輪 subagent 分支（`1b7f986`，5 款）cherry-pick 到暫時 worktree `/tmp/wt66`（app repo，基底 `2fff729`）→ 計分 → app 截圖＋Blender 64 samples → reviewer 逐款 A/B（對照 iter-61 本輪），任何一項「差」就 revert 該款。
+1. 第五階段收尾：車殼第二輪 subagent 分支（`1b7f986`，5 款）cherry-pick 到暫時 worktree `/tmp/wt66`（app repo，基底 `da78223`）→ 計分 → app 截圖＋Blender 64 samples → reviewer 逐款 A/B（對照 iter-61 本輪），任何一項「差」就 revert 該款。
 2. 研究 subagent 2 個（只寫文件、不跑重運算）：`HOMAGE_RESEARCH.md` 第 6 節（LG1 / LG2 分組、語彙、黑名單、現有 6 款歸組、新款提案）；新檔 `shared/reference/BODY_RACE_RESEARCH.md`（比賽常用車殼 ≥ 6 種型態、新款提案）。
 3. 主 agent：BodyDef 加 `homageSeries` / `raceType` / `form`（`types.d.ts`）；P20 第六階段測試草稿（`/tmp/p20-phase6/bodies.test.js`，陣容達標前不換進主線——主線每輪仍須 20/20，舊 P20 仍有效）；`shared/REVIEWER_BRIEF.md` 改為第六階段版本（三組、LG1 / LG2 風格感、比賽型也判原創性、第 4 項改「車殼多樣性與完成度」）。
 - 高負載工作一律先取得共用鎖 `/tmp/heavy-lock.sh`（與同機器另一個 session 約定）。
@@ -2660,11 +2662,11 @@
 - 研究 subagent：`HOMAGE_RESEARCH.md` 第 6 節（LG1 19 台、LG2 13 台＋變體；兩部差異：LG2 主角車大徑輪、車身較長、特殊機能做在外形上、國家隊配色；**研究不支持「LG2 一定更尖銳」**；LG2 國際代表隊禁用表）；現有款歸組：tortoise / owl / dartfrog → LG1，gazelle / halo → LG2，**marlin 兩邊都不像（最接近 MAX 篇）→ 先不標 homageSeries，iter-68 改短後歸 LG1**；新款提案 9 款。年份更正：WGP TV 版 1997（GOAL 原寫 1998）。
 - 研究 subagent：`shared/reference/BODY_RACE_RESEARCH.md`（7 種型態，T1 PC 透明殼最主流：2025 Japan Cup 官方大會報告 25 台優勝車的車殼全是クリヤーボディ）；「碳纖 / FRP 上蓋式」查證後不成立（官方規則禁止自作車殼）；現有 skeleton = lightened-cut、aero-wing = big-wing、pc-box = clear-pc；新款提案 5 款。
 - 研究 subagent 回報：查日文維基 API 時曾有一次把使用者 email 放進 curl 的 User-Agent 送出（之後已改），已向使用者報告。
-- 第六階段 P20 草稿量基準（主線 34622d0，暫時複製成單檔測試、量完刪除）：失敗（致敬款缺 homageSeries、比賽型只有 3 款）→ 第六階段基準測試 **19/20**。
+- 第六階段 P20 草稿量基準（主線 e60ce17，暫時複製成單檔測試、量完刪除）：失敗（致敬款缺 homageSeries、比賽型只有 3 款）→ 第六階段基準測試 **19/20**。
 
 ### 驗證
 - reviewer（`shared/reviews/iter-66/REVIEW.md`）：錨點 6.17；對照 7 / 7 / 8 / 7 / 7 / 6.5 = 7.08；本輪 7 / 7.5 / 8 / 7.5 / 7 / 6.5 = **7.25**。A/B：風格感、設計好，其餘持平；原創性 5 款都「否」。
-- 逐款 A/B：dartfrog（風格感 / 設計好；黃色仍偏灰橄欖，材質持平）、gazelle（設計好）、owl（風格感 / 設計好）、tortoise（設計好）、marlin（全持平）→ **5 款全保留**，cherry-pick 到 main（`d14fe48`）。
+- 逐款 A/B：dartfrog（風格感 / 設計好；黃色仍偏灰橄欖，材質持平）、gazelle（設計好）、owl（風格感 / 設計好）、tortoise（設計好）、marlin（全持平）→ **5 款全保留**，cherry-pick 到 main（`5b40f51`）。
 - 現有致敬款標 `homageSeries` / `form`（marlin 只標 form）。主線 `node scripts/score.mjs`：**20/20**（15:06）。
 - 第五階段收尾分數：19/20（第六階段 P20 定義）× 50 ＋ 7.25 × 5 = **83.75**（第六階段基準）；舊 P20 定義下 20/20 → 86.25。
 - 決策：**保留**。
@@ -2782,7 +2784,7 @@
 - mantis：複眼燈前移＋頭殼分件線；胸部波紋未修好 → 該部分 subagent 自行 revert。
 - marlin：`front-fender-fairings` 法線方向反轉（俯視不再是深色帶）。
 - dartfrog：後腿半寬 46.5 → 44.5、腰部收窄；× halo 0.8482 → 0.829。
-- 合併 `b3fbf6d`；合併後最高 IoU：cicada × prism 0.8476、zeppelin × prism 0.8463、fastback × lowline 0.8439（全部 < 0.85）。
+- 合併 `e0ca3f6`；合併後最高 IoU：cicada × prism 0.8476、zeppelin × prism 0.8463、fastback × lowline 0.8439（全部 < 0.85）。
 
 ### 驗證
 - `node scripts/score.mjs`：**20/20**（20:18）。Blender 8 款（20:19–20:45）。
@@ -2795,7 +2797,7 @@
 - Blender 重出 skeleton / aero-wing / pc-box / halo（原本是 10/21 或第五階段的圖，材質與目前 showcase.py 不一致）；iter-71 的 8 款與這 4 款複製到 `render/out/<body-id>/`，19 款展示圖齊全。
 - 陣容圖 `render/out/lineup_race.png`（7 款）、`lineup_lg1.png`（6 款）、`lineup_lg2.png`（6 款）；`render/lineup.sh` 標題預設改用 STHeiti 字型（ImageMagick 預設字型沒有中文字，第一次產生時標題只剩數字）。
 - app 截圖 19 款 × 6 視角＋chassis_front34（`renders/iter-72_*`）。
-- 程式碼沒有改動（主線同 iter-71 `b3fbf6d` 的車殼）。
+- 程式碼沒有改動（主線同 iter-71 `e0ca3f6` 的車殼）。
 
 ### 驗證
 - `node scripts/score.mjs`：**20/20**（21:11）。
@@ -2815,7 +2817,7 @@
 - hydroplane：黃 0xffc414 → 0xd6ac00（色相 45° → 48°，不往橘走）、降低鏡面與清漆（避免反光洗成奶油色）；浮筒白圓 R6.2 → R8.4＋午夜藍細框、字高 6.4 → 8.6 mm。質量、外框、IoU 不變。
 - mantis：收翅尖端 y 32.2 / 33 → 41 / 42.5（立起約 10°，俯視座標不動）、鐮刀片隆起 1.6 → 3.2 mm、紅鋸齒刃帶加寬。13.24 → 13.30 g；車殼高 34.7 → 44.0 mm；俯視 IoU × aero-wing 0.8425、× griffin 0.8404。
 - lowline：剖面在肩稜下 1.1 mm 收成薄唇、唇下側裙內收最多 2.6 mm（剖面 8 → 10 點），分色線上移到薄唇下、號碼圓底下移；甲板中央脊 / 擴散器未做。9.40 → 9.59 g；俯視外緣與 IoU 不變；31 mm 合法（間隙 2.04）。
-- 合併 `5b9ef9e`。
+- 合併 `50c49f2`。
 
 ### 驗證
 - `node scripts/score.mjs`：**20/20**（21:50）。Blender 4 款（21:22–21:47）。
@@ -2844,14 +2846,14 @@
 
 ## iter-74（第 0 輪：基準、零件研究、物理稽核）
 ### 計畫
-- 基準：app main（`13aa52a`）跑 `node scripts/score.mjs`；改裝零件特寫（app `render.mjs` 搭配 `config=p5-taiwan`、Blender `render/out/config-p5-taiwan/`）＋外觀評審 → 第七階段基準分數。
+- 基準：app main（`4f2e82b`）跑 `node scripts/score.mjs`；改裝零件特寫（app `render.mjs` 搭配 `config=p5-taiwan`、Blender `render/out/config-p5-taiwan/`）＋外觀評審 → 第七階段基準分數。
 - `shared/REVIEWER_BRIEF.md` 改為第七階段版本（第 6 項「底盤與改裝零件細節」為重點，其餘 5 項不退步）。
 - 研究 subagent：`PARTS_RESEARCH.md` 第七階段節（AK 起，≥ 12 個候選，來源實際開啟）＋`TAIWAN_SOURCES.md`。
 - 物理稽核 subagent：新檔 `shared/reference/PHYSICS_AUDIT.md`（既有機制的能量、受力對稱、摩擦上限、量綱、特例分支）。
 - 預期：分數不變（20/20）；取得基準與實作順序。
 
 ### 結果（03:02）
-- `node scripts/score.mjs`：**20/20**（02:57，app `13aa52a` 不變）。
+- `node scripts/score.mjs`：**20/20**（02:57，app `4f2e82b` 不變）。
 - 評審（`shared/reviews/iter-74/REVIEW.md`，第七階段 brief；看 p5-taiwan / p4-tech 的 app 特寫＋Blender＋陣容圖）：錨點 6.00；本輪 8 / 7.5 / 8 / 8 / 7.5 / 7.5 = **7.75** → 總分 **88.75**（第七階段基準）。最該改：app 零件材質（FRP 像金屬、黃銅偏芥末、碳纖看不出斜紋）、錐形導輪看起來像碗（程式截面本來就是直線斜邊，應是光影；未改）、橡膠環不凸出、滑動保桿缺滑軌座。
 - 研究 subagent：PARTS_RESEARCH 第七階段 AK–AT 節，25 款候選（官方適用表都含 MA，tamiya.com 官方頁 2026-10-23 實際開啟；4 款以 curl 讀取已標明），需新機制 4 款（球頭連桿擺動、導輪角度板、單向輪、前下擋板斜面）；TAIWAN_SOURCES 新增 TW26–TW41。
 - 物理稽核 subagent：`shared/reference/PHYSICS_AUDIT.md`。沒有找到零件 id 特例或倍率捷徑、恢復係數 > 1、缺反作用力、摩擦超過 μN、單位混用；發現 H1（導輪碰撞體是球，19 mm 導輪球底離地 0.5 mm，配 24 mm 輪時整車撐在導輪上、四輪法向力 0）、M1（滑動保桿撞牆測試的初始姿勢已插進對側牆）、L1–L9 低嚴重度項。H1 排進後續輪次修正。
