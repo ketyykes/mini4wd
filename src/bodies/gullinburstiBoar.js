@@ -1,32 +1,36 @@
 // 金鬃野豬（body-gullinbursti-boar，第八階段神話組・北歐）：《散文埃達》中侏儒為 Freyr 打造的金鬃野豬 Gullinbursti。
 // 車身是前低後高的桶形拱背全罩（肩頸最高）：最前面一段短而寬的楔形青銅豬鼻（前端平面鼻盤＋兩個鼻孔）、兩側一對短獠牙；
 // 背脊一整列金色梳狀鬃毛片從頭頂（豬鼻後方）一路排到車尾，高度大致均勻，最後幾片略高成為 bristle-crest 尾翼；側面是 Urnes 風格交織動物紋（自繪 SDF 曲線）。
+// iter-120（第九階段：LG1 低風阻楔形＋神話元素做成車身零件）：拱背桶形（肩頸 43.6）壓成低頭衝鋒的楔形（背線 39、吻尖 17.4），豬鼻改成往前下伸的長吻鼻錐，
+// 獠牙改成吻側的新月形前擾流片，金鬃前低後高漸升並整排後傾（被風吹），肩 / 臀分面＋背線 / 腰線稜線，背上雙細賽車條；頂高 50.1 → 45.2、最寬 ±40.2 → ±36.8。
 // iter-114（評審：主體灰色、金鬃只在後半段而且往後越長越高，「金鬃」的金色不夠）：主體改成金漆、交織紋改深色烏銅、鬃毛從頭頂延伸到車尾且高度均勻。
 // 設計：shared/design/body-gullinbursti-boar/DESIGN.md（典故、借用的古代語彙、和市售車殼 / 現代作品 / 既有車殼的差異）。
 // 塗裝全為自創：金漆主體＋真金屬亮金鬃毛＋深烏銅交織紋＋青銅豬鼻（iter-113 為炭黑鐵灰主體＋金色交織紋）；不用盧恩字母、不用任何被挪用的符號、不含文字與商標。
 import * as THREE from 'three';
-import { makePolyBody, finPlate, sweepEllipse } from './polyBody.js';
+import { makePolyBody, finPlate } from './polyBody.js';
 import { namedMaterial, decalMaterial, sideDecal, mergeGeos, lerp } from './loft.js';
 import { monoCurve, buildStations } from './gazelleLeap.js';
 
 /** @typedef {import('./loft.js').BodyPart} BodyPart */
 
-/** 站位節點（x 由後到前；前後軸 x = ±40；車尾 −64、鼻盤 68） */
-const XS = [-64, -60, -52, -40, -28, -14, 0, 12, 24, 36, 46, 54, 60, 64, 68];
+/** 站位節點（x 由後到前；前後軸 x = ±40；車尾 −64、長吻尖 72（iter-120：豬鼻改成往前下伸的長吻鼻錐）） */
+const XS = [-64, -60, -52, -40, -28, -14, 0, 12, 24, 36, 46, 54, 60, 64, 68, 72];
 /** @type {Record<string, (x: number) => number>} */
 const P = {
-  // 中線頂：鼻盤 19.5 → 前輪上方 36 → 肩頸隆起最高 43.6（x ≈ 0）→ 往後緩降成圓臀 29
-  yC: monoCurve(XS, [29, 33.5, 37, 40, 41.8, 43.2, 43.6, 42.5, 40.5, 38, 34.5, 29.5, 25, 22, 19.5]),
-  // 最寬處高度（桶形腰線）
-  yS: monoCurve(XS, [22, 23, 24, 24, 24, 24, 24, 24, 24, 23.5, 22.5, 21, 19.5, 18.5, 17.5]),
-  // 半寬：俯視是野豬的水滴形——前寬後窄——肩部最寬 40（x ≈ 24，前輪正後方）、往後收成窄臀（後輪處 21.5，後輪露在車殼外、車尾 11）；俯視是往後收尖的鏟形，豬鼻段收成短而寬的楔形（13）
-  hw: monoCurve(XS, [11, 14, 17.5, 21.5, 25.5, 30, 34.5, 38.5, 40, 39.5, 34, 23, 17, 14.5, 13]),
+  // iter-120（第九階段：LG1 低風阻楔形）：中線頂整體壓低——吻尖 17.4 → 前輪上方約 35.3（31 mm 輪拱上方不開洞）→ 肩背最高 39（x ≈ −14）→ 臀部 31.5；
+  // 原本肩頸 43.6 的拱背桶形（側影像擺件豬）改成「低頭衝鋒、背線前低後高」的楔形
+  yC: monoCurve(XS, [31.5, 34, 36.6, 38, 38.8, 39, 38.8, 38.2, 37.2, 36.2, 33.4, 28.2, 23.8, 21.2, 19.2, 17.4]),
+  // 最寬處高度（腰線）
+  yS: monoCurve(XS, [22, 23, 23.5, 23.5, 23.5, 23.5, 23.5, 23.5, 23.5, 23, 22, 20.6, 19.2, 18.2, 17.4, 16.6]),
+  // 半寬：俯視仍是前寬後窄的水滴形，iter-120 肩部最寬 40 → 36.8（正面面積），往後收成窄臀（後輪露在車殼外）；
+  // 豬鼻段收成細長尖吻（x 60 → 72：13 → 6.5，V3 尖鼻楔形）
+  hw: monoCurve(XS, [11, 14, 17.5, 21.5, 25, 29, 32.5, 35.5, 36.8, 36.8, 32, 21, 13, 10.4, 8.4, 6.5]),
   // 側壁下緣
-  yLow: monoCurve(XS, [19, 17, 14, 12.8, 12.5, 12.5, 12.5, 12.5, 12.5, 12.8, 13.5, 14.5, 15.5, 15.5, 15.5]),
+  yLow: monoCurve(XS, [19, 17, 14, 12.8, 12.5, 12.5, 12.5, 12.5, 12.5, 12.8, 13.5, 14.5, 15, 15.2, 15.4, 15.6]),
 };
 
-/** @type {number} 豬鼻（青銅）段起點 x */
-const SNOUT_X = 55;
+/** @type {number} 長吻（青銅）段起點 x */
+const SNOUT_X = 58;
 
 /**
  * 半剖面 7 點：中線頂 → 背 → 肩 → 側腹上 → 最寬處（腰線）→ 下腹 → 側壁下緣；全部平滑（桶形斷面）
@@ -49,7 +53,7 @@ const profile = (x) => {
   ];
 };
 
-const STATIONS = [...buildStations(-64, 60, 2, profile).slice(0, -1), ...buildStations(60, 68, 1, profile)];
+const STATIONS = [...buildStations(-64, 60, 2, profile).slice(0, -1), ...buildStations(60, 72, 1.5, profile)];
 
 /**
  * 外殼在 (x, y) 高度的 |z|（沿剖面折線內插，只取腰線以上到中線頂這段），給輪拱內襯、鬃毛根部定位用
@@ -81,7 +85,8 @@ const materials = () => ({
   bronze: namedMaterial('trim-bronze-brass', { color: 0x9c6b3c, metalness: 0.8, roughness: 0.34, clearcoat: 0.2 }),
   gold: namedMaterial('trim-gold-brass', { color: 0xf0c457, metalness: 0.9, roughness: 0.22, clearcoat: 0.3 }),
   // 豬鼻盤（iter-115）：拋光青銅＋深色鼻孔
-  snoutDisc: namedMaterial('trim-snout-copper', { color: 0xb07048, metalness: 0.8, roughness: 0.3, clearcoat: 0.2 }),
+  // iter-120 肩 / 臀分面：深一階的拉絲金
+  goldShade: namedMaterial('trim-gold-shade-brass', { color: 0x9a6f22, metalness: 0.85, roughness: 0.42, clearcoat: 0.2 }),
   ivory: namedMaterial('paint-tusk-ivory', { color: 0xe8dcc0, roughness: 0.6, clearcoat: 0.1 }),
   inner: namedMaterial('shell-inner-dark', { color: 0x18191c, roughness: 0.85, side: THREE.BackSide }),
   edge: namedMaterial('shell-edge-iron', { color: 0x3a3c42, roughness: 0.6, side: THREE.DoubleSide }),
@@ -257,34 +262,25 @@ const interlaceSd = (u, v) => {
 // 實體件
 // ---------------------------------------------------------------------------
 
-/** @type {number[]} 鬃毛束的 x 位置（iter-115：22 片 → 12 束、每 9.6 mm 一束，加寬加厚，評審：太密太細像刺蝟；頭頂 x 46 到車尾 −59.6） */
-const BRISTLE_X = Array.from({ length: 12 }, (_, i) => lerp(46, -59.6, i / 11));
+/** @type {number[]} 鬃毛束的 x 位置（iter-120：12 → 10 束，從前輪後上方 x 34 排到車尾 −60） */
+const BRISTLE_X = Array.from({ length: 10 }, (_, i) => lerp(34, -60, i / 9));
 /**
- * 鬃毛片高度（從殼面算起，iter-114 改成大致均勻）：頭頂前兩片 4.6 / 5.6，中段 6.2，最後 3 片 7 → 8.2 成為尾翼
+ * 鬃毛片高度（從殼面算起）：iter-120（基準評審：金鬃一樣高、等距排列像鋸齒）改成前低後高漸升——頸部 2.2 → 車尾 8.4，
+ * 最後幾片接成 bristle-crest 尾翼（翼頂比背線高約 7 mm，V7 貼近車身）
  * @type {(i: number) => number}
  */
-const bristleH = (i) => {
-  const n = BRISTLE_X.length;
-  if (i === 0) {
-    return 4.6;
-  }
-  if (i === 1) {
-    return 5.6;
-  }
-  if (i >= n - 3) {
-    return 7 + 0.6 * (i - (n - 3));
-  }
-  return 6.2;
-};
+const bristleH = (i) => lerp(2.2, 8.4, (i / (BRISTLE_X.length - 1)) ** 1.15);
+/** @type {(i: number) => number} 鬃毛片底寬（頸部 5.6 → 車尾 8.2） */
+const bristleW = (i) => lerp(5.6, 8.2, i / (BRISTLE_X.length - 1));
 
 /**
- * 梳狀鬃毛片（側視多邊形）：根部埋進殼面 1 mm，三支往後傾的梳齒，最後一齒最高
- * @type {(x: number, h: number) => number[][]}
+ * 梳狀鬃毛片（側視多邊形）：根部埋進殼面 1 mm，三支往後傾的梳齒，最後一齒最高；
+ * iter-120：整排往後傾（梳齒頂往後偏 1.05 × 高度，約 45°，被風吹的動勢）
+ * @type {(x: number, h: number, w: number) => number[][]}
  */
-const bristleOutline = (x, h) => {
+const bristleOutline = (x, h, w) => {
   const yb = P.yC(x) - 1.2;
-  const w = 7.4;
-  const lean = 0.45 * h;
+  const lean = 1.05 * h;
   /** @type {(fx: number, fy: number) => number[]} fx：沿車身往前為正（相對根部中心）、fy：高度比例 */
   const at = (fx, fy) => [x + fx - lean * fy, yb + 1.2 + h * fy];
   return [
@@ -303,17 +299,31 @@ const bristleOutline = (x, h) => {
 };
 
 /**
- * 獠牙（單支）：從豬鼻側面往外上彎的小圓錐管，根粗尖細
+ * 獠牙擾流片（iter-120，基準評審：獠牙加大做成前下擾流片）：長吻兩側腰線高度往外、往前彎的新月形水平薄片（厚 1.4 mm），
+ * 根部埋進吻側，尖端往前勾——俯視是一對往前張開的獠牙，同時是車頭下緣的分流片（V3 尖鼻＋炫砲手法 2 空力件）
  * @type {(sg: number) => THREE.BufferGeometry}
  */
-const buildTusk = (sg) => {
-  const pts = [
-    [59.5, 17.2, sg * 15.2],
-    [61.5, 19.2, sg * 17.4],
-    [62.6, 21.6, sg * 18.6],
-    [62.2, 23.6, sg * 18.9],
+const buildTuskSplitter = (sg) => {
+  /** @type {number[][]} 俯視輪廓 (x, |z|)：外緣往前、內緣往後 */
+  const outline = [
+    [58.5, 9],
+    [63, 13.4],
+    [67.5, 15.6],
+    [72, 16.2],
+    [75.6, 14.6],
+    [72.4, 14.2],
+    [68, 12.6],
+    [64, 10],
+    [60.5, 6.5],
   ];
-  return sweepEllipse(pts, 16, (t) => [lerp(1.15, 0.25, t), lerp(1.15, 0.25, t)], 10);
+  // finPlate 在 x–y 平面給輪廓、沿 z 給厚度；轉成水平：rotateX(−90°) 把 (x, y) 變成 (x, −z)
+  const g = finPlate(outline.map(([x, z]) => [x, -sg * z]), 0, 1.4);
+  g.rotateX(-Math.PI / 2);
+  // 尖端微微上翹 6°（以根部為支點）
+  g.translate(-58.5, 0, 0);
+  g.rotateZ((6 * Math.PI) / 180);
+  g.translate(58.5, 17.2, 0);
+  return g;
 };
 
 /**
@@ -359,6 +369,24 @@ const buildLiner = (arch, depth) => {
   return g;
 };
 
+/**
+ * 肩部 / 臀部分面板（iter-120，沿用 iter-118 構想，只做塗裝分區）：側面腰線以上、背線以下的兩塊斜切面板；回傳正值 = 在面板內
+ * @type {(x: number, y: number, z: number) => number}
+ */
+const facetPanel = (x, y, z) => {
+  if (Math.abs(z) < 0.5 * P.hw(x)) {
+    return -1;
+  }
+  const top = P.yC(x) - 0.28 * (P.yC(x) - P.yS(x)) - 1.2;
+  const bot = P.yS(x) - 3.5;
+  const inBand = Math.min(top - y, y - bot);
+  // 肩板：x 14 → 44，後緣往後下斜切（像肩胛骨）
+  const shoulder = Math.min(44 - x, x - (14 + 0.9 * (top - y)));
+  // 臀板：x −58 → −20，前緣往前下斜切（像後腿肌肉）
+  const haunch = Math.min(-20 - 0.9 * (top - y) - x, x + 58);
+  return Math.min(inBand, Math.max(shoulder, haunch));
+};
+
 export const gullinburstiBoarBody = makePolyBody({
   id: 'body-gullinbursti-boar',
   name: '金鬃野豬',
@@ -369,13 +397,13 @@ export const gullinburstiBoarBody = makePolyBody({
   form: 'boar-hump',
   roof: 'closed',
   wing: 'bristle-crest',
-  theme: '金鬃野豬：前低後高的桶形拱背全罩（肩頸最高）、短寬楔形青銅豬鼻＋短獠牙、金漆主體、背脊一列從頭頂排到車尾、高度均勻的真金屬金色梳狀鬃毛（尾端 3 片略高成尾翼）、側面深烏銅 Urnes 交織獸紋',
+  theme: '金鬃野豬（iter-120 衝鋒楔形）：低頭衝鋒的低趴金屬金全罩、往前下伸的青銅長吻鼻錐＋新月獠牙前擾流片、肩臀分面、背脊一列前低後高並整排後傾的真金屬金鬃（尾端接成 bristle-crest 尾翼）、側面深烏銅 Urnes 交織獸紋與往後上掃的速度線',
   material: 'ABS',
   density_g_cm3: 1.05,
   wallThickness_mm: 0.8,
   stations: STATIONS,
-  // 平滑桶形斷面，沒有銳利稜線
-  hard: [],
+  // iter-120：背線（點 2）與腰線（點 4）改成稜線（肩線＋腰線貫穿車身，炫砲手法 3）
+  hard: [2, 4],
   wheelArches: [
     { x: 40, y: 13, radius: 17.5, cutZFrom: 21 },
     { x: -40, y: 13, radius: 17.5, cutZFrom: 21 },
@@ -384,6 +412,8 @@ export const gullinburstiBoarBody = makePolyBody({
   zones: () => [
     // 青銅豬鼻：最前面一段（後緣往後斜，側視是楔形的鼻套）
     { mat: 'bronze', keep: (x, y) => x - (SNOUT_X + 0.12 * (y - 16)) },
+    // iter-120 肩部分面（前腿上方的肩胛板）與臀部分面（後腿上方的腿肉板）：深一階的拉絲金（iter-118 構想的低面數版，只是塗裝分區、不加幾何）
+    { mat: 'goldShade', keep: (x, y, z) => facetPanel(x, y, z) },
     { mat: 'goldPaint', keep: () => 1 },
   ],
   mats: { inner: 'inner', edge: 'edge', cap: 'bronze', mount: 'mount' },
@@ -391,11 +421,11 @@ export const gullinburstiBoarBody = makePolyBody({
   extras: (kit) => {
     /** @type {BodyPart[]} */
     const parts = [];
-    // 背脊金鬃毛：12 束梳狀實體片（iter-115：厚 1.4 → 2.4 mm、寬 4.6 → 7.4 mm，粗短的野豬鬃），根部埋進中線殼面
-    const plates = BRISTLE_X.map((x, i) => finPlate(bristleOutline(x, bristleH(i)), 0, 2.4));
+    // 背脊金鬃毛：10 束梳狀實體片（厚 2.0 mm），前低後高漸升、整排後傾，根部埋進中線殼面
+    const plates = BRISTLE_X.map((x, i) => finPlate(bristleOutline(x, bristleH(i), bristleW(i)), 0, 2.0));
     parts.push({ geometry: mergeGeos(plates), mat: 'gold', solid: true, outline: true, name: 'bristle-crest' });
-    // 獠牙
-    parts.push({ geometry: mergeGeos([buildTusk(-1), buildTusk(1)]), mat: 'ivory', solid: true, outline: true, name: 'tusks' });
+    // 獠牙擾流片（iter-120，取代原本兩支小圓錐獠牙）
+    parts.push({ geometry: mergeGeos([buildTuskSplitter(-1), buildTuskSplitter(1)]), mat: 'ivory', solid: true, outline: true, name: 'tusk-splitters' });
     // 耳朵（iter-115：評審要求補耳朵——原本肩上 6 mm 小三角看不到）：眼睛後上方一對大的野豬立耳（側視尖葉形，高 9.5、底寬 7，
     // 厚 1.6 mm，外傾 32°、耳尖略往前），耳根埋進殼面 1 mm；耳內一片深色內耳（薄片貼在耳前面）
     /** @type {THREE.BufferGeometry[]} */
@@ -404,11 +434,12 @@ export const gullinburstiBoarBody = makePolyBody({
       const ex = 42;
       const ez = 13.5;
       const ear = finPlate(
+        // iter-120：衝鋒時耳朵往後貼（耳尖往後、高 6.5）
         [
           [ex + 3.6, 0],
-          [ex + 3.4, 3.6],
-          [ex + 1.6, 9.5],
-          [ex - 1.4, 5.4],
+          [ex + 2.4, 2.8],
+          [ex - 3.8, 6.5],
+          [ex - 2.6, 3.2],
           [ex - 3.4, 0],
         ],
         0,
@@ -419,25 +450,31 @@ export const gullinburstiBoarBody = makePolyBody({
       ears.push(ear);
     }
     parts.push({ geometry: mergeGeos(ears), mat: 'goldPaint2', solid: true, outline: true, name: 'ears' });
-    // 豬鼻盤（iter-115）：鼻套前端再凸出一片橢圓鼻盤（寬 13、高 9、厚 2.2 mm，前緣倒角），讀得出豬鼻
-    {
-      const disc = new THREE.CylinderGeometry(1, 1, 2.2, 32, 1);
-      disc.rotateZ(Math.PI / 2);
-      disc.scale(1, 4.5, 6.5);
-      disc.translate(68.6, 19.4, 0);
-      parts.push({ geometry: disc.toNonIndexed(), mat: 'snoutDisc', solid: true, outline: true, name: 'snout-disc' });
-    }
-    // 鼻盤上的兩個鼻孔（深色橢圓薄片，貼在前封口外 0.08 mm）
-    /** @type {THREE.BufferGeometry[]} */
-    const nostrils = [];
-    for (const sg of [-1, 1]) {
-      const g = new THREE.CircleGeometry(1, 20);
-      g.scale(1.5, 2.3, 1);
-      g.rotateY(Math.PI / 2);
-      g.translate(69.78, 19.4, sg * 2.6);
-      nostrils.push(g);
-    }
-    parts.push({ geometry: mergeGeos(nostrils), mat: 'nostril', name: 'nostrils' });
+    // iter-120：拿掉 iter-115 的圓形鼻盤與鼻孔（圓豬鼻讀成卡通臉，且 32 段圓柱面數高），改成長吻前端的深色斜切鼻孔縫（貼紙）
+    parts.push({
+      geometry: kit.decal((x, y, z) => {
+        if (x < 66 || y < P.yS(x) - 0.4) {
+          return -1;
+        }
+        const zc = 2.4 + 0.25 * (x - 66);
+        return Math.min(0.55 - Math.abs(Math.abs(z) - zc), x - 67, 71.4 - x);
+      }, { offset: 0.1 }),
+      mat: 'nostril',
+      name: 'nostril-slits',
+    });
+    // 背上雙細賽車條（iter-120，炫砲手法 4）：深烏銅細線從吻尖沿鬃毛兩側往後掃到臀部，間距往後漸寬（V12 / V13 的配置：從鼻部往後掃）
+    parts.push({
+      geometry: kit.decal((x, y, z) => {
+        if (x > 70 || x < -62 || y < P.yS(x) + 3) {
+          return -1;
+        }
+        const zc = lerp(2.2, 6.4, (70 - x) / 132);
+        const w = lerp(0.35, 0.6, (70 - x) / 132);
+        return w - Math.abs(Math.abs(z) - zc);
+      }, { offset: 0.08 }),
+      mat: 'dDark',
+      name: 'decal-spine-stripes',
+    });
     // 輪拱內襯（前後）
     parts.push({
       geometry: mergeGeos([buildLiner({ x: 40, y: 13, radius: 17.5 }, 3), buildLiner({ x: -40, y: 13, radius: 17.5 }, 3)]),
@@ -457,10 +494,14 @@ export const gullinburstiBoarBody = makePolyBody({
     // 眼睛（琥珀色小燈，杏仁形）：豬鼻後方的頭側
     parts.push({
       geometry: kit.decal((x, y, z) => {
-        if (Math.abs(z) < 12) {
+        if (Math.abs(z) < 8) {
           return -1;
         }
-        return 1 - Math.hypot((x - 49.5) / 2.1, (y - 28.2) / 1.1);
+        // iter-120：眼睛隨頭部壓低、前低後高斜放（衝鋒的怒目，自發光琥珀，炫砲手法 5）；落在長吻後段、前輪拱切口之前
+        const ey = P.yS(56.5) + 0.55 * (P.yC(56.5) - P.yS(56.5));
+        const u = x - 56.5;
+        const v = y - ey - 0.28 * u;
+        return 1 - Math.hypot(u / 2.2, v / 0.95);
       }, { offset: 0.1 }),
       mat: 'eye',
       name: 'lamp-eyes',
@@ -470,9 +511,9 @@ export const gullinburstiBoarBody = makePolyBody({
   src: {
     density_g_cm3: 'SPEC 1.14：ABS 約 1.05 g/cm³（推估）',
     wallThickness_mm: '推估：射出 ABS 殼 0.8 mm（同其他款）',
-    geometry: '本檔站位產生器 P（推估）：車殼 x −64 ~ 68（約 132 mm＋尾端鬃毛）、肩頸殼頂 43.6、鬃毛尾翼頂約 52、最寬 ±40（肩部，桶形斷面）；前輪上方殼頂 ≥ 36（31 mm 輪拱上方不開洞）',
-    bristles: '22 片梳狀鬃毛為實心 ABS 片（厚 1.4 mm），從頭頂 x 47 到車尾 x −58.5、高度 4.6 → 6.2（均勻）→ 尾端 3 片 7–8.2（iter-114；原為肩部起 13 片 3.5 → 16 mm 往後遞增），質量 = 封閉體積 × 1.05 g/cm³（推估）',
-    tusks: '獠牙為實心 ABS 掃掠件（根部直徑 2.3 mm），位於豬鼻兩側 |z| 15–19，離前導輪（|z| ≥ 35.5）遠（推估）',
+    geometry: '本檔站位產生器 P（iter-120，推估）：車殼 x −64 ~ 72（長吻）、背線最高 39（x ≈ −14）、鬃毛尾翼頂約 45.2、最寬 ±36.8（肩部）；前輪上方殼頂約 35.3（31 mm 輪拱上方不開洞，輪拱上方殼面最低點和改前相同）；外框 x −70.8 ~ 75.8',
+    bristles: 'iter-120：10 束梳狀鬃毛為實心 ABS 片（厚 2.0 mm），從 x 34 到車尾 x −60、高度 2.2 → 8.4 mm 前低後高、梳齒頂往後偏 1.05 × 高度（約 45° 後傾），質量 = 封閉體積 × 1.05 g/cm³（推估）',
+    tusks: 'iter-120：獠牙擾流片為實心 ABS 水平薄片（厚 1.4 mm，≥ 1.2 mm 射出薄件），吻側腰線高度 y ≈ 17.2、x 58.5 ~ 75.6、|z| 6.5 ~ 16.2，尖端上翹 6°；離前導輪（|z| ≥ 35.5）遠（推估）',
     wheelArches: '前後 R17.5（31 mm 輪胎半徑 15.5 + 2 mm），切口從 |z| 21 起＋3 mm 深內襯',
     mounts: '對齊 chassis-midship 的車殼安裝點（SPEC 1.14）',
   },
