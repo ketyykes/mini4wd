@@ -3783,3 +3783,18 @@
 - J：cerberus、sleipnir、kitsune、quetzal（各 1 項）。
 - K：trojan、minotaur、yaga-hut、firebird。
 - 保留標準不變：比的是基準版。
+- 合併（03:17–04:07）：
+  - G：比賽型 3 款；pc-box 第一版改動太小，主 agent 看圖後要求第二版：煙燻前半殼、兩條粉紅賽車條、鴨尾、分流唇加擋板（`70b0dfc`）。
+  - H（LG1，`5d6249b`）：
+    - owl 改成 3 片層疊後掠羽＋下垂羽尖端板，加細長眼燈。
+    - dartfrog 的背扇縮小、後掠，頂高 / 長度從 0.413 回到 0.317。
+    - marlin 的帆鰭後傾，加鏟形前唇，側面改成石油藍綠。
+  - I（LG2，`259cd3b`）：
+    - zeppelin 前 1/3 改楔形吊艙，X 舵加大並漆橘。車長 153.2 → 152.9；對 prism 的俯視 IoU 從 0.846 降到 0.826，修掉原本的超標。
+    - halo 的光環變薄並後傾 30°，加亮黑收腰和馬蹄形分流板。
+    - griffin 改深皇家紫＋白＋金，羽尖漆金。車長 154.6 → 152.9。
+  - J（`4d15e98`）、K（`a4e86e8`）：神話 8 款修正。
+  - 合併後的 IoU 問題：
+    - dartfrog × 基準 sleipnir 俯視 0.850；合併 J 的新 sleipnir 後降回上限內。
+    - **minotaur（K）× 新 sleipnir（J）俯視 0.859**：K 是用基準 sleipnir 量的；已交回 K 只改 minotaur 的俯視平面。
+- 17 款 Blender 3 視角出圖；評審資料夾 `shared/reviews/iter-123/`（`mkreview.sh` 加上重出比賽型 / LG1 / LG2 陣容圖）。
