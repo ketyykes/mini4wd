@@ -3630,3 +3630,11 @@
   - J：sleipnir（立體浮雕八足、車頭折痕）、gullinbursti（主體金色、鬃毛均勻）、kitsune（耳朵加厚）、trojan / gundestrup / kitsune 輪拱條紋、gundestrup 銀面波浪反光。
   - 斯拉夫組（G，iter-113 晚段開工）：firebird、yaga-hut，新體系 `slavic`。
 - 預期：20/20；外觀六項都不低於基準 7 / 7 / 8 / 7.5 / 7 / 7。下次評審加 bottom 視角讓第 6 項有依據。
+- 斯拉夫組（G）：`body-firebird`（火鳥，Khokhloma 黑底金紅、孔雀眼尾羽 5 根）、`body-yaga-hut`（雞腳小屋，原木牆、木瓦人字屋頂、nalichnik 窗飾、三趾鳥爪）。研究在各自 DESIGN.md（Afanasyev 故事 Magnus 1916 英譯、Khokhloma / Izba 條目）；Kolovrat 因被新納粹使用列入黑名單。主 agent 決定：yaga-hut 名稱保留（無人機綽號是時事借用、不是仇恨符號）；長度 119.2 接受（長方屋身俯視 IoU）。
+- H 組：mushussu-gate 改成塔樓式翼子板包＋門樓座艙＋車頭車尾斜面、車尾封口、穆修胡修 0.9 mm 實體浮雕；minotaur-maze 甲板拱起、俯視前寬後窄楔形、牛頭加寬額 / 鼻吻 / 眼 / 耳、全金合抱牛角。
+- I 組：serpent-longship 前後輪上方鼓出的船身＋側裙蓋住胎面上半與電池艙、船首 Oseberg / Urnes 風格蛇頭；tanngrisnir 軛井封板；kunpeng 側面中段補殼、翼與尾扇改倒角厚板、輪井內襯加深；quetzal 羽冠 11 片 × 1.6 mm、前輪弧形擋泥板、頂面紋放大。
+- J 組：sleipnir 每側 4 條立體浮雕腿（關節、蹄）、去掉折痕的細馬頸改引擎蓋馬臉；gullinbursti 全身金漆、22 片鬃毛；kitsune 耳朵 2.6 mm；gundestrup 鹿頭段剖面過衝（兩頰 19→22→18、頂線凹）改單調外凸。
+  - 輪拱黑白條紋原因（J 組射線量測）：不是共面 z-fighting（內襯與殼面最小距離 0.02–0.3 mm 只在邊緣、無共面），而是內襯只有外側上半圈、輪胎內側空的，視線穿過車身看到攝影棚亮地板與黑色安裝柱交錯。修法：輪胎內側 |z| 22.9 加環形擋板 `buildArchWell`（kitsune 匯出，trojan / gundestrup 共用）；側視輪拱內可見地板格數 kitsune 267 → 21、trojan 402 → 28。另修 gundestrup 內襯反折（40/320 三角形法線朝外、穿出殼面 3.5 mm）、trojan 喉部內襯穿出 9.4 mm。Blender 重出後前輪拱已無條紋（主 agent 看過 front34）。
+- 合併後主線 body-check：16 款 26 mm 全合法；俯視最大 IoU 0.844（sleipnir × tortoise-dome、gundestrup × mushussu 0.843），全部 < 0.85；31 mm 不切輪拱合法 12 款。H / I / J 改到的 11 款單跑 3 圈全部通過。
+- 計分：主線（16 款神話）score.mjs 18:58–19:14 **20/20**。
+- Blender 5 視角重出：H / I 6 款、J 5 款、斯拉夫 2 款；陣容圖 5 張（新增 `lineup_myth_slavic.png`）。`render/lineup.sh` 錯誤訊息 `$IMG（` 在 bash 會把全形括號當變數名的一部分 → 改 `${IMG}`。
