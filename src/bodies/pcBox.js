@@ -206,45 +206,8 @@ export const pcBoxBody = makePolyBody({
     parts.push({ geometry: kit.decal(archLine(40)), mat: 'pinkDecal', name: 'decal-arch-lines' });
     parts.push({ geometry: kit.decal(archLine(-40)), mat: 'whiteDecal', name: 'decal-arch-lines-rear' });
 
-    // 鼻下黑色分流唇（PC 平板實心件，內噴黑）。iter-125 加大：前緣 x 66.5 → 69.5、半寬 23 → 27、厚 0.7 → 1.0，
-    // 板頂 y 11.2 貼齊鼻端下緣；兩端加黑色直立擋板（高 4 mm，前低後高），前緣一道粉紅色線。
-    // 前導輪（x 71.5、|z| 42、半徑 6.5）離分流唇外緣仍 ≥ 9 mm
-    // iter-124 修正：前緣 69.5 → 64（＝基準車殼最前緣），半寬 27 → 25、後緣 x 57。分流唇伸出車鼻會讓碰撞外包絡（各碰撞格 AABB 的凸包）多出一個前角，
-    // P17_phase7_laps 的 31 mm 輪 pc-box 組裝穿牆 1.497 mm（基準 0.204）；收回車鼻範圍內後 0.854 mm（≤ 1 mm）；後緣若往前到 x 55，31 mm 輪間隙會變 −0.25 mm
-    parts.push({
-      geometry: flatPlate(
-        [
-          [64, -14],
-          [64, 14],
-          [62, 22],
-          [57, 25],
-          [57, -25],
-          [62, -22],
-        ],
-        10.2,
-        1.0,
-      ),
-      mat: 'frame',
-      solid: true,
-      outline: true,
-      name: 'chin-splitter',
-    });
-    const fencePts = [
-      [57, 11.2],
-      [62.5, 11.2],
-      [61.5, 13.2],
-      [57, 15.2],
-    ];
-    parts.push({
-      geometry: mergeGeos([finPlate(fencePts, -23.6, 1.0), finPlate(fencePts, 23.6, 1.0)]),
-      mat: 'frame',
-      solid: true,
-      outline: true,
-      name: 'chin-fences',
-    });
-    const chinEdge = new THREE.BoxGeometry(0.5, 0.5, 28);
-    chinEdge.translate(63.7, 11.45, 0);
-    parts.push({ geometry: chinEdge, mat: 'pink', name: 'chin-edge' });
+    // iter-125 修正：拿掉鼻下分流唇、擋板與前緣粉紅線。分流唇會改變碰撞外包絡與質量分布，P17 的 pc-box 組裝跑圈穿牆超過 1 mm
+    // （31 mm 輪 1.497 mm；收回車鼻範圍後 p7-demo 起跑擾動 1.051 mm）；拿掉後 p7-demo 最差 0.945、31 mm 輪 0.819 mm（基準 0.734 / 0.204）
     // 斜分割線上方 1.4 mm 白色細線（iter-123，只在側面與肩部）
     parts.push({ geometry: kit.decal((x, y, z) => (Math.abs(z) < 30 ? -1 : Math.min(y - splitY(x), splitY(x) + 1.4 - y))), mat: 'whiteDecal', name: 'decal-split-line' });
     // 擋風玻璃下緣折線（白色細線，x ≈ 36）
