@@ -2,7 +2,7 @@
 // 俯視是「牛的前驅」楔形：前輪到牛肩最寬（47.4），往後收成窄臀與窄尾（車尾斜面），甲板中央微拱、肩線圓角（不再是厚平板）；
 // 甲板用奶油白細牆在赭紅底上畫出方折的同心迷宮（各圈缺口前後交錯、每條迴廊一道擋牆 → 真的走得通的迷宮），
 // 迷宮中心是方形開放座艙（甲板開口＋往下 4.2 mm 的井壁，看得到底盤）；一條金色細線（阿里阿德涅之線）從鼻端穿過迷宮走到座艙。
-// 車頭是黑色牛頭：寬額、往前下斜收窄的鼻吻（逗號形鼻孔）、頭側一對亮黑牛眼（奶油白眼圈）、葉形牛耳，
+// 車頭是黑色牛頭：寬額、往前下斜收窄的鼻吻（逗號形鼻孔）、額頭兩側肩線上一對大的亮黑牛眼（奶油白眼白環，iter-116）、鼻吻正面金鼻環、葉形牛耳，
 // 額頂一對往外、往上翹再往前合抱的豎琴形金色牛角（實體件，根部埋進額頂殼面）。
 // 側裙是米諾斯壁畫藍，飾一條連續方折回紋帶（單向方螺旋，不組成四臂旋轉單元）；四個 R15.2 輪拱（26 mm 輪）＋輪拱內襯與黑色擋泥唇。
 // 設計：shared/design/body-minotaur-maze/DESIGN.md（MYTH_RESEARCH G6、G9、G10、G13：克諾索斯銀幣的直線迷宮、回紋＝線性迷宮、跳牛壁畫的白 / 紅 / 藍 / 黑）。
@@ -24,18 +24,22 @@ const XS = [-70, -64, -58, -50, -40, -28, -14, 0, 14, 28, 40, 46, 50, 54, 60, 66
 const P = {
   // 甲板中線（iter-115：評審「平板」→ 座艙駝峰＋車頭斜面＋車尾收尾）：車尾 21.5（往下收的斜尾）→ 後輪上方 32.4 →
   // 座艙駝峰頂 38.8（x 0，迷宮中心座艙）→ 往前降成車頭斜面（前輪上方 33.4）→ 額頂 33.6（牛角根）→ 額頭往前下斜 → 鼻吻頂 20.6
-  yC: monoCurve(XS, [21.5, 24.6, 27.6, 30.4, 32.4, 35.4, 38, 38.8, 37.8, 35.6, 33.6, 33.2, 33.6, 32.6, 30.2, 27, 24.2, 22.2, 20.6]),
+  yC: monoCurve(XS, [18.6, 21.6, 24.8, 28.4, 32.0, 35.4, 38, 38.8, 37.8, 35.6, 33.6, 33.2, 33.6, 32.6, 30.2, 27, 24.2, 22.2, 20.6]),
   // 半寬（俯視，iter-114）：「牛的前驅」楔形——前輪到牛肩最寬 47.4（外框 ≤ 48），往後收成窄臀（後輪上方 37、車尾 17.5），牛頭往鼻吻收窄；
   // 和其他寬殼拉開俯視輪廓（IoU）靠的是「前寬後窄」＋牛頭兩側到牛角之間的缺口＋往前合抱的豎琴形牛角
   hw: monoCurve([-70, -66, -60, -54, -46, -38, -28, -16, -4, 8, 20, 32, 40, 45, 50, 54, 60, 65, 71, 77.5], [12, 18.5, 24.5, 30.5, 36.5, 37, 36.6, 39, 47.4, 47.4, 47.4, 47.4, 47.4, 44.5, 40.6, 35.5, 29.5, 23.5, 18.4, 14]),
   // 甲板中央拱起量（中線比甲板邊高）：iter-115 座艙段加大到 7（駝峰只在中央隆起，兩側甲板邊仍低，讀成座艙罩而不是整塊厚板）、牛頭 2.4、鼻吻 1.2、車尾 1.6
-  crown: monoCurve(XS, [1.6, 2, 2.6, 3.2, 4, 5.6, 6.8, 7, 6.4, 5, 3.6, 2.8, 2.6, 2.4, 2.2, 1.8, 1.5, 1.3, 1.2]),
+  crown: monoCurve(XS, [0.8, 1.2, 2.0, 3.0, 4, 5.6, 6.8, 7, 6.4, 5, 3.6, 2.8, 2.6, 2.4, 2.2, 1.8, 1.5, 1.3, 1.2]),
   // 側裙下緣：中段 10.8（底盤側框段由 loft.js 自動讓開）；車尾、牛頭與鼻吻下緣逐步抬高
-  yLow: monoCurve(XS, [22, 19, 17, 13.4, 11.2, 11, 10.8, 10.8, 10.8, 11, 11.2, 12, 12.6, 13.2, 14, 14.6, 15.4, 16, 16.4]),
+  yLow: monoCurve(XS, [15.6, 17, 17, 13.4, 11.2, 11, 10.8, 10.8, 10.8, 11, 11.2, 12, 12.6, 13.2, 14, 14.6, 15.4, 16, 16.4]),
 };
 
-/** @type {(x: number) => number} 肩線圓角寬度 */
-const chamferAt = (x) => Math.min(4, 0.25 * P.hw(x));
+/** @type {(x: number) => number} 肩線圓角寬度（iter-116：車尾段從 x −50 的 4 收到車尾 1.4，讓尾端收成薄唇） */
+const chamferAt = (x) => Math.min(4, 0.25 * P.hw(x), x < -50 ? lerp(1.4, 4, (x + 70) / 20) : 4);
+/** @type {(x: number) => number} 側壁頂到殼下緣的最小高度（iter-116：車尾段 2 → 1，尾端殼厚 ≈ 3 mm，不再是厚台階） */
+const minWallAt = (x) => (x < -56 ? lerp(1, 2, Math.max(0, (x + 70) / 14)) : 2);
+/** @type {(x: number) => number} 側壁下半段往內收的量（iter-116：評審「厚平板」→ 側壁下半往內收 ≤ 2.8 mm，側視與斜視的下緣落在陰影裡，車身讀起來變薄；後輪旁與窄車尾的側壁貼著輪胎外緣，維持原本 1 mm） */
+const tuckAt = (x) => Math.max(1, Math.min(2.8, P.hw(x) - 38));
 /** @type {(x: number) => number} 甲板邊（圓角起點）高度 */
 const deckEdgeY = (x) => P.yC(x) - P.crown(x);
 /** @type {(x: number) => number} 側壁頂（圓角終點）高度 */
@@ -53,7 +57,7 @@ const profile = (x) => {
   const hd = hw - ch;
   const yE = deckEdgeY(x);
   const ySide = sideTopY(x);
-  const yLow = Math.min(P.yLow(x), ySide - 2);
+  const yLow = Math.min(P.yLow(x), ySide - minWallAt(x));
   return [
     [0, yC],
     [0.35 * hd, yC - 0.12 * cr],
@@ -61,9 +65,26 @@ const profile = (x) => {
     [hd, yE],
     [hw - 0.3 * ch, yE - 0.5 * ch],
     [hw, ySide],
-    [hw, lerp(ySide, yLow, 0.78)],
-    [hw - 1, yLow],
+    [hw, lerp(ySide, yLow, 0.5)],
+    [hw - tuckAt(x), yLow],
   ];
+};
+
+/**
+ * 側壁外面在高度 y 的 |z|（沿剖面第 4–7 點的折線內插；y 超出範圍時取端點）
+ * iter-116：側壁下半段內收後，輪拱內襯與擋泥唇要跟著側壁走，不能用固定的 hw
+ * @type {(x: number, y: number) => number}
+ */
+const sideZAt = (x, y) => {
+  const pts = profile(x);
+  for (let i = 4; i < pts.length - 1; i++) {
+    const [z0, y0] = pts[i];
+    const [z1, y1] = pts[i + 1];
+    if (y <= y0 && y >= y1) {
+      return lerp(z0, z1, y0 === y1 ? 0 : (y0 - y) / (y0 - y1));
+    }
+  }
+  return y > pts[4][1] ? pts[4][0] : pts[pts.length - 1][0];
 };
 
 // 牛頭、鼻吻段每 0.5 mm 一站（半寬變化大），其餘每 2 mm
@@ -80,8 +101,14 @@ const archRingDist = (x, y) => Math.min(...ARCHES.map((a) => Math.hypot(x - a.x,
 /** @type {number} 牛頭起點（x 大於此值改成黑色牛頭：克諾索斯石雕牛頭角杯的黑色石材） */
 const X_HEAD = 49;
 
-/** @type {{ x: number, y: number }} 牛眼位置（頭側，側視） */
-const EYE = { x: 57.2, y: 23.6 };
+/** @type {{ x: number, zOff: number, r: number, rise: number }} 牛眼（iter-116：從頭側小眼改到額頭兩側肩線圓角上的大眼——正面、側面、俯視都看得到雙眼）：x、離側壁的內縮量、球半徑、突出殼面高度 */
+const EYE = { x: 58.5, zOff: 2.1, r: 3.0, rise: 1.25 };
+
+/** @type {{ x: number, y: number }} 金鼻環中心（鼻吻正面，iter-116） */
+const NOSE_RING = { x: 77.9, y: 17.0 };
+
+/** @type {number} 側裙下緣黑色帶上緣高度（iter-116） */
+const ROCKER_Y = 13.2;
 
 /** @type {(x: number, z: number) => boolean} 側壁（倒角以下） */
 const onSide = (x, z) => Math.abs(z) > P.hw(x) - 0.25;
@@ -266,7 +293,7 @@ const buildLiner = (kit, arch) => {
   const zOuter = (t) => {
     const x = arch.x + r * Math.cos(t);
     const y = arch.y + r * Math.sin(t);
-    const zSide = P.hw(x) - 1.0;
+    const zSide = sideZAt(x, y) - 1.0;
     if (kit.surf.topY(x, zSide) >= y + 0.9) {
       return zSide;
     }
@@ -346,6 +373,8 @@ const CONFIG = {
     { mat: 'black', keep: (x, y, z) => (!onDeck(x, z) && !onSide(x, z) ? 1 : -1) },
     // 赭紅甲板（迷宮底色）
     { mat: 'ochre', keep: (x, y, z) => (onDeck(x, z) ? 1 : -1) },
+    // iter-116：側裙下緣 3 mm 黑色（像底盤側框的延伸），側視的彩色車身變薄
+    { mat: 'black', keep: (x, y) => ROCKER_Y - y },
     // 側裙：壁畫藍
     { mat: 'blue', keep: () => 1 },
   ],
@@ -436,22 +465,60 @@ const CONFIG = {
       }
       parts.push({ geometry: mergeGeos(ears), mat: 'black', solid: true, outline: true, name: 'bull-ears' });
     }
-    // 牛眼：頭側一對亮面黑半球（壓扁），外圍奶油白眼圈貼紙
+    // 牛眼（iter-116：評審「牛臉小，從側面看只剩一顆眼睛」→ 放大並移到額頭兩側的肩線圓角上）：
+    // 亮面黑圓頂（球半徑 3、突出殼面 1.25，沿殼面法線埋入）＋奶油白眼白環（1.1 mm）＋上緣赭紅眉弧
     {
       /** @type {THREE.BufferGeometry[]} */
       const eyes = [];
+      /** @type {number[][]} 兩眼在殼面上的點 */
+      const eyePts = [];
       for (const sg of [-1, 1]) {
-        const e = new THREE.SphereGeometry(1.5, 16, 12);
-        e.scale(1.15, 1, 0.55);
-        e.translate(EYE.x, EYE.y, sg * (P.hw(EYE.x) - 0.15));
+        const z = sg * (P.hw(EYE.x) - EYE.zOff);
+        const y = top(EYE.x, z);
+        // 殼面法線（數值微分）
+        const h = 0.05;
+        const gx = (top(EYE.x + h, z) - top(EYE.x - h, z)) / (2 * h);
+        const gz = (top(EYE.x, z + h) - top(EYE.x, z - h)) / (2 * h);
+        const n = new THREE.Vector3(-gx, 1, -gz).normalize();
+        const c = new THREE.Vector3(EYE.x, y, z).addScaledVector(n, EYE.rise - EYE.r);
+        const e = new THREE.SphereGeometry(EYE.r, 24, 16);
+        e.scale(1.15, 1, 1);
+        e.translate(c.x, c.y, c.z);
         eyes.push(e);
+        eyePts.push([EYE.x, y, z]);
       }
       parts.push({ geometry: mergeGeos(eyes), mat: 'eye', solid: true, name: 'bull-eyes' });
+      /** @type {number} 眼白環內徑（圓頂和殼面交線半徑 + 0.1） */
+      const ringR = Math.sqrt(EYE.r * EYE.r - (EYE.r - EYE.rise) * (EYE.r - EYE.rise)) + 0.1;
+      /** @type {(x: number, y: number, z: number) => number} 到最近眼睛的距離（x 方向依圓頂拉長比例縮放） */
+      const eyeDist = (x, y, z) => {
+        const p = eyePts[z < 0 ? 0 : 1];
+        return Math.hypot((x - p[0]) / 1.15, y - p[1], z - p[2]);
+      };
       parts.push({
-        geometry: kit.decal((x, y, z) => (onSide(x, z) ? 0.45 - Math.abs(Math.hypot((x - EYE.x) / 1.15, y - EYE.y) - 2.1) : -1)),
+        geometry: kit.decal((x, y, z) => Math.min(eyeDist(x, y, z) - ringR, ringR + 1.1 - eyeDist(x, y, z))),
         mat: 'dCream',
         name: 'decal-eye-rings',
       });
+      // 眉弧：眼白環外側、偏上後方的一道赭紅弧（0.8 mm），讓眼睛有方向（往前看）
+      parts.push({
+        geometry: kit.decal((x, y, z) => {
+          const p = eyePts[z < 0 ? 0 : 1];
+          const d = eyeDist(x, y, z);
+          // 只取眼睛內側（往車身中線）＋偏後的半圈
+          const inward = (Math.abs(p[2]) - Math.abs(z)) * 0.8 - (x - p[0]) * 0.6;
+          return Math.min(0.4 - Math.abs(d - (ringR + 1.9)), inward);
+        }),
+        mat: 'dOchre',
+        name: 'decal-eye-brows',
+      });
+    }
+    // 金鼻環（iter-116：評審建議加鼻環）：掛在鼻吻正面、環面朝前的 ABS 金色實心環（環半徑 2.7、斷面半徑 0.7），上緣埋進鼻吻
+    {
+      const ring = new THREE.TorusGeometry(2.7, 0.7, 12, 40);
+      ring.rotateY(Math.PI / 2);
+      ring.translate(NOSE_RING.x, NOSE_RING.y, 0);
+      parts.push({ geometry: ring, mat: 'gold', solid: true, outline: true, name: 'bull-nose-ring' });
     }
 
     // 輪拱內襯（前後）
@@ -480,7 +547,7 @@ const CONFIG = {
             if (y < P.yLow(x) + 0.4 || y > sideTopY(x) - 0.5 || P.hw(x) < 36.4) {
               continue;
             }
-            pts.push([x, y, sg * (P.hw(x) - 0.35)]);
+            pts.push([x, y, sg * (sideZAt(x, y) - 0.35)]);
           }
           if (pts.length > 3) {
             lips.push(sweepEllipse(pts, 60, () => [0.7, 0.7], 10));
@@ -526,24 +593,24 @@ const CONFIG = {
     });
     // 側裙下緣赭紅細帶（0.9 mm，壁畫的分隔線）
     parts.push({
-      geometry: kit.decal((x, y, z) => (onSide(x, z) && x < X_HEAD ? Math.min(0.45 - Math.abs(y - 12.6), archRingDist(x, y) - 1.2) : -1)),
-      mat: 'dBlack',
+      geometry: kit.decal((x, y, z) => (onSide(x, z) && x < X_HEAD ? Math.min(0.45 - Math.abs(y - ROCKER_Y) - 0.05, archRingDist(x, y) - 1.2) : -1)),
+      mat: 'dOchre',
       name: 'decal-skirt-line',
     });
     // 鼻孔：鼻吻頂前端一對往外斜的逗號形鼻孔（填赭紅，像鼻孔內側），不畫外圈（避免看成一對眼睛）
     parts.push({
       geometry: kit.decal((x, y, z) => {
-        if (x < 70.5 || y < P.yC(x) - 1.2) {
+        if (x < 69.5 || y < P.yC(x) - 1.6) {
           return -1;
         }
-        const u = x - 74.6;
-        const v = Math.abs(z) - 4.3;
+        const u = x - 74.4;
+        const v = Math.abs(z) - 5.2;
         // 往外後方斜 35° 的橢圓（長軸 1.9、短軸 0.85）
         const c = Math.cos(0.6);
         const sn = Math.sin(0.6);
         const a = u * c + v * sn;
         const b2 = -u * sn + v * c;
-        return 1 - Math.hypot(a / 0.85, b2 / 1.9);
+        return 1 - Math.hypot(a / 1.25, b2 / 2.6);
       }),
       mat: 'dOchre',
       name: 'decal-nostrils',
@@ -558,6 +625,7 @@ const CONFIG = {
     labyrinth: '迷宮：克諾索斯銀幣背面的直線迷宮（MYTH_RESEARCH G9）與「回紋是線性形式的迷宮」（G10）；6 圈同心矩形牆、缺口前後交錯、每條迴廊一道擋牆，牆寬 1.2 mm（圈數與尺寸自訂）',
     thread: '阿里阿德涅之線（G6）：金色 0.8 mm 細線沿迷宮解答路徑從牛鼻走到座艙',
     cockpit: '迷宮中心方形開放座艙 16 × 16 mm、井壁深約 4.2 mm（0.8 mm 實心壁），沒有底板（看得到底盤）',
+    iter116: 'iter-116（評審 iter-115「厚平板＋尾端厚台階、牛臉太小」）：車尾中線 21.5 → 18.6、尾段圓角收到 1.4 mm、側壁最小高度 1 mm（尾端殼厚約 3 mm 的薄唇）；側壁下半段內收 ≤ 2.8 mm（後輪旁維持 1 mm）＋下緣 13.2 以下黑色；牛眼移到額頭肩線（球半徑 3、突出 1.25，推估）＋奶油白眼白環 1.1 mm；鼻孔放大到 2.5 × 5.2 mm；金鼻環（環半徑 2.7、斷面半徑 0.7，實心 ABS，推估）',
     horns: '牛角為實心 ABS 掃掠件（根部 φ5.2 → 角尖 φ1.5，往外翹到 |z| 45.5、往前合抱到 x 82），牛耳葉形片厚 1.4（0.25 倒角），質量 = 封閉體積 × 1.05 g/cm³（推估）',
     head: 'iter-114 牛頭：黑色石材般的頭（克諾索斯石雕牛頭角杯，Minoan art 條目：steatite / serpentine 類軟石，鍍金木角為現代復原）；牛眼、牛耳、鼻孔造型自創',
     mounts: '對齊 chassis-midship 的車殼安裝點（SPEC 1.14）',

@@ -3,7 +3,7 @@
 // 車尾左右一對低而寬、往後掠的大鵬翼（覆羽板＋5 片分段飛羽，實體件），中央一片短扇尾；
 // 頂部一道兩端尖的長條透明窗（水天之間）。低扁全罩，前輪 R17.5 輪拱、後輪在窄鳥身外側由鵬翼罩住（26 / 31 mm 輪都可裝）。
 // 設計：shared/design/body-kunpeng/DESIGN.md（典故與文物對應 MYTH_RESEARCH 第 7 節 Z1–Z4、Z6；黑名單 7-3）。剖面為本檔站位產生器（推估）。
-// 塗裝為自創水墨感：墨黑 → 青灰 → 霧灰 → 留白的分段漸層、淡金細線魚鱗 / 羽紋、朱砂紅點睛與無字印章；
+// 塗裝為自創水墨感：墨黑 → 青灰 → 霧灰 → 留白的分段漸層、淡金細線魚鱗 / 羽紋、杏仁形魚眼＋往後拉的墨線眼線（iter-116，不用同心圓）與朱砂紅無字印章；
 // 不寫任何文字（含「Kunpeng」字樣）、不做晶片紋、不做紅色魚身 / 海豚形、不做龍角龍鬚。
 import * as THREE from 'three';
 import { makePolyBody, sweepEllipse } from './polyBody.js';
@@ -199,7 +199,8 @@ const materials = () => ({
   dInk: decalMaterial('decal-ink-black', { color: 0x16181b, roughness: 0.55 }),
   dRed: decalMaterial('decal-cinnabar-red', { color: 0xb5322a, roughness: 0.5 }),
   dPaper: decalMaterial('decal-paper-white', { color: 0xf1ede3, roughness: 0.55 }),
-  eye: namedMaterial('lamp-eye-pearl', { color: 0xf4f1e6, emissive: 0x3a3428, emissiveIntensity: 0.3, roughness: 0.1, clearcoat: 1.0 }),
+  // iter-116：淡金米色虹膜（魚眼）
+  eye: namedMaterial('lamp-eye-pearl', { color: 0xeadfb4, emissive: 0x3a3428, emissiveIntensity: 0.3, roughness: 0.1, clearcoat: 1.0 }),
   mount: namedMaterial('abs-mount-black', { color: 0x222326, roughness: 0.6 }),
   liner: namedMaterial('shell-wheelwell-slate', { color: 0x3b4850, roughness: 0.65, side: THREE.DoubleSide }),
 });
@@ -464,17 +465,56 @@ export const kunpengBody = makePolyBody({
     );
     parts.push({ geometry: tail, mat: 'ink2', solid: true, outline: true, name: 'peng-tail-fan' });
 
-    // 魚眼：朱砂紅眼圈＋米白眼珠＋墨黑瞳孔（點睛），魚頭側面
+    // 魚眼（iter-116：評審「同心圓像軍機圓標」→ 改成杏仁形魚眼＋往後拉的眼線，不再有同心圓）：
+    // 墨黑杏仁形眼線框（0.7 mm）＋淡金米色虹膜（被上下眼瞼切成杏仁形）＋偏前上方的墨黑瞳孔＋一道往後、略往上拉長的尖尾眼線（水墨畫魚眼的筆法）
     /** @type {{ x: number, y: number }} 魚眼中心（側視） */
     const EYE = { x: 66, y: 27.5 };
-    parts.push({
-      geometry: kit.decal(sideDecal((u, v) => Math.max(sdCircle(0, 0, 3.4)(u, v), -sdCircle(0, 0, 2.5)(u, v)), { x0: EYE.x, y0: EYE.y, zMin: 18 })),
-      mat: 'dRed',
-      name: 'decal-eye-ring',
+    /** @type {number} 杏仁形半長（沿車長） */
+    const EYE_A = 3.6;
+    /** @type {number} 杏仁形半高 */
+    const EYE_B = 1.9;
+    /** @type {number} 構成杏仁形的兩個圓的半徑（兩圓交集 = 杏仁形，尖端在 ±EYE_A） */
+    const EYE_R = (EYE_A * EYE_A + EYE_B * EYE_B) / (2 * EYE_B);
+    /**
+     * 杏仁形距離（負值 = 眼內）；dx 往車頭為正（世界 x，左右兩側不鏡射，眼尾一律朝車尾）
+     * @type {(dx: number, dy: number) => number}
+     */
+    const sdAlmond = (dx, dy) => Math.max(Math.hypot(dx, dy + (EYE_R - EYE_B)) - EYE_R, Math.hypot(dx, dy - (EYE_R - EYE_B)) - EYE_R);
+    /** @type {number[][]} 往後拉的眼線尾中線（從眼後角往後 5.4 mm、末端往上 1.1 mm 的弧，取 12 段折線） */
+    const EYE_TAIL = Array.from({ length: 13 }, (_, i) => {
+      const t = i / 12;
+      return [-EYE_A + 0.4 - 5.4 * t, 1.1 * t * t, t];
     });
-    parts.push({ geometry: kit.decal(sideDecal(sdCircle(0, 0, 2.5), { x0: EYE.x, y0: EYE.y, zMin: 18 })), mat: 'eye', name: 'lamp-eye' });
+    /**
+     * 眼線尾距離：沿中線漸細，半寬 0.5 → 0.3（最細處線寬 0.6 mm）
+     * @type {(dx: number, dy: number) => number}
+     */
+    const sdEyeTail = (dx, dy) => {
+      let d = Infinity;
+      for (let i = 0; i < EYE_TAIL.length - 1; i++) {
+        const [ax, ay, ta] = EYE_TAIL[i];
+        const [bx, by, tb] = EYE_TAIL[i + 1];
+        const ex = bx - ax;
+        const ey = by - ay;
+        const k = Math.max(0, Math.min(1, ((dx - ax) * ex + (dy - ay) * ey) / (ex * ex + ey * ey)));
+        const w = lerp(0.5, 0.3, lerp(ta, tb, k));
+        d = Math.min(d, Math.hypot(dx - ax - k * ex, dy - ay - k * ey) - w);
+      }
+      return d;
+    };
+    /** @type {(sd: (dx: number, dy: number) => number) => (x: number, y: number, z: number) => number} 兩側魚頭貼紙（世界 x，不鏡射） */
+    const eyeDecal = (sd) => (x, y, z) => (Math.abs(z) < 18 ? -1 : -sd(x - EYE.x, y - EYE.y));
+    // 虹膜（淡色，杏仁形內）
+    parts.push({ geometry: kit.decal(eyeDecal(sdAlmond)), mat: 'eye', name: 'lamp-eye' });
+    // 眼線框（杏仁形外側 0.7 mm 帶）＋眼尾
     parts.push({
-      geometry: kit.decal(sideDecal(sdCircle(0.35, 0.2, 1.3), { x0: EYE.x, y0: EYE.y, zMin: 18 }), { offset: 0.12 }),
+      geometry: kit.decal(eyeDecal((dx, dy) => Math.max(Math.min(sdAlmond(dx, dy) - 0.7, sdEyeTail(dx, dy)), -sdAlmond(dx, dy)))),
+      mat: 'dInk',
+      name: 'decal-eye-liner',
+    });
+    // 瞳孔：偏前上方、上緣被上眼瞼切掉一點（不是完整的同心圓）
+    parts.push({
+      geometry: kit.decal(eyeDecal((dx, dy) => Math.max(Math.hypot(dx - 0.5, dy - 0.25) - 1.35, sdAlmond(dx, dy))), { offset: 0.12 }),
       mat: 'dInk',
       name: 'decal-eye-pupil',
     });
