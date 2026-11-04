@@ -3870,3 +3870,11 @@
     - 原因：材質名 `paint-smoke-ash` 含 `smoke`，被 `render/showcase.py` 歸成煙燻玻璃類別（`render/README.md` 材質對照表）。
     - 修正：改名 `paint-ash-plume`，重新出圖後單獨複評。
 - 06:21 起：最終計分 → yaga / tortoise 5 視角、5 款 bottom / track 出圖 → P16 / P18 基準與主線交錯計時（`/tmp/mini4wd-p9/timing.sh`）。
+- **最終計分**：主線 `0f5eec0`（含 tortoise 退回、yaga 材質改名），score.mjs 06:41–06:54 **20/20**。
+  - P16_collision_patches 70.0 s（基準 65.3 s，+7%），P17_phase7_laps 138.0 s。
+  - 面數最終值（`/tmp/mini4wd-p9/tris-final.md`）：合計面數最多是基準的 1.07×（khepri、yaga），殼面＋實體最多 1.04×（cicada），單款最大 330310（≤ 754824）。
+  - 神話正面面積：平均 3054.7 → 2851.8 mm²（−6.6%），每款都比基準小，最少 −2.5%（tortoise 不在神話組）。
+  - 頂高最大 48.5 mm，頂高 / 長度 0.234–0.343。
+  - 俯視 IoU 最大 0.843（mantis × trojan）。
+  - 31 mm 輪合法性 35 款都沒有改變。
+- yaga 複評：`shared/reviews/iter-127b/`。
