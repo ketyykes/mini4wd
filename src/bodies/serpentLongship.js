@@ -1,5 +1,5 @@
 // 蛇首長船（body-serpent-longship，第八階段神話組・北歐）：維京長船意象的低船身——側面 4 道往外疊的疊板（clinker）稜線、
-// 船舷上緣每側 5 面圓盾、中段下沉的開放甲板（座艙），船首柱往上彎成 S 形蛇頸、頂端是有眼、口、眉稜的蛇頭（沒有牙與角），船尾往上捲成 stern-curl 尾翼。
+// 船舷上緣每側 5 面圓盾、iter-115 起甲板封成和船舷齊平、中央微拱的木板蓋板（只留一個小座艙口，評審：開放船斗不像比賽用車殼），船首柱往上彎成 S 形蛇頸、頂端是有眼、口、眉稜的蛇頭（沒有牙與角），船尾往上捲成 stern-curl 尾翼。
 // iter-114：船殼加寬並往下包（船舷在前後輪上方蓋住輪胎上半部、中段側面往下到 y 10 擋住電池艙），原本整艘船架在底盤上、四輪與電池艙全露。
 // 設計：shared/design/body-serpent-longship/DESIGN.md（典故、借用的古代語彙、和市售車殼 / 現代作品 / 既有車殼的差異）。
 // 造型回到出土文物（MYTH_RESEARCH N1、N2、N5–N7）：Oseberg 船艏柱盤捲的蛇（現存名船都不是龍頭）、Gokstad 陪葬的整船盾牌、疊板船殼的鉚釘列；
@@ -7,8 +7,9 @@
 // 塗裝全為自創：焦油黑褐船殼＋赭紅 / 奶油白對半分區的圓盾＋青銅盾心與鉚釘點列＋疊板邊緣淺木色細線；不含任何文字、號碼、商標。
 import * as THREE from 'three';
 import { makePolyBody } from './polyBody.js';
-import { namedMaterial, decalMaterial, mergeGeos, lerp } from './loft.js';
+import { namedMaterial, decalMaterial, mergeGeos, lerp, sdRoundRect } from './loft.js';
 import { monoCurve, buildStations } from './gazelleLeap.js';
+import { buildArchWell, chassisBlockedNearArch } from './kitsuneNinetail.js';
 
 /** @typedef {import('./loft.js').BodyPart} BodyPart */
 
@@ -28,27 +29,16 @@ const P = {
   keel: monoCurve(XS, [1.5, 3, 7.5, 18.5, 31, 28, 26, 25.5, 26, 28, 31, 20, 10.5, 4.5, 2, 1.5]),
 };
 
-/** @type {{ x0: number, x1: number, ramp: number, depth: number }} 中段下沉甲板（開放座艙）：平台範圍、斜坡長、比兩端甲板再深多少 */
-const WELL = { x0: -19, x1: 18, ramp: 9, depth: 10 };
+/**
+ * 甲板蓋板上的小座艙開口（iter-115）：原本中段整片下沉 10 mm 的開放甲板（評審：開放式船斗不像比賽用車殼）改成和船舷齊平的木板甲板，
+ * 只在中段留一個 24 × 18 mm 的圓角方口（舵手 / 划手位），深 4.5 mm
+ * @type {{ x0: number, x1: number, hz: number, r: number, depth: number }}
+ */
+const HATCH = { x0: -14, x1: 10, hz: 9, r: 3, depth: 4.5 };
 /** @type {number} 疊板道數 */
 const STRAKES = 4;
 /** @type {number} 疊板接縫往內的階差（mm） */
 const LAP_STEP = 0.8;
-
-/**
- * 甲板下沉權重：平台內 1，兩端以餘弦斜坡降到 0（前後輪上方回到淺甲板，避開 31 mm 輪拱）
- * @type {(x: number) => number}
- */
-const wellWeight = (x) => {
-  if (x >= WELL.x0 && x <= WELL.x1) {
-    return 1;
-  }
-  const d = x < WELL.x0 ? WELL.x0 - x : x - WELL.x1;
-  if (d >= WELL.ramp) {
-    return 0;
-  }
-  return 0.5 * (1 + Math.cos((Math.PI * d) / WELL.ramp));
-};
 
 /**
  * 該站的寬度縮放（兩端船尖附近，船舷欄、疊板階差等比例縮小，避免剖面點交錯）
@@ -66,7 +56,8 @@ const stationAt = (x) => {
   const yLow = P.yLow(x);
   const keel = Math.min(P.keel(x), hw - 0.5);
   const k = tipScale(x);
-  const deckY = sheer - 3 - WELL.depth * wellWeight(x);
+  // iter-115：甲板蓋板只比船舷頂低 1.2 mm（船舷欄成一道低矮的護欄），不再下沉
+  const deckY = sheer - 1.2;
   // 船舷欄厚度（外側船殼到內壁）至少 1.5 mm：iter-114 修正——船首 / 船尾尖端原本只有 3k（< 殼厚 0.8），殼內面會從外側穿出（Blender 看到內面色塊）
   const zi = Math.max(0.4, hw - Math.max(3 * k, 1.5));
   const yTop0 = sheer - 1.4;
@@ -94,7 +85,8 @@ const profile = (x) => {
   const k = tipScale(x);
   /** @type {number[][]} */
   const pts = [
-    [0, s.deckY],
+    // 甲板中線拱起 3 mm（蓋板是一片弧面而不是平板，從側面看得到中段的低矮隆起）
+    [0, s.deckY + 3 * k],
     [s.zi - 1.2 * k, s.deckY],
     [s.zi, s.sheer - 0.6],
     [s.hw - 0.4 * k, s.sheer],
@@ -146,6 +138,7 @@ const materials = () => ({
   // 霧面材質（基準評審 iter-112：神話款要有材質對比）：焦油木船殼、橡木甲板、盾面為霧面（roughness 0.6–0.75、低 clearcoat）
   tar: namedMaterial('paint-tar-brown', { color: 0x2a1d16, roughness: 0.72, clearcoat: 0.08, clearcoatRoughness: 0.6 }),
   deck: namedMaterial('paint-deck-oak', { color: 0x6b4a2f, roughness: 0.78, clearcoat: 0 }),
+  deck2: namedMaterial('paint-deck-oak', { color: 0x5a3d26, roughness: 0.78, clearcoat: 0, side: THREE.DoubleSide }),
   ochre: namedMaterial('paint-ochre-red', { color: 0xa8432a, roughness: 0.62, clearcoat: 0.1 }),
   ochre2: namedMaterial('paint-ochre-red', { color: 0xa8432a, roughness: 0.62, clearcoat: 0.1, side: THREE.DoubleSide }),
   cream: namedMaterial('paint-cream-white', { color: 0xeee0c0, roughness: 0.6, clearcoat: 0.1, side: THREE.DoubleSide }),
@@ -471,7 +464,7 @@ export const serpentLongshipBody = makePolyBody({
   form: 'longship',
   roof: 'open-cockpit',
   wing: 'stern-curl',
-  theme: '維京長船：兩頭尖的低船身、側面 4 道疊板稜線、船舷每側 5 面圓盾、中段下沉開放甲板、船首往上往內盤捲的蛇頸螺旋（Oseberg）、船尾上捲',
+  theme: '維京長船：兩頭尖的低船身、側面 4 道疊板稜線、船舷每側 5 面圓盾、齊平木板甲板蓋板只留小座艙口、船首柱 S 形蛇頸與蛇頭（Oseberg）、船尾上捲',
   material: 'ABS',
   density_g_cm3: 1.05,
   wallThickness_mm: 0.8,
@@ -482,13 +475,23 @@ export const serpentLongshipBody = makePolyBody({
     { x: 40, y: 13, radius: 17.5, cutZFrom: 21 },
     { x: -40, y: 13, radius: 17.5, cutZFrom: 21 },
   ],
+  recesses: [
+    {
+      id: '小座艙',
+      view: 'top',
+      shape: 'fn',
+      sd: (x, y, z) => sdRoundRect(x, Math.abs(z), HATCH.x0, HATCH.x1, -HATCH.hz, HATCH.hz, HATCH.r),
+      depth: HATCH.depth,
+    },
+  ],
+  innerSkipRecess: true,
   sideZMin: 30,
   zones: () => [
     // 甲板與船舷欄內壁（剖面點 0–2）：橡木色
     { mat: 'deck', keep: (x, y, z, s) => BRK[2] + 1e-4 - Math.abs(s) },
     { mat: 'tar', keep: () => 1 },
   ],
-  mats: { inner: 'inner', edge: 'edge', cap: 'tar', mount: 'mount' },
+  mats: { inner: 'inner', edge: 'edge', cap: 'tar', recess: 'deck2', recessWall: 'deck2', mount: 'mount' },
   materials,
   extras: (kit) => {
     /** @type {BodyPart[]} */
@@ -552,16 +555,19 @@ export const serpentLongshipBody = makePolyBody({
       shell: true,
       name: 'arch-liners',
     });
-    // 甲板上的 2 條划手橫座（實心橫板，兩端埋進船舷欄內壁）
-    /** @type {THREE.BufferGeometry[]} */
-    const thwarts = [];
-    for (const x of [-9, 9]) {
-      const s = stationAt(x);
-      const g = new THREE.BoxGeometry(2.2, 0.8, 2 * (s.zi - 0.5));
-      g.translate(x, s.deckY + 3.6, 0);
-      thwarts.push(g);
+    // iter-115：輪胎內側環形擋板（kitsune 的 buildArchWell，|z| 22.9；離 31 mm 輪內側面 1.85 mm）
+    parts.push({
+      geometry: mergeGeos([{ x: 40, y: 13 }, { x: -40, y: 13 }].map((a) => buildArchWell(a, 22.9, 12.3, 17.8, chassisBlockedNearArch))),
+      mat: 'liner',
+      shell: true,
+      name: 'arch-wells',
+    });
+    // 小座艙裡的一條划手橫座（實心橫板，兩端埋進座艙壁）
+    {
+      const g = new THREE.BoxGeometry(2.2, 0.9, 2 * HATCH.hz + 0.6);
+      g.translate(-1, stationAt(-1).deckY - HATCH.depth + 2.2, 0);
+      parts.push({ geometry: g, mat: 'deck', solid: true, name: 'thwart' });
     }
-    parts.push({ geometry: mergeGeos(thwarts), mat: 'deck', solid: true, name: 'thwarts' });
 
     /** @type {(s: number) => boolean} 剖面參數在外側船殼（第 1 道疊板上緣以下） */
     const outerSide = (s) => Math.abs(s) > BRK[4] - 1e-4;
@@ -619,7 +625,8 @@ export const serpentLongshipBody = makePolyBody({
     geometry: '本檔站位產生器 P（推估）：船身 x −66 ~ 73，船舷上緣中段 32.5、兩端 42.5 / 45；iter-114 起前後輪上方最寬 ±35（蓋住 31 mm 輪胎外側面 ±34.75）、中段 ±27.5（盾外緣約 ±29.5，俯視和 khepri / skeleton 的 IoU ≤ 0.81）、側面下緣中段 y 10；車殼外框含船首柱蛇頭 / 船尾柱 152.6 mm（SPEC 1.14a：碰撞方塊長 ≤ 153 mm 才不會在立體橋刮路面）；蛇頭頂約 58.5',
     strakes: '4 道疊板，每道下緣唇往內 0.8 mm 一階（推估：1/32 縮尺下看得到的最小階差；Gokstad / Oseberg 船為疊板船殼，見 DESIGN.md）',
     shields: '每側 5 面圓盾，半徑 6、厚 0.9 mm 實心 ABS（推估；Gokstad 船舷每側 32 面盾，縮尺後只放 5 面）',
-    wheelArches: '前後 R17.5（31 mm 輪胎半徑 15.5 + 2 mm），中段下沉甲板在前後輪上方以斜坡回到淺甲板（甲板高 ≥ 輪拱頂 + 1.5）',
+    wheelArches: '前後 R17.5（31 mm 輪胎半徑 15.5 + 2 mm），甲板高 = 船舷 − 1.2 ≥ 31.3（輪拱頂 30.5 之上）；iter-115 加 buildArchWell 輪胎內側環形擋板（|z| 22.9）',
+    deck: 'iter-115：甲板蓋板 = 船舷頂 − 1.2 mm、中線拱 3 mm；小座艙 x −14 ~ 10、|z| ≤ 9、深 4.5 mm、內有一條划手橫座（推估）',
     serpentHead: '蛇頭（iter-114）：頭長約 6.4、寬 3.5、高 2.5 mm 的實心橢球組合（頭骨＋吻部＋下顎＋眉稜），青銅眼 1.5 × 0.9 mm（推估：1/32 縮尺下看得到的最小眼徑）',
     stem: '船首柱 / 船尾柱為實心 ABS 掃掠件（斷面根部 5.4 × 6.8 mm 往捲曲中心漸細），質量 = 封閉體積 × 1.05 g/cm³（推估）',
     mounts: '對齊 chassis-midship 的車殼安裝點（SPEC 1.14）',
