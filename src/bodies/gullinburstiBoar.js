@@ -70,9 +70,9 @@ const shellZAt = (x, y) => {
 
 /** @type {() => Record<string, THREE.Material>} */
 const materials = () => ({
-  // 炭黑鐵灰：緞面（roughness 0.55，低 clearcoat），和亮金鬃毛形成材質對比
-  iron: namedMaterial('paint-iron-charcoal', { color: 0x2c2e33, roughness: 0.58, clearcoat: 0.15, clearcoatRoughness: 0.5 }),
-  iron2: namedMaterial('paint-iron-charcoal', { color: 0x2c2e33, roughness: 0.58, clearcoat: 0.15, side: THREE.DoubleSide }),
+  // 深鐵灰：緞面（roughness 0.58，低 clearcoat），和亮金鬃毛形成材質對比；刻意不用金屬黑（避開 Bergkaiser Fenrir 限定版的金屬黑＋黃細線，MYTH_RESEARCH F7）
+  iron: namedMaterial('paint-iron-charcoal', { color: 0x3d4046, roughness: 0.58, clearcoat: 0.15, clearcoatRoughness: 0.5 }),
+  iron2: namedMaterial('paint-iron-charcoal', { color: 0x3d4046, roughness: 0.58, clearcoat: 0.15, side: THREE.DoubleSide }),
   // 真金屬：青銅豬鼻、金鬃毛（名稱含 -brass → Blender 換成金屬材質）
   bronze: namedMaterial('trim-bronze-brass', { color: 0x9c6b3c, metalness: 0.8, roughness: 0.34, clearcoat: 0.2 }),
   gold: namedMaterial('trim-gold-brass', { color: 0xe0b043, metalness: 0.85, roughness: 0.28, clearcoat: 0.3 }),
