@@ -301,10 +301,13 @@ export const trailCanopyBody = makePolyBody({
     const slashLow = (x) => 15.0 + 0.15 * (24.5 - x);
     /** @type {(x: number) => number} 斜條上緣 */
     const slashHigh = (x) => 16.6 + 0.21 * (24.5 - x);
+    // 只投影在側面：|z| 超過該站最寬處 − 3.5（前段側箱較窄，x 24 半寬只有 30）
+    /** @type {(x: number, z: number) => boolean} */
+    const offSide = (x, z) => Math.abs(z) < T('hw', x) - 3.5;
     /** @type {KeepFn} */
-    const slashKeep = (x, y, z) => (Math.abs(z) < 33 ? -1 : Math.min(24.5 - x, x + 27, y - slashLow(x), slashHigh(x) - y));
+    const slashKeep = (x, y, z) => (offSide(x, z) ? -1 : Math.min(24.5 - x, x + 27, y - slashLow(x), slashHigh(x) - y));
     /** @type {KeepFn} */
-    const pinKeep = (x, y, z) => (Math.abs(z) < 33 ? -1 : Math.min(24 - x, x + 27, slashLow(x) - 0.55 - y, y - (slashLow(x) - 1.25)));
+    const pinKeep = (x, y, z) => (offSide(x, z) ? -1 : Math.min(24 - x, x + 27, slashLow(x) - 0.55 - y, y - (slashLow(x) - 1.25)));
     parts.push({ geometry: kit.decal(slashKeep), mat: 'orange', name: 'decal-side-slash' });
     parts.push({ geometry: kit.decal(pinKeep), mat: 'black', name: 'decal-side-slash-pin' });
     // 號碼牌移到斜條下方（x −17、y 14.8）

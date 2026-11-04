@@ -133,9 +133,8 @@ export const pcBoxBody = makePolyBody({
   openings: [{ id: '座艙底開口', view: 'top', shape: 'fn', sd: cabinHoleSd }],
   zones: () => [
     // iter-123：粉紅下裙改成前下往後上的斜分割（splitY：鼻端 y 12.5 → 車尾 y 25.9），後段側面整片內噴粉紅、前段留透明；
-    // 分割線上方一道 1.4 mm 白色細線（內噴）。白色中線寬條紋與兩側粉紅細條紋照舊
+    // 分割線上方的白色細線做成貼紙（extras 的 decal-split-line），不再多切一條殼面分區線（殼面面數維持改前）。白色中線寬條紋與兩側粉紅細條紋照舊
     { mat: 'pink', keep: (x, y) => splitY(x) - y },
-    { mat: 'white', keep: (x, y) => Math.min(y - splitY(x), splitY(x) + 1.4 - y) },
     { mat: 'white', keep: (x, y, z) => Math.min(3.2 - Math.abs(z), y - 26) },
     { mat: 'pink', keep: (x, y, z) => Math.min(Math.abs(z) - 5, 7 - Math.abs(z), y - 26) },
     { mat: 'clear', keep: () => 1 },
@@ -217,6 +216,8 @@ export const pcBoxBody = makePolyBody({
       outline: true,
       name: 'chin-splitter',
     });
+    // 斜分割線上方 1.4 mm 白色細線（iter-123，只在側面與肩部）
+    parts.push({ geometry: kit.decal((x, y, z) => (Math.abs(z) < 30 ? -1 : Math.min(y - splitY(x), splitY(x) + 1.4 - y))), mat: 'whiteDecal', name: 'decal-split-line' });
     // 擋風玻璃下緣折線（白色細線，x ≈ 36）
     parts.push({ geometry: kit.decal((x, y, z) => Math.min(0.45 - Math.abs(x - 35.6), 30 - Math.abs(z))), mat: 'whiteDecal', name: 'decal-windshield-line' });
 

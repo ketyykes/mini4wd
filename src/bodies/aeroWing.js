@@ -424,10 +424,12 @@ const compose = () => {
 
   // iter-123（第九階段，評審「加一條從鼻尖貫穿到尾翼的深藍寬賽車條紋」）：中線寬 11 mm 深藍條紋＋兩側 0.8 mm 洋紅細線，
   // 鼻尖 → 引擎蓋 → （深藍煙燻座艙罩接續）→ 尾甲板 → 尾翼中央。原本引擎蓋的雙 V 形箭頭和條紋重疊，拿掉
+  /** @type {(x: number, z: number) => number} 座艙罩外圍 0.6 mm 以外（> 0）；座艙罩 x 範圍以外 halfW = 0，直接回傳 1（不然中線 |z| < 0.4 會被挖掉） */
+  const outsideCab = (x, z) => (kit.underCanopy(x, 0) + 0.2 <= 0 ? 1 : -kit.underCanopy(x, z) - 0.6);
   /** @type {KeepFn} */
-  const stripeKeep = (x, y, z) => Math.min(STRIPE_HALF - Math.abs(z), -kit.underCanopy(x, z) - 0.6, y - 15.5);
+  const stripeKeep = (x, y, z) => Math.min(STRIPE_HALF - Math.abs(z), outsideCab(x, z), y - 15.5);
   /** @type {KeepFn} */
-  const pinKeep = (x, y, z) => Math.min(Math.abs(z) - STRIPE_PIN[0], STRIPE_PIN[1] - Math.abs(z), -kit.underCanopy(x, z) - 0.6, y - 15.5);
+  const pinKeep = (x, y, z) => Math.min(Math.abs(z) - STRIPE_PIN[0], STRIPE_PIN[1] - Math.abs(z), outsideCab(x, z), y - 15.5);
   parts.push({ geometry: kit.decal(stripeKeep), mat: 'stripe', name: 'decal-racing-stripe' });
   parts.push({ geometry: kit.decal(pinKeep), mat: 'magenta', name: 'decal-racing-stripe-pin' });
 
