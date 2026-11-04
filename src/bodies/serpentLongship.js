@@ -482,7 +482,7 @@ export const serpentLongshipBody = makePolyBody({
         return g;
       };
       parts.push({ geometry: dome([9, 5.4, 9.5], [13, deckTop(13) - 1.1]), mat: 'smoke', solid: true, outline: true, name: 'cockpit-windshield' });
-      parts.push({ geometry: dome([11, 3.4, 6.5], [-25, deckTop(-25) - 0.9]), mat: 'tar', solid: true, outline: true, name: 'cockpit-fairing' });
+      parts.push({ geometry: dome([11, 3.4, 6.5], [-25, deckTop(-25) - 0.9]), mat: 'tar', solid: true, outline: true, name: 'headrest-fairing' });
     }
     // 船舷圓盾：每側 5 面
     /** @type {THREE.BufferGeometry[]} */
