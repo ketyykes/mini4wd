@@ -3638,3 +3638,14 @@
 - 合併後主線 body-check：16 款 26 mm 全合法；俯視最大 IoU 0.844（sleipnir × tortoise-dome、gundestrup × mushussu 0.843），全部 < 0.85；31 mm 不切輪拱合法 12 款。H / I / J 改到的 11 款單跑 3 圈全部通過。
 - 計分：主線（16 款神話）score.mjs 18:58–19:14 **20/20**。
 - Blender 5 視角重出：H / I 6 款、J 5 款、斯拉夫 2 款；陣容圖 5 張（新增 `lineup_myth_slavic.png`）。`render/lineup.sh` 錯誤訊息 `$IMG（` 在 bash 會把全形括號當變數名的一部分 → 改 `${IMG}`。
+- 外觀評審（`shared/reviews/iter-114/REVIEW.md`，16 款＋bottom 視角）：6 / 7.5 / 8 / 7 / 7 / 6 = **6.92**、總分 **84.58**；A/B 對 iter-113 辨識度進步、其餘持平；同份評審給既有 19 款 7 / 7 / 8 / 7 / 7 / 6（第 6 項既有款也是 6，評審間校準差異）→ 神話組相對落後的只有比例。最弱 sleipnir、mushussu（退步）、tanngrisnir；yaga-hut 最像盒子。必修無。
+
+## iter-115（開始 2026-11-04 19:40，TZ=Asia/Taipei date）：「先像迷你四驅車，神話元素當裝飾」
+
+- 起因：使用者 19:3x 問「為什麼有些車子長得像房子」；評審比例 6：「一半是箱形／平板輪廓（yaga-hut、tanngrisnir、longship、minotaur、mushussu）」。
+- 計畫：三組 subagent（規格 `/tmp/mini4wd-p8/batch7.md`，20:50 前 commit）。輪廓先是低矮流線車殼，神話主題用表面處理、浮雕與少量附件呈現。預期：20/20、比例回到 7。
+  - K：yaga-hut 改低矮流線（屋脊 41.5、煙囪 49.5；兩片斜面車頂當人字屋頂、原木凸紋、窗飾、煙囪尾翼；雞腳有鱗片環與關節）；mushussu-gate 改楔形短鼻＋低駝峰＋長尾，側裙包到底盤側框，恢復白色玫瑰花飾帶、穆修胡修浮雕加鱗片，城垛只留尾翼一排小齒。
+  - L：tanngrisnir 車斗封橡木蓋板＋小座艙、羊角改後掃彎刀角、加長鬍鬚；longship 齊平甲板蓋板＋小座艙；minotaur 座艙駝峰、車頭斜面、車尾下收。
+  - M：sleipnir 每側 8 條腿（側視數得出八足）、青銅籠頭與韁繩、Urnes 風格 8 字交織帶（非三角結 / Valknut、無盧恩）；gullinbursti 主體改真金屬金 `trim-gold-body-brass`、鬃毛 12 束加粗、豬鼻盤與立耳；trojan / heimdall / quetzal 加腹板蓋電池艙（共用 `buildBellySkirt`、`buildSlantSkirt`，trojanHorse.js 匯出）。
+- 合併後主線 body-check：16 款 26 mm 全合法；俯視最大 IoU 0.844（sleipnir × lowline-flat）；改到的 10 款單跑 3 圈全部通過（yaga-hut 雞爪最低 y 4.3 沒有擦坡道）。
+- 計分：主線（16 款神話）score.mjs 20:27–20:43 **20/20**。Blender 5 視角重出 10 款（K 2、L 3、M 5）；陣容圖 5 張重出。
