@@ -1,11 +1,11 @@
 // 陸龜圓頂重甲型（body-tortoise-dome，第四階段致敬《爆走兄弟》風格新款）：高聳的龜甲圓頂、四個獨立鼓出的大輪拱擋泥板、
-// 圓頂前緣一道裝甲觀察縫（無座艙泡）、車尾一體成形的上翹鴨尾唇（無獨立尾翼）。
+// 圓頂前緣一道裝甲觀察縫（無座艙泡）、車尾一體成形的上翹鴨尾唇（無獨立尾翼）；iter-125：龜殼後半壓低成淚滴側影、甲緣外一圈往後掃的古銅鋸齒裙邊。
 // 設計：shared/design/body-tortoise-dome/DESIGN.md（角色、致敬語彙、和劇中車 / 市售車殼的差異）。
 // 剖面由本檔的站位函式產生（推估，依 HOMAGE_RESEARCH 第 4 節與外框 / 輪胎間隙掃描）。
 // 塗裝全為自創：翡翠綠＋象牙白＋古銅、六角甲片分格線、號碼「61」；不含任何廠商 / 作品名稱、商標或角色圖像。
 import * as THREE from 'three';
 import { makePolyBody, flatPlate } from './polyBody.js';
-import { namedMaterial, decalMaterial, sdNumber, sdConvexPolygon, sideDecal, topDecal, mergeGeos, lerp, smoothstep, buildRegion, featureSd, buildCap } from './loft.js';
+import { namedMaterial, decalMaterial, sdNumber, sdConvexPolygon, sideDecal, topDecal, mergeGeos, lerp, smoothstep, buildRegion, buildRim, featureSd, buildCap } from './loft.js';
 
 /** @typedef {import('./loft.js').KeepFn} KeepFn */
 
@@ -64,7 +64,9 @@ const X_NOSE = 68;
  * - yLow：側壁下緣
  */
 const T = monoTable([-66, -62, -57, -52, -44, -40, -34, -22, -10, 0, 10, 22, 34, 40, 46, 52, 58, 64, 68], {
-  yTop: [40.4, 37.6, 34.8, 36.6, 43, 45.4, 48.2, 51.2, 52, 51.6, 50.2, 46.4, 39.4, 36, 32.4, 28.6, 24.6, 20, 18.2],
+  // iter-125（第九階段，評審：「龜殼高拱，側影像玩具烏龜」→「龜殼後半壓低 4 mm 拉成淚滴形」）：頂點 52 由 x −10 前移到 x 0 附近，
+  // 後半（x −52 → −10）最多壓低 4 mm（x −40：45.4 → 41.4），側影變成前高後長斜降的淚滴；前半與鴨尾唇不動
+  yTop: [40.4, 37.6, 34.8, 35.4, 39.2, 41.4, 44.4, 48.6, 51.3, 52, 50.6, 46.4, 39.4, 36, 32.4, 28.6, 24.6, 20, 18.2],
   dw: [12, 15.5, 19, 22, 26.5, 27.5, 29, 30.5, 31, 31, 31, 30.5, 28.5, 26.5, 22.5, 18, 12.5, 7.5, 5.5],
   yRim: [41.6, 38.4, 34.6, 33.2, 33.2, 33.2, 32.8, 31.6, 31, 30.8, 31, 31.6, 32.4, 31.6, 30, 27.4, 24, 20.5, 18.2],
   hw: [16, 21, 28, 35, 44.5, 46.5, 43.5, 37, 38.5, 39, 38.5, 37, 43.5, 46.5, 44.5, 37, 24, 12.5, 8],
@@ -387,6 +389,24 @@ export const tortoiseDomeBody = makePolyBody({
       tailLamps.push(g);
     }
     parts.push({ geometry: mergeGeos(tailLamps), mat: 'lamp', solid: true, name: 'tail-lamps' });
+    // iter-125（第九階段，評審：「殼緣做往後掃的鋸齒裙邊」）：甲緣台階外側一圈凸起 0.5 mm 的金屬古銅鋸齒裙邊（龜甲緣盾片）——
+    // 齒距 8 mm、齒尖朝後（每齒從前往後越伸越寬、後緣直切回甲緣）→ 側視是一排往後掃的鋸齒；鼓出的輪拱上方讓開（只做兩輪之間與前後段）。
+    // 浮雕件（不進碰撞），寬度以「甲緣 → 擋泥板肩」的比例 f 計
+    /** @type {(x: number, y: number, z: number) => number} 鋸齒裙邊範圍（> 0 = 在裙邊內） */
+    const scuteSkirt = (x, y, z) => {
+      const az = Math.abs(z);
+      const dw = domeHalfW(x);
+      const hw = Math.max(T('hw', x), dw + 2.2);
+      const f = (az - dw - 1.3) / Math.max(0.5, hw - dw - 1.3);
+      const ph = (((x + 204) % 8) + 8) % 8 / 8;
+      const reach = 0.12 + 0.5 * (1 - ph);
+      // 輪拱段（|x ∓ 40| < 15）讓開：該處甲緣外是鼓出的擋泥板，不做裙邊
+      const archGap = Math.min(Math.abs(x - 40), Math.abs(x + 40)) - 15;
+      return Math.min(az - dw - 1.3, reach - f, archGap, x + 58, 52 - x, y - sweepLine(x) - 1.6);
+    };
+    const skirtReg = buildRegion(kit.surf, [...kit.holes, scuteSkirt], { offset: 0.5 });
+    parts.push({ geometry: skirtReg.geometry, mat: 'bronze', name: 'scute-skirt' });
+    parts.push({ geometry: buildRim(skirtReg, 0, 0.5), mat: 'bronzeGroove', name: 'scute-skirt-wall' });
     // 鼻下古銅喙刃（V3 尖鼻的變形）：往前尖出的薄板，埋入鼻端下緣
     parts.push({
       geometry: flatPlate(

@@ -1,9 +1,9 @@
 // 蟬翼（body-cicada-veil，第六階段 LG1 致敬款）：前段寬而平、往前收圓的「頭」（俯視最寬在前輪後方）、頭部外上角一對貼合的扁平多面複眼（iter-70；原為外突圓球燈）、鼻端下緣的下顎前唇；
 // 後段斷面呈 Λ 字（帳篷形）屋脊、往後漸低；後半車頂是兩片煙燻琥珀透明「脈翅」板（沿屋脊斜放、長格翅脈、看得到底盤），
-// 往前延伸蓋住駕駛艙；兩片脈翅尾端超出車尾殼面約 8 mm，在中線收攏成一個低矮尖尾（tent-tail，沒有獨立尾翼）。
+// 往前延伸蓋住駕駛艙；兩片脈翅尾端超出車尾殼面（iter-125：8 → 14 mm，後緣分叉成左右兩個往後外的翅尖，中間露出炭黑腹節車尾；tent-tail，沒有獨立尾翼）。
 // 設計：shared/design/body-cicada-veil/DESIGN.md（HOMAGE_RESEARCH 第 6 節 P6、LG1 語彙 L1-x、和劇中車 / 市售車殼的差異）。
 // 剖面為本檔站位產生器（推估，依 31 mm 輪拱、底盤內件高度與外框限制）。
-// 塗裝全為自創：炭黑＋琥珀透明＋薄荷綠（三道聲波弧、簷線細線、頭頂三點單眼符號）；不含任何廠商 / 作品名稱、商標或角色圖像。
+// 塗裝全為自創：炭黑＋煙燻琥珀透明＋薄荷綠（三道聲波弧、簷線細線、頭頂三點單眼符號、車尾腹節環）；不含任何廠商 / 作品名稱、商標或角色圖像。
 import * as THREE from 'three';
 import { makePolyBody, sweepEllipse } from './polyBody.js';
 import { namedMaterial, decalMaterial, mergeGeos, lerp } from './loft.js';
@@ -16,8 +16,8 @@ import { monoCurve, buildStations, sdCircle } from './gazelleLeap.js';
 const X_TAIL = -59;
 /** @type {number} 鼻端 x */
 const X_NOSE = 60;
-/** @type {number} 脈翅尖尾 x（超出車尾殼面 8 mm） */
-const X_TIP = -67;
+/** @type {number} 脈翅翅尖 x（iter-125：超出車尾殼面 8 → 14 mm，分叉的兩個翅尖像蟬翼蓋過腹端） */
+const X_TIP = -73;
 
 /** 縱向控制節點（x 由後到前；前後軸 x = ±40） */
 const XS = [-59, -54, -49, -40, -30, -20, -8, 4, 12, 18, 24, 30, 40, 46, 50, 54, 57, 60];
@@ -75,20 +75,26 @@ const tentY = (x, z) => {
     const yE = Math.min(P.yE(x), yR - 0.3);
     return yR - ((yR - yE) * az) / zEave(x);
   }
-  // 依車尾 5 mm 的斜率外插
-  const d = (x - X_TAIL) / 5;
-  const x5 = X_TAIL + 5;
-  const yR = P.yR(X_TAIL) + d * (P.yR(x5) - P.yR(X_TAIL));
-  const yE = P.yE(X_TAIL) + d * (P.yE(x5) - P.yE(X_TAIL));
-  const zE = zEave(X_TAIL) + d * (zEave(x5) - zEave(X_TAIL));
-  return yR - ((yR - yE) * az) / Math.max(1, zE);
+  // iter-125：翅尖分叉後不在中線（|z| 最大約 16），改成取車尾殼面處同一 |z| 的斜面高度，再每 mm 往下 0.45 mm（翅尖微下垂）
+  const yE0 = Math.min(P.yE(X_TAIL), P.yR(X_TAIL) - 0.3);
+  const y0 = P.yR(X_TAIL) - ((P.yR(X_TAIL) - yE0) * Math.min(az, zEave(X_TAIL))) / zEave(X_TAIL);
+  return y0 + 0.45 * (x - X_TAIL);
 };
 
-/** 脈翅俯視外形：外緣 zOut(x)（翅根在駕駛艙前 x 24；最寬 48.5 在 x −6，越過屋簷往外伸出約 4 mm＝收起的蟬翼比身體寬；尖尾 x −70） */
-const WING_X = [-67, -64, -60, -55, -46, -34, -20, -6, 6, 14, 20, 24];
-const wingOut = monoCurve(WING_X, [0.4, 6.5, 13.5, 22, 32, 39.5, 45.5, 48.5, 46, 36, 20, 1.8]);
-/** @type {(x: number) => number} 脈翅內緣（沿屋脊留 1.4 mm 炭黑脊條；尖尾段收攏到中線） */
-const wingIn = (x) => (x > X_TAIL ? 1.4 : 1.4 * Math.max(0, (x - X_TIP) / (X_TAIL - X_TIP)));
+/**
+ * 脈翅俯視外形：外緣 zOut(x)（翅根在駕駛艙前 x 24；最寬 48.5 在 x −6，越過屋簷往外伸出約 4 mm＝收起的蟬翼比身體寬）。
+ * iter-125（第九階段，評審：「大片琥珀翅罩蓋住整台車，像甲蟲蓋子」→「後緣分叉成左右兩片後翼，露出黑色車尾」）：
+ * 兩片脈翅不再在中線收攏，各自往後外收成一個翅尖（x −73、|z| 18.5，超出車尾殼面 14 mm），翅尖往後外分叉；中間露出炭黑腹節車尾
+ */
+const WING_X = [-73, -69, -64, -59, -54, -46, -34, -20, -6, 6, 14, 20, 24];
+const wingOut = monoCurve(WING_X, [18.6, 21.6, 23.4, 24.6, 28.5, 34, 40, 45.5, 48.5, 46, 36, 20, 1.8]);
+/** @type {number} 翅後緣開始分叉的 x（此處之後內緣往外斜開） */
+const X_FORK = -26;
+/**
+ * 脈翅內緣（沿屋脊留 1.4 mm 炭黑脊條；iter-125：x −26 之後內緣往外斜開到翅尖 |z| 18.4 → 兩翅之間是往後張開的 V 形缺口，露出黑色車尾）
+ * @type {(x: number) => number}
+ */
+const wingIn = (x) => (x > X_FORK ? 1.4 : 1.4 + ((X_FORK - x) / (X_FORK - X_TIP)) * 17);
 /** @type {number} 脈翅浮在殼面上的高度 */
 const WING_GAP = 0.4;
 
@@ -163,7 +169,7 @@ const buildVeins = (side) => {
   const veins = [];
   // 縱脈（翅寬 1/4、1/2、3/4 處，沿翅長）
   for (const v of [0.26, 0.52, 0.77]) {
-    veins.push(sweepEllipse(along(v, -59, 18), 80, () => [0.3, 0.19], 6));
+    veins.push(sweepEllipse(along(v, X_TIP + 6, 18), 80, () => [0.3, 0.19], 6));
   }
   // 橫脈：只在相鄰兩條縱脈之間、前後交錯 → 沿翅長方向的長方形翅格（不連成橫貫全翅的格線）
   /** @type {number[][]} [x, v 起, v 終] */
@@ -187,7 +193,7 @@ const buildVeins = (side) => {
     veins.push(sweepEllipse(pts, 12, () => [0.28, 0.19], 6));
   }
   // 前緣脈（翅外緣，較粗）＋內緣脈（沿屋脊）
-  const costa = [sweepEllipse(along(0.985, -65.6, 23.2), 120, () => [0.5, 0.3], 8), sweepEllipse(along(0.02, -66, 22.5), 120, () => [0.38, 0.24], 6)];
+  const costa = [sweepEllipse(along(0.985, X_TIP + 1.2, 23.2), 120, () => [0.5, 0.3], 8), sweepEllipse(along(0.02, X_TIP + 1.2, 22.5), 120, () => [0.38, 0.24], 6)];
   return { veins: mergeGeos(veins), costa: mergeGeos(costa) };
 };
 
@@ -244,7 +250,9 @@ const materials = () => ({
   slot: namedMaterial('plastic-gill-black', { color: 0x08090a, roughness: 0.9, side: THREE.DoubleSide }),
   // 半透明琥珀脈翅（iter-70：pc-smoke-amber → pc-tint-amber。Blender 依名稱 pc-tint → 有色透明 PC 薄殼材質 glass_tint（保留色相、不加煙燻灰，
   // 舊名 pc-smoke 會被當煙燻 PC 而變成黑玻璃）；app 端提高明度、降低不透明度，看得出半透明琥珀而不是不透明橘）
-  amber: namedMaterial('pc-tint-amber', { color: 0xf2b040, roughness: 0.04, specularIntensity: 0.8, transparent: true, opacity: 0.3, envMapIntensity: 0.8, depthWrite: false, side: THREE.DoubleSide }),
+  // iter-125（第九階段，評審：「翅罩改半透明煙燻琥珀」）：明亮琥珀 0xf2b040 → 煙燻琥珀 0xa8691c、不透明度 0.3 → 0.42；
+  // 名稱仍以 pc-tint- 開頭（Blender 走有色透明 PC，保留色相，不會變成黑玻璃）
+  amber: namedMaterial('pc-tint-amber-smoke', { color: 0xa8691c, roughness: 0.03, specularIntensity: 0.9, transparent: true, opacity: 0.42, envMapIntensity: 0.9, depthWrite: false, side: THREE.DoubleSide }),
   vein: namedMaterial('paint-vein-umber', { color: 0x2b1b0d, roughness: 0.35, clearcoat: 0.6 }),
   mint2: namedMaterial('paint-bright-mint-green', { color: 0x5fe0b0, roughness: 0.22, clearcoat: 1.0, side: THREE.DoubleSide }),
   eye: namedMaterial('lamp-mint', { color: 0x8affd6, emissive: 0x2fd59a, emissiveIntensity: 0.65, roughness: 0.08, clearcoat: 1.0 }),
@@ -326,6 +334,22 @@ export const cicadaVeilBody = makePolyBody({
 
     // 屋脊薄荷綠細線（從翅根到車尾，沿炭黑脊條）
     parts.push({ geometry: kit.decal((x, y, z) => Math.min(0.45 - Math.abs(z), x + 57.5, 20 - x)), mat: 'dMint', name: 'decal-ridge-line' });
+    // iter-125：兩翅分叉後露出的炭黑車尾上，3 道往前彎的薄荷綠腹節環（蟬的腹節；V 尖朝前、越往後越短），只畫在兩翅內緣之間
+    parts.push({
+      geometry: kit.decal((x, y, z) => {
+        const az = Math.abs(z);
+        if (x > X_FORK - 4 || az > wingIn(x) - 1.6) {
+          return -1;
+        }
+        let band = -Infinity;
+        for (const xc of [-36, -44, -52]) {
+          band = Math.max(band, 0.55 - Math.abs(x - xc + 0.35 * az));
+        }
+        return band;
+      }),
+      mat: 'dMint',
+      name: 'decal-abdomen-rings',
+    });
     // 簷線下方的薄荷綠細線（側壁，頭部到車尾）
     parts.push({
       geometry: kit.decal((x, y, z) => (Math.abs(z) < P.hw(x) - 0.6 ? -1 : Math.min(0.32 - Math.abs(y - (P.yE(x) - 4.3)), x + 55, 56 - x))),
@@ -370,7 +394,7 @@ export const cicadaVeilBody = makePolyBody({
     wallThickness_mm: '推估：射出 ABS 殼 0.8 mm（同其他致敬款）；透明脈翅同厚度，以殼面積計入質量',
     geometry: '本檔站位產生器 P（推估，依 HOMAGE_RESEARCH 6-5-2 P6：長約 128、屋脊約 41）；屋脊 → 屋簷為直線（hard 1）＝ Λ 字帳篷斷面',
     wheelArches: '前後 R17.5（31 mm 輪胎半徑 15.5 + 2 mm）；屋簷在後輪上方抬到 31.8（輪頂 28.5＋間隙＋壁厚）',
-    wings: '脈翅為單層透明曲面（帳篷斜面上方 0.35 mm），超出車尾殼面 8 mm 收攏成尖尾；翅脈細管只是外觀，不計質量；複眼燈視為 ABS 實心件（推估）',
+    wings: '脈翅為單層透明曲面（帳篷斜面上方 0.35 mm），超出車尾殼面 14 mm、後緣分叉成兩個翅尖（iter-125）；翅脈細管只是外觀，不計質量；複眼燈視為 ABS 實心件（推估）',
     mounts: '對齊 chassis-midship 的車殼安裝點（SPEC 1.14）',
   },
 });
