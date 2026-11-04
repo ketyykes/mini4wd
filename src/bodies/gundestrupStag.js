@@ -1,7 +1,7 @@
 // Gundestrup 雄鹿（body-gundestrup-stag，第八階段神話組・凱爾特）：丹麥 Gundestrup 銀釜（銀為主、局部鍍金、repoussé 錘起）上的雄鹿。
 // 修長的鹿身：前輪上方是隆起的寬肩（鬐甲最高點），背線往後緩降到臀部，車頭收窄成長鹿吻；中段一個煙燻座艙罩；
-// 車尾從後段車頂長出一對多叉、左右不對稱、自然彎曲的鹿角（實體件，鍍金角尖），兩支角根分開、不形成 Y 字剖面（MYTH_RESEARCH H7）；
-// 鹿吻外圍一圈扭絞金 torc（兩端圓球頭，C8）；側面一道 La Tène 單向 S 形卷鬚紋（金，C7）與紅琺瑯圓點（C4 的紅琺瑯，只取顏色）。
+// iter-118：鹿額頂長出一對多叉（每支 5 叉）、左右對稱的鹿角（實體件，鍍金角尖），兩支角根分開、不形成 Y 字（MYTH_RESEARCH H7）；
+// 鹿吻外圍一圈扭絞金 torc（兩端圓球頭，C8）；側面一圈仿銀釜的動物浮雕帶（雄鹿、羊角蛇、狼；氧化暗底＋珠點邊框），銀面改成古銀。
 // 設計：shared/design/body-gundestrup-stag/DESIGN.md（典故與文物對應 MYTH_RESEARCH 第 5 節 C1、C2、C7、C8；黑名單 5-3、第 10 節）。剖面為本檔站位產生器（推估）。
 // 不畫神的人臉、不做盤腿坐像、不用三臂 triskele、不做圓內十字、不重現 Battersea 盾的琺瑯格；不做彩色發光鹿角；不含任何文字。
 import * as THREE from 'three';
@@ -122,45 +122,81 @@ const buildLiner = (arch, depth, minZ) => {
 };
 
 /**
- * La Tène 單向卷鬚（running scroll）：沿 x 的波浪主線，每個波峰 / 波谷各接一個往同一方向捲的小卷圈（全部同向，不做三臂旋轉）
- * 回傳 { line: 線條距離, boss: 卷圈中心紅琺瑯圓點距離 }；u 往車頭、v 往上（以帶中線為 0）
- * @type {(u: number, v: number) => { line: number, boss: number }}
+ * 線段（膠囊）距離
+ * @type {(u: number, v: number, a: number[], b: number[], r: number) => number}
  */
-const scrollSd = (u, v) => {
-  const period = 11;
-  const amp = 2.2;
-  const k = (2 * Math.PI) / period;
-  // 波浪主線（用斜率修正近似成等寬線）
-  const yw = amp * Math.sin(k * u);
-  const slope = amp * k * Math.cos(k * u);
-  const wave = Math.abs(v - yw) / Math.sqrt(1 + slope * slope) - 0.33;
-  // 卷圈：每半週期一個，圓心在波峰 / 波谷內側往前 1.6 mm，半徑 1.5；只畫 300° 的開口圓（開口朝波線，像卷鬚收尾）
-  let curl = Infinity;
-  let boss = Infinity;
-  const j0 = Math.floor(u / (period / 2));
-  for (let j = j0 - 1; j <= j0 + 1; j++) {
-    const up = j % 2 === 0 ? 1 : -1;
-    const cu = j * (period / 2) + period / 4 + 1.6;
-    const cv = up * (amp - 1.5);
-    const du = u - cu;
-    const dv = v - cv;
-    const ang = Math.atan2(dv * up, -du);
-    const ring = Math.abs(Math.hypot(du, dv) - 1.5) - 0.33;
-    // 開口：朝波線那一側（ang 接近 0）留 60° 不畫
-    curl = Math.min(curl, Math.abs(ang) < Math.PI / 6 ? Infinity : ring);
-    boss = Math.min(boss, Math.hypot(du, dv) - 0.55);
-  }
-  return { line: Math.min(wave, curl), boss };
+const sdSeg = (u, v, [ax, ay], [bx, by], r) => {
+  const dx = bx - ax;
+  const dy = by - ay;
+  const h = Math.max(0, Math.min(1, ((u - ax) * dx + (v - ay) * dy) / (dx * dx + dy * dy)));
+  return Math.hypot(u - ax - h * dx, v - ay - h * dy) - r;
 };
 
-/** @type {{ x0: number, x1: number, y: number }} 卷鬚紋帶：前後輪拱之間、腰側（側視） */
-const SCROLL = { x0: -13.5, x1: 15.5, y: 18.6 };
+/**
+ * 橢圓近似距離
+ * @type {(u: number, v: number, cx: number, cy: number, rx: number, ry: number) => number}
+ */
+const sdEll = (u, v, cx, cy, rx, ry) => (Math.hypot((u - cx) / rx, (v - cy) / ry) - 1) * Math.min(rx, ry);
+
+/**
+ * iter-118：仿 Gundestrup 銀釜的動物浮雕帶（只有動物：雄鹿、羊角蛇、狼，全部朝車頭行進；不做人物、不做盤腿坐像）。
+ * u 往車頭、v 往上（帶中線 0），動物高約 ±4，回傳到動物剪影的距離（線寬 ≥ 0.8 mm）
+ * @type {(u: number, v: number) => number}
+ */
+const animalSd = (u, v) => {
+  // 雄鹿（中心 u −13）：身體、頸、頭、四腿、兩支小分叉角
+  const du = u + 13;
+  const stag = Math.min(
+    sdEll(du, v, -0.4, 0.2, 3.2, 1.45),
+    sdSeg(du, v, [2.2, 0.8], [3.4, 2.6], 0.6),
+    sdEll(du, v, 4.1, 2.7, 1.05, 0.6),
+    sdSeg(du, v, [-2.6, -0.2], [-3.0, -3.7], 0.42),
+    sdSeg(du, v, [-1.4, -0.4], [-1.1, -3.7], 0.42),
+    sdSeg(du, v, [1.3, -0.4], [1.8, -3.7], 0.42),
+    sdSeg(du, v, [2.3, -0.2], [2.7, -3.7], 0.42),
+    sdSeg(du, v, [3.6, 3.1], [3.0, 4.1], 0.32),
+    sdSeg(du, v, [3.3, 3.6], [2.3, 3.9], 0.32),
+    sdSeg(du, v, [-3.5, 0.6], [-4.3, 1.3], 0.35),
+  );
+  // 羊角蛇（中心 u 0）：波浪蛇身由尾到頭漸粗，頭部一個捲曲羊角（開口圓）
+  let serpent = Infinity;
+  const nS = 18;
+  /** @type {(t: number) => number[]} */
+  const sp = (t) => [-5 + 9.6 * t, 1.6 * Math.sin(t * 2.4 * Math.PI) - 0.6];
+  for (let i = 0; i < nS; i++) {
+    const t0 = i / nS;
+    serpent = Math.min(serpent, sdSeg(u, v, sp(t0), sp((i + 1) / nS), lerp(0.3, 0.62, t0)));
+  }
+  const [hx, hy] = sp(1);
+  serpent = Math.min(serpent, sdEll(u, v, hx + 0.6, hy + 0.1, 1.0, 0.6));
+  const horn = Math.abs(Math.hypot(u - hx - 0.1, v - hy - 1.2) - 0.8) - 0.3;
+  serpent = Math.min(serpent, Math.atan2(v - hy - 1.2, u - hx - 0.1) < -1.2 ? Infinity : horn);
+  // 狼（中心 u 13）：較低長的身體、長吻、尖耳、下垂的尾巴
+  const dw = u - 13;
+  const wolf = Math.min(
+    sdEll(dw, v, -0.5, 0.0, 3.4, 1.25),
+    sdSeg(dw, v, [2.4, 0.5], [3.3, 1.6], 0.65),
+    sdEll(dw, v, 3.8, 1.7, 1.0, 0.7),
+    sdSeg(dw, v, [4.2, 1.5], [5.4, 1.1], 0.38),
+    sdSeg(dw, v, [3.5, 2.2], [3.3, 3.2], 0.3),
+    sdSeg(dw, v, [-3.6, 0.3], [-5.2, -1.6], 0.38),
+    sdSeg(dw, v, [-2.8, -0.4], [-3.3, -3.7], 0.42),
+    sdSeg(dw, v, [-1.6, -0.6], [-1.3, -3.7], 0.42),
+    sdSeg(dw, v, [1.4, -0.5], [1.9, -3.7], 0.42),
+    sdSeg(dw, v, [2.4, -0.3], [2.8, -3.7], 0.42),
+  );
+  return Math.min(stag, serpent, wolf);
+};
+
+/** @type {{ x0: number, x1: number, y: number, h: number }} 浮雕帶：前後輪拱之間的腰側（側視），半高 h（不含珠點邊框） */
+const FRIEZE = { x0: -20, x1: 20, y: 18.6, h: 4.3 };
 
 /** @type {() => Record<string, THREE.Material>} */
 const materials = () => ({
   // 銀（真金屬：名稱含 -alu，Blender 換金屬）＝ Gundestrup 銀釜的錘起銀板
-  silver: namedMaterial('trim-silver-alu', { color: 0xc0c3c7, roughness: 0.3, metalness: 0.85, clearcoat: 0.2 }),
-  silver2: namedMaterial('trim-silver-alu', { color: 0xc0c3c7, roughness: 0.3, metalness: 0.85, clearcoat: 0.2, side: THREE.DoubleSide }),
+  // iter-118：古銀——顏色壓暗偏暖灰、roughness 0.3 → 0.42、clearcoat 降低（評審：「光滑銀塊」）
+  silver: namedMaterial('trim-silver-alu', { color: 0xa9aaa8, roughness: 0.42, metalness: 0.85, clearcoat: 0.05 }),
+  silver2: namedMaterial('trim-silver-alu', { color: 0xa9aaa8, roughness: 0.42, metalness: 0.85, clearcoat: 0.05, side: THREE.DoubleSide }),
   // 腹側暗銀（氧化的舊銀，霧面）
   patina: namedMaterial('paint-oxidized-silver-matte', { color: 0x4a4d52, roughness: 0.62, clearcoat: 0.05 }),
   patina2: namedMaterial('paint-oxidized-silver-matte', { color: 0x4a4d52, roughness: 0.62, clearcoat: 0.05, side: THREE.DoubleSide }),
@@ -177,6 +213,9 @@ const materials = () => ({
   dGold: decalMaterial('decal-gilt', { color: 0xc9a43b, roughness: 0.32, metalness: 0.7 }),
   dRed: decalMaterial('decal-enamel-red', { color: 0xb0302b, roughness: 0.25 }),
   dDark: decalMaterial('decal-niello-dark', { color: 0x2a2c30, roughness: 0.5 }),
+  // iter-118：浮雕帶凹處的氧化暗部（霧面）與凸起動物的亮銀
+  dRecess: decalMaterial('decal-oxidized-recess', { color: 0x2f3134, roughness: 0.75 }),
+  dSilver: decalMaterial('decal-relief-silver', { color: 0xd2d3d2, roughness: 0.3, metalness: 0.85 }),
   mount: namedMaterial('abs-mount-black', { color: 0x222326, roughness: 0.6 }),
   liner: namedMaterial('shell-wheelwell-patina', { color: 0x34373b, roughness: 0.7, side: THREE.DoubleSide }),
 });
@@ -187,35 +226,31 @@ const materials = () => ({
  * @typedef {{ beam: number[][], tines: number[][] }} AntlerDef
  */
 
-/** @type {AntlerDef} 右角：4 個分叉（眉叉往前上、第二叉、第三叉、頂端分叉） */
-const ANTLER_R = {
+/**
+ * iter-118：鹿角改成左右對稱（同一組參數鏡像），從鹿頭（額頂 x 58）長出、往後上方張開。
+ * 每支 5 個分叉（眉叉往前、其餘往上 / 往外 / 往內交錯，叉尖不在同一平面）；兩支角根分開 z ±6.5，
+ * 主幹往外張成 V 形、沒有共同的中央直幹 → 不形成 Y 字（MYTH_RESEARCH H7、ADL Life Rune 黑名單）。
+ * @type {AntlerDef}
+ */
+const ANTLER = {
   beam: [
-    [-29, 0, 9],
-    [-35, 46, 14.5],
-    [-46, 54.5, 21],
-    [-56.5, 59, 26],
-    [-63, 61, 28.5],
+    [58.5, 0, 6.5],
+    [56, 41.5, 9],
+    [50, 49, 14],
+    [42, 54, 19],
+    [34, 56.5, 22.5],
   ],
   tines: [
-    [0.16, 6.5, 5.5, 2.5],
-    [0.36, 3.5, 7.5, 4],
-    [0.6, 0.5, 6.5, 5.5],
-    [0.84, -1.5, 3.8, 6.5],
-  ],
-};
-/** @type {AntlerDef} 左角：3 個分叉，角度與長度都和右角不同（自然鹿角的不對稱） */
-const ANTLER_L = {
-  beam: [
-    [-29, 0, 9],
-    [-36, 47, 15.5],
-    [-47.5, 55.5, 22.5],
-    [-57.5, 59.5, 27.5],
-    [-64, 60.5, 31],
-  ],
-  tines: [
-    [0.2, 7.5, 4.5, 1.5],
-    [0.46, 2.5, 8, 5],
-    [0.74, -0.5, 5.5, 7],
+    // [t, dx, dy, dz]：眉叉往前上（往車頭、略向內）
+    [0.14, 6.5, 3.5, -1.5],
+    // 第二叉：往上、往外
+    [0.36, 1.5, 7, 3.5],
+    // 第三叉：往上、往內
+    [0.56, -0.5, 7, -2.5],
+    // 第四叉：往上後、往外
+    [0.76, -2, 5.5, 4],
+    // 頂端分叉：往後上、往內
+    [0.92, -4, 3.5, -2],
   ],
 };
 
@@ -229,7 +264,7 @@ export const gundestrupStagBody = makePolyBody({
   form: 'stag-arch',
   roof: 'canopy',
   wing: 'antler-crown',
-  theme: 'Gundestrup 銀釜上的雄鹿：寬肩隆起、背線後降的修長銀色鹿身，長鹿吻套一圈扭絞金 torc，車尾一對多叉不對稱的鍍金尖鹿角，側面 La Tène 單向卷鬚紋',
+  theme: 'Gundestrup 銀釜上的雄鹿：寬肩隆起、背線後降的修長古銀鹿身，長鹿吻套一圈扭絞金 torc，鹿額一對多叉對稱的鍍金尖鹿角，側面仿銀釜的動物浮雕帶',
   material: 'ABS',
   density_g_cm3: 1.05,
   wallThickness_mm: 0.8,
@@ -341,8 +376,8 @@ export const gundestrupStagBody = makePolyBody({
       }
       return { silver, gold };
     };
-    const right = buildAntler(ANTLER_R, 1);
-    const left = buildAntler(ANTLER_L, -1);
+    const right = buildAntler(ANTLER, 1);
+    const left = buildAntler(ANTLER, -1);
     parts.push({ geometry: mergeGeos([...right.silver, ...left.silver]), mat: 'silver2', solid: true, outline: true, name: 'antlers' });
     parts.push({ geometry: mergeGeos([...right.gold, ...left.gold]), mat: 'gilt', solid: true, outline: true, name: 'antler-tips' });
 
@@ -392,30 +427,32 @@ export const gundestrupStagBody = makePolyBody({
       name: 'decal-dorsal-line',
     });
 
-    // 側面 La Tène 單向卷鬚紋帶（金）＋卷圈中心紅琺瑯圓點：前後輪拱之間的腰側，車兩側都朝同一方向（往車頭）
-    /** @type {(x: number, y: number, z: number) => { line: number, boss: number } | null} */
-    const scrollAt = (x, y, z) => (Math.abs(z) < 26 || x < SCROLL.x0 || x > SCROLL.x1 ? null : scrollSd(x, y - SCROLL.y));
+    // iter-118：側面仿銀釜的動物浮雕帶——氧化暗底（凹處）＋凸起 0.4 mm 的亮銀動物＋上下鍍金珠點與細邊；車兩側動物都朝車頭
+    /** @type {(x: number, y: number, z: number) => boolean} */
+    const inFrieze = (x, y, z) => Math.abs(z) >= 26 && x >= FRIEZE.x0 && x <= FRIEZE.x1;
     parts.push({
-      geometry: kit.decal((x, y, z) => {
-        const r = scrollAt(x, y, z);
-        return r ? -r.line : -1;
-      }),
-      mat: 'dGold',
-      name: 'decal-la-tene-scroll',
+      geometry: kit.decal((x, y, z) => (inFrieze(x, y, z) ? FRIEZE.h - Math.abs(y - FRIEZE.y) : -1)),
+      mat: 'dRecess',
+      name: 'decal-frieze-recess',
     });
     parts.push({
-      geometry: kit.decal((x, y, z) => {
-        const r = scrollAt(x, y, z);
-        return r ? -r.boss : -1;
-      }),
-      mat: 'dRed',
-      name: 'decal-enamel-bosses',
+      geometry: kit.decal((x, y, z) => (inFrieze(x, y, z) && Math.abs(y - FRIEZE.y) < FRIEZE.h ? -animalSd(x, y - FRIEZE.y) : -1), { offset: 0.4 }),
+      mat: 'dSilver',
+      name: 'decal-frieze-animals',
     });
-    // 卷鬚紋帶上下兩道鍍金細邊
+    // 珠點邊框（間距 1.6、半徑 0.42）＋外側鍍金細邊（寬 0.64）
     parts.push({
-      geometry: kit.decal((x, y, z) => (Math.abs(z) < 26 || x < SCROLL.x0 - 1 || x > SCROLL.x1 + 1 ? -1 : 0.32 - Math.abs(Math.abs(y - SCROLL.y) - 4.6))),
+      geometry: kit.decal((x, y, z) => {
+        if (Math.abs(z) < 26 || x < FRIEZE.x0 - 0.5 || x > FRIEZE.x1 + 0.5) {
+          return -1;
+        }
+        const dv = Math.abs(y - FRIEZE.y);
+        const bead = 0.42 - Math.hypot(x - FRIEZE.x0 - 1.6 * Math.round((x - FRIEZE.x0) / 1.6), dv - (FRIEZE.h + 0.65));
+        const rim = 0.32 - Math.abs(dv - (FRIEZE.h + 1.5));
+        return Math.max(bead, rim);
+      }, { offset: 0.25 }),
       mat: 'dGold',
-      name: 'decal-scroll-borders',
+      name: 'decal-frieze-beads',
     });
     // 肩部（前輪拱上方）一道沿拱弧的鍍金細線＋三個紅琺瑯圓點（錘起的肩肌輪廓）
     parts.push({
@@ -449,9 +486,9 @@ export const gundestrupStagBody = makePolyBody({
     wallThickness_mm: '推估：射出 ABS 殼 0.8 mm（同其他款）；座艙罩同厚度，以殼面積計入質量',
     geometry: '本檔站位產生器 P（推估）：殼長 148（臀部 x −68 → 鼻尖 80，≤ 153 不刮立體橋）、鬐甲高 42、鹿角尖約 63.7；後腿半寬 47–48、前胸 48（x 22）、前輪 40、細腰 30（x −14 → 8，側裙下緣 y 11 在底盤側框上緣 9.4 之上）、頸 19、鹿頭兩頰 22；俯視平面依輪廓 IoU 掃描決定（和既有款拉開到 0.83 以下）',
     wheelArches: '前後 R17.5（31 mm 輪胎半徑 15.5 + 2 mm），切口從 |z| 32 起；前輪內襯深 3、後輪 7 mm',
-    antlers: '鹿角主幹半徑 2.0 → 1.0、分叉 1.6 → 0.4，ABS 實心件（推估），質量 = 封閉體積 × 1.05 g/cm³；兩支角根分開（z ±9），各 3–4 個分叉、角度與長度左右不同，不形成 Y 字剖面（MYTH_RESEARCH H7）',
+    antlers: '鹿角主幹半徑 2.0 → 1.0、分叉 1.6 → 0.4，ABS 實心件（推估），質量 = 封閉體積 × 1.05 g/cm³；iter-118：角根在鹿額 x 58.5、z ±6.5，左右鏡像對稱、各 5 個分叉（叉向交錯往外 / 往內，不在同一平面），兩支往外張成 V 形、沒有共同中央直幹 → 不形成 Y 字（MYTH_RESEARCH H7）',
     torc: '扭絞 torc 斷面半徑 0.95 ± 0.22（14 個扭節）、兩端圓球 R1.75，ABS 實心件（推估）',
-    myth: 'Gundestrup 銀釜：銀為主、鍍金、repoussé、人物眼睛嵌玻璃（MYTH_RESEARCH C1）；分叉鹿角與 torc（C2、C8）；La Tène 捲曲曲線（C7，只用單向 S 形卷鬚，不用三臂 triskele）；紅琺瑯色取自 C4（不重現其琺瑯格）',
+    myth: 'Gundestrup 銀釜：銀為主、鍍金、repoussé、人物眼睛嵌玻璃（MYTH_RESEARCH C1）；分叉鹿角與 torc（C2、C8）；iter-118 側面動物浮雕帶（雄鹿、羊角蛇、狼，仿銀釜內外板的動物帶與珠點邊；不做人物）；紅琺瑯色取自 C4（不重現其琺瑯格）',
     mounts: '對齊 chassis-midship 的車殼安裝點（SPEC 1.14）',
   },
 });
