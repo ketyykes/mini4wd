@@ -16,7 +16,8 @@ const X_REAR = -60;
 /** @type {number} 門樓正面 x */
 const X_FRONT = 68.5;
 /** @type {number} 塔樓牆腳半寬（俯視兩塔外凸到車寬 101，和既有車殼的方形平面拉開輪廓 IoU） */
-const TOWER_HW = 50.5;
+// iter-113：50.5 → 47.8（車寬 101 比導輪外緣 ±48.5 還寬，車殼碰撞體擦牆，三圈跑不完 17.8 / 19.8 m）
+const TOWER_HW = 47.8;
 /** @type {number} 塔樓 / 城牆頂的倒角 */
 const CH = 1.5;
 
@@ -28,8 +29,8 @@ const CH = 1.5;
 const XS = [-60, -58, -56.5, -19.7, -18.3, 18.3, 19.7, 59.8, 61, 68.5];
 /** @type {Record<string, (x: number) => number>} */
 const P = {
-  // 牆腳半寬：塔樓 TOWER_HW，城牆 33.5（坐在底盤側框上、罩住底盤側面），門樓 19
-  hw: monoCurve(XS, [TOWER_HW, TOWER_HW, TOWER_HW, TOWER_HW, 33.5, 33.5, TOWER_HW, TOWER_HW, 19, 19]),
+  // 牆腳半寬：塔樓 TOWER_HW，城牆 37.5（iter-113：33.5 → 37.5，塔樓收窄後和 gundestrup-stag 的「後寬細腰前寬」俯視輪廓 IoU 0.854，腰身變淺拉開），門樓 19
+  hw: monoCurve(XS, [TOWER_HW, TOWER_HW, TOWER_HW, TOWER_HW, 37.5, 37.5, TOWER_HW, TOWER_HW, 19, 19]),
   // 牆面收分（牆頂比牆腳內收，城牆的 batter）
   batter: monoCurve(XS, [1.5, 1.5, 1.5, 1.5, 0.6, 0.6, 1.5, 1.5, 0.8, 0.8]),
   // 牆頂（中線）高度：後塔樓 41.5、城牆 37.5、前塔樓 40、門樓 34
@@ -99,7 +100,7 @@ const pointedArchSd = (x, y) => {
 const roundArchSd = (x, y) => Math.hypot(x - FRONT_ARCH.x, y - FRONT_ARCH.y) - FRONT_ARCH.radius;
 
 /** @type {number} 塔樓外牆判定：|z| 大於此值才是塔樓外牆（城牆 36、門樓 26 都在內側） */
-const TOWER_Z = 44;
+const TOWER_Z = 41.3;
 
 /** @type {number[][]} 塔樓轉角（側牆轉成橫向立面）的 x 區間：這幾段不畫磚縫 / 花飾 */
 const CORNERS = [
