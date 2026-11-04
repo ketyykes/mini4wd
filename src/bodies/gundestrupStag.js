@@ -449,7 +449,7 @@ export const gundestrupStagBody = makePolyBody({
 
     // 鹿眼：金色眼圈＋深藍玻璃眼（鹿吻側面）
     /** @type {{ x: number, y: number }} 鹿眼中心（側視） */
-    const EYE = { x: 69.5, y: 23.6 };
+    const EYE = { x: 69.5, y: 20.6 }; // iter-121：鹿吻壓低，眼睛 23.6 → 20.6
     /** @type {(x: number, y: number, z: number) => number} 到鹿眼中心的側視距離（只在側面） */
     const eyeD = (x, y, z) => (Math.abs(z) < 8 ? 10 : Math.hypot(x - EYE.x, y - EYE.y));
     parts.push({ geometry: kit.decal((x, y, z) => Math.min(eyeD(x, y, z) - 1.7, 2.45 - eyeD(x, y, z))), mat: 'dGold', name: 'decal-eye-ring' });
