@@ -16,6 +16,8 @@ import { mantisScytheBody } from './mantisScythe.js';
 import { hydroplaneSponsonBody } from './hydroplaneSponson.js';
 import { cicadaVeilBody } from './cicadaVeil.js';
 import { prismFacetBody } from './prismFacet.js';
+import { trojanHorseBody } from './trojanHorse.js';
+import { cerberusTriheadBody } from './cerberusTrihead.js';
 import { serpentLongshipBody } from './serpentLongship.js';
 import { gullinburstiBoarBody } from './gullinburstiBoar.js';
 
@@ -27,7 +29,8 @@ import { gullinburstiBoarBody } from './gullinburstiBoar.js';
 // 第三階段的致敬款 wedge / beast / fork 已退役（程式碼保留在 git 歷史，設計說明在 shared/design/ 標註已退役）
 // 第六階段（iter-67 起）：比賽型 fastback-cabin / trail-canopy（iter-68 加 hinge-deck / lowline-flat）、致敬 LG2 griffin-vane / zeppelin-xtail / hydroplane-sponson、LG1 mantis-scythe（分組欄位 homageSeries / raceType / form）
 /** @type {BodyDef[]} */
-const bodies = [...homageBodiesA, ...homageBodiesB, skeletonBody, aeroWingBody, pcBoxBody, fastbackCabinBody, trailCanopyBody, hingeDeckBody, lowlineFlatBody, griffinVaneBody, zeppelinXtailBody, mantisScytheBody, hydroplaneSponsonBody, cicadaVeilBody, prismFacetBody, serpentLongshipBody, gullinburstiBoarBody];
+// 第八階段（iter-112 起）：神話組（style 'myth'、mythSeries / mythTheme，體系清單 mythSeries.js）
+const bodies = [...homageBodiesA, ...homageBodiesB, skeletonBody, aeroWingBody, pcBoxBody, fastbackCabinBody, trailCanopyBody, hingeDeckBody, lowlineFlatBody, griffinVaneBody, zeppelinXtailBody, mantisScytheBody, hydroplaneSponsonBody, cicadaVeilBody, prismFacetBody, trojanHorseBody, cerberusTriheadBody, serpentLongshipBody, gullinburstiBoarBody];
 
 /** @type {() => BodyDef[]} */
 export const listBodies = () => bodies.slice();
