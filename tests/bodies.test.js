@@ -1,4 +1,4 @@
-// 第六階段：車殼造型差異（P20，定義見 SPEC.md 第 2 部分）
+// 第六階段（第八階段沿用並加神話組，見檔尾）：車殼造型差異（P20，定義見 SPEC.md 第 2 部分）
 // - 三組車殼：比賽型（style 'race'，raceType）≥ 6 款且 raceType ≥ 5 種；致敬《爆走兄弟》1（homageSeries 'lg1'）≥ 5 款；致敬《爆走兄弟》2（'lg2'，WGP）≥ 5 款
 // - 第三階段的舊致敬款（wedge / beast / fork）已退役，不可留在清單
 // - 全部車殼任兩款的側視 / 俯視輪廓 IoU 都低於門檻（量法見 src/bodies/silhouette.js：外形三角形投影、0.5 mm 光柵化、填滿輪廓、同安裝點座標）
@@ -9,6 +9,7 @@ import { listBodies, bodyMassProps } from '../src/bodies/index.js';
 import { bodyIoU } from '../src/bodies/silhouette.js';
 import { assemble, loadConfig } from '../src/assembly.js';
 import { validateAssembly } from '../src/regulation.js';
+import { MYTH_SERIES } from '../src/bodies/mythSeries.js';
 
 /** @typedef {import('../src/bodies/types').BodyDef} BodyDef */
 
@@ -114,6 +115,109 @@ describe('第六階段：車殼造型差異（P20）', () => {
         return v.ok;
       });
       expect(bigWheelOk.length, `${g.label} 可裝 31 mm 輪的款數`).toBeGreaterThanOrEqual(MIN_BIG_WHEEL);
+    }
+  }, 300000);
+});
+
+// 第八階段：神話車殼（P20 第八階段定義，GOAL「驗證標準」、SPEC 第 2 部分）
+// - 第六階段三組的條件持續成立（上面的 P20_body_variety；IoU 檢查已涵蓋全部車殼，含神話組）
+// - 神話組：希臘 ≥ 3、北歐 ≥ 3、其他體系 ≥ 4 個且各 ≥ 1、合計 ≥ 12；每款有 mythSeries（在 MYTH_SERIES 清單內）與 mythTheme，mythTheme 不重複
+// - 神話組內兩兩在車高 / 長度 / roof / wing / form 至少 2 項不同；form / roof / wing 各 ≥ 4 種；同體系 ≥ 3 款時該體系 form ≥ 3 種
+// - 神話組至少 3 款（含希臘、北歐各 1）搭配 wheel-31-large、不切輪拱組裝合法
+/** @type {number} 神話組合計至少幾款 */
+const MYTH_MIN_TOTAL = 12;
+/** @type {string[]} 必做體系（各 ≥ 3 款） */
+const MYTH_REQUIRED = ['greek', 'norse'];
+/** @type {number} 必做體系每個至少幾款 */
+const MYTH_REQUIRED_MIN = 3;
+/** @type {number} 必做體系以外至少幾個體系 */
+const MYTH_OTHER_SERIES_MIN = 4;
+/** @type {number} 神話組內 form / roof / wing 各至少幾種 */
+const MYTH_MIN_KINDS = 4;
+/** @type {number} 神話組至少幾款可裝 31 mm 輪（不切輪拱） */
+const MYTH_MIN_BIG_WHEEL = 3;
+
+describe('第八階段：神話車殼（P20）', () => {
+  test('P20_myth_variety 希臘 ≥ 3、北歐 ≥ 3、其他體系 ≥ 4、合計 ≥ 12；主題不重複；組內兩兩至少 2 項型式不同；form / roof / wing 各 ≥ 4 種；≥ 3 款（含希臘、北歐）可裝 31 mm 輪', () => {
+    const bodies = listBodies();
+    const myth = bodies.filter((b) => b.style === 'myth');
+    const known = new Set(MYTH_SERIES.map((s) => s.key));
+    console.log(`[P20 神話] ${myth.length} 款：${myth.map((b) => `${b.id}（${b.mythSeries}/${b.mythTheme}）`).join(', ') || '（無）'}`);
+
+    const badLabel = myth.filter((b) => !b.mythSeries || !known.has(b.mythSeries) || !b.mythTheme).map((b) => b.id);
+    expect(badLabel, '神話款缺 mythSeries（或不在 MYTH_SERIES 清單）/ mythTheme').toEqual([]);
+    const strayLabel = bodies.filter((b) => b.style !== 'myth' && (b.mythSeries || b.mythTheme)).map((b) => b.id);
+    expect(strayLabel, '非神話款不應有 mythSeries / mythTheme').toEqual([]);
+    const themes = myth.map((b) => b.mythTheme);
+    expect(new Set(themes).size, `mythTheme 重複：${themes.join(', ')}`).toBe(themes.length);
+
+    /** @type {Map<string, BodyDef[]>} */
+    const bySeries = new Map();
+    for (const b of myth) {
+      bySeries.set(b.mythSeries, [...(bySeries.get(b.mythSeries) ?? []), b]);
+    }
+    for (const key of MYTH_REQUIRED) {
+      expect((bySeries.get(key) ?? []).length, `${key} 款數`).toBeGreaterThanOrEqual(MYTH_REQUIRED_MIN);
+    }
+    const others = [...bySeries.keys()].filter((k) => !MYTH_REQUIRED.includes(k));
+    console.log(`[P20 神話] 其他體系 ${others.length} 個：${others.join(', ')}`);
+    expect(others.length, '必做以外的體系數').toBeGreaterThanOrEqual(MYTH_OTHER_SERIES_MIN);
+    expect(myth.length, '神話組合計款數').toBeGreaterThanOrEqual(MYTH_MIN_TOTAL);
+
+    for (const key of /** @type {const} */ (['form', 'roof', 'wing'])) {
+      const kinds = new Set(myth.map((b) => b[key]).filter(Boolean));
+      console.log(`[P20 神話] ${key} ${kinds.size} 種：${[...kinds].join(', ')}`);
+      expect(kinds.size, `神話組的 ${key} 種類`).toBeGreaterThanOrEqual(MYTH_MIN_KINDS);
+    }
+    for (const [key, members] of bySeries) {
+      if (members.length >= 3) {
+        const forms = new Set(members.map((b) => b.form).filter(Boolean));
+        expect(forms.size, `${key} 體系內 form 種類`).toBeGreaterThanOrEqual(3);
+      }
+    }
+
+    /** @type {Map<string, { height: number, length: number }>} */
+    const dims = new Map();
+    for (const b of myth) {
+      const bb = bodyMassProps(b).bbox_mm;
+      dims.set(b.id, { height: bb.max.y, length: bb.max.x - bb.min.x });
+    }
+    for (let i = 0; i < myth.length; i++) {
+      for (let j = i + 1; j < myth.length; j++) {
+        const a = myth[i];
+        const b = myth[j];
+        const da = dims.get(a.id);
+        const db = dims.get(b.id);
+        /** @type {string[]} */
+        const diffs = [];
+        if (Math.abs(da.height - db.height) >= HEIGHT_DIFF_MM) {
+          diffs.push('車高');
+        }
+        if (Math.abs(da.length - db.length) >= LENGTH_DIFF_MM) {
+          diffs.push('長度');
+        }
+        if (a.roof && b.roof && a.roof !== b.roof) {
+          diffs.push('車頂');
+        }
+        if (a.wing && b.wing && a.wing !== b.wing) {
+          diffs.push('尾翼');
+        }
+        if (a.form && b.form && a.form !== b.form) {
+          diffs.push('車身型態');
+        }
+        expect(diffs.length, `${a.id} × ${b.id} 車高 / 長度 / 車頂 / 尾翼 / 車身型態只有 ${diffs.length} 項不同`).toBeGreaterThanOrEqual(2);
+      }
+    }
+
+    const bigWheelOk = myth.filter((b) => {
+      const asm = assemble({ ...loadConfig('default'), body: b.id, wheels: 'wheel-31-large', bodyArchCut: false });
+      const v = validateAssembly(asm);
+      console.log(`[P20 神話] ${b.id} + wheel-31-large（不切輪拱）：${v.ok ? '合法' : `不合法（${v.violations.map((x) => x.code).join(', ')}）`}`);
+      return v.ok;
+    });
+    expect(bigWheelOk.length, '神話組可裝 31 mm 輪的款數').toBeGreaterThanOrEqual(MYTH_MIN_BIG_WHEEL);
+    for (const key of MYTH_REQUIRED) {
+      expect(bigWheelOk.some((b) => b.mythSeries === key), `${key} 至少 1 款可裝 31 mm 輪`).toBe(true);
     }
   }, 300000);
 });
