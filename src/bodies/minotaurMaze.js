@@ -27,7 +27,8 @@ const P = {
   // 半寬（俯視，iter-124：評審「俯視沙漏 / 骨頭形、腰部凹槽露底盤」→ 放棄沙漏，回到接近基準的「牛的前驅」楔形平面）：
   // 寬而平的鏟形牛頭（x 40–60 半寬 46–46.4，外框 ≤ 48）往後一路單調收窄（x 8 → 44.5、x −16 → 39.5、後輪拱 36）到窄臀與尖尾（13），腰部不內凹；
   // 和 sleipnir（後寬前尖）、lowline（等寬長板）拉開俯視 IoU 靠的是「前寬後窄」＋寬的鏟形鼻端（x 77.5 仍 36.5）
-  hw: monoCurve([-70, -66, -60, -54, -46, -38, -28, -16, -4, 8, 20, 32, 40, 45, 50, 54, 60, 65, 71, 77.5], [13, 18.5, 24, 29, 34.5, 36, 37, 39.5, 42.5, 44.5, 45.6, 45.8, 46, 46.2, 46.4, 46.4, 45.6, 44, 41, 36.5]),
+  // iter-124b：避開新 sleipnir（腰 36.8、前後輪處 47.4）：中段 −28 → 8 加寬 2–3 mm、尾端（x ≤ −60）收窄、鼻端 36.5 → 39.5；俯視 IoU × sleipnir 0.859 → 0.831
+  hw: monoCurve([-70, -66, -60, -54, -46, -38, -28, -16, -4, 8, 20, 32, 40, 45, 50, 54, 60, 65, 71, 77.5], [5, 10, 19, 29, 34.5, 37.5, 39.5, 42.5, 44.6, 45.6, 46, 46, 46, 46.2, 46.4, 46.4, 45.8, 44.8, 43, 39.5]),
   // 甲板中央拱起量（中線比甲板邊高）：座艙段 5、牛頭 2.6、鼻吻 1.2、車尾 1.2
   crown: monoCurve(XS, [1.2, 1.8, 2.6, 3.4, 4, 4.6, 5, 5, 4.6, 4, 3.4, 3, 2.8, 2.6, 2.3, 1.9, 1.6, 1.4, 1.2]),
   // 側裙下緣：中段 10.8（底盤側框段由 loft.js 自動讓開）；車尾抬高到 17（擴散器口），鏟形牛鼻下緣 13.6
@@ -460,7 +461,7 @@ const CONFIG = {
         shape.quadraticCurveTo(L * 0.55, W * 1.35, 0, W * 0.8);
         shape.lineTo(0, -W * 0.8);
         const bev = 0.25;
-        const g = new THREE.ExtrudeGeometry(shape, { depth: 1.4 - 2 * bev, bevelEnabled: true, bevelThickness: bev, bevelSize: bev, bevelSegments: 2, curveSegments: 10 });
+        const g = new THREE.ExtrudeGeometry(shape, { depth: 1.4 - 2 * bev, bevelEnabled: true, bevelThickness: bev, bevelSize: bev, bevelSegments: 1, curveSegments: 6 }); // iter-124：俯視加寬後殼面增加，耳朵分段 2 / 10 → 1 / 6 守住殼面＋實體 ≤ 1.1 倍
         g.translate(0, 0, -0.7 + bev);
         // 局部 a → 世界 +z（往外）、b → 世界 x、厚度 → 世界 y；再往下垂 18°、往後掠 20°
         g.rotateX(-Math.PI / 2);
@@ -536,7 +537,7 @@ const CONFIG = {
     }
     // 金鼻環（iter-116：評審建議加鼻環）：掛在鼻吻正面、環面朝前的 ABS 金色實心環（環半徑 2.7、斷面半徑 0.7），上緣埋進鼻吻
     {
-      const ring = new THREE.TorusGeometry(2.2, 0.65, 6, 24);
+      const ring = new THREE.TorusGeometry(2.2, 0.65, 6, 16);
       ring.rotateY(Math.PI / 2);
       ring.translate(NOSE_RING.x, NOSE_RING.y, 0);
       parts.push({ geometry: ring, mat: 'gold', solid: true, outline: true, name: 'bull-nose-ring' });
