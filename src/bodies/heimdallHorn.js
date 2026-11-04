@@ -4,9 +4,11 @@
 // 號角身上 6 道金色箍環、兩段 Urnes 風格交織雙股紋（青銅貼紙，自繪曲線）；座艙罩在中段（煙燻）。
 // 號角兩側是低平的深色擋泥側裙（前後輪罩，兩輪之間收腰），蓋住輪胎；前段號角在兩個輪罩之間懸空，俯視是一支獨立的管子。
 // 設計：shared/design/body-heimdall-horn/DESIGN.md（典故：《散文埃達》Gylfaginning；語彙：維京時代飲用角的金屬配件、Urnes 交織紋 MYTH_RESEARCH N8）。
+// iter-121（第九階段炫砲化）：號角壓扁成長而低的箭形（車尾垂直半徑 14.2 → 12）、喇叭口縮小 20%（R31 → 25）並壓扁成車尾擴散器（4 片金色導流片、
+// 口內三色細環低強度自發光）、深色輪罩圓肩上一條從吹口旁到喇叭口漸粗的金色速度線。
 // 塗裝全為自創：牛角漸層（吹口深褐近黑 → 車尾奶油象牙，分段在箍環處交接）＋金箍環＋青銅交織紋；不用盧恩字母、不含文字與商標。
 import * as THREE from 'three';
-import { makePolyBody, sweepEllipse } from './polyBody.js';
+import { makePolyBody, sweepEllipse, finPlate } from './polyBody.js';
 import { namedMaterial, decalMaterial, sideDecal, mergeGeos, lerp, buildRegion, buildRim } from './loft.js';
 import { monoCurve, buildStations, fenderFloor, smoothMax } from './gazelleLeap.js';
 import { buildProfileLiner } from './khepriScarab.js';
@@ -23,8 +25,9 @@ const P = {
   // 號角中心線高度：吹口端 26 → 車尾 28.5（側視往上揚的緩弧，吹口另外往上翹）
   yc: monoCurve(XS, [28.5, 28.5, 28.5, 28.5, 28.5, 28.5, 28.3, 28, 27.7, 27.3, 26.6, 26, 26]),
   // 號角斷面半徑（水平 / 垂直）：吹口根 4.2 → 喇叭口接合處 21（漸粗＋車尾快速外張）
-  rz: monoCurve(XS, [21, 18.5, 16, 14.5, 13.5, 12.5, 11.5, 10.5, 9.5, 8.5, 7, 5.5, 4.2]),
-  ry: monoCurve(XS, [14.2, 13.5, 12.9, 12.4, 11.9, 11.2, 10.4, 9.4, 8.4, 7.4, 6, 4.8, 3.8]),
+  // iter-121（第九階段）：號角壓扁成長而低的箭形——車尾水平半徑 21 → 19、垂直半徑 14.2 → 12（頂 42.7 → 40.5）
+  rz: monoCurve(XS, [19, 17.4, 15.4, 14.2, 13.3, 12.4, 11.5, 10.5, 9.5, 8.5, 7, 5.5, 4.2]),
+  ry: monoCurve(XS, [12, 11.6, 11.3, 11, 10.7, 10.2, 9.6, 8.9, 8.1, 7.2, 5.9, 4.7, 3.8]),
   // 側裙俯視半寬：前後輪罩外張（前 37.5、後 39.2，蓋住輪胎），兩輪之間收成 27.5 的細腰（只剩號角＋窄側裙），車頭收到 11（吹口）
   hw: monoCurve(XS_HW, [33, 37, 39.2, 39.2, 37.5, 30, 27.5, 28, 32, 37, 37.5, 34, 27, 19, 11]),
   // 側裙下緣
@@ -148,9 +151,10 @@ const materials = () => ({
   dBronze: decalMaterial('decal-bronze-interlace', { color: 0x8a5a2b, metalness: 0.7, roughness: 0.35 }),
   dGold: decalMaterial('decal-gold-line', { color: 0xd2a83e, metalness: 0.75, roughness: 0.3 }),
   // 彩虹橋三色細環（《散文埃達》：彩虹橋「有三種顏色」，色相自訂、低彩度）
-  ring1: decalMaterial('decal-bifrost-red', { color: 0xa8382c, roughness: 0.5 }),
-  ring2: decalMaterial('decal-bifrost-ochre', { color: 0xd8a23c, roughness: 0.5 }),
-  ring3: decalMaterial('decal-bifrost-teal', { color: 0x2f7f76, roughness: 0.5 }),
+  // iter-121（材質與發光）：三色細環加低強度自發光，從車尾看像擴散器裡亮起的彩虹橋（Blender 不過曝）
+  ring1: decalMaterial('decal-bifrost-red', { color: 0xa8382c, roughness: 0.5, emissive: 0xa8382c, emissiveIntensity: 0.55 }),
+  ring2: decalMaterial('decal-bifrost-ochre', { color: 0xd8a23c, roughness: 0.5, emissive: 0xd8a23c, emissiveIntensity: 0.45 }),
+  ring3: decalMaterial('decal-bifrost-teal', { color: 0x2f7f76, roughness: 0.5, emissive: 0x2f7f76, emissiveIntensity: 0.6 }),
 });
 
 // ---------------------------------------------------------------------------
@@ -240,14 +244,18 @@ const BANDS = [interlaceBand(29, 43.5, 3), interlaceBand(-38, -22, 3)];
 
 /** @type {number} 喇叭口軸心高度 */
 const BELL_Y = 28.5;
+/** @type {number} 喇叭口接合處的水平半徑（同殼面車尾 rz） */
+const BELL_R0 = 19;
 /** @type {number} 喇叭口接合處的垂直 / 水平比例（同殼面車尾斷面 ry / rz） */
-const BELL_K = 14.2 / 21;
-/** @type {number} 喇叭口環邊的垂直 / 水平比例（往後越扁：喇叭口寬、高度不超過 46） */
-const BELL_K_END = 0.55;
+const BELL_K = 12 / 19;
+/**
+ * @type {number} 喇叭口環邊的垂直 / 水平比例（iter-121：0.55 → 0.42，往後壓扁成車尾擴散器的扁口）
+ */
+const BELL_K_END = 0.42;
 /** @type {number} 喇叭口長度（x −63 → −70.5） */
 const BELL_LEN = 7.5;
-/** @type {number} 喇叭口環邊半徑（水平） */
-const BELL_R = 31;
+/** @type {number} 喇叭口環邊半徑（水平；iter-121：31 → 25，縮小約 20%，評審「喇叭口太大像樂器擺件」） */
+const BELL_R = 25;
 
 /**
  * 喇叭口外張薄殼（繞 x 軸，橢圓斷面：y 方向比例由 BELL_K 漸變到 BELL_K_END）：pts 為 [半徑, 往後的距離]
@@ -279,7 +287,7 @@ const bellShell = (pts, seg = 72) => {
 };
 
 /** @type {(a: number) => number} 喇叭口外張曲線（a = 往後距離 0 → BELL_LEN） */
-const bellR = (a) => 21 + (BELL_R - 21) * (a / BELL_LEN) ** 2.2;
+const bellR = (a) => BELL_R0 + (BELL_R - BELL_R0) * (a / BELL_LEN) ** 2.2;
 
 /**
  * 吹口：殼前端往前、往上翹的細管（金色吹口套＋杯形唇）
@@ -324,7 +332,7 @@ export const heimdallHornBody = makePolyBody({
   form: 'horn-bell',
   roof: 'canopy',
   wing: 'bell-flare',
-  theme: '加拉爾號角：整台車是一支平放的微彎號角——上翹的細吹口往後漸粗，車尾橢圓喇叭口開口朝後（金環邊＋口內三色細環），牛角深褐到象牙的漸層、6 道金箍環與青銅交織雙股紋，兩側深色低輪罩蓋住輪胎',
+  theme: '加拉爾號角：整台車是一支平放的微彎號角——上翹的細吹口往後漸粗，車尾壓扁的喇叭口當擴散器（金環邊＋金色導流片＋口內三色發光細環），深色輪罩肩上一條從吹口到喇叭口的金色速度線，牛角深褐到象牙的漸層、6 道金箍環與青銅交織雙股紋，兩側深色低輪罩蓋住輪胎',
   material: 'ABS',
   density_g_cm3: 1.05,
   wallThickness_mm: 0.8,
@@ -342,7 +350,8 @@ export const heimdallHornBody = makePolyBody({
       for (let i = 0; i <= 28; i++) {
         const u = i / 28;
         const x = lerp(CANOPY.xc + CANOPY.a, CANOPY.xc - CANOPY.a, u);
-        out.push({ x, yBase: 0, yTop: 5.8 * Math.sin(Math.PI * u ** 0.85) ** 0.6, halfW: Math.max(1.8, canopyHalfW(x)) });
+        // iter-121：座艙罩高 5.8 → 5.0（壓低）
+        out.push({ x, yBase: 0, yTop: 5.0 * Math.sin(Math.PI * u ** 0.85) ** 0.6, halfW: Math.max(1.8, canopyHalfW(x)) });
       }
       return out;
     })(),
@@ -424,15 +433,17 @@ export const heimdallHornBody = makePolyBody({
         name: `decal-urnes-interlace-${mat}-${side}`,
       });
     }
-    // 輪罩頂的金色細腰線（沿輪罩外緣，線寬 0.7）
+    // iter-121（線條）：金色速度線——沿深色輪罩外緣的圓肩，從車頭吹口旁（x 64，寬 0.6）一路往後漸粗到喇叭口（x −63，寬 1.8），
+    // 跟著輪罩俯視的收腰外擴走（取代原本線寬 0.7 的輪罩頂細腰線）
     parts.push({
       geometry: kit.decal((x, y, z) => {
         const az = Math.abs(z);
         const hw = P.hw(x);
-        return Math.min(0.35 - Math.abs(az - (hw - 2.6)), y - yFender(x) + 0.6, 62 - x, x + 62);
-      }),
+        const half = lerp(0.9, 0.3, Math.min(1, Math.max(0, (x + 63) / 127)));
+        return Math.min(half - Math.abs(az - (hw - 1.1)), y - yFender(x) + 2.6, 64 - x, x + 63);
+      }, { offset: 0.1 }),
       mat: 'dGold',
-      name: 'decal-fender-line',
+      name: 'decal-gold-speed-line',
     });
     // 吹口（實體，金色吹口套）
     const mp = buildMouthpiece();
@@ -445,7 +456,7 @@ export const heimdallHornBody = makePolyBody({
       flare.push([bellR(a), a]);
     }
     parts.push({ geometry: bellShell(flare), mat: 'horn4d', shell: true, outline: true, name: 'bell-flare' });
-    const rim = new THREE.TorusGeometry(BELL_R + 0.2, 0.95, 10, 72);
+    const rim = new THREE.TorusGeometry(BELL_R + 0.2, 0.95, 10, 64);
     // 環面在 (x, y) 平面 → 轉到 (z, y) 平面，再壓成橢圓
     rim.rotateY(Math.PI / 2);
     rim.scale(1, BELL_K_END, 1);
@@ -460,19 +471,42 @@ export const heimdallHornBody = makePolyBody({
       g.translate(-63.08, BELL_Y, 0);
       return g;
     };
-    parts.push({ geometry: ring(16.2, 17.1), mat: 'ring1', name: 'decal-bifrost-ring-1' });
-    parts.push({ geometry: ring(14.6, 15.5), mat: 'ring2', name: 'decal-bifrost-ring-2' });
-    parts.push({ geometry: ring(13, 13.9), mat: 'ring3', name: 'decal-bifrost-ring-3' });
+    // iter-121：隨喇叭接合處 21 → 19 等比縮小
+    parts.push({ geometry: ring(14.6, 15.5), mat: 'ring1', name: 'decal-bifrost-ring-1' });
+    parts.push({ geometry: ring(13.1, 14), mat: 'ring2', name: 'decal-bifrost-ring-2' });
+    parts.push({ geometry: ring(11.6, 12.5), mat: 'ring3', name: 'decal-bifrost-ring-3' });
     // 喇叭口內緣一圈金色細線（後封口上，喇叭接合處）
-    parts.push({ geometry: ring(19.6, 20.4), mat: 'dGold', name: 'decal-bell-throat-line' });
+    parts.push({ geometry: ring(17.6, 18.4), mat: 'dGold', name: 'decal-bell-throat-line' });
+    // ── iter-121 擴散器導流片（實體，金色）：喇叭口下半部 4 片縱向導流片（厚 1.2、高 4.2），從後封口往後拉到環邊，
+    // 喇叭口讀成車尾擴散器（號角＝排氣 / 擴散器）──
+    {
+      /** @type {THREE.BufferGeometry[]} */
+      const strakes = [];
+      for (const zc of [-10.5, -4, 4, 10.5]) {
+        /** @type {(a: number) => number} 該 z 處喇叭口內面的底高（往上 0.3 埋進殼面） */
+        const floorY = (a) => {
+          const r = bellR(a);
+          const k = lerp(BELL_K, BELL_K_END, a / BELL_LEN);
+          return BELL_Y - k * Math.sqrt(Math.max(0, r * r - zc * zc)) + 0.3;
+        };
+        const pts = [
+          [-63.2, floorY(0)],
+          [-63 - BELL_LEN + 0.4, floorY(BELL_LEN - 0.4)],
+          [-63 - BELL_LEN + 0.4, floorY(BELL_LEN - 0.4) + 2.4],
+          [-63.2, floorY(0) + 4.2],
+        ];
+        strakes.push(finPlate(pts, zc, 1.2));
+      }
+      parts.push({ geometry: mergeGeos(strakes), mat: 'gold', solid: true, outline: true, name: 'bell-diffuser-strakes' });
+    }
     return parts;
   },
   src: {
     density_g_cm3: 'SPEC 1.14：ABS 約 1.05 g/cm³（推估）',
     wallThickness_mm: '推估：射出 ABS 殼 0.8 mm（同其他車殼）；喇叭口外張片、金箍環以殼面積 × 壁厚計入質量',
-    geometry: '本檔站位產生器 P（推估）：殼 x −63 ~ 66、吹口到 78.3、喇叭口到 −71.4（長 149.7，batch4「長約 146–153」）；號角頂 29 → 43、喇叭口頂 46.2（batch4「高約 40–46」）；輪罩半寬前 37.5、後 39.2（蓋住輪胎），兩輪之間收腰 27.5，車頭收到 11；前輪罩與號角之間（x 23 以前）挖空，號角在兩輪罩間懸空',
+    geometry: '本檔站位產生器 P（推估）：殼 x −63 ~ 66、吹口到 78.3、喇叭口到 −71.4（長 149.7）；號角頂 29 → 40.5、iter-121 車殼頂 42.5（座艙罩）；輪罩半寬前 37.5、後 39.2（蓋住輪胎），兩輪之間收腰 27.5，車頭收到 11；前輪罩與號角之間（x 23 以前）挖空，號角在兩輪罩間懸空',
     horn: '號角斷面：水平半徑 4.2（吹口根）→ 21（喇叭接合處）、垂直半徑 3.8 → 14.2；中心線高度 26 → 28.5（推估，側視緩弧）',
-    bell: '喇叭口：橢圓外張薄殼（垂直 / 水平比例由接合處 0.68 漸變到環邊 0.55），長 7.5、環邊水平半徑 31（車寬內、離後導輪 ≥ 3 mm）、金色實心環邊管徑 1.9 mm（推估）；口內三色細環線寬 0.9 mm',
+    bell: '喇叭口（iter-121）：橢圓外張薄殼（垂直 / 水平比例由接合處 0.63 漸變到環邊 0.42），長 7.5、環邊水平半徑 25（原 31，縮小約 20%）、金色實心環邊管徑 1.9 mm；下半部 4 片擴散器導流片厚 1.2、高 2.4–4.2 mm（推估）；口內三色細環線寬 0.9 mm',
     hoops: '6 道金箍環：寬 2、凸起 0.45 mm（推估：飲用角的金屬箍以殼面凸帶表現）',
     wheelArches: '前後 R17.5（31 mm 輪胎半徑 15.5 + 2 mm），可裝 26 / 31 mm 輪；內襯從 |z| 31 到殼內面',
     mounts: '對齊 chassis-midship 的車殼安裝點（SPEC 1.14）',
