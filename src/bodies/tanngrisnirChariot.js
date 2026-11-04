@@ -1,6 +1,7 @@
 // 索爾的山羊戰車（body-tanngrisnir-chariot，第八階段神話組・北歐）：《散文埃達》中索爾乘坐、由兩頭公山羊 Tanngrisnir 與 Tanngnjóstr 拉的戰車。
 // 車身是低而寬的橡木＋鐵箍戰車車斗（兩輪之間收腰）；iter-115 車斗封上中央拱起的橡木蓋板（tonneau，只留一個小座艙口），車尾高背板改成往下圓收的車尾（後面一條青銅折線紋），
 // 輪廓變成「車頭低、蓋板拱起、車尾收圓」的流線車殼（評審 iter-114：開放車斗像容器）；
+// iter-116（評審 iter-115：加蓋後像方木箱）：蓋板降低、座艙放大成開放式戰車座艙，兩側加前低後高的弧形橡木護欄＋鍛鐵立柱，側板中央一個 10 輻戰車木輪浮雕，車尾削成斜面；
 // 車斗往前收成低平的車轅甲板，甲板中央一支細長車轅（中央脊）伸到車頭，兩側是兩頭並列的抽象山羊頭（往前低伸的短吻＋尖山羊鬍＋往後掃的兩對彎刀形山羊角，iter-115 由捲角改成後掃角，避免看成綿羊），
 // 角根融進羊頭、羊頸從前擋泥板內壁長出（擋泥板＝羊的肩），頸上各一圈青銅頸環；車轅兩側是深色橡木甲板，只留兩條窄挽具溝（iter-114 前整段挖空成軛井）。
 // 設計：shared/design/body-tanngrisnir-chariot/DESIGN.md（典故 MYTH_RESEARCH N12、N16；車斗語彙 N3 Oseberg 四輪木車；黑名單 H6 不放雷神之鎚、不用盧恩）。
@@ -21,11 +22,13 @@ const XS = [-63.5, -62, -58, -54, -50, -40, -20, 0, 18, 24, 30, 36, 44, 52, 58, 
 const XS_HW = [-63.5, -62, -58, -54, -50, -40, -26, -16, 0, 16, 26, 36, 44, 52, 58, 62, 64];
 /** @type {Record<string, (x: number) => number>} */
 const P = {
-  // 車斗邊沿 / 前擋泥板頂面高度：車斗 33；iter-115 拿掉車尾高背板，車尾往下圓收（30.6）；前擋泥板 x 52 之後往下收到車頭 22
-  yR: monoCurve(XS, [30.6, 31.8, 33.4, 33.6, 33.4, 33, 33, 33, 33, 33, 33, 33, 33, 32.3, 29.5, 25.5, 22]),
+  // 車斗邊沿 / 前擋泥板頂面高度：車斗 32；iter-116 車尾削成斜面（評審 iter-115：尾端厚台階要削出斜度）：x −50 的 30.6 往後斜降到尾端 21（尾端立面只剩約 3 mm）；
+  // 前擋泥板 x 52 之後往下收到車頭 22
+  yR: monoCurve(XS, [21, 22.6, 25.8, 28.6, 30.6, 32, 32, 32, 32, 32, 32, 32, 32, 31.6, 29.5, 25.5, 22]),
   // 中央（|z| < 18）高度（iter-115）：車斗加上中央拱起的橡木蓋板（tonneau）——車尾 31.4 → 座艙後方最高 39.6 → 往前順順降到 x 30 的 29，
   // 接回車轅甲板（26.3 → 車頭 20）。整台變成「前低後高、車斗段拱起」的流線輪廓（評審 iter-114：開放車斗不像比賽用車殼）
-  yA: monoCurve(XS, [31.4, 33.2, 36.4, 38.4, 39.2, 39.6, 39.6, 38.9, 36.4, 33.2, 29, 26.8, 26.3, 25.5, 24, 22, 20]),
+  // iter-116：蓋板最高 39.6 → 36.6（評審：加蓋後像方木箱），車尾跟著邊沿斜降到 21.6；戰車感改由座艙兩側的弧形護欄撐起（前低後高）
+  yA: monoCurve(XS, [21.6, 23.4, 27.4, 31, 33.8, 36.4, 36.6, 35.6, 33.8, 31.6, 28.6, 26.8, 26.3, 25.5, 24, 22, 20]),
   // 俯視半寬：前後輪上方外張成 41（輪罩，蓋住輪胎）、兩輪之間收成 34 的腰（車斗側板內凹）；車尾兩角收圓（避開後導輪）、車頭收到 31
   hw: monoCurve(XS_HW, [31, 34.5, 38, 39.5, 40, 40, 39, 33.5, 32.5, 33.5, 39, 40, 40, 39, 37, 34, 31]),
   // 側壁下緣
@@ -81,15 +84,15 @@ const ARCHES = [
   { x: -40, y: 13, radius: 17.5, cutZFrom: 21 },
 ];
 
-/** @type {{ x0: number, x1: number, hz: number, r: number }} 小座艙（iter-115）：蓋板最高處前方的圓角方口（駕車者站位），兩輪之間 */
-const SEAT = { x0: -24, x1: -6, hz: 9.5, r: 3 };
+/** @type {{ x0: number, x1: number, hz: number, r: number }} 戰車座艙（iter-116 由 18 × 19 小方口放大）：蓋板上的圓角開口（駕車者站位），兩側由弧形護欄圍住 */
+const SEAT = { x0: -40, x1: 4, hz: 12.5, r: 5 };
 
 /**
- * 小座艙凹槽（iter-115 取代原本整片開放的車斗甲板）：蓋板上只留一個 18 × 19 mm 的圓角方口，深 4 mm，底是木條甲板
+ * 戰車座艙凹槽（iter-115 取代原本整片開放的車斗甲板；iter-116 放大成 44 × 25 mm 的開放式座艙），深 4 mm，底是木條甲板
  * @type {any}
  */
 const DECK = {
-  id: '小座艙',
+  id: '戰車座艙',
   view: 'top',
   shape: 'fn',
   sd: (x, y, z) => sdRoundRect(x, Math.abs(z), SEAT.x0, SEAT.x1, -SEAT.hz, SEAT.hz, SEAT.r),
@@ -173,6 +176,8 @@ const materials = () => ({
   dSeam: decalMaterial('decal-oak-seam', { color: 0x2e1c10, roughness: 0.78 }),
   dIron: decalMaterial('decal-iron-band', { color: 0x3f4247, roughness: 0.55, clearcoat: 0.12 }),
   dBronze: decalMaterial('decal-bronze-zigzag', { color: 0xa8743f, metalness: 0.7, roughness: 0.35 }),
+  // iter-116 戰車輪浮雕：淺橡木輪輞與輻條
+  dWheel: decalMaterial('decal-oak-wheel', { color: 0xa47448, roughness: 0.66 }),
   mount: namedMaterial('abs-mount-black', { color: 0x222326, roughness: 0.6 }),
 });
 
@@ -305,36 +310,113 @@ const zigzagDist = (y0, amp, period) => (z, y) => {
   return best;
 };
 
-/**
- * 背板後面的折線紋實體條（青銅，厚 0.6 mm，貼在後封口外）：沿 z 的單一條鋸齒帶
- * @type {(xFace: number, y0: number, zHalf: number) => THREE.BufferGeometry}
- */
-const buildZigzagStrip = (xFace, y0, zHalf) => {
-  const amp = 1.7;
-  const period = 8;
-  const w = 1.3;
-  /** @type {number[][]} 中心線頂點 */
-  const mid = [];
-  for (let z = -zHalf; z <= zHalf + 1e-6; z += period / 2) {
-    const i = Math.round((z + zHalf) / (period / 2));
-    mid.push([z, y0 + (i % 2 === 0 ? -amp : amp)]);
-  }
-  const top = mid.map(([z, y]) => [z, y + w / 2]);
-  const bot = mid.map(([z, y]) => [z, y - w / 2]);
-  const shape = new THREE.Shape([...top, ...bot.reverse()].map(([z, y]) => new THREE.Vector2(z, y)));
-  const g = new THREE.ExtrudeGeometry(shape, { depth: 0.6, bevelEnabled: false });
-  // shape 在 (z, y) 平面、擠出沿 +z → 轉成厚度沿 x（x 0 ~ 0.6），再移到後封口外 [xFace − 0.6, xFace]
-  g.rotateY(Math.PI / 2);
-  g.translate(xFace - 0.6, 0, 0);
-  return g;
-};
-
-/** @type {number[]} 車斗側面鐵箍的 x（後軸之後 1 道、兩輪之間 3 道） */
-const BAND_X = [-60.5, -15, 0, 15];
+/** @type {number[]} 車斗側面鐵箍的 x（後軸之後 1 道、兩輪之間 2 道；iter-116 中間那道讓給戰車輪浮雕） */
+const BAND_X = [-58, -15, 15];
 /** @type {number} 鐵箍寬 */
 const BAND_W = 2.6;
 /** @type {number[]} 側面橡木板縫高度 */
 const SEAM_Y = [19.2, 23.6, 28];
+
+/** @type {{ x: number, y: number, r: number, spokes: number }} 側面戰車大木輪浮雕（iter-116）：兩輪之間的側板中央，10 根輻條（不做四輻十字輪） */
+const RELIEF_WHEEL = { x: 0, y: 22.6, r: 7.6, spokes: 10 };
+
+/**
+ * 戰車輪浮雕的各層距離場（負值在內）：底盤（深色圓盤）、鐵輪箍、木輪輞、輻條、青銅輪轂
+ * @type {(x: number, y: number) => { disc: number, tire: number, felloe: number, spoke: number, hub: number }}
+ */
+const reliefWheelSd = (x, y) => {
+  const W = RELIEF_WHEEL;
+  const dx = x - W.x;
+  const dy = y - W.y;
+  const r = Math.hypot(dx, dy);
+  const a = Math.atan2(dy, dx);
+  /** @type {number} 每根輻條的角距 */
+  const step = (2 * Math.PI) / W.spokes;
+  // 第一根輻條轉半格，讓輻條不落在正上下、正前後（避免讀成十字）
+  const k = Math.round((a - step / 2) / step);
+  const da = a - step / 2 - k * step;
+  const spokeD = Math.max(r * Math.abs(Math.sin(da)) - 0.42, 1.4 - r, r - (W.r - 1.9));
+  return {
+    disc: r - W.r,
+    tire: Math.abs(r - (W.r - 0.55)) - 0.55,
+    felloe: Math.abs(r - (W.r - 1.6)) - 0.55,
+    spoke: spokeD,
+    hub: r - 1.9,
+  };
+};
+
+/** @type {number} 座艙護欄的 |z|（座艙口 12.5 + 鍛鐵內緣 1.6 之外） */
+const RAIL_Z = 16.2;
+
+/**
+ * 蓋板在 |z| = RAIL_Z 處的表面高度（剖面第 1、2 點之間線性內插，蓋板段 c > 0）
+ * @type {(x: number) => number}
+ */
+const deckYAtRail = (x) => {
+  const yR = P.yR(x);
+  const yA = P.yA(x);
+  const c = yA - yR;
+  if (c <= 0) {
+    return yA;
+  }
+  return lerp(yA, yR + 0.55 * c, RAIL_Z / (Z_FENDER - 4));
+};
+
+/** @type {number[][]} 護欄中心線（x, 離蓋板面高度）：前端低（x 6 埋進蓋板）→ 往後拉高到 x −30 的 8.4 → 後端急降埋進車尾（前低後高的弧形戰車護欄） */
+const RAIL_PATH = [
+  [7, -0.8],
+  [3, 2.2],
+  [-6, 5.2],
+  [-17, 7.4],
+  [-30, 8.4],
+  [-39, 7.6],
+  [-45, 4.6],
+  [-48.5, 1.2],
+  [-50, -0.8],
+];
+
+/** @type {number[]} 護欄鍛鐵立柱的 x */
+const RAIL_POSTS = [-6, -18, -31, -41];
+
+/**
+ * 座艙兩側的弧形戰車護欄（iter-116）：橡木扶手（斷面 1.5 × 1.8 mm）＋鍛鐵立柱（直徑 1.3 mm）
+ * @type {() => { rails: THREE.BufferGeometry, posts: THREE.BufferGeometry }}
+ */
+const buildRails = () => {
+  /** @type {(x: number) => number} 中心線在 x 處離蓋板的高度（RAIL_PATH 線性內插） */
+  const railH = (x) => {
+    for (let i = 0; i < RAIL_PATH.length - 1; i++) {
+      const [xa, ha] = RAIL_PATH[i];
+      const [xb, hb] = RAIL_PATH[i + 1];
+      if (x <= xa && x >= xb) {
+        return lerp(ha, hb, (xa - x) / (xa - xb));
+      }
+    }
+    return 0;
+  };
+  /** @type {THREE.BufferGeometry[]} */
+  const rails = [];
+  /** @type {THREE.BufferGeometry[]} */
+  const posts = [];
+  for (const sg of [-1, 1]) {
+    rails.push(
+      sweepEllipse(
+        RAIL_PATH.map(([x, h]) => [x, deckYAtRail(x) + h, sg * RAIL_Z]),
+        48,
+        () => [0.75, 0.9],
+        10,
+      ),
+    );
+    for (const px of RAIL_POSTS) {
+      const y0 = deckYAtRail(px) - 0.6;
+      const y1 = deckYAtRail(px) + railH(px);
+      const g = new THREE.CylinderGeometry(0.65, 0.65, y1 - y0, 10);
+      g.translate(px, (y0 + y1) / 2, sg * RAIL_Z);
+      posts.push(g);
+    }
+  }
+  return { rails: mergeGeos(rails), posts: mergeGeos(posts) };
+};
 
 export const tanngrisnirChariotBody = makePolyBody({
   id: 'body-tanngrisnir-chariot',
@@ -346,7 +428,7 @@ export const tanngrisnirChariotBody = makePolyBody({
   form: 'chariot-tub',
   roof: 'open-cockpit',
   wing: 'goat-horns',
-  theme: '索爾的山羊戰車：低而寬的橡木＋鐵箍車斗（兩輪之間收腰）封上中央拱起的木條蓋板、只留小座艙，車尾收圓、後面一條青銅折線紋，車頭兩頭並列山羊（短吻、尖鬍鬚、往後掃的兩對彎刀形角、青銅頸環）夾著細長車轅',
+  theme: '索爾的山羊戰車：低而寬的橡木＋鐵箍車斗（兩輪之間收腰）封上中央拱起的木條蓋板、開放式戰車座艙兩側弧形護欄，側板 10 輻戰車木輪浮雕，車尾削成斜面、斜面上一條青銅折線紋，車頭兩頭並列山羊（短吻、尖鬍鬚、往後掃的兩對彎刀形角、青銅頸環）夾著細長車轅',
   material: 'ABS',
   density_g_cm3: 1.05,
   wallThickness_mm: 0.8,
@@ -360,8 +442,8 @@ export const tanngrisnirChariotBody = makePolyBody({
   innerSkipRecess: true,
   sideZMin: 30,
   zones: () => [
-    // 車尾收尾面暗紅（iter-115：原本的高背板拿掉）
-    { mat: 'red', keep: (x) => -58.5 - x },
+    // 車尾斜面暗紅（iter-116：尾端削成斜面，暗紅帶放寬到 x −55）
+    { mat: 'red', keep: (x) => -55 - x },
     // 鍛鐵邊沿：車斗邊沿與擋泥板頂的外緣（圓肩一圈 2.4 mm 寬）
     { mat: 'iron', keep: (x, y, z) => Math.min(y - (P.yR(x) - 2.6), Math.abs(z) - (P.hw(x) - 2.4)) },
     // 鍛鐵內緣：座艙口一圈 1.6 mm 寬
@@ -427,8 +509,46 @@ export const tanngrisnirChariotBody = makePolyBody({
       collars.push(g);
     }
     parts.push({ geometry: mergeGeos(collars), mat: 'bronze', solid: true, outline: true, name: 'goat-collars' });
-    // 背板後面的青銅折線紋（單一條橫向鋸齒，實體條）
-    parts.push({ geometry: buildZigzagStrip(-63.5, 26.2, 26), mat: 'bronze', solid: true, name: 'backboard-zigzag' });
+    // 車尾斜面的青銅折線紋（iter-116：尾端削成斜面後沒有直立背板，改成斜面上沿 z 走的單一條鋸齒帶）
+    const zigTail = zigzagDist(-59.2, 1.4, 7);
+    parts.push({
+      geometry: kit.decal((x, y, z) => (x < -55.5 && Math.abs(z) < 25 && y > P.yR(x) - 1.2 ? 0.6 - zigTail(z, x) : -1), { offset: 0.1 }),
+      mat: 'dBronze',
+      name: 'decal-tail-zigzag',
+    });
+    // 座艙兩側的弧形戰車護欄（iter-116，評審：找回戰車感）
+    const rail = buildRails();
+    parts.push({ geometry: rail.rails, mat: 'oakDark', solid: true, outline: true, name: 'chariot-rails' });
+    parts.push({ geometry: rail.posts, mat: 'iron', solid: true, name: 'chariot-rail-posts' });
+    // 側面戰車大木輪浮雕（iter-116）：深色底盤 → 鐵輪箍 → 淺橡木輪輞與 10 根輻條 → 青銅輪轂，逐層加高
+    /** @type {(x: number, z: number) => boolean} 只畫在側板上 */
+    const onSide = (x, z) => Math.abs(z) >= P.hw(x) - 1.2;
+    parts.push({
+      geometry: kit.decal((x, y, z) => (onSide(x, z) ? -reliefWheelSd(x, y).disc : -1), { offset: 0.1 }),
+      mat: 'dSeam',
+      name: 'decal-relief-wheel-disc',
+    });
+    parts.push({
+      geometry: kit.decal((x, y, z) => (onSide(x, z) ? -reliefWheelSd(x, y).tire : -1), { offset: 0.35 }),
+      mat: 'dIron',
+      name: 'decal-relief-wheel-tire',
+    });
+    parts.push({
+      geometry: kit.decal((x, y, z) => {
+        if (!onSide(x, z)) {
+          return -1;
+        }
+        const w = reliefWheelSd(x, y);
+        return -Math.min(w.felloe, w.spoke);
+      }, { offset: 0.3 }),
+      mat: 'dWheel',
+      name: 'decal-relief-wheel-spokes',
+    });
+    parts.push({
+      geometry: kit.decal((x, y, z) => (onSide(x, z) ? -reliefWheelSd(x, y).hub : -1), { offset: 0.45 }),
+      mat: 'dBronze',
+      name: 'decal-relief-wheel-hub',
+    });
     // 蓋板（tonneau）木條縫（iter-115）：沿 x 的深色細縫，每 5 mm 一道，只畫在蓋板頂面（中央比邊沿高的段）、避開座艙口
     parts.push({
       geometry: kit.decal((x, y, z) => {
@@ -442,17 +562,11 @@ export const tanngrisnirChariotBody = makePolyBody({
       mat: 'dSeam',
       name: 'decal-tonneau-seams',
     });
-    // 蓋板中線兩側的青銅折線紋（iter-115，自繪單一條鋸齒帶，沿 x 走、座艙前方一段）
-    const zigX = zigzagDist(0, 1.3, 7);
-    parts.push({
-      geometry: kit.decal((x, y, z) => (x > -2 && x < 20 && y > P.yR(x) + 0.4 ? 0.6 - zigX(x, Math.abs(z) - 13.2) : -1), { offset: 0.1 }),
-      mat: 'dBronze',
-      name: 'decal-tonneau-zigzag',
-    });
     // 側面橡木板縫（深色細線）
     parts.push({
       geometry: kit.decal((x, y, z) => {
-        if (Math.abs(z) < P.hw(x) - 1.2) {
+        // iter-116：戰車輪浮雕範圍內不畫板縫
+        if (Math.abs(z) < P.hw(x) - 1.2 || reliefWheelSd(x, y).disc < 0.8) {
           return -1;
         }
         let d = Infinity;
@@ -523,6 +637,10 @@ export const tanngrisnirChariotBody = makePolyBody({
     for (const sg of [-1, 1]) {
       for (const bx of BAND_X) {
         for (const ry of [17.2, 23.6, 29.4]) {
+          // iter-116：車尾斜面段的鐵箍較矮，超出側壁的鉚釘不放
+          if (ry > P.yR(bx) - 2.2) {
+            continue;
+          }
           rivet(bx, ry, sg);
         }
       }
@@ -539,8 +657,8 @@ export const tanngrisnirChariotBody = makePolyBody({
   src: {
     density_g_cm3: 'SPEC 1.14：ABS 約 1.05 g/cm³（推估）',
     wallThickness_mm: '推估：射出 ABS 殼 0.8 mm（同其他車殼）',
-    geometry: '本檔站位產生器 P（推估）：車殼 x −63.5 ~ 64、車轅頭到 77（長約 141）；車斗邊沿 33、iter-115 蓋板中央最高 39.6（車尾收到 31.4）、羊角頂約 47.5（batch4「長約 140–150、高約 44–52」）；輪罩半寬 40 蓋住輪胎、兩輪之間收腰 32.5；車尾兩角收到 31（離後導輪 ≥ 1 mm）',
-    cockpit: 'iter-115：原本 x −47 ~ 20 的整片開放車斗（深 4.5 mm）封成拱起的橡木蓋板，只留 x −24 ~ −6、|z| ≤ 9.5 的圓角小座艙（深 4 mm，推估）；輪拱內加 buildArchWell 環形擋板（|z| 22.9）；車轅兩側原本的軛井開口（x 27–65、|z| 3.2–21.2）iter-114 封成深色橡木板面（加縱向木條縫），只留兩條窄挽具溝（x 25–65、|z| 1.8–10.2，溝壁 4 mm 橡木內襯）（評審：缺口露出黑色內部與底盤）',
+    geometry: '本檔站位產生器 P（推估）：車殼 x −63.5 ~ 64、車轅頭到 77（長約 141）；車斗邊沿 32、iter-116 蓋板中央最高 36.6（車尾斜面降到 21.6）、護欄頂約 44.6、羊角頂約 47.5（batch4「長約 140–150、高約 44–52」）；輪罩半寬 40 蓋住輪胎、兩輪之間收腰 32.5；車尾兩角收到 31（離後導輪 ≥ 1 mm）',
+    cockpit: 'iter-115：原本 x −47 ~ 20 的整片開放車斗（深 4.5 mm）封成拱起的橡木蓋板；iter-116 座艙放大成 x −40 ~ 4、|z| ≤ 12.5（深 4 mm，推估），兩側弧形護欄扶手斷面 1.5 × 1.8、立柱直徑 1.3 mm（推估，≥ 1.2 mm 射出薄件）；輪拱內加 buildArchWell 環形擋板（|z| 22.9）；車轅兩側原本的軛井開口（x 27–65、|z| 3.2–21.2）iter-114 封成深色橡木板面（加縱向木條縫），只留兩條窄挽具溝（x 25–65、|z| 1.8–10.2，溝壁 4 mm 橡木內襯）（評審：缺口露出黑色內部與底盤）',
     goats: '山羊頭頸為實心 ABS 掃掠件（頸斷面約 7 × 8 mm、頭 7 × 8 → 吻 4 × 5 mm）、羊角根部直徑約 4.4 mm 往尖端收到 1.2 mm＋每 2 mm 一道環節、鬍鬚厚 1.6 mm（推估），質量 = 封閉體積 × 1.05 g/cm³；羊頭 |z| 8–21，離前導輪（|z| ≥ 35.5）遠',
     zigzag: '背板折線紋：單一條橫向鋸齒（週期 8、振幅 ±1.7、線寬 1.3 mm），不是雙折線閃電（MYTH_RESEARCH H9），自繪',
     wheelArches: '前後 R17.5（31 mm 輪胎半徑 15.5 + 2 mm），可裝 26 / 31 mm 輪；內襯從 |z| 21.5 到殼內面',
