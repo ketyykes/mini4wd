@@ -1,6 +1,7 @@
 // 特洛伊木馬（body-trojan-horse，第八階段神話組・希臘）：木板拼成的方正馬身（側面橫向木板分條、上緣倒角）、
-// 側面一排六個小方窗（士兵窗，凹槽）、青銅鉚釘點列與兩道青銅馬具帶；馬頸從馬背長出、前胸往上收成喉部與馬頭（和車身是同一張殼面，
-// 不是放在引擎蓋上的馬像），頸頂一列梳狀短鬃片、頭頂一對耳、車尾三片短束的馬尾鰭（尾翼）。
+// 側面一排六個小方窗（士兵窗，凹槽）、青銅鉚釘點列與兩道青銅馬具帶；馬頸從前軸上方的馬背長出、往前上升到頭頂，前胸往上收成喉部與馬頭
+// （和車身是同一張殼面，不是放在引擎蓋上的馬像；iter-113 放大：長方馬臉、頭寬 15–16.5、頭頂 60.6），頸頂一列梳狀短鬃、額鬃、
+// 頭頂一對耳、亮黑眼＋青銅眼圈、青銅口勒（鼻革、頰帶、額帶、喉革＋圓釦）、鼻孔與嘴線，車尾三片短束的馬尾鰭（尾翼）。
 // 四個 R17.5 輪拱：31 mm 大輪不切輪拱也能裝；車身窄、輪胎外側外露 = 被推進城的「帶輪木馬」（自創詮釋，典故只說木馬被推進城內）。
 // 設計：shared/design/body-trojan-horse/DESIGN.md（MYTH_RESEARCH G1、G2：米科諾斯島浮雕陶甕的側面舷窗）。剖面為本檔站位產生器（推估）。
 // 塗裝全為自創：淺 / 中橡木＋深胡桃木（霧面）＋青銅（金屬）＋陶甕赭紅點綴；不含任何廠商 / 作品名稱、商標或文字。
@@ -11,21 +12,22 @@ import { monoCurve, buildStations } from './gazelleLeap.js';
 
 /** @typedef {import('./loft.js').BodyPart} BodyPart */
 
-/** 站位參數表（x 由後到前，前後軸 x = ±40）；x 42 以前是馬身，42–64 是馬頸從馬背長出、前胸往上收成喉部，64 以後只剩馬頭 */
-const XS = [-70, -66, -60, -50, -40, -20, 0, 20, 38, 44, 49, 53, 57, 60, 62, 64, 66, 69, 72, 75, 77.6];
+/** 站位參數表（x 由後到前，前後軸 x = ±40）；iter-113：馬頸從前軸上方（x 30）就從馬背長出、往前上升到頭頂（x 64），
+ * 前胸在 x 57–62 往上收成喉部，x 62 以後是馬頭（長方馬臉：額頭往前下斜、下顎線往前微升、口鼻 x 80.2） */
+const XS = [-70, -66, -60, -50, -40, -20, 0, 20, 30, 36, 42, 48, 53, 57, 60, 62, 64, 66, 68, 70, 74, 77, 79, 80.2];
 /** @type {Record<string, (x: number) => number>} */
 const P = {
-  // 馬背 / 頸根兩側的背板高度：車尾臀部略低，中段平直；頸根往前下收成前胸，馬頭段 = 頭側下緣 + 2.5
-  yD: monoCurve(XS, [33.5, 35, 36.2, 36.8, 37, 37, 37, 37, 37, 36.6, 35.2, 33.4, 30.6, 28.4, 29.5, 39.5, 47, 48.7, 48.5, 47.5, 46.5]),
-  // 中線頂：馬身段 = 背板 + 0.3（微拱）；頸部從 x 44 往上長到頭頂（x 64，57），再往前下到口鼻（49.6）
-  yN: monoCurve(XS, [33.8, 35.3, 36.5, 37.1, 37.3, 37.3, 37.3, 37.3, 37.3, 38.6, 43.2, 48.4, 53, 55.6, 56.6, 57, 56.6, 55.4, 53.6, 51.6, 49.6]),
-  // 馬頸 / 馬頭半寬（馬身段不使用，只決定背上微拱的寬度）
-  nw: monoCurve(XS, [7, 7, 7, 7, 7, 7, 7, 7, 7, 6.4, 5.6, 5.2, 5, 4.7, 4.5, 4.35, 4.15, 3.85, 3.5, 3.1, 2.7]),
+  // 馬背 / 頸根兩側的背板高度：車尾臀部略低，中段平直；頸根往前下收成前胸；馬頭段 = 頭側下緣 + 2.5
+  yD: monoCurve(XS, [33.5, 35, 36.2, 36.8, 37, 37, 37, 37, 37, 37, 36.7, 35.6, 33.4, 31.4, 30.4, 30.6, 34.5, 41, 45.5, 46.9, 47.3, 47.7, 48.3, 49.1]),
+  // 中線頂：馬身段 = 背板 + 0.3（微拱）；頸頂稜從 x 30 往前上升到頭頂（x 64，60.6），額頭再往前下斜到口鼻（52）
+  yN: monoCurve(XS, [33.8, 35.3, 36.5, 37.1, 37.3, 37.3, 37.3, 37.3, 37.4, 38.6, 42.2, 46.8, 51.2, 55, 58.4, 60, 60.6, 60, 59, 57.9, 55.9, 54.4, 53.2, 52]),
+  // 馬頸 / 馬頭半寬（馬身段只決定背上微拱的寬度）：頸根 8.8、頭頂 7.3、頰 7.5、口鼻 4.9（iter-113 由 4.35 → 2.7 加寬）
+  nw: monoCurve(XS, [7, 7, 7, 7, 7, 7, 7, 7, 7.5, 8.6, 8.8, 8.6, 8.3, 8, 7.7, 7.4, 7.3, 7.5, 7.5, 7.2, 6.4, 5.8, 5.4, 4.9]),
   // 半寬（俯視馬形）：寬厚的前胸（33.6，前輪上方）→ 收細的馬腹（23.4）→ 臀部（29，後輪上方）；前胸往前收成馬頭寬；
   // 輪胎外側（|z| 到 34.75）露在車身外 = 帶輪的木馬；胸前與臀部尾端收窄
-  hw: monoCurve(XS, [26, 27.6, 28.6, 29, 28.6, 24.6, 23.4, 27, 33, 33.6, 33.2, 31.8, 28.8, 23.5, 16, 8, 4.9, 4.6, 4.3, 3.9, 3.5]),
-  // 側壁下緣：中段 13（底盤側框禁入區由 loft.js 自動讓開），車尾抬高離開後保桿；x 57 起往上收成喉部、馬頭下緣
-  yLow: monoCurve(XS, [19, 17.5, 15.5, 13.5, 13, 13, 13, 13, 13, 13, 13.4, 13.8, 14.6, 19, 27, 37, 44.5, 46.2, 46, 45, 44]),
+  hw: monoCurve(XS, [26, 27.6, 28.6, 29, 28.6, 24.6, 23.4, 27, 30.3, 32.6, 33.5, 33.3, 31.8, 28.8, 23.5, 16, 8.3, 8.25, 8.25, 7.95, 7.15, 6.55, 6.15, 5.65]),
+  // 側壁下緣：中段 13（底盤側框禁入區由 loft.js 自動讓開），車尾抬高離開後保桿；x 57 起往上收成喉部，x 68 以後是馬頭下顎線
+  yLow: monoCurve(XS, [19, 17.5, 15.5, 13.5, 13, 13, 13, 13, 13, 13, 13, 13.3, 13.8, 14.6, 19.5, 25, 32, 38.5, 43, 44.4, 44.8, 45.2, 45.8, 46.6]),
 };
 
 /** @type {number} 馬背兩側倒角寬度（俯視 z 方向、側視 y 方向同值） */
@@ -62,13 +64,13 @@ const profile = (x) => {
 };
 
 // 頸部、喉部與馬頭每 0.5 mm 一站（曲率大）
-const STATIONS = [...buildStations(-70, 40, 2, profile).slice(0, -1), ...buildStations(40, 77.6, 0.5, profile)];
+const STATIONS = [...buildStations(-70, 30, 2, profile).slice(0, -1), ...buildStations(30, 80.2, 0.5, profile)];
 
 /**
- * 馬頸 / 馬頭的殼面（中線附近、頸根背板以上；x 63.5 以後全部）
+ * 馬頸 / 馬頭的殼面（中線附近、頸根背板以上；x 62 以後全部）
  * @type {(x: number, y: number, z: number) => boolean}
  */
-const onNeck = (x, y, z) => x > 63.5 || (x > 42 && Math.abs(z) < P.nw(x) + 0.9 && y > P.yD(x) + 0.4);
+const onNeck = (x, y, z) => x > 62 || (x > 30 && Math.abs(z) < P.nw(x) + 0.9 && y > P.yD(x) + 0.4);
 /** @type {(x: number, y: number, z: number) => boolean} 馬頸、前胸、喉部與馬頭（x > 50）：一律用橫向木板 */
 const onFront = (x, y, z) => x > 50 || onNeck(x, y, z);
 
@@ -122,6 +124,8 @@ const materials = () => ({
   // 青銅（真金屬：名稱含 -brass）
   bronze: namedMaterial('trim-bronze-brass', { color: 0xb07a3c, roughness: 0.32, metalness: 0.78, clearcoat: 0.2 }),
   bronze2: namedMaterial('trim-bronze-brass', { color: 0xb07a3c, roughness: 0.32, metalness: 0.78, clearcoat: 0.2, side: THREE.DoubleSide }),
+  // 眼：上了亮漆的黑檀木嵌件（全車少數的亮面）
+  eye: namedMaterial('paint-eye-ebony-gloss', { color: 0x120d0a, roughness: 0.18, clearcoat: 0.9, clearcoatRoughness: 0.05 }),
   inner: namedMaterial('shell-inner-dark', { color: 0x1e1712, roughness: 0.85, side: THREE.BackSide }),
   edge: namedMaterial('shell-edge-walnut', { color: 0x4a2f1b, roughness: 0.7, side: THREE.DoubleSide }),
   // 士兵窗槽底（窗內的暗處）與槽壁
@@ -181,13 +185,14 @@ const CONFIG = {
   form: 'plank-wagon',
   roof: 'closed',
   wing: 'horse-tail',
-  theme: '木板拼成的方正馬身＋一排士兵小方窗、青銅鉚釘與馬具帶；馬頸從馬背長出、前胸往上收成喉部與馬頭（同一張殼面），頸後梳狀短鬃、車尾短束馬尾鰭；帶輪的木馬（31 mm 大輪外露）',
+  theme: '木板拼成的方正馬身＋一排士兵小方窗、青銅鉚釘與馬具帶；馬頸從前軸上方升起到長方馬臉的馬頭（同一張殼面，雙耳、額鬃、眼、鼻孔、青銅口勒），頸後梳狀短鬃、車尾短束馬尾鰭；帶輪的木馬（31 mm 大輪外露）',
   material: 'ABS',
   density_g_cm3: 1.05,
   wallThickness_mm: 0.8,
   stations: STATIONS,
-  // 平滑剖面：頸頂稜（2）、倒角兩條稜線（4、5）為銳利稜線；頸根（3）是圓角，馬頸從背板長出
-  hard: [2, 4, 5],
+  // 平滑剖面：頸頂稜（2）、頸根（3）、倒角兩條稜線（4、5）、側板中段（6）為銳利稜線（iter-113：3、6 原為平滑點，Catmull-Rom 在直角轉角處過衝、殼面反折，
+  // 背上兩條與喉部兩側出現露出內面的黑色裂縫；改成銳利稜線＝木板接合的折角；喉部 / 下顎的底面因此是平的）
+  hard: [2, 3, 4, 5, 6],
   wheelArches: [
     { x: 40, y: 13, radius: 17.5, cutZFrom: 21 },
     { x: -40, y: 13, radius: 17.5, cutZFrom: 21 },
@@ -203,8 +208,8 @@ const CONFIG = {
   innerSkipRecess: true,
   sideZMin: 22,
   zones: () => [
-    // 深胡桃木：口鼻端（x > 74.6）
-    { mat: 'walnut', keep: (x) => x - 74.6 },
+    // 深胡桃木：口鼻端（x > 77.6）
+    { mat: 'walnut', keep: (x) => x - 77.6 },
     // 馬頸 / 前胸 / 馬頭：橫向木板交錯（中橡木隔條），和馬身側板同一套木板高度
     { mat: 'oakMid', keep: (x, y, z) => (onFront(x, y, z) ? oddBand(y, PLANK_Y0, PLANK_SIDE) : -1) },
     { mat: 'oak', keep: (x, y, z) => (onFront(x, y, z) ? 1 : -1) },
@@ -226,15 +231,25 @@ const CONFIG = {
     /** @type {(x: number, z: number) => number} 殼面高度 */
     const top = (x, z) => kit.surf.topY(x, z);
 
-    // ── 馬頸、喉部與馬頭是殼面本身（站位產生器 P 的 x 42–77.6 段），這裡只加鬃與耳 ──
-    // 耳朵：頭頂後方一對短三角板（厚 1.4，往外 12°），根部埋進頭頂 0.8 mm
+    // ── 馬頸、喉部與馬頭是殼面本身（站位產生器 P 的 x 30–80.2 段），這裡加耳、額鬃、頸鬃、眼與青銅馬具上的圓釦 ──
+    /** @type {(x: number) => number} 頭側殼面的 |z|（側板外面） */
+    const sideZ = (x) => P.hw(x);
+    // 耳朵：頭頂（x 61–64.6）一對往前上豎的三角板（厚 1.6，往外張 10°），根部埋進頭頂 1 mm；耳尖 y ≈ 65.4（31 mm 輪整車高 < 70）
     /** @type {THREE.BufferGeometry[]} */
     const ears = [];
     for (const sg of [-1, 1]) {
-      ears.push(finPlate([[60.2, P.yN(60.2) - 0.8], [63.4, P.yN(63.4) - 0.8], [60.8, 61]], sg * 2.3, 1.4, sg * -12));
+      ears.push(finPlate([[60.6, P.yN(60.6) - 1.2], [64.8, P.yN(64.8) - 1.2], [63.6, 65.4], [62.6, 65.2]], sg * 4.4, 1.6, sg * -10));
     }
     parts.push({ geometry: mergeGeos(ears), mat: 'walnut2', solid: true, outline: true, name: 'horse-ears' });
-    // 梳狀短鬃：沿頸頂稜線（x 45 → 60）一列 7 齒（厚 1.6），齒沿殼面法線往後上伸 3.2 mm，根部埋進殼面 1 mm
+    // 額鬃（forelock）：兩耳之間往前垂到額頭的一束短板（厚 1.8）
+    parts.push({
+      geometry: finPlate([[62.4, P.yN(62.4) - 0.8], [65.4, P.yN(65.4) + 1.6], [68.6, P.yN(68.6) + 0.5], [69.6, P.yN(69.6) - 0.6], [66.4, P.yN(66.4) - 0.8]], 0, 1.8),
+      mat: 'walnut2',
+      solid: true,
+      outline: true,
+      name: 'horse-forelock',
+    });
+    // 梳狀頸鬃：沿頸頂稜線（x 37 → 61）一列 9 齒（厚 1.6），齒沿殼面法線往後上伸 3.4 mm，根部埋進殼面 1 mm
     {
       /** @type {(x: number) => number[]} 頸頂稜線上 x 處往外（後上）的單位法線 */
       const normalAt = (x) => {
@@ -247,17 +262,46 @@ const CONFIG = {
         const [nx, ny] = normalAt(x);
         return [x + nx * h, P.yN(x) + ny * h];
       };
-      const x0 = 45;
-      const x1 = 60;
-      const n = 7;
+      const x0 = 37;
+      const x1 = 61;
+      const n = 9;
       const pts = [at(x0, -1)];
       for (let i = 0; i < n; i++) {
         const a0 = lerp(x0, x1, i / n);
         const a1 = lerp(x0, x1, (i + 1) / n);
-        pts.push(at(lerp(a0, a1, 0.1), 0.6), at(lerp(a0, a1, 0.3), 3.2), at(lerp(a0, a1, 0.7), 3.0), at(a1, 0.6));
+        pts.push(at(lerp(a0, a1, 0.1), 0.6), at(lerp(a0, a1, 0.3), 3.4), at(lerp(a0, a1, 0.7), 3.2), at(a1, 0.6));
       }
       pts.push(at(x1, -1));
       parts.push({ geometry: finPlate(pts, 0, 1.6), mat: 'walnut2', solid: true, outline: true, name: 'horse-mane' });
+    }
+    // 眼睛：頭側一對亮黑半球（青銅眼圈用貼紙），在額頭斜線下方、頰帶後面
+    {
+      /** @type {THREE.BufferGeometry[]} */
+      const eyes = [];
+      for (const sg of [-1, 1]) {
+        const e = new THREE.SphereGeometry(1, 16, 10);
+        e.scale(1.6, 1.35, 0.7);
+        e.translate(67.4, 55.4, sg * (sideZ(67.4) + 0.05));
+        eyes.push(e);
+      }
+      parts.push({ geometry: mergeGeos(eyes), mat: 'eye', solid: true, name: 'horse-eyes' });
+    }
+    // 青銅圓釦（馬具帶交會處）：鼻革與頰帶交會、頰帶與額帶交會，每側 2 顆（直徑 2.6、厚 0.8）
+    {
+      /** @type {THREE.BufferGeometry[]} */
+      const studs = [];
+      for (const sg of [-1, 1]) {
+        for (const [x, y] of [
+          [74.3, 49.6],
+          [65.2, 57],
+        ]) {
+          const c = new THREE.CylinderGeometry(1.3, 1.3, 0.8, 18);
+          c.rotateX(Math.PI / 2);
+          c.translate(x, y, sg * (sideZ(x) + 0.25));
+          studs.push(c);
+        }
+      }
+      parts.push({ geometry: mergeGeos(studs), mat: 'bronze', solid: true, name: 'harness-studs' });
     }
 
     // ── 馬尾鰭（尾翼）：車尾馬背上三片短束的尾鰭（中片最長），往後上翹、尖端不超出車尾；根部一個青銅束環 ──
@@ -329,26 +373,57 @@ const CONFIG = {
       mat: 'dBronze',
       name: 'decal-harness-straps',
     });
-    // 青銅頭套（馬具）：鼻革（x 72.6–74.2 一圈）＋頰帶（眼後一道直帶）＋頸根項圈（沿頸根斜繞一圈）
+    // 青銅馬具（口勒）：鼻革（x 74.3 一圈）＋額帶（耳前橫過額頭）＋頰帶（鼻革 → 耳根，頭側斜帶）＋喉革（耳根 → 喉下）＋頸根項圈，帶寬 1.4
+    /** @type {(px: number, py: number, ax: number, ay: number, bx: number, by: number) => number} 線段距離 */
+    const segDist = (px, py, ax, ay, bx, by) => {
+      const dx = bx - ax;
+      const dy = by - ay;
+      const t = Math.max(0, Math.min(1, ((px - ax) * dx + (py - ay) * dy) / (dx * dx + dy * dy)));
+      return Math.hypot(px - ax - t * dx, py - ay - t * dy);
+    };
     parts.push({
       geometry: kit.decal((x, y, z) => {
-        if (x > 64) {
-          return Math.max(0.8 - Math.abs(x - 73.4), 0.6 - Math.abs(x - 64.9 + 0.25 * (y - 50)));
+        if (x > 62) {
+          const noseband = 0.7 - Math.abs(x - 74.3);
+          const browband = y > P.yN(x) - 3.2 ? 0.7 - Math.abs(x - 65.6) : -1;
+          const onHeadSide = Math.abs(z) > P.hw(x) - 1.2;
+          const cheek = onHeadSide ? 0.7 - segDist(x, y, 74.3, 49.6, 65.2, 57) : -1;
+          const throat = onHeadSide ? 0.7 - segDist(x, y, 65.2, 57, 66.2, 40) : -1;
+          return Math.max(noseband, browband, cheek, throat);
         }
         if (onNeck(x, y, z)) {
-          // 頸根項圈：從背上（x 47）斜到喉部（x 60.5），寬 1.6
-          return 0.8 - Math.abs(x - 47 - 0.62 * (P.yN(47) - y));
+          // 頸根項圈：從背上（x 40）斜到前胸（x 56），寬 1.6
+          return 0.8 - Math.abs(x - 40 - 0.75 * (P.yN(40) - y));
         }
         return -1;
       }, { offset: 0.1 }),
       mat: 'dBronze',
       name: 'decal-head-harness',
     });
-    // 眼睛：頭側一對青銅圓釘（直徑 2）
+    // 青銅眼圈（眼睛外一圈 0.7 mm）
     parts.push({
-      geometry: kit.decal((x, y, z) => (x > 64 && Math.abs(z) > 2 ? 1 - Math.hypot(x - 67.6, y - 52.6) : -1), { offset: 0.16 }),
+      geometry: kit.decal((x, y, z) => {
+        if (x < 62 || Math.abs(z) < P.hw(x) - 1.2) {
+          return -1;
+        }
+        const d = Math.hypot((x - 67.4) / 1.6, (y - 55.4) / 1.35);
+        return Math.min(d - 1.0, 1.55 - d);
+      }, { offset: 0.12 }),
       mat: 'dBronze',
-      name: 'decal-eyes',
+      name: 'decal-eye-rings',
+    });
+    // 鼻孔與嘴線（深色刻槽）：口鼻前端兩側的橢圓鼻孔、口鼻下段往後的嘴線
+    parts.push({
+      geometry: kit.decal((x, y, z) => {
+        if (x < 74 || Math.abs(z) < 2.2) {
+          return -1;
+        }
+        const nostril = 1 - Math.hypot((x - 78.9) / 1.15, (y - 50.4) / 0.85);
+        const mouth = Math.min(0.35 - Math.abs(y - 47.2 - 0.12 * (x - 80)), x - 75.6);
+        return Math.max(nostril, mouth);
+      }, { offset: 0.14 }),
+      mat: 'dGroove',
+      name: 'decal-nostrils-mouth',
     });
     // 青銅鉚釘點列：側板上緣與底板上方各一列（每 3.2 mm 一顆，直徑 0.9），避開馬具帶與輪拱邊
     /** @type {(u: number, v: number) => number} u = 往前為正的 x */
@@ -406,10 +481,10 @@ const CONFIG = {
   src: {
     density_g_cm3: 'SPEC 1.14：ABS 約 1.05 g/cm³（推估）',
     wallThickness_mm: '推估：射出 ABS 殼 0.8 mm（同其他車殼）',
-    geometry: '本檔站位產生器 P（推估）：車殼外框長 149.7（尾鰭尖 x −71.8 → 馬口鼻 77.9）、馬背 37、馬頭頂 57、耳尖 61.2；俯視馬形：前胸寬 67.4、馬腹 46.8、臀部 58；SPEC 1.14a 車殼外框長 ≤ 153 mm（立體橋不刮地）',
+    geometry: '本檔站位產生器 P（推估）：車殼外框長 152.0（尾鰭尖 x −71.8 → 馬口鼻 80.2）、馬背 37、馬頭頂 60.6、耳尖 65.6（31 mm 輪整車高 68.1 < 70）；馬頭寬 15–16.5、長（頭頂 → 口鼻）約 18；俯視馬形：前胸寬 67.2、馬腹 46.8、臀部 58；SPEC 1.14a 車殼外框長 ≤ 153 mm（立體橋不刮地）',
     wheelArches: '前後 R17.5（31 mm 輪胎半徑 15.5 + 2 mm，同 zeppelin / griffin），cutZFrom 21；輪拱內襯深 2.4 mm',
     windows: '士兵窗：米科諾斯島浮雕陶甕木馬側面的舷窗（MYTH_RESEARCH G2）；本款 6 個 4.8 × 5 mm、深 1.2 mm 凹槽（數量與尺寸自訂）',
-    headNeck: '馬頸、喉部、馬頭是殼面的一部分（面積 × 壁厚 × 密度）；鬃片、耳朵、尾鰭、尾根束環為實心 ABS 件（厚 1.4–1.6 mm），質量 = 封閉體積 × 1.05 g/cm³（推估）',
+    headNeck: '馬頸、喉部、馬頭是殼面的一部分（面積 × 壁厚 × 密度）；鬃片、額鬃、耳朵、眼、馬具圓釦、尾鰭、尾根束環為實心 ABS 件（厚 0.8–1.8 mm），質量 = 封閉體積 × 1.05 g/cm³（推估）',
     mounts: '對齊 chassis-midship 的車殼安裝點（SPEC 1.14）',
   },
 };
