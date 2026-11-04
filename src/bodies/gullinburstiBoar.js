@@ -73,11 +73,15 @@ const shellZAt = (x, y) => {
 const materials = () => ({
   // iter-114：主體金漆（paint- 且 roughness ≤ 0.5 → Blender 亮面漆；比真金屬鬃毛暗一階、偏紅銅的金，和亮金鬃毛仍分得出層次）
   // 刻意不用金屬黑（避開 Bergkaiser Fenrir 限定版的金屬黑＋黃細線，MYTH_RESEARCH F7）
-  goldPaint: namedMaterial('paint-gold-burnished', { color: 0xb8862f, metalness: 0.55, roughness: 0.42, clearcoat: 0.5, clearcoatRoughness: 0.2 }),
-  goldPaint2: namedMaterial('paint-gold-burnished', { color: 0xb8862f, metalness: 0.55, roughness: 0.42, clearcoat: 0.5, side: THREE.DoubleSide }),
+  // iter-115（評審：金色是芥末色半光澤塑膠、不像金屬）：主體改真金屬金（名稱含 -brass → Blender metallic 1），
+  // 顏色比鬃毛深一階、粗糙度高一點（拉絲金），鬃毛是更亮、更光滑的拋光金
+  goldPaint: namedMaterial('trim-gold-body-brass', { color: 0xc8962f, metalness: 0.85, roughness: 0.34, clearcoat: 0.3, clearcoatRoughness: 0.2 }),
+  goldPaint2: namedMaterial('trim-gold-body-brass', { color: 0xc8962f, metalness: 0.85, roughness: 0.34, clearcoat: 0.3, side: THREE.DoubleSide }),
   // 真金屬：青銅豬鼻、金鬃毛（名稱含 -brass → Blender 換成金屬材質）
   bronze: namedMaterial('trim-bronze-brass', { color: 0x9c6b3c, metalness: 0.8, roughness: 0.34, clearcoat: 0.2 }),
-  gold: namedMaterial('trim-gold-brass', { color: 0xe0b043, metalness: 0.85, roughness: 0.28, clearcoat: 0.3 }),
+  gold: namedMaterial('trim-gold-brass', { color: 0xf0c457, metalness: 0.9, roughness: 0.22, clearcoat: 0.3 }),
+  // 豬鼻盤（iter-115）：拋光青銅＋深色鼻孔
+  snoutDisc: namedMaterial('trim-snout-copper', { color: 0xb07048, metalness: 0.8, roughness: 0.3, clearcoat: 0.2 }),
   ivory: namedMaterial('paint-tusk-ivory', { color: 0xe8dcc0, roughness: 0.6, clearcoat: 0.1 }),
   inner: namedMaterial('shell-inner-dark', { color: 0x18191c, roughness: 0.85, side: THREE.BackSide }),
   edge: namedMaterial('shell-edge-iron', { color: 0x3a3c42, roughness: 0.6, side: THREE.DoubleSide }),
@@ -253,8 +257,8 @@ const interlaceSd = (u, v) => {
 // 實體件
 // ---------------------------------------------------------------------------
 
-/** @type {number[]} 鬃毛片的 x 位置（iter-114：從頭頂 x 47 一路往後到車尾 −58.5，每 5 mm 一片，共 22 片） */
-const BRISTLE_X = Array.from({ length: 22 }, (_, i) => lerp(47, -58.5, i / 21));
+/** @type {number[]} 鬃毛束的 x 位置（iter-115：22 片 → 12 束、每 9.6 mm 一束，加寬加厚，評審：太密太細像刺蝟；頭頂 x 46 到車尾 −59.6） */
+const BRISTLE_X = Array.from({ length: 12 }, (_, i) => lerp(46, -59.6, i / 11));
 /**
  * 鬃毛片高度（從殼面算起，iter-114 改成大致均勻）：頭頂前兩片 4.6 / 5.6，中段 6.2，最後 3 片 7 → 8.2 成為尾翼
  * @type {(i: number) => number}
@@ -279,21 +283,21 @@ const bristleH = (i) => {
  */
 const bristleOutline = (x, h) => {
   const yb = P.yC(x) - 1.2;
-  const w = 4.6;
+  const w = 7.4;
   const lean = 0.45 * h;
   /** @type {(fx: number, fy: number) => number[]} fx：沿車身往前為正（相對根部中心）、fy：高度比例 */
   const at = (fx, fy) => [x + fx - lean * fy, yb + 1.2 + h * fy];
   return [
     [x + w / 2 + 0.6, yb],
-    at(w / 2, 0.15),
-    at(w / 2 - 0.4, 0.62),
-    at(w / 2 - 1.0, 0.72),
-    at(0.6, 0.55),
-    at(0.1, 0.86),
-    at(-0.5, 0.62),
-    at(-1.2, 1.0),
-    at(-1.6, 0.9),
-    at(-w / 2, 0.35),
+    at(w / 2, 0.2),
+    at(w / 2 - 0.6, 0.66),
+    at(w / 2 - 1.8, 0.74),
+    at(0.9, 0.55),
+    at(0.2, 0.88),
+    at(-0.9, 0.6),
+    at(-1.8, 1.0),
+    at(-2.6, 0.9),
+    at(-w / 2, 0.38),
     [x - w / 2 - 0.4, yb],
   ];
 };
@@ -387,39 +391,50 @@ export const gullinburstiBoarBody = makePolyBody({
   extras: (kit) => {
     /** @type {BodyPart[]} */
     const parts = [];
-    // 背脊金鬃毛：22 片梳狀實體片（厚 1.4 mm、0.35 mm 倒角），根部埋進中線殼面
-    const plates = BRISTLE_X.map((x, i) => finPlate(bristleOutline(x, bristleH(i)), 0, 1.4));
+    // 背脊金鬃毛：12 束梳狀實體片（iter-115：厚 1.4 → 2.4 mm、寬 4.6 → 7.4 mm，粗短的野豬鬃），根部埋進中線殼面
+    const plates = BRISTLE_X.map((x, i) => finPlate(bristleOutline(x, bristleH(i)), 0, 2.4));
     parts.push({ geometry: mergeGeos(plates), mat: 'gold', solid: true, outline: true, name: 'bristle-crest' });
     // 獠牙
     parts.push({ geometry: mergeGeos([buildTusk(-1), buildTusk(1)]), mat: 'ivory', solid: true, outline: true, name: 'tusks' });
-    // 耳朵：肩前兩片往後倒的小三角片（金漆，實體）
+    // 耳朵（iter-115：評審要求補耳朵——原本肩上 6 mm 小三角看不到）：眼睛後上方一對大的野豬立耳（側視尖葉形，高 9.5、底寬 7，
+    // 厚 1.6 mm，外傾 32°、耳尖略往前），耳根埋進殼面 1 mm；耳內一片深色內耳（薄片貼在耳前面）
     /** @type {THREE.BufferGeometry[]} */
     const ears = [];
     for (const sg of [-1, 1]) {
-      const zc = sg * 12.5;
-      const yb = 0;
+      const ex = 42;
+      const ez = 13.5;
       const ear = finPlate(
         [
-          [33.5, yb],
-          [27.5, yb],
-          [26.2, yb + 6.2],
+          [ex + 3.6, 0],
+          [ex + 3.4, 3.6],
+          [ex + 1.6, 9.5],
+          [ex - 1.4, 5.4],
+          [ex - 3.4, 0],
         ],
         0,
-        1.2,
-        sg * 28,
+        1.6,
+        sg * 32,
       );
-      ear.translate(0, kit.surf.topY(30.5, 12.5) - 1, zc);
+      ear.translate(0, kit.surf.topY(ex, ez) - 1, sg * ez);
       ears.push(ear);
     }
     parts.push({ geometry: mergeGeos(ears), mat: 'goldPaint2', solid: true, outline: true, name: 'ears' });
+    // 豬鼻盤（iter-115）：鼻套前端再凸出一片橢圓鼻盤（寬 13、高 9、厚 2.2 mm，前緣倒角），讀得出豬鼻
+    {
+      const disc = new THREE.CylinderGeometry(1, 1, 2.2, 32, 1);
+      disc.rotateZ(Math.PI / 2);
+      disc.scale(1, 4.5, 6.5);
+      disc.translate(68.6, 19.4, 0);
+      parts.push({ geometry: disc.toNonIndexed(), mat: 'snoutDisc', solid: true, outline: true, name: 'snout-disc' });
+    }
     // 鼻盤上的兩個鼻孔（深色橢圓薄片，貼在前封口外 0.08 mm）
     /** @type {THREE.BufferGeometry[]} */
     const nostrils = [];
     for (const sg of [-1, 1]) {
       const g = new THREE.CircleGeometry(1, 20);
-      g.scale(1.5, 2.1, 1);
+      g.scale(1.5, 2.3, 1);
       g.rotateY(Math.PI / 2);
-      g.translate(68.08, 19.2, sg * 4.2);
+      g.translate(69.78, 19.4, sg * 2.6);
       nostrils.push(g);
     }
     parts.push({ geometry: mergeGeos(nostrils), mat: 'nostril', name: 'nostrils' });

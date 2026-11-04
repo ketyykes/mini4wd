@@ -28,7 +28,8 @@ const P = {
   // 輪胎外側（|z| 到 34.75）露在車身外 = 帶輪的木馬；胸前與臀部尾端收窄
   hw: monoCurve(XS, [26, 27.6, 28.6, 29, 28.6, 24.6, 23.4, 27, 30.3, 32.6, 33.5, 33.3, 31.8, 28.8, 23.5, 16, 8.3, 8.25, 8.25, 7.95, 7.15, 6.55, 6.15, 5.65]),
   // 側壁下緣：中段 13（底盤側框禁入區由 loft.js 自動讓開），車尾抬高離開後保桿；x 57 起往上收成喉部，x 68 以後是馬頭下顎線
-  yLow: monoCurve(XS, [19, 17.5, 15.5, 13.5, 13, 13, 13, 13, 13, 13, 13, 13.3, 13.8, 14.6, 19.5, 25, 32, 38.5, 43, 44.4, 44.8, 45.2, 45.8, 46.6]),
+  // iter-115：兩輪之間（x −20 → 20）壓低到 10.5（底盤側框頂 9.4 之上），配合腹側裙板封住電池艙
+  yLow: monoCurve(XS, [19, 17.5, 15.5, 13.5, 13, 10.5, 10.5, 10.5, 13, 13, 13, 13.3, 13.8, 14.6, 19.5, 25, 32, 38.5, 43, 44.4, 44.8, 45.2, 45.8, 46.6]),
 };
 
 /** @type {number} 馬背兩側倒角寬度（俯視 z 方向、側視 y 方向同值） */
@@ -112,6 +113,77 @@ const oddBand = (v, v0, p) => {
 const onSide = (x, z) => Math.abs(z) > P.hw(x) - 0.4;
 /** @type {(x: number, z: number) => boolean} 背板（倒角以內的頂面） */
 const onTop = (x, z) => Math.abs(z) < P.hw(x) - CH - 0.1;
+
+/**
+ * 腹側裙板（iter-115：評審「側面電池管外露 → 比照 longship、kunpeng 加側裙或腹板包住」）：前後輪拱之間每側一組 L 形實心板——
+ * 直立外板（|z| zOut − t → zOut，y yBot → yTop）＋頂部水平棚板（y yTop − t → yTop，從殼側壁內 1 mm 的 zIn(x) 往外接到外板），
+ * 把底盤側框（|z| 35–36.2、頂 y 9.4）上方、殼側壁下緣以下的電池艙側面整片蓋住。yBot 預設 10.5（離底盤側框頂 1.1 mm）。
+ * 外形在 x–z 平面畫棚板外形、沿 y 擠出；外板是 x–y 外形沿 z 擠出；兩件在外板內緣重疊 0.2 mm（質量重複計入極小，偏保守）。
+ * ribs 有值時（省質量用）：棚板不做整片，只在這些 x 各做一條寬 ribW 的橫撐把外板接到殼側壁
+ * @type {(o: { x0: number, x1: number, zIn: (x: number) => number, zOut: number, yTop: number, yBot?: number, t?: number, ribs?: number[], ribW?: number }) => THREE.BufferGeometry}
+ */
+export function buildBellySkirt({ x0, x1, zIn, zOut, yTop, yBot = 10.5, t = 1.2, ribs, ribW = 2.4 }) {
+  /** @type {THREE.BufferGeometry[]} */
+  const geos = [];
+  const n = 24;
+  for (const sg of [-1, 1]) {
+    // 棚板：shape 座標 (x, |z|)，rotateX(+90°) 後 shape y → 世界 z、擠出方向 → 世界 −y
+    /** @type {number[][]} 棚板（或每條橫撐）的 x 範圍 */
+    const spans = ribs ? ribs.map((xr) => [xr - ribW / 2, xr + ribW / 2]) : [[x0, x1]];
+    for (const [a, b] of spans) {
+      /** @type {THREE.Vector2[]} */
+      const pts = [];
+      for (let i = 0; i <= n; i++) {
+        const x = lerp(a, b, i / n);
+        pts.push(new THREE.Vector2(x, sg * Math.min(zIn(x), zOut - t)));
+      }
+      pts.push(new THREE.Vector2(b, sg * (zOut - 0.2)), new THREE.Vector2(a, sg * (zOut - 0.2)));
+      const shelf = new THREE.ExtrudeGeometry(new THREE.Shape(pts), { depth: t, bevelEnabled: false });
+      shelf.rotateX(Math.PI / 2);
+      shelf.translate(0, yTop, 0);
+      geos.push(shelf);
+    }
+    // 外板：x–y 外形（前後端下角倒 1.5 mm），沿 z 擠出厚 t
+    const plate = new THREE.Shape([
+      new THREE.Vector2(x0, yTop),
+      new THREE.Vector2(x0, yBot + 1.5),
+      new THREE.Vector2(x0 + 1.5, yBot),
+      new THREE.Vector2(x1 - 1.5, yBot),
+      new THREE.Vector2(x1, yBot + 1.5),
+      new THREE.Vector2(x1, yTop),
+    ]);
+    const pg = new THREE.ExtrudeGeometry(plate, { depth: t, bevelEnabled: false });
+    pg.translate(0, 0, sg > 0 ? zOut - t : -zOut);
+    geos.push(pg);
+  }
+  return mergeGeos(geos);
+}
+
+/**
+ * 斜腹板（iter-115）：前後輪拱之間每側一片往外下斜的實心板——上緣埋進殼側壁（|z| zIn、y yTop），下緣到底盤側框外緣上方（|z| zOut、y yBot），
+ * 斷面是平行四邊形（水平寬 tz，板法向厚約 1.2 mm），沿 x 擠出 x0 → x1；把殼側壁下方、底盤側框以上外露的側框 / 電池艙整片蓋住，
+ * 比「直立外板＋水平棚板」省一半質量，側視也像車殼的下斜裙邊
+ * @type {(o: { x0: number, x1: number, zIn: number, zOut: number, yTop: number, yBot?: number, tz?: number }) => THREE.BufferGeometry}
+ */
+export function buildSlantSkirt({ x0, x1, zIn, zOut, yTop, yBot = 10.5, tz = 1.8 }) {
+  /** @type {THREE.BufferGeometry[]} */
+  const geos = [];
+  for (const sg of [-1, 1]) {
+    // 斷面 (u = z, v = y)
+    const pts = [
+      [sg * zIn, yTop],
+      [sg * zOut, yBot],
+      [sg * (zOut - tz), yBot],
+      [sg * (zIn - tz), yTop],
+    ].map(([u, v]) => new THREE.Vector2(u, v));
+    const g = new THREE.ExtrudeGeometry(new THREE.Shape(pts), { depth: x1 - x0, bevelEnabled: false });
+    // 擠出方向 → 世界 x：rotateY(−90°) 後 (u, v, w) → (−w, v, u)，再平移到 x1
+    g.rotateY(-Math.PI / 2);
+    g.translate(x1, 0, 0);
+    geos.push(g);
+  }
+  return mergeGeos(geos);
+}
 
 /** @type {() => Record<string, THREE.Material>} */
 const materials = () => ({
@@ -242,6 +314,16 @@ const CONFIG = {
   extras: (kit) => {
     /** @type {BodyPart[]} */
     const parts = [];
+    // iter-115 斜腹板（深胡桃木，台車的側板）：前後輪拱之間 x −21.5 → 21.5，上緣埋進殼側壁（|z| 24.5、y 21.5）、
+    // 往外下斜到 |z| 35.5（和底盤側框外緣齊；37.5 時俯視和 zeppelin 的 IoU 0.850）、y 10.5，包住外露的底盤側框 / 電池艙側面
+    // （先試過 y 16 的直立板＋棚板：側框在棚板上方仍露出）
+    parts.push({
+      geometry: buildSlantSkirt({ x0: -21.5, x1: 21.5, zIn: 24.5, zOut: 35.5, yTop: 21.5 }),
+      mat: 'walnut',
+      solid: true,
+      outline: true,
+      name: 'belly-skirt',
+    });
     /** @type {(x: number, z: number) => number} 殼面高度 */
     const top = (x, z) => kit.surf.topY(x, z);
 

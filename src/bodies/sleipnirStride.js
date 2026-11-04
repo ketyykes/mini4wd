@@ -13,6 +13,7 @@ import * as THREE from 'three';
 import { makePolyBody, finPlate, sweepEllipse } from './polyBody.js';
 import { namedMaterial, decalMaterial, sideDecal, mergeGeos, lerp } from './loft.js';
 import { monoCurve, buildStations } from './gazelleLeap.js';
+import { buildArchWell, chassisBlockedNearArch } from './kitsuneNinetail.js';
 
 /** @typedef {import('./loft.js').BodyPart} BodyPart */
 
@@ -29,7 +30,7 @@ const P = {
   nw: monoCurve(XS, [2.4, 2.6, 2.8, 3, 3, 3, 3, 3, 3, 3.2, 4.5, 7.5, 9.5, 10, 9.5, 8, 6.5, 4.5]),
   // 半寬（俯視馬形）：後輪上方的臀部 → 收細的腰腹（36.8，剛好蓋住底盤側面）→ 前輪上方的肩部 → 收成馬頭；車尾收窄（後導輪處 < 35.5）
   // iter-114：臀 / 肩 48.5 → 47.5（車殼外框含擋泥唇半寬 ≤ 48.0）；鼻段改成較緩的連續收窄（原本 x 56 → 68 由 48.5 急收到 21）、車尾收得更窄（俯視輪廓 IoU）
-  hw: monoCurve(XS, [15, 17, 22, 40, 47.5, 47.5, 36.8, 36.8, 36.8, 36.8, 36.8, 44.5, 47.5, 45.5, 36.5, 25, 18.5, 11.5]),
+  hw: monoCurve(XS, [17, 19, 23, 40, 47.5, 47.5, 36.8, 36.8, 36.8, 36.8, 36.8, 44.5, 47.5, 45.5, 36.5, 25, 18.5, 11.5]),
   // 側裙下緣：中段 13.6（蓋住底盤側面上半，底盤側框 9.4 以上）；車尾抬高到後上導輪頂（20.5）之上；車頭逐步抬高
   yLow: monoCurve(XS, [22.6, 22, 20.4, 15.5, 13.4, 13.2, 13.6, 13.6, 13.6, 13.6, 13.6, 13.2, 13.4, 14, 14.8, 17, 18.2, 19.2]),
 };
@@ -104,15 +105,21 @@ const CANOPY = {
 };
 
 /**
- * 八條腿（iter-114：每側 4 條立體浮雕腿，前一對、後一對成雙；奔跑姿勢）：側視折線 [x, y]（腿根 → 膝 / 跗 → 球節 → 蹄），dir 為蹄尖方向（+1 往前）
- * 前腿：外側那條往前伸、內側那條收在身下；後腿：一條踏在身下、一條往後蹬；蹄離前後輪拱切口 ≥ 1.4 mm
- * @type {{ pts: number[][], dir: number }[]}
+ * 八條腿（iter-115：每側都看得到完整 8 條腿——仿哥特蘭圖像石的側視八足馬，前 4 條一組、後 4 條一組，兩組各是兩對奔跑姿態）：
+ * 側視折線 [x, y]（腿根 → 膝 / 跗 → 球節 → 蹄），dir 為蹄尖方向（+1 往前），near = 近側那條（淺灰、凸出多），否則是遠側（深一階、凸出少）
+ * 前組：最前一對往前伸、後一對收在身下；後組：前一對踏在身下、最後一對往後蹬；蹄離前後輪拱切口 ≥ 1.4 mm
+ * （iter-114 每側只有 4 條腿＝一般的馬，評審數不出八足）
+ * @type {{ pts: number[][], dir: number, near: boolean }[]}
  */
 const LEGS = [
-  { pts: [[15, 25.2], [18.6, 19.6], [19.6, 15], [19, 13.4]], dir: 1 },
-  { pts: [[10.5, 25.2], [12.4, 19.4], [10.4, 15.2], [8.8, 13.9]], dir: 1 },
-  { pts: [[-10, 25.2], [-8.2, 20.6], [-11.4, 16.6], [-9.8, 13.6]], dir: 1 },
-  { pts: [[-14.8, 25.2], [-15.4, 20.6], [-18.8, 17.2], [-19.4, 14.2]], dir: -1 },
+  { pts: [[13, 25.2], [16.8, 20.4], [19.2, 16.2], [18.6, 14]], dir: 1, near: true },
+  { pts: [[10.4, 25.2], [13, 19.9], [15, 16], [14.2, 14]], dir: 1, near: false },
+  { pts: [[7.6, 25.2], [9.4, 19.6], [7.8, 15.8], [6.2, 14]], dir: 1, near: true },
+  { pts: [[5, 25.2], [5.8, 20.2], [3.4, 16.6], [1.8, 14.6]], dir: 1, near: false },
+  { pts: [[-5.8, 25.2], [-4.2, 20.6], [-6.6, 16.6], [-5.2, 13.9]], dir: 1, near: false },
+  { pts: [[-8.8, 25.2], [-8.2, 20.6], [-10.8, 16.8], [-9.8, 14]], dir: 1, near: true },
+  { pts: [[-12.6, 25.2], [-13.8, 20.6], [-16.8, 17.2], [-17.4, 14.4]], dir: -1, near: false },
+  { pts: [[-15.4, 25.2], [-17, 21.2], [-19.4, 18.8], [-19.6, 16.8]], dir: -1, near: true },
 ];
 
 /** @type {(x: number, z: number) => boolean} 側壁（腰線以下的垂直面與內收下緣） */
@@ -120,52 +127,113 @@ const onSide = (x, z) => Math.abs(z) > P.hw(x) - 1.45;
 /** @type {(x: number, y: number) => boolean} 下半身（腰線以下） */
 const isLower = (x, y) => y < ySideAt(x) + 0.05;
 
-/** 斑點灰的圓斑格距（偽隨機分布） */
-const DAPPLE_CELL = 5.6;
+/**
+ * Urnes 風格交織帶（iter-115，取代 iter-114 的淺色小圓環——評審看成泡泡）：兩條細長的「蛇形帶」各自沿
+ * 長擺線（prolate cycloid）前進、每 20 mm 打一個圈，彼此相位差半圈互相穿繞，帶寬一粗一細交替（Urnes 的粗細線對比）；
+ * 兩帶交叉處依位置輪流「上 / 下」，下面那條在交叉點留 0.35 mm 缺口，讀得出編織。
+ * 座標：u = x、v = |z| + 0.6 y（同時鋪在背頂與肩側）。純自繪曲線，不構成三角結、Valknut 或任何收錄圖形。
+ * @type {{ a: number, b: number, v0: number, x0: number, x1: number }}
+ */
+const KNOT = { a: 3.8, b: 4.8, v0: 42, x0: -66, x1: 40 };
 
 /**
- * 雜湊（0–1）
- * @type {(i: number, j: number, k: number) => number}
+ * 交織帶取樣成折線（每條：點陣列＋每點半寬），x 方向分桶加速最近距離查詢
+ * @type {{ pts: number[][], buckets: Map<number, number[]> }[]}
  */
-const hash = (i, j, k) => {
-  const s = Math.sin(i * 127.1 + j * 311.7 + k * 74.7) * 43758.5453;
-  return s - Math.floor(s);
+const KNOT_RIBBONS = [1, -1].map((flip) => {
+  /** @type {number} 第二條帶往後錯開半個打圈週期、圈口朝下（和第一條上下鏡射），兩條互相穿繞成 8 字鏈 */
+  const phase = flip > 0 ? 0 : Math.PI;
+  /** @type {number[][]} [u, v, 半寬] */
+  const pts = [];
+  const tMin = (KNOT.x0 - 6) / KNOT.a;
+  const tMax = (KNOT.x1 + 6) / KNOT.a;
+  for (let t = tMin; t <= tMax; t += 0.06) {
+    const u = KNOT.a * (t + phase) - KNOT.b * Math.sin(t);
+    const v = KNOT.v0 + flip * KNOT.b * Math.cos(t);
+    // 帶寬 0.7 → 1.15 mm（半寬 0.35 → 0.58），沿帶緩慢粗細交替
+    pts.push([u, v, 0.35 + 0.23 * (0.5 + 0.5 * Math.sin(0.5 * t + phase))]);
+  }
+  /** @type {Map<number, number[]>} 桶寬 2 mm（u）→ 線段起點索引 */
+  const buckets = new Map();
+  for (let i = 0; i < pts.length - 1; i++) {
+    const lo = Math.floor(Math.min(pts[i][0], pts[i + 1][0]) / 2);
+    const hi = Math.floor(Math.max(pts[i][0], pts[i + 1][0]) / 2);
+    for (let k = lo; k <= hi; k++) {
+      if (!buckets.has(k)) {
+        buckets.set(k, []);
+      }
+      buckets.get(k).push(i);
+    }
+  }
+  return { pts, buckets };
+});
+
+/**
+ * 點到某條交織帶中心線的距離與該處半寬（只查 ±2 mm 內的線段；找不到回傳 { d: 9, hw: 0 }）
+ * @type {(r: { pts: number[][], buckets: Map<number, number[]> }, u: number, v: number) => { d: number, hw: number }}
+ */
+const ribbonDist = (r, u, v) => {
+  let best = 9;
+  let hw = 0;
+  const k0 = Math.floor(u / 2);
+  for (let k = k0 - 1; k <= k0 + 1; k++) {
+    for (const i of r.buckets.get(k) ?? []) {
+      const [ax, ay, ah] = r.pts[i];
+      const [bx, by, bh] = r.pts[i + 1];
+      const dx = bx - ax;
+      const dy = by - ay;
+      const L2 = dx * dx + dy * dy;
+      const t = L2 > 0 ? Math.min(1, Math.max(0, ((u - ax) * dx + (v - ay) * dy) / L2)) : 0;
+      const d = Math.hypot(u - (ax + t * dx), v - (ay + t * dy));
+      if (d < best) {
+        best = d;
+        hw = lerp(ah, bh, t);
+      }
+    }
+  }
+  return { d: best, hw };
 };
 
 /**
- * 斑點灰（dapple）：淺色小圓環（外徑 1.1–1.8、環寬 0.6），越往車頭越稀（x > 30 起機率遞減、頸與頭不畫），
- * 用 (x, |z| + 0.6 y) 平面分布，頂面與側肩都有
- * @type {(x: number, y: number, z: number) => number} 正值 = 環內
+ * 交織帶 SDF（正值 = 帶內）：交叉處上下輪流（以 u 每半個打圈週期換一次），下面那條留缺口
+ * @type {(x: number, y: number, z: number) => number}
  */
-const dappleRing = (x, y, z) => {
-  const v = Math.abs(z) + 0.6 * y;
-  const i0 = Math.floor(x / DAPPLE_CELL);
-  const j0 = Math.floor(v / DAPPLE_CELL);
-  let best = -Infinity;
-  for (let i = i0 - 1; i <= i0 + 1; i++) {
-    for (let j = j0 - 1; j <= j0 + 1; j++) {
-      const cx = (i + 0.2 + 0.6 * hash(i, j, 1)) * DAPPLE_CELL;
-      const keep = Math.min(1, Math.max(0, (36 - cx) / 30));
-      if (hash(i, j, 4) > 0.25 + 0.75 * keep) {
-        continue;
-      }
-      const cv = (j + 0.2 + 0.6 * hash(i, j, 2)) * DAPPLE_CELL;
-      const r = 1.1 + 0.7 * hash(i, j, 3);
-      best = Math.max(best, 0.3 - Math.abs(Math.hypot(x - cx, v - cv) - r));
-    }
+const knotSd = (x, y, z) => {
+  if (x < KNOT.x0 || x > KNOT.x1) {
+    return -1;
   }
-  return best;
+  const v = Math.abs(z) + 0.6 * y;
+  if (Math.abs(v - KNOT.v0) > KNOT.b + 1.5) {
+    return -1;
+  }
+  const r0 = ribbonDist(KNOT_RIBBONS[0], x, v);
+  const r1 = ribbonDist(KNOT_RIBBONS[1], x, v);
+  const over = Math.floor((x - KNOT.x0) / (Math.PI * KNOT.a)) % 2;
+  const s0 = r0.hw - r0.d;
+  const s1 = r1.hw - r1.d;
+  // 每條在「被壓在下面」的交叉處，離上面那條 0.35 mm 內挖掉
+  const g0 = over === 1 ? Math.min(s0, r1.d - r1.hw - 0.35) : s0;
+  const g1 = over === 0 ? Math.min(s1, r0.d - r0.hw - 0.35) : s1;
+  // 兩端在 x0 / x1 前 3 mm 收尖
+  const taper = Math.min(x - KNOT.x0, KNOT.x1 - x) / 3;
+  return Math.min(Math.max(g0, g1), taper);
 };
 
 /** @type {() => Record<string, THREE.Material>} */
 const materials = () => ({
-  // 斑點灰（上半身，亮面：少數亮面部位）
-  grey: namedMaterial('paint-dapple-grey', { color: 0x9aa0a6, roughness: 0.38, clearcoat: 0.7, clearcoatRoughness: 0.12 }),
-  // 深藍灰（下半身、鼻端，霧面）
-  slate: namedMaterial('paint-slate-bluegrey', { color: 0x37455a, roughness: 0.62, clearcoat: 0.05 }),
-  slate2: namedMaterial('paint-slate-bluegrey', { color: 0x37455a, roughness: 0.62, clearcoat: 0.05, side: THREE.DoubleSide }),
-  // 腿：淺灰（緞面；iter-113 是石灰岩米白斜條帶，評審看成綁帶）、蹄：深色緞面
-  leg: namedMaterial('paint-leg-greylight', { color: 0xb3b8be, roughness: 0.55, clearcoat: 0.1 }),
+  // 上半身深灰（亮面：少數亮面部位；iter-115 由淺斑點灰 0x9aa0a6 加深，評審：灰白配色沒有北歐感，可加深灰與銀）
+  grey: namedMaterial('paint-storm-grey', { color: 0x5a6068, roughness: 0.38, clearcoat: 0.7, clearcoatRoughness: 0.12 }),
+  // 炭灰（下半身、口鼻，霧面；iter-115 由深藍灰改）
+  slate: namedMaterial('paint-charcoal-slate', { color: 0x2c3138, roughness: 0.62, clearcoat: 0.05 }),
+  slate2: namedMaterial('paint-charcoal-slate', { color: 0x2c3138, roughness: 0.62, clearcoat: 0.05, side: THREE.DoubleSide }),
+  // 腿：近側淺銀灰、遠側中灰（緞面）；蹄：深色緞面
+  leg: namedMaterial('paint-leg-greylight', { color: 0xc3c7cc, roughness: 0.55, clearcoat: 0.1 }),
+  legFar: namedMaterial('paint-leg-greymid', { color: 0x868c93, roughness: 0.58, clearcoat: 0.08 }),
+  // 籠頭與韁繩（真金屬：名稱含 -brass）
+  bronze: namedMaterial('trim-bronze-brass', { color: 0xa8763e, roughness: 0.32, metalness: 0.8, clearcoat: 0.2 }),
+  dBronze: decalMaterial('decal-bridle-bronze', { color: 0xb07c40, roughness: 0.35, metalness: 0.7 }),
+  // 交織帶：銀色貼紙
+  dKnot: decalMaterial('decal-interlace-silver', { color: 0xd4d7da, roughness: 0.3, metalness: 0.65 }),
   hoof: namedMaterial('paint-hoof-dark', { color: 0x24272c, roughness: 0.55, clearcoat: 0.15 }),
   // 馬眼 / 鼻孔：深色亮面（眼是全車少數亮面）
   eye: namedMaterial('paint-eye-gloss-black', { color: 0x101114, roughness: 0.15, clearcoat: 1.0 }),
@@ -176,7 +244,6 @@ const materials = () => ({
   cockpit: namedMaterial('shell-inner-dark', { color: 0x1a1d22, roughness: 0.85, side: THREE.DoubleSide }),
   glass: namedMaterial('pc-smoke-tint', { color: 0x26303c, roughness: 0.05, specularIntensity: 0.6, transparent: true, opacity: 0.45, envMapIntensity: 0.5, depthWrite: false, side: THREE.DoubleSide }),
   liner: namedMaterial('shell-wheelwell-slate', { color: 0x2e3744, roughness: 0.75, side: THREE.DoubleSide }),
-  dSpot: decalMaterial('decal-dapple-light', { color: 0xd3d6d9, roughness: 0.45 }),
   dIncise: decalMaterial('decal-incised-dark', { color: 0x2a313b, roughness: 0.6 }),
   dStone: decalMaterial('decal-limestone', { color: 0xd8d1c1, roughness: 0.7 }),
   mount: namedMaterial('abs-mount-black', { color: 0x222326, roughness: 0.6 }),
@@ -372,8 +439,8 @@ const CONFIG = {
   openings: [{ id: '座艙罩底開口', shape: 'fn', sd: (x, y, z) => (y < 30 ? 10 : Math.abs(z) - (canopyHalfW(x) - 0.8)) }],
   sideZMin: 30,
   zones: () => [
-    // 鼻端深藍灰
-    { mat: 'slate', keep: (x) => x - 73.2 },
+    // 口鼻炭灰（iter-115：由鼻尖 2.8 mm 擴大到籠頭鼻帶前 x 69，深色口鼻是灰馬的特徵）
+    { mat: 'slate', keep: (x) => x - 69 },
     // 下半身（腰線以下）深藍灰
     { mat: 'slate', keep: (x, y) => (isLower(x, y) ? 1 : -1) },
     // 上半身斑點灰
@@ -410,35 +477,41 @@ const CONFIG = {
       });
     }
 
-    // ── 八條腿（每側 4 條立體浮雕腿）：扁橢圓斷面沿腿線掃掠（上段寬 3.0 → 下段 1.7 mm、外凸約 0.95 mm），膝 / 跗與球節是略大的關節球，蹄是深色楔形 ──
+    // ── 八條腿（iter-115：每側 8 條立體浮雕腿，前後各 4 條＝各兩對）：扁橢圓斷面沿腿線掃掠（上段寬 2.5 → 下段 1.45 mm），近側淺灰、遠側深一階，膝 / 跗與球節是關節球，蹄是深色楔形 ──
     {
       /** @type {THREE.BufferGeometry[]} */
       const legs = [];
       /** @type {THREE.BufferGeometry[]} */
       const hooves = [];
+      /** @type {THREE.BufferGeometry[]} */
+      const legsFar = [];
       for (const sg of [-1, 1]) {
         for (const leg of LEGS) {
-          legs.push(reliefTube(leg.pts, 28, (t) => lerp(1.5, 0.85, Math.min(1, t * 1.6)), () => 1.15, (x, y) => sideWallZ(x, y) - 0.2, sg));
+          // 近側腿凸出 1.0 mm、遠側腿 0.7 mm（中心往內 0.25），兩條一對看得出前後層次
+          const zOff = leg.near ? 0.2 : 0.45;
+          const out = leg.near ? legs : legsFar;
+          out.push(reliefTube(leg.pts, 24, (t) => lerp(1.25, 0.72, Math.min(1, t * 1.6)), () => (leg.near ? 1.15 : 0.95), (x, y) => sideWallZ(x, y) - zOff, sg));
           // 關節：膝 / 跗（第 2 點）、球節（第 3 點）
-          for (const [k, r] of [[1, 1.2], [2, 1.0]]) {
+          for (const [k, r] of [[1, 1.0], [2, 0.85]]) {
             const [jx, jy] = leg.pts[k];
-            const j = new THREE.SphereGeometry(1, 14, 10);
-            j.scale(r, r, 1.1);
-            j.translate(jx, jy, sg * (sideWallZ(jx, jy) - 0.2));
-            legs.push(j.toNonIndexed());
+            const j = new THREE.SphereGeometry(1, 12, 8);
+            j.scale(r, r, leg.near ? 1.05 : 0.9);
+            j.translate(jx, jy, sg * (sideWallZ(jx, jy) - zOff));
+            out.push(j.toNonIndexed());
           }
-          // 蹄：側視梯形（底寬 2.8、高 2，前緣斜），厚 2.0
+          // 蹄：側視梯形（底寬 2.5、高 1.8，前緣斜），厚 1.8
           const [hx, hy] = leg.pts[leg.pts.length - 1];
           const d = leg.dir;
           const hoofPts = [
-            [hx - 1.3 * d, hy - 1.1],
-            [hx + 1.6 * d, hy - 1.1],
-            [hx + 0.8 * d, hy + 0.9],
-            [hx - 1.0 * d, hy + 0.9],
+            [hx - 1.1 * d, hy - 1.0],
+            [hx + 1.4 * d, hy - 1.0],
+            [hx + 0.7 * d, hy + 0.8],
+            [hx - 0.9 * d, hy + 0.8],
           ];
-          hooves.push(finPlate(d > 0 ? hoofPts : hoofPts.reverse(), sg * (sideWallZ(hx, hy) - 0.2), 2.0));
+          hooves.push(finPlate(d > 0 ? hoofPts : hoofPts.reverse(), sg * (sideWallZ(hx, hy) - zOff), 1.8));
         }
       }
+      parts.push({ geometry: mergeGeos(legsFar), mat: 'legFar', solid: true, outline: true, name: 'eight-legs-far' });
       parts.push({ geometry: mergeGeos(legs), mat: 'leg', solid: true, outline: true, name: 'eight-legs' });
       parts.push({ geometry: mergeGeos(hooves), mat: 'hoof', solid: true, outline: true, name: 'hooves' });
     }
@@ -452,11 +525,11 @@ const CONFIG = {
         const ez = 4.6;
         const y0 = kit.surf.topY(ex, ez) - 1;
         const pts = [
-          [ex + 2.2, y0],
-          [ex + 1.4, y0 + 3.4],
-          [ex - 0.6, y0 + 6.2],
-          [ex - 1.4, y0 + 4.6],
-          [ex - 2.0, y0],
+          [ex + 2.6, y0],
+          [ex + 1.8, y0 + 4.4],
+          [ex - 0.8, y0 + 8.2],
+          [ex - 1.8, y0 + 5.8],
+          [ex - 2.4, y0],
         ];
         ears.push(finPlate(pts, sg * ez, 1.6, sg * 12));
       }
@@ -485,8 +558,40 @@ const CONFIG = {
       name: 'decal-nostrils',
     });
 
+    // ── 籠頭（iter-115，青銅貼紙 0.8–0.9 mm）：鼻帶（x 69 繞口鼻）、額帶（x 50.5，兩耳前）、頰帶（鼻帶 → 耳根，從眼睛內側經過）──
+    parts.push({
+      geometry: kit.decal((x, y, z) => {
+        if (y < P.yD(x) - 1.5) {
+          return -1;
+        }
+        const az = Math.abs(z);
+        const nose = Math.min(0.45 - Math.abs(x - 69.4), P.nw(x) + 2.2 - az);
+        const brow = Math.min(0.42 - Math.abs(x - 50.6), 7.6 - az);
+        // 頰帶：(69.4, 6.9) → (50.6, 7.4) 線段
+        const t = Math.min(1, Math.max(0, (69.4 - x) / 18.8));
+        const cheek = 0.42 - Math.hypot(x - lerp(69.4, 50.6, t), az - lerp(6.9, 7.4, t));
+        return Math.max(nose, brow, cheek);
+      }, { offset: 0.12 }),
+      mat: 'dBronze',
+      name: 'decal-bridle',
+    });
+    // ── 韁繩（iter-115，實體青銅細繩 Ø1.3 mm，下緣埋進殼面 0.2 mm）：從鼻帶兩側沿馬臉、引擎蓋往後拉到座艙罩前 ──
+    {
+      /** @type {number[][]} 韁繩路徑 [x, |z|] */
+      const path = [[69.4, 7.4], [65, 8.6], [60, 12], [54, 13.6], [44, 14.2], [32, 14], [20, 13.4], [10.5, 12.8]];
+      /** @type {THREE.BufferGeometry[]} */
+      const reins = [];
+      for (const sg of [-1, 1]) {
+        const pts = path.map(([x, az]) => [x, kit.surf.topY(x, az) + 0.45, sg * az]);
+        reins.push(sweepEllipse(pts, 60, () => [0.65, 0.65], 10));
+      }
+      parts.push({ geometry: mergeGeos(reins), mat: 'bronze', solid: true, outline: true, name: 'reins' });
+    }
+
     // 輪拱內襯（前後，31 mm 大輪拱）
     parts.push({ geometry: mergeGeos(ARCHES.map((a) => buildLiner(kit, a))), mat: 'liner', shell: true, name: 'arch-liners' });
+    // iter-115：輪胎內側的環形擋板（kitsune 的 buildArchWell，|z| 22.9），擋住從輪拱斜看進車身內部的視線
+    parts.push({ geometry: mergeGeos(ARCHES.map((a) => buildArchWell(a, 22.9, 12.3, 17.8, chassisBlockedNearArch))), mat: 'liner', shell: true, name: 'arch-wells' });
     // 輪拱擋泥唇（深藍灰細唇 R0.55，沿側壁上的輪拱切口）
     {
       /** @type {THREE.BufferGeometry[]} */
@@ -514,11 +619,11 @@ const CONFIG = {
     }
 
     // ── 貼紙 ──
-    // 斑點灰：上半身淺色小圓環（後半身密、往前漸稀；避開馬頸、馬頭、背脊與座艙）
+    // Urnes 風格交織帶（iter-115）：上半身兩側各一條，從車尾沿肩走到馬臉前（避開背脊、座艙與腰線以下）
     parts.push({
-      geometry: kit.decal((x, y, z) => (!isLower(x, y) && x < 44 && Math.abs(z) > P.nw(x) + 1.4 && kit.underCanopy(x, z) < 0 ? dappleRing(x, y, z) : -1)),
-      mat: 'dSpot',
-      name: 'decal-dapple-spots',
+      geometry: kit.decal((x, y, z) => (!isLower(x, y) && Math.abs(z) > P.nw(x) + 1.4 && kit.underCanopy(x, z) < 0 ? knotSd(x, y, z) : -1)),
+      mat: 'dKnot',
+      name: 'decal-urnes-interlace',
     });
     // 兩股絞繩紋（深色刻線 0.6 mm）：腰線上方 1.8 mm 沿肩走，兩條相位差半週期的正弦
     /** @type {(u: number, v: number) => number} u = 往車頭為正的 x */

@@ -10,6 +10,7 @@ import { makePolyBody, sweepEllipse } from './polyBody.js';
 import { namedMaterial, decalMaterial, sideDecal, mergeGeos, lerp, buildRegion, buildRim } from './loft.js';
 import { monoCurve, buildStations, fenderFloor, smoothMax } from './gazelleLeap.js';
 import { buildProfileLiner } from './khepriScarab.js';
+import { buildBellySkirt } from './trojanHorse.js';
 
 /** @typedef {import('./loft.js').BodyPart} BodyPart */
 
@@ -364,6 +365,15 @@ export const heimdallHornBody = makePolyBody({
   extras: (kit) => {
     /** @type {BodyPart[]} */
     const parts = [];
+    // iter-115 腹側裙板（燻黑褐，和側裙同色）：評審「側面仍露出黑色電池管」→ 前後輪拱之間 x −21.5 → 21.5、外緣 |z| 35.5（底盤側框外緣）、
+    // y 10.5 → 15.6，頂部棚板從側裙下緣內側（半寬 − 1.2）接出，把側裙下緣到底盤側框之間的電池艙側面封住
+    parts.push({
+      geometry: buildBellySkirt({ x0: -21.5, x1: 21.5, zIn: (x) => P.hw(x) - 1.2, zOut: 35.5, yTop: 15.6 }),
+      mat: 'skirt',
+      solid: true,
+      outline: true,
+      name: 'belly-skirt',
+    });
     // 輪拱內襯（前後，淺：只遮住殼內空腔）
     parts.push({
       geometry: mergeGeos(ARCHES.map((a) => buildProfileLiner(a, 31, profile))),

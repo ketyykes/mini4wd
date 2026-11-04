@@ -10,6 +10,7 @@ import * as THREE from 'three';
 import { makePolyBody, finPlate, flatPlate, sweepEllipse } from './polyBody.js';
 import { namedMaterial, decalMaterial, sdRoundRect, sideDecal, mergeGeos, lerp, smoothstep } from './loft.js';
 import { monoCurve, buildStations, smoothNormals } from './gazelleLeap.js';
+import { buildBellySkirt } from './trojanHorse.js';
 
 /** @typedef {import('./loft.js').BodyPart} BodyPart */
 
@@ -432,6 +433,15 @@ export const quetzalSerpentBody = makePolyBody({
   extras: (kit) => {
     /** @type {BodyPart[]} */
     const parts = [];
+    // iter-115 腹側裙板（朱紅，接續後段紅色蛇腹）：評審「側面電池管仍外露」→ 細頸段（x 2 → 21.5；x < 2 已由紅色蛇腹蓋住）每側一片直立外板，
+    // 外緣 |z| 35.5（底盤側框外緣）、y 10.5 → 17；整車已 132.6 g（上限 133），棚板改成 2 條寬 2.4 mm 的橫撐（x 3.2 / 11，細頸側壁下緣 < 17 處）接到細頸側壁（半寬 − 1.2）
+    parts.push({
+      geometry: buildBellySkirt({ x0: 2, x1: 21.5, zIn: (x) => halfW(x) - 1.2, zOut: 35.5, yTop: 17, ribs: [3.2, 11] }),
+      mat: 'red2',
+      solid: true,
+      outline: true,
+      name: 'belly-skirt',
+    });
     /** @type {(x: number) => number} 中線頂面高度 */
     const top = (x) => kit.surf.topY(x, 0);
 
@@ -603,7 +613,8 @@ export const quetzalSerpentBody = makePolyBody({
 
     // 蛇身側羽：沿兩側稜線下方伸出的短羽片（羽蛇身上的羽毛），每側 5 片、往後掠，根部埋進立板；俯視外緣成一列羽齒
     /** @type {number[]} 側羽中心 x */
-    const SIDE_FEATHERS = [-52, -37, -22, -7, 8];
+    // iter-115：x 8 那對拿掉（位置被腹側裙板取代，也省質量）
+    const SIDE_FEATHERS = [-52, -37, -22, -7];
     /** @type {THREE.BufferGeometry[]} */
     const sideFeathers = [];
     for (const xc of SIDE_FEATHERS) {
