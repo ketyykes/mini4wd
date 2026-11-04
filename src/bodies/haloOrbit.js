@@ -221,20 +221,20 @@ export const haloOrbitBody = makePolyBody({
     sat.translate(RING.xc, RING.yc + RING.b * Math.sin(th), RING.a * Math.cos(th));
     parts.push({ geometry: tiltRing(sat), mat: 'magenta', solid: true, outline: true, name: 'halo-satellite' });
     // 鼻部石墨灰下唇刃（前下擾流片，往前尖出）
-    // iter-123：改成往前伸、兩側展開的平切前分流板（鼻尖 x 81 → 83.5、x 78 處半寬 3.6 → 13），從俯視看是圓鼻前方一片黑刃；
+    // iter-123：改成兩側展開的平切前分流板（鼻尖維持基準 x 81：伸到 83.5 會讓 race-frp 設定全長 167.1 mm 超過 165 mm 規則；x 76.5 處半寬 3.6 → 13.5），從俯視看是圓鼻前方一片黑刃；
     // 只做馬蹄形外圈（內圈在車殼下方，挖空省質量），讓俯視輪廓在別款車頭結束的地方多出一塊（和 prism-facet、khepri-scarab 的俯視 IoU 拉開）
     parts.push({
       geometry: flatPlate(
         [
           [62, -21],
-          [72, -18],
-          [78, -13.5],
-          [82.5, -8],
-          [83.5, -3],
-          [83.5, 3],
-          [82.5, 8],
-          [78, 13.5],
-          [72, 18],
+          [71, -18],
+          [76.5, -13.5],
+          [80, -8],
+          [81, -3],
+          [81, 3],
+          [80, 8],
+          [76.5, 13.5],
+          [71, 18],
           [62, 21],
           [62, 17],
           [69, 12],
