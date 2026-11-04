@@ -1,8 +1,9 @@
-// 蛇首長船（body-serpent-longship，第八階段神話組・北歐）：維京長船意象的細長低船身——側面 4 道往外疊的疊板（clinker）稜線、
-// 船舷上緣每側 5 面圓盾、中段下沉的開放甲板（座艙），船首往上往內盤捲成 Oseberg 式螺旋、收在螺旋中心的蛇頸末端（沒有龍頭、沒有嘴與牙），船尾往上捲成 stern-curl 尾翼。
+// 蛇首長船（body-serpent-longship，第八階段神話組・北歐）：維京長船意象的低船身——側面 4 道往外疊的疊板（clinker）稜線、
+// 船舷上緣每側 5 面圓盾、中段下沉的開放甲板（座艙），船首柱往上彎成 S 形蛇頸、頂端是有眼、口、眉稜的蛇頭（沒有牙與角），船尾往上捲成 stern-curl 尾翼。
+// iter-114：船殼加寬並往下包（船舷在前後輪上方蓋住輪胎上半部、中段側面往下到 y 10 擋住電池艙），原本整艘船架在底盤上、四輪與電池艙全露。
 // 設計：shared/design/body-serpent-longship/DESIGN.md（典故、借用的古代語彙、和市售車殼 / 現代作品 / 既有車殼的差異）。
 // 造型回到出土文物（MYTH_RESEARCH N1、N2、N5–N7）：Oseberg 船艏柱盤捲的蛇（現存名船都不是龍頭）、Gokstad 陪葬的整船盾牌、疊板船殼的鉚釘列；
-// 不做整車龍頭（避開市售 Dragon Jr. 系列）、不用任何盧恩字母或符號、不用白藍配色。
+// 不做整車龍頭（避開市售 Dragon Jr. 系列；船首只有船首柱頂端的小蛇頭）、不用任何盧恩字母或符號、不用白藍配色。
 // 塗裝全為自創：焦油黑褐船殼＋赭紅 / 奶油白對半分區的圓盾＋青銅盾心與鉚釘點列＋疊板邊緣淺木色細線；不含任何文字、號碼、商標。
 import * as THREE from 'three';
 import { makePolyBody } from './polyBody.js';
@@ -17,13 +18,14 @@ const XS = [-66, -62, -56, -48, -40, -28, -14, 0, 14, 28, 40, 48, 56, 63, 69, 73
 const P = {
   // 船舷上緣（sheer line）：中段最低 32.5，往船首 / 船尾翹起（長船的弦弧）
   sheer: monoCurve(XS, [42.5, 40.5, 38, 35.8, 34.6, 33.3, 32.6, 32.5, 32.6, 33.3, 34.6, 36.3, 38.5, 41, 43.5, 45]),
-  // 船舷半寬：中段最寬 26（寬 52 × 長 139，長船的細長比例），往前後輪處收到 16（俯視是兩頭細長、往內凹收尖的柳葉形，船首 / 船尾很細）；
-  // 四輪完全在船殼外側（輪胎內側面 |z| ≥ 23），船身像夾在四個輪子中間的細長船——俯視和既有全罩款（寬 75–95）明顯不同
-  hw: monoCurve(XS, [2.4, 4, 7, 11, 16, 22, 25.5, 26, 25.5, 22, 16.5, 12.5, 8, 5, 3, 2.4]),
-  // 船身下緣：中段 13.2，往船首 / 船尾彎上去（龍骨前後上翹的 forefoot）；前後卡榫處（x 52 / −50）壓到約 15，遮住卡座吊耳
-  yLow: monoCurve(XS, [33, 26, 19, 15.5, 14, 13.2, 13.2, 13.2, 13.2, 13.2, 14, 15, 17, 22, 28, 34]),
-  // 船底收向龍骨的下緣半寬：中段 21；前後輪附近收到 |z| < 21（船殼下段自己讓開輪胎，不靠輪拱切開）
-  keel: monoCurve(XS, [1.5, 2.6, 4.6, 7.5, 11, 16.5, 20.5, 21, 20.5, 16.5, 11.5, 8.5, 5, 3, 1.8, 1.5]),
+  // 船舷半寬（iter-114 加寬）：中段最寬 38（寬 76 × 長 139，比例像 Gokstad 型的寬腹長船），前後輪上方仍有 35.5（船舷蓋住輪胎上半部，
+  // 31 mm 輪胎外側面 |z| 34.75），往船首 / 船尾收成兩頭尖的柳葉形。原本中段 26、輪上 16，四輪與電池艙全露在船殼外（iter-113 評審）
+  hw: monoCurve(XS, [2.4, 4.5, 10, 21.5, 35, 30.5, 28, 27.5, 28, 30.5, 35, 24, 14, 7.5, 3.2, 2.4]),
+  // 船身下緣（iter-114 壓低）：中段 10（剛好在底盤側壁頂 9.4 之上，側面擋住電池艙；原本 13.2），往船首 / 船尾彎上去（龍骨前後上翹的 forefoot）；
+  // 前後卡榫處（x 52 / −50）約 15，遮住卡座吊耳；船首 / 船尾下緣也比原本壓低 2–4 mm，前後齒輪不從船尖下方露出
+  yLow: monoCurve(XS, [33, 22, 16.5, 14, 12.5, 10.4, 10, 10, 10, 10.4, 12.5, 14.2, 15.5, 20, 27, 34]),
+  // 船底收向龍骨的下緣半寬（iter-114）：中段 34（船殼下段幾乎垂直往下，像龍骨側板）；前後輪處由輪拱切開（cutZFrom 21）
+  keel: monoCurve(XS, [1.5, 3, 7.5, 18.5, 31, 28, 26, 25.5, 26, 28, 31, 20, 10.5, 4.5, 2, 1.5]),
 };
 
 /** @type {{ x0: number, x1: number, ramp: number, depth: number }} 中段下沉甲板（開放座艙）：平台範圍、斜坡長、比兩端甲板再深多少 */
@@ -65,7 +67,8 @@ const stationAt = (x) => {
   const keel = Math.min(P.keel(x), hw - 0.5);
   const k = tipScale(x);
   const deckY = sheer - 3 - WELL.depth * wellWeight(x);
-  const zi = hw - 3 * k;
+  // 船舷欄厚度（外側船殼到內壁）至少 1.5 mm：iter-114 修正——船首 / 船尾尖端原本只有 3k（< 殼厚 0.8），殼內面會從外側穿出（Blender 看到內面色塊）
+  const zi = Math.max(0.4, hw - Math.max(3 * k, 1.5));
   const yTop0 = sheer - 1.4;
   const h = (yTop0 - yLow) / STRAKES;
   const half = (LAP_STEP * k) / 2;
@@ -147,6 +150,8 @@ const materials = () => ({
   ochre2: namedMaterial('paint-ochre-red', { color: 0xa8432a, roughness: 0.62, clearcoat: 0.1, side: THREE.DoubleSide }),
   cream: namedMaterial('paint-cream-white', { color: 0xeee0c0, roughness: 0.6, clearcoat: 0.1, side: THREE.DoubleSide }),
   // 真金屬（青銅盾心、蛇眼）：名稱含 -brass → Blender 換成金屬材質
+  // 蛇口內：深焦油紅（霧面）
+  mouth: namedMaterial('paint-mouth-darkred', { color: 0x4a1610, roughness: 0.7, clearcoat: 0 }),
   bronze: namedMaterial('trim-bronze-brass', { color: 0xb08d57, metalness: 0.8, roughness: 0.32, clearcoat: 0.2 }),
   inner: namedMaterial('shell-inner-dark', { color: 0x1d1612, roughness: 0.85, side: THREE.BackSide }),
   edge: namedMaterial('shell-edge-tar', { color: 0x3a2a20, roughness: 0.7, side: THREE.DoubleSide }),
@@ -237,22 +242,19 @@ const subPath = (pts, t0, t1, n) => {
 };
 
 /**
- * 船首柱中心線（側視 x–y）：從船首尖端內部長出，往前上方翹起，到頂端往後、往下、往內捲成螺旋（Oseberg 船首的螺旋捲），收在螺旋中心的蛇頸末端
- * 船首柱最前緣約 x 79.8（車殼外框長 ≤ 153 mm，捲曲往上而不往前伸）
+ * 船首柱中心線（側視 x–y）：從船首尖端內部長出，往前上方翹起，頸部往後微彎成 S 形，頂端往前伸出蛇頭（iter-114：原本捲成螺旋、收在中心，
+ * 評審看不出蛇頭；改成 Oseberg / Urnes 木雕常見的「頸部彎曲＋前伸的蛇頭」，螺旋母題留給船尾柱）
+ * 蛇頭最前緣約 x 81.8（車殼外框長 ≤ 153 mm：船尾柱最後緣 −70.5）
  * @type {number[][]}
  */
 const PROW_PATH = [
   [64, 32],
   [69, 37],
-  [73, 42],
-  [76, 47],
-  [77.6, 51.5],
-  [76.6, 54.6],
-  [73.8, 55.8],
-  [71.2, 54.6],
-  [70.4, 51.8],
-  [72, 50],
-  [74, 50.8],
+  [72.6, 42.5],
+  [74, 47.5],
+  [73.4, 52],
+  [74.6, 55.4],
+  [77, 56.6],
 ];
 /** @type {number} 船首柱：焦油黑褐柱身 / 赭紅盤捲蛇頸的分界（弧長比例） */
 const PROW_SPLIT = 0.42;
@@ -278,31 +280,82 @@ const STERN_PATH = [
 const STERN_RAD = (t) => [lerp(1.9, 1.15, t), lerp(2.5, 1.35, t)];
 
 /**
- * 蛇頸末端：螺旋中心一顆略膨大的扁卵形蛇頭（沿中心線末端切線方向，沒有嘴與牙）＋兩側青銅小眼（Oseberg 船艏柱末端是盤捲的蛇頭，N1）
- * @type {() => { head: THREE.BufferGeometry, eyes: THREE.BufferGeometry }}
+ * 蛇頭（iter-114 重做）：頸部末端往前伸的扁楔形頭（上顎＋微張的下顎，張口約 20°），口內深色、兩側青銅杏眼＋深色瞳孔，
+ * 眼後一條往後捲的細鬚（Urnes 風格蛇首的眼後垂飾，自繪；N1 Oseberg 船艏柱末端是蛇頭）。沒有牙、沒有角（不做成龍頭）
+ * @type {() => { head: THREE.BufferGeometry, mouth: THREE.BufferGeometry, eyes: THREE.BufferGeometry, pupils: THREE.BufferGeometry, lappets: THREE.BufferGeometry }}
  */
 const buildSerpentHead = () => {
+  /** @type {(r: number[], c: number[], rot: number) => THREE.BufferGeometry} 橢球（半軸 r、中心 c、繞 z 轉 rot） */
+  const ellipsoid = (r, c, rot) => {
+    const g = new THREE.SphereGeometry(1, 24, 16);
+    g.scale(r[0], r[1], r[2]);
+    g.rotateZ(rot);
+    g.translate(c[0], c[1], c[2] ?? 0);
+    return g;
+  };
+  // 頭骨後段（較寬）＋往前收窄的吻部：頭長約 6.4、頂面平，俯視是往前收尖的楔形（蛇頭，不是圓球）
+  const cranium = ellipsoid([1.9, 1.25, 1.75], [77.9, 57.2], -0.1);
+  const snout = ellipsoid([2.4, 0.95, 1.25], [79.7, 56.95], -0.14);
+  // 下顎：往下微張約 15°
+  const jaw = ellipsoid([2.3, 0.55, 1.15], [79.0, 55.85], -0.28);
+  // 口內：上下顎之間的深色楔
+  const mouth = ellipsoid([2.1, 0.55, 0.95], [79.3, 56.4], -0.2);
+  /** @type {THREE.BufferGeometry[]} */
+  const eyes = [];
+  /** @type {THREE.BufferGeometry[]} */
+  const pupils = [];
+  /** @type {THREE.BufferGeometry[]} */
+  const lappets = [];
+  /** @type {THREE.BufferGeometry[]} */
+  const brows = [];
+  for (const sg of [-1, 1]) {
+    // 杏眼：沿頭長方向拉長的青銅扁球，半埋在頭側
+    eyes.push(ellipsoid([0.75, 0.45, 0.4], [78.1, 57.45, sg * 1.45], -0.1));
+    pupils.push(ellipsoid([0.3, 0.3, 0.18], [78.2, 57.45, sg * 1.83], 0));
+    // 眉稜：眼睛上方往後斜的短稜（木雕蛇首的眼眶）
+    brows.push(ellipsoid([1.1, 0.35, 0.45], [78.0, 58.05, sg * 1.25], -0.25));
+    // 眼後細鬚：從眼角往後、沿頸部後緣往下捲（貼在頸側的浮起線條，斷面 0.9 × 1.1 mm）
+    lappets.push(
+      sweepPlanar(
+        [
+          [77.2, 57.4],
+          [75.7, 57.3],
+          [74.5, 56.3],
+          [74.1, 54.7],
+        ],
+        sg * 1.3,
+        16,
+        (t) => [lerp(0.45, 0.3, t), lerp(0.55, 0.35, t)],
+        10,
+      ),
+    );
+  }
+  return { head: mergeGeos([cranium, snout, jaw, ...brows]), mouth, eyes: mergeGeos(eyes), pupils: mergeGeos(pupils), lappets: mergeGeos(lappets) };
+};
+
+/**
+ * 頸部雕刻環帶：沿船首柱中心線 3 處各一圈略粗於頸部的扁環（焦油黑褐），像木雕蛇頸上的分節帶（Urnes 風格帶狀動物紋的簡化）
+ * @type {() => THREE.BufferGeometry}
+ */
+const buildNeckBands = () => {
   const curve = new THREE.CatmullRomCurve3(
     PROW_PATH.map(([x, y]) => new THREE.Vector3(x, y, 0)),
     false,
     'centripetal',
   );
-  const p = curve.getPointAt(1);
-  const tg = curve.getTangentAt(1);
-  const ang = Math.atan2(tg.y, tg.x);
-  const head = new THREE.SphereGeometry(1, 20, 14);
-  // 頭的長軸沿捲曲末端方向，只比蛇頸略粗（不做成龍頭）
-  head.scale(2.4, 1.75, 1.55);
-  head.rotateZ(ang);
-  head.translate(p.x + 0.9 * Math.cos(ang), p.y + 0.9 * Math.sin(ang), 0);
   /** @type {THREE.BufferGeometry[]} */
-  const eyes = [];
-  for (const sg of [-1, 1]) {
-    const e = new THREE.SphereGeometry(0.5, 12, 8);
-    e.translate(p.x + 1.4 * Math.cos(ang) - 0.6 * Math.sin(ang), p.y + 1.4 * Math.sin(ang) + 0.6 * Math.cos(ang), sg * 1.3);
-    eyes.push(e);
+  const bands = [];
+  for (const t of [0.6, 0.71, 0.82]) {
+    const p = curve.getPointAt(t);
+    const tg = curve.getTangentAt(t);
+    const [rz, rn] = PROW_RAD(t);
+    const g = new THREE.CylinderGeometry(1, 1, 0.6, 28);
+    g.scale(rn + 0.18, 1, rz + 0.18);
+    g.rotateZ(Math.atan2(tg.y, tg.x) - Math.PI / 2);
+    g.translate(p.x, p.y, 0);
+    bands.push(g);
   }
-  return { head, eyes: mergeGeos(eyes) };
+  return mergeGeos(bands);
 };
 
 /**
@@ -457,7 +510,11 @@ export const serpentLongshipBody = makePolyBody({
     });
     const sh = buildSerpentHead();
     parts.push({ geometry: sh.head, mat: 'ochre', solid: true, outline: true, name: 'prow-serpent-head' });
+    parts.push({ geometry: sh.mouth, mat: 'mouth', solid: true, name: 'prow-serpent-mouth' });
     parts.push({ geometry: sh.eyes, mat: 'bronze', solid: true, name: 'prow-serpent-eyes' });
+    parts.push({ geometry: sh.pupils, mat: 'tar', solid: true, name: 'prow-serpent-pupils' });
+    parts.push({ geometry: sh.lappets, mat: 'ochre', solid: true, outline: true, name: 'prow-serpent-lappets' });
+    parts.push({ geometry: buildNeckBands(), mat: 'tar', solid: true, outline: true, name: 'prow-neck-bands' });
     // 船尾柱（stern-curl 尾翼）：焦油黑褐，往前捲成小螺旋
     parts.push({
       geometry: sweepPlanar(STERN_PATH, 0, 60, STERN_RAD),
@@ -488,9 +545,9 @@ export const serpentLongshipBody = makePolyBody({
     parts.push({ geometry: mergeGeos(facesRed), mat: 'ochre2', name: 'shield-faces-ochre' });
     parts.push({ geometry: mergeGeos(facesCream), mat: 'cream', name: 'shield-faces-cream' });
     parts.push({ geometry: mergeGeos(bosses), mat: 'bronze', solid: true, name: 'shield-bosses' });
-    // 輪拱內襯（前後）：深 3 mm（內緣不小於 |z| 21 = 輪拱切口起點），擋住切口裡的殼內空腔與底盤
+    // 輪拱內襯（前後）：iter-114 從殼內面一路做到 |z| 21（輪拱切口起點；原本只深 3 mm，船殼加寬後會露出殼內空腔），擋住切口裡的殼內空腔與底盤
     parts.push({
-      geometry: mergeGeos([buildArchLiner({ x: 40, y: 13, radius: 17.5 }, 21, 3), buildArchLiner({ x: -40, y: 13, radius: 17.5 }, 21, 3)]),
+      geometry: mergeGeos([buildArchLiner({ x: 40, y: 13, radius: 17.5 }, 21, 14), buildArchLiner({ x: -40, y: 13, radius: 17.5 }, 21, 14)]),
       mat: 'liner',
       shell: true,
       name: 'arch-liners',
@@ -559,10 +616,11 @@ export const serpentLongshipBody = makePolyBody({
   src: {
     density_g_cm3: 'SPEC 1.14：ABS 約 1.05 g/cm³（推估）',
     wallThickness_mm: '推估：射出 ABS 殼 0.8 mm（同其他款）',
-    geometry: '本檔站位產生器 P（推估）：船身 x −66 ~ 73，船舷上緣中段 33.5、兩端 42.5 / 45；最寬 ±26（盾外緣約 ±27.6）；車殼外框含船首 / 船尾柱約 151 mm（SPEC 1.14a：碰撞方塊長 ≤ 153 mm 才不會在立體橋刮路面）；船首蛇頸螺旋頂約 57.5',
+    geometry: '本檔站位產生器 P（推估）：船身 x −66 ~ 73，船舷上緣中段 32.5、兩端 42.5 / 45；iter-114 起前後輪上方最寬 ±35（蓋住 31 mm 輪胎外側面 ±34.75）、中段 ±27.5（盾外緣約 ±29.5，俯視和 khepri / skeleton 的 IoU ≤ 0.81）、側面下緣中段 y 10；車殼外框含船首柱蛇頭 / 船尾柱 152.6 mm（SPEC 1.14a：碰撞方塊長 ≤ 153 mm 才不會在立體橋刮路面）；蛇頭頂約 58.5',
     strakes: '4 道疊板，每道下緣唇往內 0.8 mm 一階（推估：1/32 縮尺下看得到的最小階差；Gokstad / Oseberg 船為疊板船殼，見 DESIGN.md）',
     shields: '每側 5 面圓盾，半徑 6、厚 0.9 mm 實心 ABS（推估；Gokstad 船舷每側 32 面盾，縮尺後只放 5 面）',
     wheelArches: '前後 R17.5（31 mm 輪胎半徑 15.5 + 2 mm），中段下沉甲板在前後輪上方以斜坡回到淺甲板（甲板高 ≥ 輪拱頂 + 1.5）',
+    serpentHead: '蛇頭（iter-114）：頭長約 6.4、寬 3.5、高 2.5 mm 的實心橢球組合（頭骨＋吻部＋下顎＋眉稜），青銅眼 1.5 × 0.9 mm（推估：1/32 縮尺下看得到的最小眼徑）',
     stem: '船首柱 / 船尾柱為實心 ABS 掃掠件（斷面根部 5.4 × 6.8 mm 往捲曲中心漸細），質量 = 封閉體積 × 1.05 g/cm³（推估）',
     mounts: '對齊 chassis-midship 的車殼安裝點（SPEC 1.14）',
   },

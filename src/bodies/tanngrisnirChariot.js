@@ -1,7 +1,7 @@
 // 索爾的山羊戰車（body-tanngrisnir-chariot，第八階段神話組・北歐）：《散文埃達》中索爾乘坐、由兩頭公山羊 Tanngrisnir 與 Tanngnjóstr 拉的戰車。
 // 車身是低而寬的橡木＋鐵箍戰車車斗（開放座艙：木條甲板，兩輪之間收腰），車尾一塊短而高的背板（上緣單一條橫向折線紋）；
 // 車斗往前收成低平的車轅甲板，甲板中央一支細長車轅（中央脊）伸到車頭，兩側是兩頭並列的抽象山羊頭（往前低伸的短吻＋鬍鬚＋往後捲的兩對粗山羊角），
-// 角根融進羊頭、羊頸從前擋泥板內壁長出（擋泥板＝羊的肩），頸上各一圈青銅頸環；車轅兩側的甲板挖空成軛井。
+// 角根融進羊頭、羊頸從前擋泥板內壁長出（擋泥板＝羊的肩），頸上各一圈青銅頸環；車轅兩側是深色橡木甲板，只留兩條窄挽具溝（iter-114 前整段挖空成軛井）。
 // 設計：shared/design/body-tanngrisnir-chariot/DESIGN.md（典故 MYTH_RESEARCH N12、N16；車斗語彙 N3 Oseberg 四輪木車；黑名單 H6 不放雷神之鎚、不用盧恩）。
 // 塗裝全為自創：橡木棕（霧面）＋鍛鐵黑灰（緞面）＋青銅鉚釘與折線紋（金屬）＋少量暗紅；羊頭灰白、羊角象牙色。
 // 不畫人、不放鎚、不用盧恩字母或任何被挪用的符號，不含文字與商標。
@@ -74,23 +74,61 @@ const DECK = {
   view: 'top',
   shape: 'fn',
   sd: (x, y, z) => Math.max(Math.abs(z) - P.cockpit(x), x - 20, -47 - x),
-  depth: 5.5,
+  // iter-114：5.5 → 4.5（減殼面質量）
+  depth: 4.5,
 };
 
+/** @type {number[]} 挽具溝（iter-114）的 |z| 範圍：車轅（半徑 1.4）兩側到羊頭內側 */
+const SLOT_Z = [1.8, 10.2];
+/** @type {number} 挽具溝起點 x（車斗前壁之前） */
+const SLOT_X0 = 25;
+
 /**
- * 車轅兩側的軛井（俯視開口）：車轅甲板在中央脊（|z| < 4）與擋泥板內壁（|z| 21.5）之間挖空，羊頸從擋泥板內壁伸出、羊頭懸在井上
- * @type {any}
+ * 挽具溝（俯視開口，iter-114 取代原本的軛井）：原本車轅兩側 x 27–65、|z| 3.2–21.2 整片挖空，評審看到山羊後面的缺口露出黑色內部與底盤；
+ * 現在只在車轅兩側各留一條寬 8.4 mm 的窄溝（|z| 1.8–10.2，兩頭山羊之間），羊頸後方與外側封成深色橡木板面；溝壁另做 4 mm 深的橡木內襯（buildSlotLiner），
+ * 從車頭 3/4 視角（仰角約 22°）看進窄溝只看得到木壁、看不到底盤
+ * @type {any[]}
  */
-const YOKE_WELL = {
-  id: '軛井',
+const HARNESS_SLOTS = [-1, 1].map((sg) => ({
+  id: sg > 0 ? '挽具溝右' : '挽具溝左',
   view: 'top',
   shape: 'poly',
   pts: [
-    [27, 3.2],
-    [27, 21.2],
-    [65, 21.2],
-    [65, 3.2],
+    [SLOT_X0, sg * SLOT_Z[0]],
+    [SLOT_X0, sg * SLOT_Z[1]],
+    [65, sg * SLOT_Z[1]],
+    [65, sg * SLOT_Z[0]],
   ],
+}));
+
+/**
+ * 挽具溝內襯：沿每條溝三邊（x 27 後壁、內外兩側壁）從車轅甲板往下 4 mm 的直立橡木壁
+ * @type {() => THREE.BufferGeometry}
+ */
+const buildSlotLiner = () => {
+  /** @type {number} 溝壁高（甲板面往下；車頭 3/4 視角仰角約 22°，斜看進 8.4 mm 寬的溝最多看到約 4 mm 深） */
+  const depth = 4;
+  /** @type {number[]} */
+  const pos = [];
+  /** @type {(a: number[], b: number[], c: number[], d: number[]) => void} */
+  const quad = (a, b, c, d) => pos.push(...a, ...b, ...c, ...a, ...c, ...d);
+  /** @type {(x: number) => number} 溝壁頂（甲板面下 0.1） */
+  const top = (x) => P.yA(x) - 0.1;
+  /** @type {(x: number) => number} 溝壁底（不低於 y 17.6） */
+  const bot = (x) => Math.max(17.6, top(x) - depth);
+  for (const sg of [-1, 1]) {
+    for (const zw of SLOT_Z) {
+      for (let x = SLOT_X0; x < 64; x += 1) {
+        const x1 = Math.min(64, x + 1);
+        quad([x, top(x), sg * zw], [x1, top(x1), sg * zw], [x1, bot(x1), sg * zw], [x, bot(x), sg * zw]);
+      }
+    }
+    quad([SLOT_X0, top(SLOT_X0), sg * SLOT_Z[0]], [SLOT_X0, top(SLOT_X0), sg * SLOT_Z[1]], [SLOT_X0, bot(SLOT_X0), sg * SLOT_Z[1]], [SLOT_X0, bot(SLOT_X0), sg * SLOT_Z[0]]);
+  }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  g.computeVertexNormals();
+  return g;
 };
 
 /** @type {() => Record<string, THREE.Material>} */
@@ -133,7 +171,8 @@ const GOAT_Z = 14.5;
  */
 const hornRad = (t) => {
   const ridge = 1 + 0.1 * Math.cos(2 * Math.PI * 9 * t);
-  const r = lerp(2.2, 0.62, t ** 0.9) * ridge;
+  // iter-114：角根 2.2 → 2.0（封住軛井後整車超過 133 g，減實體件質量）
+  const r = lerp(2.0, 0.62, t ** 0.9) * ridge;
   return [r * 0.92, r * 1.08];
 };
 
@@ -296,7 +335,8 @@ export const tanngrisnirChariotBody = makePolyBody({
   hard: [1, 3, 4],
   wheelArches: ARCHES,
   recesses: [DECK],
-  openings: [YOKE_WELL],
+  // iter-114：原本的軛井大開口改成車轅兩側兩條窄挽具溝（評審：山羊後面的缺口看得到黑色內部與底盤）
+  openings: HARNESS_SLOTS,
   innerSkipRecess: true,
   sideZMin: 30,
   zones: () => [
@@ -340,7 +380,8 @@ export const tanngrisnirChariotBody = makePolyBody({
         [73.5, 26.2, 0],
       ],
       36,
-      () => [1.25, 1.4],
+      // iter-114：斷面 2.5 × 2.8 → 2.1 × 2.4 mm（減質量）
+      () => [1.05, 1.2],
       12,
     );
     parts.push({ geometry: pole, mat: 'oakDark', solid: true, outline: true, name: 'chariot-pole' });
@@ -404,6 +445,21 @@ export const tanngrisnirChariotBody = makePolyBody({
       mat: 'dIron',
       name: 'decal-iron-bands',
     });
+    // 挽具溝內襯（iter-114）
+    parts.push({ geometry: buildSlotLiner(), mat: 'oakDark2', shell: true, name: 'harness-slot-liner' });
+    // 車轅甲板木條縫（iter-114，原軛井位置封閉後的板面）：沿 x 的深色細縫，每 4 mm 一道（中央脊與擋泥板內壁之間）
+    parts.push({
+      geometry: kit.decal((x, y, z) => {
+        const az = Math.abs(z);
+        if (x < 27 || az < SLOT_Z[1] + 0.4 || az > Z_FENDER - 2.2 || y > P.yA(x) + 0.6) {
+          return -1;
+        }
+        const u = (az - SLOT_Z[1]) % 4;
+        return 0.3 - Math.min(u, 4 - u);
+      }),
+      mat: 'dSeam',
+      name: 'decal-yoke-deck-seams',
+    });
     // 甲板木條縫（沿 x 的細縫）
     const deckSd = featureSd(DECK);
     parts.push({
@@ -444,7 +500,7 @@ export const tanngrisnirChariotBody = makePolyBody({
     density_g_cm3: 'SPEC 1.14：ABS 約 1.05 g/cm³（推估）',
     wallThickness_mm: '推估：射出 ABS 殼 0.8 mm（同其他車殼）',
     geometry: '本檔站位產生器 P（推估）：車殼 x −63.5 ~ 64、車轅頭到 77（長約 141）；車斗邊沿 33、背板 40.5、羊角頂約 47（batch4「長約 140–150、高約 44–52」）；輪罩半寬 40 蓋住輪胎、兩輪之間收腰 32.5；車尾兩角收到 31（離後導輪 ≥ 1 mm）',
-    cockpit: '開放座艙：甲板凹槽深 5.5 mm（後輪上方 |z| ≤ 23 在輪胎內側、兩輪之間 |z| ≤ 27，推估）；車轅兩側的軛井（x 27 以前、|z| 3.2–21.2）挖空，俯視可看到底盤前段（batch4「看得到底盤的一部分或甲板」）',
+    cockpit: '開放座艙：甲板凹槽深 4.5 mm（iter-114 由 5.5 改淺，減質量）（後輪上方 |z| ≤ 23 在輪胎內側、兩輪之間 |z| ≤ 27，推估）；車轅兩側原本的軛井開口（x 27–65、|z| 3.2–21.2）iter-114 封成深色橡木板面（加縱向木條縫），只留兩條窄挽具溝（x 25–65、|z| 1.8–10.2，溝壁 4 mm 橡木內襯）（評審：缺口露出黑色內部與底盤）',
     goats: '山羊頭頸為實心 ABS 掃掠件（頸斷面約 7 × 8 mm、頭 7 × 8 → 吻 4 × 5 mm）、羊角根部直徑約 4.4 mm 往尖端收到 1.2 mm＋每 2 mm 一道環節、鬍鬚厚 1.6 mm（推估），質量 = 封閉體積 × 1.05 g/cm³；羊頭 |z| 8–21，離前導輪（|z| ≥ 35.5）遠',
     zigzag: '背板折線紋：單一條橫向鋸齒（週期 8、振幅 ±1.7、線寬 1.3 mm），不是雙折線閃電（MYTH_RESEARCH H9），自繪',
     wheelArches: '前後 R17.5（31 mm 輪胎半徑 15.5 + 2 mm），可裝 26 / 31 mm 輪；內襯從 |z| 21.5 到殼內面',

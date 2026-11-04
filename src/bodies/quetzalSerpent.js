@@ -24,7 +24,9 @@ const XS = [-70, -64, -56, -40, -20, 0, 14, 22, 30, 44, 52, 55, 58, 62, 66, 70, 
 const P = {
   // 半寬（基礎值，另加 halfW 的蛇身波浪）：蛇尾收尖（15）→ 車身罩住後輪（37.5）→ 往前收成細頸（14.5，前輪內側面 25.25 之內）→
   // iter-113：蛇頭不再是平行的寬方頭（原 32.5 寬方頭像鱷魚），改成頭後顎角最寬 20、往前收成圓尖蛇吻（俯視蛇頭的水滴形）
-  hw: monoCurve(XS, [15, 25, 34, 37, 35.5, 30, 22.5, 17, 15, 14.5, 14.5, 15.5, 18.5, 20.2, 19.6, 17.2, 14.6, 11.6, 8.6, 6.5]),
+  // iter-114：補前輪擋泥板後俯視和 marlin-sail 的 IoU 升到 0.84 → 蛇尾收細（x −64：25 → 18.5、x −56：34 → 32）、兩輪之間收窄（x −20 / 0 / 14：
+  // 35.5 / 30 / 22.5 → 33.5 / 28.5 / 19.5）；再窄（30 / 25.5）會從 front34 看進電池艙，已試過不用
+  hw: monoCurve(XS, [13, 18.5, 32, 37, 33.5, 28.5, 19.5, 17, 15, 14.5, 14.5, 15.5, 18.5, 20.2, 19.6, 17.2, 14.6, 11.6, 8.6, 6.5]),
   // 中線頂：後段蛇身 33 → 座艙段 31.5 → 細頸下凹 25 → 蛇頭 30（眼上）→ 蛇吻往上翹到 34.2（接上方的捲鼻）
   yTop: monoCurve(XS, [30, 32, 32.8, 33, 32, 31.5, 30, 27.5, 25.5, 25, 25.5, 26.5, 28, 29.5, 30, 30, 30.8, 32, 33.6, 34.2]),
   // 側裙下緣：車身 10.5–13（底盤側框段 ≥ 9.9）；細頸段抬到 18（底盤上方）；蛇頭下顎 12.5；
@@ -40,7 +42,8 @@ const WAVE = { y: 27, amp: 2.2, len: 46, peak: -40 };
  * @type {(x: number) => number}
  */
 const halfW = (x) => {
-  const env = smoothstep(-64, -54, x) * (1 - smoothstep(4, 16, x));
+  // iter-114：前端淡出由 x 4–16 提前到 0–12（俯視和 marlin-sail 的 IoU 留餘裕）
+  const env = smoothstep(-64, -54, x) * (1 - smoothstep(0, 12, x));
   return P.hw(x) + 3.2 * env * Math.cos((2 * Math.PI * (x - WAVE.peak)) / WAVE.len);
 };
 
@@ -109,18 +112,18 @@ const hash2 = (i, j) => {
 };
 
 /**
- * 綠松石馬賽克：2.6 mm 方格，依雜湊挑出一部分格子畫成內縮 0.35 mm 的小片（深 / 淺兩色各一組）
+ * 綠松石馬賽克：5.2 mm 方格（iter-114 由 2.6 放大一倍：評審「頂面雜訊紋太細碎」），依雜湊挑出一部分格子畫成內縮 0.6 mm 的小片（深 / 淺兩色各一組）
  * @type {(x: number, z: number, lo: number, hi: number) => number} 回傳正值 = 在被挑中的小片內
  */
 const mosaic = (x, z, lo, hi) => {
-  const c = 2.6;
+  const c = 5.2;
   const i = Math.floor(x / c);
   const j = Math.floor(z / c);
   const h = hash2(i, j);
   if (h < lo || h >= hi) {
     return -1;
   }
-  return -sdRoundRect(x, z, i * c + 0.35, (i + 1) * c - 0.35, j * c + 0.35, (j + 1) * c - 0.35, 0.3);
+  return -sdRoundRect(x, z, i * c + 0.6, (i + 1) * c - 0.6, j * c + 0.6, (j + 1) * c - 0.6, 0.6);
 };
 
 /**
@@ -251,11 +254,30 @@ const featherOutline = (L, wMax, a0, a1) => {
 };
 
 /**
+ * 圓角厚板（iter-114，羽毛領用）：平面外形 pts 沿 z 擠出總厚 thick（以 z = 0 為中心），上下緣倒 bev 圓角（3 段），
+ * bevelOffset 往內縮 → 外形輪廓不變大；取代 finPlate 的 0.2 mm 單段倒角（評審：羽冠像一片很薄的直立圓盤）
+ * @type {(pts: number[][], thick: number, bev: number) => THREE.BufferGeometry}
+ */
+const roundFin = (pts, thick, bev) => {
+  const shape = new THREE.Shape(pts.map(([x, y]) => new THREE.Vector2(x, y)));
+  const g = new THREE.ExtrudeGeometry(shape, {
+    depth: thick - 2 * bev,
+    bevelEnabled: true,
+    bevelThickness: bev,
+    bevelSize: bev,
+    bevelOffset: -bev,
+    bevelSegments: 3,
+  });
+  g.translate(0, 0, -thick / 2 + bev);
+  return g;
+};
+
+/**
  * 立在 yz 平面的羽片（厚度沿 x）：先在局部平面畫外形，再依扇形角 fanDeg（0 = 直立、正值往 +z 倒）與後傾角 leanDeg 擺到根點
  * @type {(outline: number[][], thick: number, fanDeg: number, leanDeg: number, root: number[]) => THREE.BufferGeometry}
  */
 const placeFeather = (outline, thick, fanDeg, leanDeg, root) => {
-  const g = finPlate(outline, 0, thick);
+  const g = roundFin(outline, thick, Math.min(0.5, thick * 0.3));
   // 外形 (b, a) → (z, y)，厚度轉到 x
   g.rotateY(Math.PI / 2);
   g.rotateX((fanDeg * Math.PI) / 180);
@@ -300,6 +322,59 @@ const tiltPlate = (pts, zc, thick, tiltDeg, pivotY) => {
   g.translate(0, -pivotY, 0);
   g.rotateX((-tiltDeg * Math.PI) / 180);
   g.translate(0, pivotY, zc);
+  return g;
+};
+
+/**
+ * 前輪擋泥板參數（iter-114）：評審「前輪幾乎沒有輪拱遮蓋」→ 每個前輪上方一片厚 1.3 mm 的弧形擋泥板（以前軸為圓心、內半徑 16.4，
+ * 26 mm 輪胎頂上留 3.4 mm、厚 1.25），z 26.5 → 36.4 蓋住胎面外側 8 mm 並外伸 2 mm（26 mm 輪 25.25–34.25；往外偏是為了俯視 IoU），前後各蓋到輪頂兩側 35°（x 30–50；俯視 IoU 每一 x 只看最寬處，擋泥板再長會和 marlin-sail 的 IoU 超過 0.82）；
+ * 擋泥板用一片斜撐板接到細頸側面（只在 x 36–44，細頸與擋泥板之間其餘保持鏤空——細頸蛇身的俯視輪廓不變寬）
+ * @type {{ x: number, y: number, rIn: number, t: number, a0: number, a1: number, z0: number, z1: number, bev: number }}
+ */
+const FENDER = { x: 40, y: 13, rIn: 16.4, t: 1.25, a0: 55, a1: 125, z0: 26.5, z1: 36.4, bev: 0.5 };
+
+/**
+ * 一片前輪擋泥板（側視圓環扇形沿 z 擠出，四周倒 0.5 mm 圓角）
+ * @type {(sg: number) => THREE.BufferGeometry}
+ */
+const buildFender = (sg) => {
+  const f = FENDER;
+  const a0 = (f.a0 * Math.PI) / 180;
+  const a1 = (f.a1 * Math.PI) / 180;
+  const shape = new THREE.Shape();
+  shape.absarc(f.x, f.y, f.rIn + f.t, a0, a1, false);
+  shape.absarc(f.x, f.y, f.rIn, a1, a0, true);
+  shape.closePath();
+  const g = new THREE.ExtrudeGeometry(shape, {
+    depth: f.z1 - f.z0 - 2 * f.bev,
+    bevelEnabled: true,
+    bevelThickness: f.bev,
+    bevelSize: f.bev,
+    bevelOffset: -f.bev,
+    bevelSegments: 3,
+    curveSegments: 40,
+  });
+  g.translate(0, 0, (sg > 0 ? f.z0 : -f.z1) + f.bev);
+  return g;
+};
+
+/**
+ * 擋泥板斜撐：從細頸側面（|z| 11.5，埋進殼內）斜上到擋泥板內側（|z| 27.2，埋進擋泥板），x 37.5–42.5，垂直厚 1.4 mm（板法向厚約 1.28）
+ * @type {(sg: number) => THREE.BufferGeometry}
+ */
+const buildFenderStay = (sg) => {
+  /** @type {number[][]} 斷面（z, y） */
+  const sec = [
+    [11.5, 22.6],
+    [27.2, 29.3],
+    [27.2, 30.6],
+    [11.5, 24.0],
+  ];
+  const shape = new THREE.Shape(sec.map(([z, y]) => new THREE.Vector2(sg * z, y)));
+  const g = new THREE.ExtrudeGeometry(shape, { depth: 5, bevelEnabled: true, bevelThickness: 0.3, bevelSize: 0.3, bevelOffset: -0.3, bevelSegments: 2 });
+  // 斷面 (z, y) 擠出沿 −x：rotateY(−90°) 把形狀 x → 世界 z、擠出 z → 世界 −x
+  g.rotateY(-Math.PI / 2);
+  g.translate(42.5, 0, 0);
   return g;
 };
 
@@ -362,12 +437,16 @@ export const quetzalSerpentBody = makePolyBody({
 
     // 後輪拱內襯
     parts.push({ geometry: buildLiner({ x: -40, y: 13, radius: 15.5 }, 3.5), mat: 'liner', shell: true, name: 'arch-liners' });
+    // 前輪擋泥板（iter-114）＋接到細頸的斜撐
+    parts.push({ geometry: mergeGeos([buildFender(1), buildFender(-1)]), mat: 'jade2', solid: true, outline: true, name: 'front-fenders' });
+    parts.push({ geometry: mergeGeos([buildFenderStay(1), buildFenderStay(-1)]), mat: 'turq2', solid: true, outline: true, name: 'front-fender-stays' });
 
     // ── 羽毛領（iter-113 放大，最主要的辨識特徵）：特奧蒂瓦坎羽蛇頭像那種環繞頭部一圈的放射狀大羽片 ──
-    // 外圈 17 片長羽（長 20、寬 10；綠松石 / 翡翠綠交替、羽尖螺貝白）、內圈 16 片短羽（海菊蛤紅，錯開半格、在外圈前方），
-    // 以頭後斷面中心 (x 57, y 20) 往外放射，從兩側略低於水平（−10°）繞過頭頂到另一側；上方羽片往後傾 22°（側視也看得到一片羽冠）
-    /** @type {{ x: number, yc: number, A: number, B: number, L: number, w: number, n: number, th0: number, th1: number, lean: number }} */
-    const RUFF = { x: 57, yc: 20, A: 17.4, B: 7.4, L: 20, w: 5.0, n: 17, th0: -10, th1: 190, lean: 22 };
+    // 外圈 11 片長羽（長 16、寬 10.4、厚 1.6、圓角 0.48；綠松石 / 翡翠綠交替、羽尖螺貝白）、內圈 10 片短羽（海菊蛤紅，厚 1.4，錯開半格、在外圈前方），
+    // 以頭後斷面中心 (x 57, y 20) 往外放射，從兩側略低於水平（−10°）繞過頭頂到另一側；羽片往後傾，奇偶片 16° / 30° 交錯（前後兩層，側視有厚度與層次）
+    // iter-114：評審「羽冠是一片很薄的直立圓盤」→ 原本 17 片 × 厚 1.1、同一後傾角（側視是一片薄盤），改成較少、較厚、前後錯層的羽片
+    /** @type {{ x: number, yc: number, A: number, B: number, L: number, w: number, n: number, th0: number, th1: number, lean: number[] }} */
+    const RUFF = { x: 57, yc: 20, A: 17.4, B: 7.4, L: 16, w: 5.2, n: 11, th0: -10, th1: 190, lean: [16, 30] };
     /** @type {THREE.BufferGeometry[][]} [綠松石, 翡翠綠, 羽尖, 內圈紅] */
     const ruff = [[], [], [], []];
     /** @type {(th: number, k: number) => number[]} 羽根點：頭後斷面橢圓上（埋入比例 k） */
@@ -381,14 +460,15 @@ export const quetzalSerpentBody = makePolyBody({
       const root = ruffRoot(th, 0.9);
       // 扇形角：羽片沿放射方向（從 +y 往 +z 倒 90° − θ）
       const fan = 90 - th;
-      ruff[i % 2].push(placeFeather(featherOutline(RUFF.L, RUFF.w, 0, 0.78 * RUFF.L), 1.1, fan, RUFF.lean, root));
-      ruff[2].push(placeFeather(featherOutline(RUFF.L, RUFF.w, 0.78 * RUFF.L, RUFF.L), 1.1, fan, RUFF.lean, root));
+      const lean = RUFF.lean[i % 2];
+      ruff[i % 2].push(placeFeather(featherOutline(RUFF.L, RUFF.w, 0, 0.78 * RUFF.L), 1.6, fan, lean, root));
+      ruff[2].push(placeFeather(featherOutline(RUFF.L, RUFF.w, 0.78 * RUFF.L, RUFF.L), 1.6, fan, lean, root));
     }
     for (let i = 0; i < RUFF.n - 1; i++) {
       const th = lerp(RUFF.th0, RUFF.th1, (i + 0.5) / (RUFF.n - 1));
       const root = ruffRoot(th, 0.95);
       root[0] += 1.2;
-      ruff[3].push(placeFeather(featherOutline(7.5, 3.0, 0, 7.5), 1.0, 90 - th, RUFF.lean, root));
+      ruff[3].push(placeFeather(featherOutline(7.5, 3.4, 0, 7.5), 1.4, 90 - th, 12, root));
     }
     parts.push({ geometry: mergeGeos(ruff[0]), mat: 'turq2', solid: true, outline: true, name: 'feather-ruff-a' });
     parts.push({ geometry: mergeGeos(ruff[1]), mat: 'jade2', solid: true, outline: true, name: 'feather-ruff-b' });
@@ -410,7 +490,8 @@ export const quetzalSerpentBody = makePolyBody({
             [74.4, 37.4, 0],
           ],
           48,
-          (t) => [lerp(5.6, 3, t), lerp(2.3, 1.3, t)],
+          // iter-114：斷面 × 0.9（減質量）
+          (t) => [lerp(5.0, 2.7, t), lerp(2.1, 1.2, t)],
           20,
         ),
       ),
@@ -543,7 +624,7 @@ export const quetzalSerpentBody = makePolyBody({
     }
     parts.push({ geometry: mergeGeos(sideFeathers), mat: 'plume', solid: true, outline: true, name: 'serpent-side-feathers' });
 
-    // 綠松石馬賽克小片（頂面，避開座艙與眼窩）：深色 22%、淺色 14%
+    // 綠松石馬賽克小片（頂面，避開座艙與眼窩）：iter-114 改大片、變少——深色 16%、淺色 10%（原 22% / 14%）
     /** @type {(lo: number, hi: number) => import('./loft.js').KeepFn} */
     const tiles = (lo, hi) => (x, y, z) => {
       if (y < ridgeY(x) + 0.4 || kit.underCanopy(x, z) > -0.8 || eyeSd(x, y, z) < 1.2) {
@@ -551,8 +632,8 @@ export const quetzalSerpentBody = makePolyBody({
       }
       return mosaic(x, z, lo, hi);
     };
-    parts.push({ geometry: kit.decal(tiles(0, 0.22)), mat: 'dTurqDark', name: 'decal-mosaic-dark' });
-    parts.push({ geometry: kit.decal(tiles(0.22, 0.36)), mat: 'dTurqLight', name: 'decal-mosaic-light' });
+    parts.push({ geometry: kit.decal(tiles(0, 0.16)), mat: 'dTurqDark', name: 'decal-mosaic-dark' });
+    parts.push({ geometry: kit.decal(tiles(0.16, 0.26)), mat: 'dTurqLight', name: 'decal-mosaic-light' });
 
     // 稜線下方的海菊蛤紅細線（沿波浪稜線，蛇身蜿蜒）
     parts.push({

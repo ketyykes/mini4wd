@@ -6,7 +6,7 @@
 // 塗裝為自創水墨感：墨黑 → 青灰 → 霧灰 → 留白的分段漸層、淡金細線魚鱗 / 羽紋、朱砂紅點睛與無字印章；
 // 不寫任何文字（含「Kunpeng」字樣）、不做晶片紋、不做紅色魚身 / 海豚形、不做龍角龍鬚。
 import * as THREE from 'three';
-import { makePolyBody, flatPlate, sweepEllipse } from './polyBody.js';
+import { makePolyBody, sweepEllipse } from './polyBody.js';
 import { namedMaterial, decalMaterial, sdRoundRect, sideDecal, mergeGeos, buildRegion, buildRim, lerp } from './loft.js';
 import { monoCurve, buildStations, sdCircle } from './gazelleLeap.js';
 
@@ -28,13 +28,15 @@ const P = {
   // 半寬：前半魚頭最寬（37.5，罩住前輪、切 R17.5 輪拱），鰓蓋之後收腰，後半是窄的鳥身（20，在後輪內側、
   // 31 mm 輪內側面 24.75 之內留 ≥ 4 mm）——後輪由上方的鵬翼罩住，俯視是「圓寬魚頭、細腰、寬後掠翼」
   // （輪廓 IoU：和既有 19 款俯視最大 0.80，避開 owl-hush / griffin-vane 的寬水滴形）
-  hw: monoCurve(XS, [13, 17, 19.5, 20, 20, 20, 20.5, 21.5, 24.5, 32, 36.8, 37.5, 37, 36, 35, 34, 33]),
+  // iter-114：中段（兩輪之間）改成鼓起的魚腹（半寬 35–35.5，比 owl-hush / griffin-vane 的腰身寬），魚頭在前輪之前收窄成較尖的魚吻（俯視 IoU），側面往下包到 y 10.5，擋住原本外露的電池艙；
+  // 魚腹在後輪前（x −26 → −18）收回窄鳥身，後輪仍在窄鳥身外側由鵬翼罩住
+  hw: monoCurve(XS, [13, 17, 19.5, 20, 20, 20.5, 25, 33, 35.5, 35.5, 36.5, 37, 36, 31.5, 27, 24, 22]),
   // 中線頂：魚頭頂（前輪上方 41.5）最高，往後緩降成鳥背；低扁
   yTop: monoCurve(XS, [28, 31, 33, 34, 34.5, 35, 35.5, 36.5, 38, 39.5, 40.5, 41.5, 41, 40, 38.5, 37, 36]),
   // 側線（魚的側線＝剖面最寬處的高度）
   ySh: monoCurve(XS, [27, 26.5, 26, 26, 26, 25.5, 25, 24, 23.5, 23, 23, 23, 23, 23, 23, 23, 23]),
-  // 側裙下緣：前半魚身 10.5–13（底盤側框段 ≥ 9.9）；後半窄鳥身抬到 18 以上（底盤上方，不和底盤重疊）
-  yLow: monoCurve(XS, [23, 21, 19, 18, 18, 18, 18, 18, 15, 11, 11, 11, 11.5, 12, 12.5, 13, 13]),
+  // 側裙下緣：前半魚身與中段魚腹 10.5–13（底盤側壁頂 9.4 之上）；後半窄鳥身約 17（底盤上方，不和底盤重疊；iter-114 由 18–23 壓低，車尾不露後齒輪）
+  yLow: monoCurve(XS, [19.5, 17.5, 16.8, 16.8, 17, 16.5, 12, 10.5, 10.5, 11, 11, 11, 11.5, 12, 12.5, 13, 13]),
 };
 
 /**
@@ -117,11 +119,17 @@ const lensSd = (x, z) => Math.max(Math.hypot(x - WIN_XC, z - (WIN_R - WIN.h)) - 
 /** @type {(x: number, y: number, z: number) => number} */
 const windowSd = (x, y, z) => (y < 32 ? 10 : lensSd(x, z));
 
+/** @type {{ x: number, y: number, radius: number }} 前輪拱（R17.5：31 mm 輪胎半徑 15.5 + 2 mm） */
+const FRONT_ARCH = { x: 40, y: 13, radius: 17.5 };
+/** @type {(x: number, y: number) => boolean} 側視點是否在前輪拱切口外擴 2 mm 之內（鰓蓋紋與金線避開輪拱邊緣） */
+const nearFrontArch = (x, y) => Math.hypot(x - FRONT_ARCH.x, y - FRONT_ARCH.y) < FRONT_ARCH.radius + 2;
+
 /** @type {{ x: number, y: number, r: number[] }} 鰓蓋弧（側視圓心 (34, 22)，半徑 14 與 10.5 兩道，只取後半弧） */
 const GILL = { x: 34, y: 22, r: [14, 10.5] };
 /** @type {(x: number, y: number, z: number) => number} 鰓蓋弧溝（負值 = 溝內） */
 const gillSd = (x, y, z) => {
-  if (Math.abs(z) < 24 || x > GILL.x - 2) {
+  // iter-114：鰓蓋弧溝的下端原本伸進前輪拱切口（弧溝牆被輪拱切斷，留下碎片面），現在在輪拱外 2 mm 內不刻溝
+  if (Math.abs(z) < 24 || x > GILL.x - 2 || nearFrontArch(x, y)) {
     return 10;
   }
   const r = Math.hypot(x - GILL.x, y - GILL.y);
@@ -196,8 +204,14 @@ const materials = () => ({
   liner: namedMaterial('shell-wheelwell-slate', { color: 0x3b4850, roughness: 0.65, side: THREE.DoubleSide }),
 });
 
+/** @type {number} 輪拱內襯 / 輪井內壁的 |z|（31 mm 輪胎內側面 24.75 之內 3.25 mm） */
+const WELL_Z = 21.5;
+/** @type {number} 輪井內壁下緣 y（底盤頂 17、前齒輪箱之上） */
+const WELL_Y0 = 20;
+
 /**
- * 輪拱內襯：輪拱切口後面的一段圓柱面（半徑 = 輪拱半徑 + 0.3，只取上半圈），z 範圍沿殼內面往內 depth
+ * 輪拱內襯：輪拱切口後面的一段圓柱面（半徑 = 輪拱半徑 + 0.3，只取上半圈），z 範圍沿殼內面往內 depth（不小於 WELL_Z）
+ * iter-114：depth 3.5 → 一路到 WELL_Z（原本內襯只有 3.5 mm 寬，從輪拱看進去大半是殼內面；Blender 算圖時殼內面在前輪拱內側出現黑白條紋）
  * @type {(arch: { x: number, y: number, radius: number }, depth: number) => THREE.BufferGeometry}
  */
 const buildLiner = (arch, depth) => {
@@ -213,14 +227,48 @@ const buildLiner = (arch, depth) => {
       const t0 = lerp(a0, a1, i / n);
       const t1 = lerp(a0, a1, (i + 1) / n);
       const p = (t, z) => [arch.x + r * Math.cos(t), arch.y + r * Math.sin(t), sg * z];
-      const A = p(t0, Math.max(20.5, zIn(t0) - depth));
-      const B = p(t1, Math.max(20.5, zIn(t1) - depth));
+      const A = p(t0, Math.max(WELL_Z, zIn(t0) - depth));
+      const B = p(t1, Math.max(WELL_Z, zIn(t1) - depth));
       const C = p(t1, zIn(t1));
       const D = p(t0, zIn(t0));
       if (sg > 0) {
         pos.push(...A, ...C, ...B, ...A, ...D, ...C);
       } else {
         pos.push(...A, ...B, ...C, ...A, ...C, ...D);
+      }
+    }
+  }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  g.computeVertexNormals();
+  return g;
+};
+
+/**
+ * 輪井內壁（iter-114）：|z| = WELL_Z 的直立板，範圍是內襯圓弧以內、y ≥ WELL_Y0 的弓形，和內襯一起把前輪拱上半部圍成封閉輪井，
+ * 從輪拱看進去只看到內襯與內壁（不再看到殼內面）；下緣以下是底盤與輪軸，不擋
+ * @type {(arch: { x: number, y: number, radius: number }) => THREE.BufferGeometry}
+ */
+const buildWellWall = (arch) => {
+  const r = arch.radius + 0.3;
+  const d = WELL_Y0 - arch.y;
+  const a0 = Math.asin(d / r);
+  const n = 32;
+  /** @type {number[]} */
+  const pos = [];
+  for (const sg of [-1, 1]) {
+    for (let i = 0; i < n; i++) {
+      const t0 = lerp(a0, Math.PI - a0, i / n);
+      const t1 = lerp(a0, Math.PI - a0, (i + 1) / n);
+      // 扇形三角：弓形弦中點 → 圓弧兩點
+      const c = [arch.x, WELL_Y0, sg * WELL_Z];
+      const p0 = [arch.x + r * Math.cos(t0), arch.y + r * Math.sin(t0), sg * WELL_Z];
+      const p1 = [arch.x + r * Math.cos(t1), arch.y + r * Math.sin(t1), sg * WELL_Z];
+      // 法線朝外（朝輪胎）
+      if (sg > 0) {
+        pos.push(...c, ...p0, ...p1);
+      } else {
+        pos.push(...c, ...p1, ...p0);
       }
     }
   }
@@ -238,6 +286,26 @@ const dihedral = (g, yPivot, zPivot, deg) => {
   g.translate(0, -yPivot, -zPivot);
   g.rotateX((-deg * Math.PI) / 180);
   g.translate(0, yPivot, zPivot);
+  return g;
+};
+
+/**
+ * 倒角平板（iter-114，取代 flatPlate 的直角薄板）：俯視多邊形 pts（(x, z)），底面 y、總厚 thick，上下緣各倒 bevel 的圓角
+ * （bevelOffset 往內縮，俯視外形不變大）
+ * @type {(pts: number[][], y: number, thick: number, bevel: number) => THREE.BufferGeometry}
+ */
+const bevelPlate = (pts, y, thick, bevel) => {
+  const shape = new THREE.Shape(pts.map(([x, z]) => new THREE.Vector2(x, -z)));
+  const g = new THREE.ExtrudeGeometry(shape, {
+    depth: thick - 2 * bevel,
+    bevelEnabled: true,
+    bevelThickness: bevel,
+    bevelSize: bevel,
+    bevelOffset: -bevel,
+    bevelSegments: 3,
+  });
+  g.rotateX(-Math.PI / 2);
+  g.translate(0, y + bevel, 0);
   return g;
 };
 
@@ -306,7 +374,7 @@ export const kunpengBody = makePolyBody({
   // 平滑剖面，沒有銳利稜線（魚身）
   hard: [],
   // 只有前輪拱（後輪在窄鳥身外側，由鵬翼從上方罩住）
-  wheelArches: [{ x: 40, y: 13, radius: 17.5, cutZFrom: 22 }],
+  wheelArches: [{ ...FRONT_ARCH, cutZFrom: 22 }],
   openings: [{ id: '水天窗', shape: 'fn', sd: windowSd }],
   recesses: [{ id: '鰓蓋弧溝', view: 'side', shape: 'fn', sd: gillSd, depth: 0.6 }],
   sideZMin: 24,
@@ -345,21 +413,22 @@ export const kunpengBody = makePolyBody({
 
     // 輪拱內襯（擋住從輪拱看進去的殼內空腔）
     parts.push({
-      geometry: buildLiner({ x: 40, y: 13, radius: 17.5 }, 3.5),
+      geometry: mergeGeos([buildLiner(FRONT_ARCH, 20), buildWellWall(FRONT_ARCH)]),
       mat: 'liner',
       shell: true,
       name: 'arch-liners',
     });
 
     // 鵬翼：覆羽板（墨黑）＋5 片飛羽（青灰、霧灰交替，往翼尖一片疊一片）＋金色羽軸細肋；翼根埋進殼面，上反 4°
-    const covertR = flatPlate(WING.covert, WING.y, 1.4);
-    const featherR = WING.primaries.map((p, i) => flatPlate(featherPoly(p), WING.y + 0.9 - 0.15 * i, 1.2));
+    // iter-114：評審「尾翼是平板疊片」→ 覆羽板 1.4 → 2.0 mm、飛羽 1.2 → 1.6 mm，上下緣都倒 0.5 / 0.45 mm 圓角（射出件的倒角邊）
+    const covertR = bevelPlate(WING.covert, WING.y, 2.0, 0.5);
+    const featherR = WING.primaries.map((p, i) => bevelPlate(featherPoly(p), WING.y + 1.1 - 0.15 * i, 1.6, 0.45));
     const rachisR = WING.primaries.map(([x0, z0, x1, z1], i) => {
       /** @type {number[][]} 羽軸中心線（貼在各片飛羽頂面） */
       const pts = [];
       for (let k = 0; k <= 6; k++) {
         const t = k / 6;
-        pts.push([lerp(x0 + 2, x1 + 3, t), WING.y + 2.05 - 0.15 * i, lerp(z0, z1, t)]);
+        pts.push([lerp(x0 + 2, x1 + 3, t), WING.y + 2.65 - 0.15 * i, lerp(z0, z1, t)]);
       }
       return sweepEllipse(pts, 12, (t) => [0.4, 0.3 * (1 - 0.5 * t)], 6);
     });
@@ -376,7 +445,8 @@ export const kunpengBody = makePolyBody({
 
     // 鵬尾：車尾中央一片短扇尾（三片尾羽的扇形外緣），貼在尾端殼面上
     const yTailPlate = kit.surf.topY(-60, 0) - 0.6;
-    const tail = flatPlate(
+    // iter-114：扇尾 1.2 → 1.6 mm、倒角 0.45
+    const tail = bevelPlate(
       [
         [-52, 9],
         [-66, 13],
@@ -389,7 +459,8 @@ export const kunpengBody = makePolyBody({
         [-52, -9],
       ],
       yTailPlate,
-      1.2,
+      1.6,
+      0.45,
     );
     parts.push({ geometry: tail, mat: 'ink2', solid: true, outline: true, name: 'peng-tail-fan' });
 
@@ -416,7 +487,7 @@ export const kunpengBody = makePolyBody({
     // 鰓蓋弧溝旁的淡金細線（沿外弧外側 1.1 mm）
     parts.push({
       geometry: kit.decal((x, y, z) => {
-        if (Math.abs(z) < 24 || x > GILL.x - 2) {
+        if (Math.abs(z) < 24 || x > GILL.x - 2 || nearFrontArch(x, y)) {
           return -1;
         }
         return 0.32 - Math.abs(Math.hypot(x - GILL.x, y - GILL.y) - (GILL.r[0] + 1.1));
@@ -487,7 +558,7 @@ export const kunpengBody = makePolyBody({
     density_g_cm3: 'SPEC 1.14：ABS 約 1.05 g/cm³（推估）',
     wallThickness_mm: '推估：射出 ABS 殼 0.8 mm（同其他款）；水天窗片同厚度，以殼面積計入質量',
     geometry: '本檔站位產生器 P＋endFactor（推估）：長 150（鼻尖 x 78、車尾 x −72，≤ 153 避免立體橋刮底）、殼頂約 41.6（魚頭頂，前輪上方）、低扁；前輪拱 R17.5（31 mm 輪半徑 15.5 + 2 mm）；後半窄鳥身半寬 20、下緣 ≥ 18（在後輪內側、底盤上方）',
-    wings: '鵬翼覆羽板厚 1.4、飛羽厚 1.2、羽軸 0.8 × 0.6 圓肋、扇尾厚 1.2，均為 ABS 實心件（推估），質量 = 封閉體積 × 1.05 g/cm³；翼面高 y ≈ 30.6，高於 31 mm 後輪頂 28.5 與後上導輪 20.5',
+    wings: '鵬翼覆羽板厚 2.0（iter-114 前 1.4）、飛羽厚 1.6（前 1.2）、上下緣倒圓角 0.45–0.5、羽軸 0.8 × 0.6 圓肋、扇尾厚 1.6（前 1.2），均為 ABS 實心件（推估），質量 = 封閉體積 × 1.05 g/cm³；翼面高 y ≈ 30.6，高於 31 mm 後輪頂 28.5 與後上導輪 20.5',
     myth: '典故《莊子・逍遙遊》（MYTH_RESEARCH Z1）；魚首 / 鵬身造型參考故宮〈松花石鯤鵬硯〉故文001376 的「魚尾、鷹首鳳身」描述（Z4），本款魚頭不做龍首（避免龍頭車身撞形）',
     mounts: '對齊 chassis-midship 的車殼安裝點（SPEC 1.14）',
   },
