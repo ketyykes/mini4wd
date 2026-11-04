@@ -1,151 +1,102 @@
 // 雅加婆婆的雞腳小屋（body-yaga-hut，第八階段神話組・斯拉夫）：俄羅斯民間故事裡「站在雞腳上、會轉身的小木屋」（izbushka）——
 // Magnus 1916 英譯 Afanasyev：「a little hut standing on cocks' feet and turning round」，要對它說「背對森林站好」才會停下開門。
-// 不畫雅加婆婆本人。整台車是一間小木屋：側面 4 根橫向圓木（殼面本身做出圓木的鼓起與接縫）、四角的圓木端頭交錯伸出（log cabin 角接）、
-// 人字屋頂（屋脊沿車長方向，屋面木瓦紋，屋簷下白色封簷板）、車頭山牆一扇俄式雕花窗框（nalichnik：頂冠、側板、窗台與垂飾；紅色窗櫺）、
-// 山牆白色博風板與屋脊垂飾、車尾屋脊上一根短煙囪（尾翼 chimney-stack）；側裙下緣在前後輪之間露出兩對抽象的三趾鳥爪（雞腳）。
-// 配色：原木暖褐（霧面）＋深灰褐木瓦屋頂（霧面）＋白色窗飾（霧面）＋黃橙雞腳＋少量紅色窗櫺；暖色窗光。
+// iter-115：評審「整棟木屋，最像盒子」→ 先做成一台低矮流線的迷你四驅車殼（斜車頭、屋脊駝峰、車尾收尾、輪拱），小木屋改用表面處理暗示：
+// 車頂兩片斜面＝人字屋頂（屋脊沿車長方向、木瓦紋、白色封簷板），側面是 4 根橫向圓木凸紋（殼面剖面本身鼓起），
+// 車頭封口是小山牆：一扇俄式雕花窗框（nalichnik：頂冠、側板、窗台；紅窗櫺、暖色窗光）＋白色博風板；車尾屋脊上一根短煙囪當尾翼（chimney-stack）。
+// 前後輪之間每側兩隻加長、加粗的雞腳：羽毛大腿貼在圓木牆上、膝關節球、帶鱗片環節的跗蹠、腳踝關節、三前一後的趾（趾節）與深色爪尖。
+// 不畫雅加婆婆本人。配色：原木暖褐（霧面）＋深灰褐木瓦屋頂（霧面）＋白色窗飾（霧面）＋黃橙雞腳＋少量紅色窗櫺；暖色窗光。
 // 設計：shared/design/body-yaga-hut/DESIGN.md（研究一節列出實際打開的來源）。剖面為本檔站位產生器（推估）。
 // 不含任何廠商 / 作品名稱、商標、文字或人臉。
 import * as THREE from 'three';
 import { makePolyBody, sweepEllipse } from './polyBody.js';
 import { namedMaterial, decalMaterial, mergeGeos, lerp } from './loft.js';
-import { buildStations, smoothNormals } from './gazelleLeap.js';
-import { profileZAtY } from './khepriScarab.js';
+import { monoCurve, buildStations, smoothNormals } from './gazelleLeap.js';
+import { buildProfileLiner } from './khepriScarab.js';
+import { buildArchWell, chassisBlockedNearArch } from './kitsuneNinetail.js';
 
 /** @typedef {import('./loft.js').BodyPart} BodyPart */
 
-/** @type {number} 牆面（殼面）前後端 x：車頭山牆 / 車尾山牆 */
-const X_FRONT = 53;
-/** @type {number} */
-const X_REAR = -53.8;
-/** @type {number} 屋脊高度 */
-const RIDGE_Y = 43.6;
-/** @type {number} 屋簷外緣（頂面）高度與半寬 */
-const EAVE_Y = 29.6;
-/** @type {number} */
-const EAVE_Z = 38.2;
-/** @type {number} 封簷板下緣高度 */
-const FASCIA_Y = 29.0;
-/** @type {number} 圓木接縫（凹處）與圓木鼓起最外處的 |z| */
-const WALL_IN = 37.0;
-/** @type {number} */
-const WALL_OUT = 38.0;
-/** @type {number} 最上一根圓木的上緣（= 封簷板下緣）與每根圓木高度 */
-const LOG_TOP = FASCIA_Y;
-/** @type {number} */
-const LOG_H = 3.8;
-/** @type {number} 圓木根數（最下一根下緣 = 牆底 13.8） */
+/** @type {number} 車尾封口 x */
+const X_REAR = -56;
+/** @type {number} 車頭封口（小山牆）x */
+const X_FRONT = 58;
+/** @type {number[]} 站位參數表（x 由後到前，前後軸 x = ±40） */
+const XS = [-56, -53, -47, -40, -28, -14, 0, 14, 28, 40, 47, 52, 55.5, 58];
+/** @type {Record<string, (x: number) => number>} */
+const P = {
+  // 圓木牆面半寬（接縫處）：前後輪上方是鼓出的翼子板 39.5（輪胎外緣 34.75 之外），前後輪之間收成 32.5 的腰身（雞腳從腰身往外伸出），
+  // 往前收成窄車頭（16）、往後收成車尾（26）
+  hw: monoCurve(XS, [26, 32, 37, 39.5, 37, 33, 32.5, 33, 37, 39.5, 36.5, 30, 23, 16]),
+  // 屋脊（中線殼頂）：座艙段 41.5 的屋脊駝峰（人字屋面斜約 15°），往前下斜成車頭斜面（26.6）、往後下斜到車尾（28）
+  yTop: monoCurve(XS, [28, 30.5, 33.5, 37, 40.2, 41.5, 41.5, 40.6, 38.6, 35.8, 33, 30.6, 28.2, 26.6]),
+  // 屋簷外緣高度（頂面與側面交界）
+  yS: monoCurve(XS, [25, 26.5, 28, 29.5, 30, 30.2, 30.2, 30.2, 30, 29.5, 27.5, 26, 24.2, 23]),
+  // 側裙（最下一根圓木）下緣：車尾封口下緣 12.4（遮住後齒輪箱）
+  yLow: monoCurve(XS, [12.4, 12.2, 11.6, 10.6, 10.5, 10.5, 10.5, 10.5, 10.5, 10.6, 11.5, 12.6, 13.6, 14.2]),
+};
+
+/** @type {number} 屋簷外伸（屋面外緣超出圓木牆的距離） */
+const EO = 1.4;
+/** @type {number} 封簷板高度 */
+const FASCIA_H = 1.0;
+/** @type {number} 屋簷底到牆頂（最上一根圓木上緣）的內收高度 */
+const TUCK_H = 0.3;
+/** @type {number} 圓木根數 */
 const LOG_COUNT = 4;
-/** @type {number} 牆底（側裙下緣）高度 */
-const WALL_BOTTOM = LOG_TOP - LOG_COUNT * LOG_H;
+/** @type {number} 圓木鼓起量 */
+const LOG_BULGE = 0.8;
 
-/** @type {number} 山牆（前後封口）下緣：前後輪胎正上方，山牆只封到這個高度（下面是輪拱，屋子「架高」在輪上） */
-const GABLE_BOTTOM = 22.4;
-/** @type {number} 剖面下緣開始往上收到 GABLE_BOTTOM 的 |x|（這一段的側牆本來就在 R15 輪拱切口內，側面看不出差別） */
-const END_RAISE_X = 50.6;
-
-/** @type {(az: number) => number} 屋面高度（|z| 處） */
-const roofY = (az) => RIDGE_Y - ((RIDGE_Y - EAVE_Y) * az) / EAVE_Z;
+/** @type {(x: number) => number} 牆頂（最上一根圓木上緣）高度 */
+const yWallTop = (x) => P.yS(x) - FASCIA_H - TUCK_H;
+/** @type {(x: number) => number} 每根圓木高度 */
+const logH = (x) => (yWallTop(x) - P.yLow(x)) / LOG_COUNT;
+/** @type {(x: number, az: number) => number} 屋面高度（|z| 處，直線斜面） */
+const roofY = (x, az) => P.yTop(x) - ((P.yTop(x) - P.yS(x)) * az) / (P.hw(x) + EO);
 
 /**
- * 半剖面：屋脊 → 屋簷外緣 → 封簷板（垂直）→ 屋簷底（水平往內）→ 4 根圓木（每根 3 點鼓起 + 接縫）→ 牆底
- * 中段每站同一個剖面（木屋是直的長方體）；剖面在屋簷底與圓木處 z 會往內收，封口用一般多邊形三角化。
- * 前後端 |x| > END_RAISE_X：低於 GABLE_BOTTOM 的點往上收（山牆不蓋到輪胎）
+ * 半剖面：屋脊 → 直線屋面 → 屋簷外緣（銳利）→ 封簷板（垂直）→ 屋簷底內收 → 4 根圓木（每根鼓起 + 銳利接縫）
  * @type {(x: number) => number[][]}
  */
 const profile = (x) => {
+  const t = P.yTop(x);
+  const s = P.yS(x);
+  const h = P.hw(x);
+  const yW = yWallTop(x);
+  const L = logH(x);
   /** @type {number[][]} */
   const pts = [
-    [0, RIDGE_Y],
-    [EAVE_Z, EAVE_Y],
-    [EAVE_Z, FASCIA_Y],
-    [WALL_IN, FASCIA_Y],
+    [0, t],
+    [0.5 * (h + EO), lerp(t, s, 0.5)],
+    [h + EO, s],
+    [h + EO, s - FASCIA_H],
+    [h, yW],
   ];
   for (let j = 0; j < LOG_COUNT; j++) {
-    const yT = LOG_TOP - j * LOG_H;
-    pts.push([WALL_IN + 0.72, yT - 0.13 * LOG_H], [WALL_OUT, yT - 0.5 * LOG_H], [WALL_IN + 0.72, yT - 0.87 * LOG_H], [WALL_IN, yT - LOG_H]);
+    const yT = yW - j * L;
+    pts.push([h + LOG_BULGE, yT - 0.5 * L], [h, yT - L]);
   }
-  const t = Math.min(1, Math.max(0, (Math.abs(x) - END_RAISE_X) / (Math.abs(X_FRONT) - END_RAISE_X)));
-  const k = t * t * (3 - 2 * t);
-  return pts.map(([z, y]) => [z, y < GABLE_BOTTOM ? lerp(y, GABLE_BOTTOM, k) : y]);
+  return pts;
 };
+/** @type {number[]} 銳利稜線：屋簷外緣、封簷板下緣、牆頂、圓木接縫 */
+const HARD = [2, 3, 4, 6, 8, 10];
 
-/** @type {{ x: number, pts: number[][] }[]} */
-const STATIONS = [...buildStations(X_REAR, X_REAR + 2, 0.25, profile).slice(0, -1), ...buildStations(X_REAR + 2, X_FRONT - 2, 4, profile).slice(0, -1), ...buildStations(X_FRONT - 2, X_FRONT, 0.25, profile)];
+/** @type {{ x: number, pts: number[][] }[]} 車尾與車頭每 0.75 mm 一站，中段每 2 mm */
+const STATIONS = [...buildStations(X_REAR, -47, 0.75, profile).slice(0, -1), ...buildStations(-47, 51, 2, profile).slice(0, -1), ...buildStations(51, X_FRONT, 0.75, profile)];
 
 /** @type {{ x: number, y: number, radius: number, cutZFrom: number }[]} 前後輪拱（R15：26 mm 輪胎半徑 13 + 2 mm；31 mm 輪需切輪拱） */
 const ARCHES = [
-  { x: 40, y: 13, radius: 15, cutZFrom: 30 },
-  { x: -40, y: 13, radius: 15, cutZFrom: 30 },
+  { x: 40, y: 13, radius: 15, cutZFrom: 22.5 },
+  { x: -40, y: 13, radius: 15, cutZFrom: 22.5 },
 ];
 /** @type {(x: number, y: number) => number} 側視到最近輪拱圓周的距離（正值 = 在輪拱切口外） */
 const archRingDist = (x, y) => Math.min(...ARCHES.map((a) => Math.hypot(x - a.x, y - a.y) - a.radius));
 
-/**
- * 輪拱內襯（參考 khepri-scarab 的 buildProfileLiner）：輪拱切口後面的一段圓柱面（半徑 + 0.3、上半圈），
- * z 範圍 = [zFrom, 圓木牆內面]；角度範圍裁在前後山牆之內（不伸出屋外）
- * @type {(arch: { x: number, y: number, radius: number }, zFrom: number) => THREE.BufferGeometry}
- */
-const buildHutLiner = (arch, zFrom) => {
-  const r = arch.radius + 0.3;
-  const n = 40;
-  const xMax = X_FRONT - 0.4;
-  const xMin = X_REAR + 0.4;
-  const a0 = Math.max(0.12, Math.acos(Math.min(1, (xMax - arch.x) / r)));
-  const a1 = Math.min(Math.PI - 0.12, Math.acos(Math.max(-1, (xMin - arch.x) / r)));
-  const pos = [];
-  /** @type {(t: number) => number} 該角度的牆內面 z */
-  const zIn = (t) => Math.max(zFrom, profileZAtY(profile(arch.x + r * Math.cos(t)), arch.y + r * Math.sin(t)) - 1.2);
-  for (const sg of [-1, 1]) {
-    for (let i = 0; i < n; i++) {
-      const t0 = lerp(a0, a1, i / n);
-      const t1 = lerp(a0, a1, (i + 1) / n);
-      const p = (t, z) => [arch.x + r * Math.cos(t), arch.y + r * Math.sin(t), sg * z];
-      const A = p(t0, zFrom);
-      const B = p(t1, zFrom);
-      const C = p(t1, zIn(t1));
-      const D = p(t0, zIn(t0));
-      // 法線朝輪心
-      if (sg > 0) {
-        pos.push(...A, ...C, ...B, ...A, ...D, ...C);
-      } else {
-        pos.push(...A, ...B, ...C, ...A, ...C, ...D);
-      }
-    }
-  }
-  const g = new THREE.BufferGeometry();
-  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
-  g.computeVertexNormals();
-  return g;
-};
-
-/**
- * 山牆下段的中央圓木板（|z| ≤ 21，在兩個輪胎之間）：山牆封口只到 GABLE_BOTTOM，中央補上兩根半圓木高的牆板，
- * 擋住車殼安裝柱與底盤前後端；外側（輪胎上方）留空 = 山牆的輪拱缺口
- * @type {(xFace: number, dir: number) => { log: THREE.BufferGeometry, logDark: THREE.BufferGeometry }}
- */
-const buildEndApron = (xFace, dir) => {
-  const hw = 21;
-  /** @type {(y0: number, y1: number) => THREE.BufferGeometry} */
-  const band = (y0, y1) => {
-    const b = new THREE.BoxGeometry(0.8, y1 - y0, 2 * hw);
-    b.translate(xFace - dir * 0.4, (y0 + y1) / 2, 0);
-    return b;
-  };
-  const yA = LOG_TOP - 2 * LOG_H;
-  const yB = LOG_TOP - 3 * LOG_H;
-  return {
-    logDark: mergeGeos([band(yA, GABLE_BOTTOM + 0.3), band(WALL_BOTTOM, yB - 0.1)]),
-    log: band(yB - 0.1, yA),
-  };
-};
-
 /** @type {(x: number, y: number, z: number) => boolean} 屋面 */
-const onRoof = (x, y, z) => Math.abs(z) < EAVE_Z - 0.05 && y > EAVE_Y - 0.2;
+const onRoof = (x, y, z) => y > P.yS(x) - 0.05 && Math.abs(z) < P.hw(x) + EO - 0.05;
 /** @type {(x: number, y: number, z: number) => boolean} 圓木牆 */
-const onWall = (x, y, z) => y < FASCIA_Y - 0.05 && Math.abs(z) > WALL_IN - 0.3;
-/** @type {(y: number) => number} 圓木編號（0 = 最上一根） */
-const logIndex = (y) => Math.floor((LOG_TOP - y) / LOG_H);
+const onWall = (x, y, z) => y < yWallTop(x) + 0.05 && Math.abs(z) > P.hw(x) - 0.3;
+/** @type {(x: number, y: number) => number} 圓木編號（0 = 最上一根） */
+const logIndex = (x, y) => Math.floor((yWallTop(x) - y) / logH(x));
 
 /** @type {number} 木瓦排距（沿屋面的水平 |z| 間距）與每片寬（沿 x） */
 const SHINGLE_ROW = 3.4;
@@ -153,7 +104,7 @@ const SHINGLE_ROW = 3.4;
 const SHINGLE_W = 3.2;
 
 /** @type {{ x: number, w: number, y0: number, y1: number }} 側面窗（前後輪之間，圓木牆上的貼紙） */
-const SIDE_WINDOW = { x: 0, w: 7.6, y0: 16.6, y1: 22.8 };
+const SIDE_WINDOW = { x: 0, w: 7.2, y0: 16, y1: 21.8 };
 
 /** @type {() => Record<string, THREE.Material>} */
 const materials = () => ({
@@ -161,7 +112,6 @@ const materials = () => ({
   log: namedMaterial('paint-log-pine', { color: 0x8c5a32, roughness: 0.7, clearcoat: 0.03 }),
   logDark: namedMaterial('paint-log-pine-aged', { color: 0x74482a, roughness: 0.72, clearcoat: 0.03 }),
   gable: namedMaterial('paint-gable-plank', { color: 0x5e3b22, roughness: 0.72, clearcoat: 0.03 }),
-  endgrain: namedMaterial('paint-log-endgrain', { color: 0xc49a66, roughness: 0.74, clearcoat: 0.02 }),
   // 木瓦屋頂（風化的白楊木瓦：深灰褐，霧面）
   shingle: namedMaterial('paint-shingle-aspen', { color: 0x5a5249, roughness: 0.76, clearcoat: 0.02 }),
   shingleDark: namedMaterial('paint-shingle-aspen-dark', { color: 0x4a433c, roughness: 0.78, clearcoat: 0.02 }),
@@ -173,8 +123,10 @@ const materials = () => ({
   red: namedMaterial('paint-window-red', { color: 0xb3302a, roughness: 0.58, clearcoat: 0.08 }),
   // 煙囪：紅磚＋白灰帽（霧面）
   brick: namedMaterial('paint-brick-red', { color: 0x9b4a32, roughness: 0.78, clearcoat: 0.0 }),
-  // 雞腳：黃橙（霧面射出塑膠）＋深色爪尖
+  // 雞腳：羽毛大腿（褐色霧面）＋黃橙跗蹠與趾（霧面射出塑膠）＋較深的鱗片環＋深色爪尖
+  feather: namedMaterial('paint-hen-feather-brown', { color: 0x6b4426, roughness: 0.72, clearcoat: 0.02 }),
   claw: namedMaterial('paint-claw-ochre', { color: 0xe0962c, roughness: 0.6, clearcoat: 0.05 }),
+  scale: namedMaterial('paint-claw-scale-ochre', { color: 0xb8721c, roughness: 0.62, clearcoat: 0.05 }),
   clawTip: namedMaterial('paint-claw-horn', { color: 0x3b2a1e, roughness: 0.5, clearcoat: 0.1 }),
   // 窗內暖光
   window: namedMaterial('lamp-window-warm', { color: 0xffc46b, emissive: 0xff9a2e, emissiveIntensity: 0.45, roughness: 0.2, clearcoat: 0.6 }),
@@ -246,15 +198,20 @@ const rectPts = (z0, z1, y0, y1) => [
   [z1, y0],
 ];
 
-/** @type {{ hw: number, y0: number, y1: number }} 車頭窗洞（|z| ≤ 3.6、y 26.8–33；跨在最上一根圓木與山牆之間的「明間窗」） */
-const FRONT_WINDOW = { hw: 3.6, y0: 26.8, y1: 33 };
+/** @type {number} 車頭窗框的縮放（相對 iter-114 的山牆窗框；iter-115 車頭封口變矮） */
+const NK = 0.62;
+/** @type {(p: number[]) => number[]} iter-114 窗框座標（窗洞下緣 y 26.8）→ 本輪車頭封口座標（窗洞下緣 y 16.8） */
+const nkMap = ([z, y]) => [z * NK, 16.8 + (y - 26.8) * NK];
+
+/** @type {{ hw: number, y0: number, y1: number }} 車頭窗洞（|z| ≤ 2.23、y 16.8–20.64） */
+const FRONT_WINDOW = { hw: 3.6 * NK, y0: 16.8, y1: 16.8 + 6.2 * NK };
 
 /**
  * 車頭雕花窗框（nalichnik）：頂冠（kokoshnik 尖拱，鏤空一圓兩小圓）、兩側直板、外伸的窗台、窗台下波浪垂飾（podzor）
  * @type {() => THREE.BufferGeometry}
  */
 const buildNalichnik = () => {
-  /** @type {number[][]} 右半外形（由下中央往右、往上到頂冠尖），再鏡射成整圈（逆時針） */
+  /** @type {number[][]} 右半外形（由下中央往右、往上到頂冠尖），再鏡射成整圈 */
   const right = [
     [0, 22.7],
     [1.5, 23.8],
@@ -273,11 +230,11 @@ const buildNalichnik = () => {
     [3.2, 38.9],
     [1.5, 39.9],
     [0, 41.3],
-  ];
+  ].map(nkMap);
   const outline = [...right, ...right.slice(1, -1).reverse().map(([z, y]) => [-z, y])];
-  // 逆時針：右半是由下往上（z > 0），左半由上往下 → 整圈逆時針需反轉
   outline.reverse();
-  const holes = [rectPts(-FRONT_WINDOW.hw, FRONT_WINDOW.hw, FRONT_WINDOW.y0, FRONT_WINDOW.y1), circlePts(0, 36.6, 0.9), circlePts(-3.1, 35.8, 0.55), circlePts(3.1, 35.8, 0.55)];
+  const W = FRONT_WINDOW;
+  const holes = [rectPts(-W.hw, W.hw, W.y0, W.y1), circlePts(...nkMap([0, 36.6]), 0.9 * NK), circlePts(...nkMap([-3.1, 35.8]), 0.6 * NK), circlePts(...nkMap([3.1, 35.8]), 0.6 * NK)];
   return gablePlate(outline, holes, X_FRONT, 1.0, 1);
 };
 
@@ -293,41 +250,42 @@ const buildSash = () => {
     [hw, y1],
     [-hw, y1],
   ];
-  const ym = 29.9;
-  const f = 0.55;
-  const m = 0.35;
+  const ym = (y0 + y1) / 2;
+  const f = 0.4;
+  const m = 0.3;
   const holes = [rectPts(-hw + f, -m, y0 + f, ym - m), rectPts(m, hw - f, y0 + f, ym - m), rectPts(-hw + f, -m, ym + m, y1 - f), rectPts(m, hw - f, ym + m, y1 - f)];
   return gablePlate(outline, holes, X_FRONT, 0.7, 1);
 };
 
 /**
- * 博風板（prichelina）：沿山牆兩條屋面邊緣的白色板帶，下緣是波浪雕花；屋脊下一片尖底垂飾（polotenets）
+ * 博風板（prichelina）：沿封口兩條屋面邊緣的白色板帶，下緣是波浪雕花；屋脊下一片尖底垂飾
  * @type {(xFace: number, dir: number) => THREE.BufferGeometry}
  */
 const buildBargeboards = (xFace, dir) => {
+  const t = P.yTop(xFace);
+  const s = P.yS(xFace);
+  const ez = P.hw(xFace) + EO;
   /** @type {THREE.BufferGeometry[]} */
   const geos = [];
+  const len = Math.hypot(ez, t - s);
+  const nz = (t - s) / len;
+  const ny = ez / len;
   for (const sg of [-1, 1]) {
-    const n = 24;
+    const n = 20;
     /** @type {number[][]} */
     const top = [];
     /** @type {number[][]} */
     const bottom = [];
-    // 屋面方向的單位向量與往下的法線
-    const len = Math.hypot(EAVE_Z, RIDGE_Y - EAVE_Y);
-    const nz = (RIDGE_Y - EAVE_Y) / len;
-    const ny = EAVE_Z / len;
     for (let i = 0; i <= n; i++) {
-      const t = i / n;
-      const z = lerp(EAVE_Z - 0.2, 0.9, t);
-      const y = roofY(z) + 0.15;
+      const q = i / n;
+      const z = lerp(ez - 0.2, 0.7, q);
+      const y = t - ((t - s) * z) / ez + 0.15;
       top.push([sg * z, y]);
-      // 下緣波浪：5 個半圓扇
-      const depth = 1.3 + 0.65 * Math.abs(Math.sin(Math.PI * t * 5));
+      // 下緣波浪：4 個半圓扇
+      const depth = 1.0 + 0.5 * Math.abs(Math.sin(Math.PI * q * 4));
       bottom.push([sg * (z - nz * depth), y - ny * depth]);
     }
     const pts = [...top, ...bottom.reverse()];
-    // 逆時針
     let area = 0;
     for (let i = 0; i < pts.length; i++) {
       const [z0, y0] = pts[i];
@@ -339,15 +297,18 @@ const buildBargeboards = (xFace, dir) => {
     }
     geos.push(gablePlate(pts, [], xFace, 0.9, dir));
   }
-  // 屋脊垂飾
+  // 屋脊垂飾（只在車尾封口；車頭封口的屋脊下是窗框頂冠）
+  if (dir > 0) {
+    return mergeGeos(geos);
+  }
   geos.push(
     gablePlate(
       [
-        [-1, RIDGE_Y - 0.2],
-        [-1, 39.6],
-        [0, 38.2],
-        [1, 39.6],
-        [1, RIDGE_Y - 0.2],
+        [-0.8, t - 0.2],
+        [-0.8, t - 2.6],
+        [0, t - 3.6],
+        [0.8, t - 2.6],
+        [0.8, t - 0.2],
       ].reverse(),
       [],
       xFace,
@@ -358,115 +319,100 @@ const buildBargeboards = (xFace, dir) => {
   return mergeGeos(geos);
 };
 
-/**
- * 四角的圓木端頭（log cabin 角接）：側牆圓木沿 x 伸出山牆外、山牆圓木沿 z 伸出側牆外，上下錯開半根
- * @type {() => THREE.BufferGeometry}
- */
-const buildLogEnds = () => {
-  /** @type {THREE.BufferGeometry[]} */
-  const geos = [];
-  const r = 1.6;
-  const out = 6.2;
-  const outZ = 7.5;
-  const embed = 0.5;
-  for (const sx of [-1, 1]) {
-    const xFace = sx > 0 ? X_FRONT : X_REAR;
-    for (const sz of [-1, 1]) {
-      // 側牆圓木端頭（軸沿 x）：每根圓木的中心高度
-      for (let j = 0; j < LOG_COUNT; j++) {
-        const yc = LOG_TOP - (j + 0.5) * LOG_H;
-        // 山牆下緣以下的圓木（在輪拱切口內）沒有端頭
-        if (yc - r < GABLE_BOTTOM) {
-          continue;
-        }
-        const c = new THREE.CylinderGeometry(r, r, out + embed, 18);
-        c.rotateZ(Math.PI / 2);
-        c.translate(xFace + sx * ((out - embed) / 2), yc, sz * (WALL_OUT - r + 0.75));
-        geos.push(c);
-      }
-      // 山牆圓木端頭（軸沿 z）：在側牆圓木的接縫高度（錯開半根）
-      for (let j = 1; j < LOG_COUNT; j++) {
-        const yc = LOG_TOP - j * LOG_H;
-        if (yc - r < GABLE_BOTTOM) {
-          continue;
-        }
-        const c = new THREE.CylinderGeometry(r, r, outZ + embed, 18);
-        c.rotateX(Math.PI / 2);
-        c.translate(xFace - sx * r, yc, sz * (WALL_OUT + (outZ - embed) / 2));
-        geos.push(c);
-      }
-    }
-  }
-  return mergeGeos(geos);
-};
+/** @type {number} 煙囪中心 x（車尾屋脊上） */
+const CHIMNEY_X = -44;
 
 /**
- * 煙囪（車尾屋脊上）：磚砌方柱＋白灰帽＋黑色煙口
+ * 煙囪（尾翼 chimney-stack）：磚砌方柱＋白灰帽＋黑色煙口；頂端 ≤ 50
  * @type {() => { stack: THREE.BufferGeometry, cap: THREE.BufferGeometry, hole: THREE.BufferGeometry }}
  */
 const buildChimney = () => {
-  const xc = -46;
-  const s = 5.4;
-  const yBase = roofY(s / 2) - 0.9;
-  const yTop = 53.2;
+  const xc = CHIMNEY_X;
+  const s = 5.2;
+  const yBase = roofY(xc - s / 2, s / 2) - 0.9;
+  const yTop = 48.1;
   const stack = new THREE.BoxGeometry(s, yTop - yBase, s);
   stack.translate(xc, (yTop + yBase) / 2, 0);
-  const cap = new THREE.BoxGeometry(7.2, 1.2, 7.2);
+  const cap = new THREE.BoxGeometry(6.8, 1.2, 6.8);
   cap.translate(xc, yTop + 0.6, 0);
-  const hole = new THREE.BoxGeometry(3.4, 0.3, 3.4);
+  const hole = new THREE.BoxGeometry(3.2, 0.3, 3.2);
   hole.translate(xc, yTop + 1.2 + 0.1, 0);
   return { stack, cap, hole };
 };
 
-/** @type {number[]} 雞腳的 x 位置（前後輪之間，每側一對） */
-const FEET_X = [13, -13];
-/** @type {number} 雞腳趾根 |z|（圓木牆外側 3 mm：底盤側框 |z| ≤ 38.8、y ≤ 9.4 之外，腳踝從牆底往外下斜） */
-const FOOT_Z = 40.6;
+/** @type {number[]} 雞腳的 x 位置（前後輪之間，每側一對；腳掌往前） */
+const FEET_X = [11, -17];
 
 /**
- * 抽象鳥爪：從牆底伸出的短腳踝（往前微傾），腳踝下三根往前張開的短趾（中趾 6.4、外趾 5.6、內趾 4.4）＋一根往後的短後趾，
- * 每趾末端深色爪尖；趾面離地 ≥ 5 mm（規則離地 2.2 mm 以上，物理碰撞方塊底面不變低）
- * @type {() => { leg: THREE.BufferGeometry, tips: THREE.BufferGeometry }}
+ * 雞腳（iter-115 加長、加粗）：羽毛大腿（從腰身圓木牆往外下斜伸出）→ 膝關節球 → 往前下斜的跗蹠（4 圈較深的鱗片環）→
+ * 腳踝關節球 → 三根往前張開的趾（每趾中段一個趾節）＋一根往後的後趾，末端深色爪尖。
+ * 最低點約 y 4.3（爪尖），全在底盤側框（|z| ≤ 38.8、y ≤ 9.4）之外；外側最寬約 |z| 46
+ * @type {() => { thigh: THREE.BufferGeometry, leg: THREE.BufferGeometry, scales: THREE.BufferGeometry, tips: THREE.BufferGeometry }}
  */
 const buildFeet = () => {
   /** @type {THREE.BufferGeometry[]} */
+  const thighs = [];
+  /** @type {THREE.BufferGeometry[]} */
   const legs = [];
+  /** @type {THREE.BufferGeometry[]} */
+  const scales = [];
   /** @type {THREE.BufferGeometry[]} */
   const tips = [];
   for (const sg of [-1, 1]) {
     for (const fx of FEET_X) {
-      const z0 = sg * FOOT_Z;
-      const ankle = [fx - 0.9, 7.2, z0];
-      // 腳踝：牆底內 1 mm 起，往前下到趾根
-      legs.push(smoothNormals(sweepEllipse([[fx - 1.8, WALL_BOTTOM + 1.2, sg * (WALL_IN + 0.6)], [fx - 1.4, 9.8, sg * (FOOT_Z - 1.2)], ankle], 8, (t) => [lerp(1.55, 1.2, t), lerp(1.55, 1.2, t)], 12)));
-      // 趾根關節球
-      const knot = new THREE.SphereGeometry(1.35, 14, 10);
-      knot.translate(...ankle);
-      legs.push(knot);
+      const zWall = P.hw(fx) + LOG_BULGE;
+      // 羽毛大腿：從腰身圓木牆（髖 y 18）往外下斜到膝（粗 4.6 → 3.6），根部埋進牆面 0.6 mm
+      const hip = [fx - 1.6, 18, sg * (zWall - 0.6)];
+      const knee = [fx + 0.6, 12.0, sg * 40.5];
+      const ankle = [fx + 2.6, 6.4, sg * 43];
+      thighs.push(smoothNormals(sweepEllipse([hip, [lerp(hip[0], knee[0], 0.5), lerp(hip[1], knee[1], 0.5) + 0.6, lerp(hip[2], knee[2], 0.5)], knee], 10, (q) => [lerp(2.3, 1.8, q), lerp(2.3, 1.8, q)], 14)));
+      // 膝關節球
+      const kb = new THREE.SphereGeometry(1.75, 16, 12);
+      kb.translate(...knee);
+      legs.push(kb);
+      // 跗蹠（粗 2.7 → 2.3）
+      legs.push(smoothNormals(sweepEllipse([knee, [lerp(knee[0], ankle[0], 0.5), lerp(knee[1], ankle[1], 0.5), lerp(knee[2], ankle[2], 0.5)], ankle], 10, (q) => [lerp(1.35, 1.15, q), lerp(1.35, 1.15, q)], 12)));
+      // 鱗片環：沿跗蹠 4 圈（半徑 + 0.25、厚 0.6），像雞腳的橫鱗
+      const axis = new THREE.Vector3(ankle[0] - knee[0], ankle[1] - knee[1], ankle[2] - knee[2]).normalize();
+      const quat = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), axis);
+      for (const q of [0.28, 0.46, 0.64, 0.82]) {
+        const ring = new THREE.CylinderGeometry(lerp(1.6, 1.4, q), lerp(1.6, 1.4, q), 0.6, 14);
+        ring.applyQuaternion(quat);
+        ring.translate(lerp(knee[0], ankle[0], q), lerp(knee[1], ankle[1], q), lerp(knee[2], ankle[2], q));
+        scales.push(ring);
+      }
+      // 腳踝關節球
+      const ab = new THREE.SphereGeometry(1.4, 14, 10);
+      ab.translate(...ankle);
+      legs.push(ab);
       // [水平角（往外為正，度）, 長, 末端高]
       for (const [deg, len, yEnd] of [
-        [0, 6.4, 5.4],
-        [12, 5.6, 5.6],
-        [-8, 4.4, 5.6],
-        [180, 3, 6],
+        [0, 7.2, 4.9],
+        [16, 6.2, 5.0],
+        [-14, 5.4, 5.0],
+        [180, 3.2, 5.4],
       ]) {
         const a = (deg * Math.PI) / 180;
         const dx = Math.cos(a);
         const dz = sg * Math.sin(a);
         const p0 = ankle;
-        const p1 = [ankle[0] + dx * len * 0.5, 6.4, ankle[2] + dz * len * 0.5];
+        const p1 = [ankle[0] + dx * len * 0.5, 5.3, ankle[2] + dz * len * 0.5];
         const p2 = [ankle[0] + dx * len, yEnd, ankle[2] + dz * len];
-        legs.push(smoothNormals(sweepEllipse([p0, p1, p2], 8, (t) => [lerp(0.95, 0.55, t), lerp(0.85, 0.5, t)], 10)));
+        legs.push(smoothNormals(sweepEllipse([p0, p1, p2], 8, (q) => [lerp(1.0, 0.6, q), lerp(0.9, 0.55, q)], 10)));
+        // 趾節（中段的小關節）
+        const kn = new THREE.SphereGeometry(0.85, 10, 8);
+        kn.translate(...p1);
+        scales.push(kn);
         // 爪尖：沿趾方向的小圓錐
-        const tip = new THREE.ConeGeometry(0.5, 1.4, 10);
+        const tip = new THREE.ConeGeometry(0.5, 1.5, 10);
         tip.rotateZ(-Math.PI / 2);
         tip.rotateY(-Math.atan2(dz, dx));
-        tip.translate(p2[0] + dx * 0.55, yEnd - 0.1, p2[2] + dz * 0.55);
+        tip.translate(p2[0] + dx * 0.6, yEnd - 0.1, p2[2] + dz * 0.6);
         tips.push(tip);
       }
     }
   }
-  return { leg: mergeGeos(legs), tips: mergeGeos(tips) };
+  return { thigh: mergeGeos(thighs), leg: mergeGeos(legs), scales: mergeGeos(scales), tips: mergeGeos(tips) };
 };
 
 export const yagaHutBody = makePolyBody({
@@ -479,18 +425,19 @@ export const yagaHutBody = makePolyBody({
   form: 'log-hut',
   roof: 'closed',
   wing: 'chimney-stack',
-  theme: '整台車是一間小木屋：4 根橫向圓木牆＋四角交錯伸出的圓木端頭、人字木瓦屋頂與白色封簷板、車頭山牆白色雕花窗框（紅窗櫺、暖色窗光）與博風板、車尾短煙囪；前後輪之間露出兩對抽象三趾鳥爪——站在雞腳上的小屋',
+  theme: '低矮流線車殼上的小木屋：車頂兩片斜面當人字木瓦屋頂（白色封簷板）、側面 4 根橫向圓木凸紋、車頭小山牆的白色雕花窗框（紅窗櫺、暖色窗光）與博風板、車尾短煙囪尾翼；前後輪之間兩對加長的雞腳（羽毛大腿、膝關節、鱗片跗蹠、三前一後的爪）',
   material: 'ABS',
   density_g_cm3: 1.05,
   wallThickness_mm: 0.8,
   stations: STATIONS,
+  hard: HARD,
   wheelArches: ARCHES,
-  sideZMin: 30,
+  sideZMin: 22,
   zones: () => [
     // 白色封簷板（屋簷外緣的垂直板）
-    { mat: 'white', keep: (x, y, z) => Math.abs(z) - (EAVE_Z - 0.05) },
-    // 屋簷底（深色）
-    { mat: 'soffit', keep: (x, y, z) => (y > FASCIA_Y - 0.15 && y < EAVE_Y - 0.1 ? 1 : -1) },
+    { mat: 'white', keep: (x, y, z) => Math.abs(z) - (P.hw(x) + EO - 0.08) },
+    // 屋簷底（深色內收）
+    { mat: 'soffit', keep: (x, y, z) => (y > yWallTop(x) - 0.1 && y < P.yS(x) - FASCIA_H + 0.05 && Math.abs(z) > P.hw(x) + 0.05 ? 1 : -1) },
     // 木瓦：每排錯開半片，深淺交錯
     {
       mat: 'shingleDark',
@@ -498,63 +445,47 @@ export const yagaHutBody = makePolyBody({
         if (!onRoof(x, y, z)) {
           return -1;
         }
-        const row = Math.floor((EAVE_Z - Math.abs(z)) / SHINGLE_ROW);
+        const row = Math.floor((P.hw(x) + EO - Math.abs(z)) / SHINGLE_ROW);
         const col = Math.floor((x + (row % 2) * SHINGLE_W * 0.5) / SHINGLE_W);
         return (row + col) % 3 === 0 ? 1 : -1;
       },
     },
     { mat: 'shingle', keep: (x, y, z) => (onRoof(x, y, z) ? 1 : -1) },
     // 圓木牆：深淺交錯（同一批木料的色差）
-    { mat: 'logDark', keep: (x, y) => (logIndex(y) % 2 === 1 ? 1 : -1) },
+    { mat: 'logDark', keep: (x, y) => (logIndex(x, y) % 2 === 1 ? 1 : -1) },
     { mat: 'log', keep: () => 1 },
   ],
-  // 車頭山牆：三角山牆板（深色）＋圓木分段（和側牆同一套圓木高度；山牆下緣 GABLE_BOTTOM）
-  capFrontBands: [
-    { yMin: FASCIA_Y, mat: 'gable' },
-    { yMin: LOG_TOP - LOG_H, mat: 'log' },
-    { mat: 'logDark' },
-  ],
+  // 車頭小山牆：屋簷以上是深色山牆板，以下是圓木
+  capFrontBands: [{ yMin: P.yS(X_FRONT) - FASCIA_H, mat: 'gable' }, { mat: 'log' }],
   mats: { inner: 'inner', edge: 'edge', cap: 'log', mount: 'mount' },
-  // 卡座吊耳：前後安裝柱靠近山牆，吊耳頂端接到山牆下段（不從屋脊內面一路垂下，避免從窗洞後面露出）
-  mountInnerY: (kit) => (x) => Math.min(kit.innerYAt(x), GABLE_BOTTOM + 3),
   materials,
   extras: (kit) => {
     /** @type {BodyPart[]} */
     const parts = [];
-    // 輪拱內襯（前後）
-    parts.push({
-      geometry: mergeGeos(ARCHES.map((a) => buildHutLiner(a, 33.4))),
-      mat: 'liner',
-      shell: true,
-      name: 'arch-liners',
-    });
-    // 前後山牆下段中央的圓木板（擋住安裝柱與底盤端部）
-    {
-      const f = buildEndApron(X_FRONT, 1);
-      const r = buildEndApron(X_REAR, -1);
-      parts.push({ geometry: mergeGeos([f.log, r.log]), mat: 'log', solid: true, outline: true, name: 'end-apron-log' });
-      parts.push({ geometry: mergeGeos([f.logDark, r.logDark]), mat: 'logDark', solid: true, outline: true, name: 'end-apron-log-dark' });
-    }
-    // 四角圓木端頭
-    parts.push({ geometry: buildLogEnds(), mat: 'endgrain', solid: true, outline: true, name: 'log-corner-ends' });
+    // 輪拱內襯（前後）＋輪胎內側環形擋板（kitsune-ninetail 的 buildArchWell，擋住輪室看進車身內部）
+    parts.push({ geometry: mergeGeos(ARCHES.map((a) => buildProfileLiner(a, 22.9, profile))), mat: 'liner', shell: true, name: 'arch-liners' });
+    parts.push({ geometry: mergeGeos(ARCHES.map((a) => buildArchWell(a, 22.9, 12.3, 15.6, chassisBlockedNearArch))), mat: 'liner', shell: true, name: 'arch-wells' });
     // 車頭雕花窗框＋紅窗櫺＋窗內暖光
     parts.push({ geometry: buildNalichnik(), mat: 'white', solid: true, outline: true, name: 'front-nalichnik' });
     parts.push({ geometry: buildSash(), mat: 'red', solid: true, name: 'front-window-sash' });
     {
-      const pane = new THREE.BoxGeometry(0.3, FRONT_WINDOW.y1 - FRONT_WINDOW.y0, FRONT_WINDOW.hw * 2);
-      pane.translate(X_FRONT + 0.3, (FRONT_WINDOW.y0 + FRONT_WINDOW.y1) / 2, 0);
+      const W = FRONT_WINDOW;
+      const pane = new THREE.BoxGeometry(0.3, W.y1 - W.y0, W.hw * 2);
+      pane.translate(X_FRONT + 0.1, (W.y0 + W.y1) / 2, 0);
       parts.push({ geometry: pane, mat: 'window', solid: true, name: 'front-window-glow' });
     }
-    // 前後山牆博風板＋屋脊垂飾
+    // 前後封口博風板＋屋脊垂飾
     parts.push({ geometry: mergeGeos([buildBargeboards(X_FRONT, 1), buildBargeboards(X_REAR, -1)]), mat: 'white2', solid: true, outline: true, name: 'gable-bargeboards' });
     // 煙囪（尾翼 chimney-stack）
     const ch = buildChimney();
     parts.push({ geometry: ch.stack, mat: 'brick', solid: true, outline: true, name: 'chimney-stack' });
     parts.push({ geometry: ch.cap, mat: 'white', solid: true, outline: true, name: 'chimney-cap' });
     parts.push({ geometry: ch.hole, mat: 'hole', solid: true, name: 'chimney-flue' });
-    // 雞腳（抽象三趾鳥爪）
+    // 雞腳
     const feet = buildFeet();
+    parts.push({ geometry: feet.thigh, mat: 'feather', solid: true, outline: true, name: 'hen-thighs' });
     parts.push({ geometry: feet.leg, mat: 'claw', solid: true, outline: true, name: 'hen-feet' });
+    parts.push({ geometry: feet.scales, mat: 'scale', solid: true, outline: true, name: 'hen-scales' });
     parts.push({ geometry: feet.tips, mat: 'clawTip', solid: true, outline: true, name: 'hen-claw-tips' });
 
     // ---- 貼紙 ----
@@ -564,8 +495,12 @@ export const yagaHutBody = makePolyBody({
         if (!onWall(x, y, z)) {
           return -1;
         }
-        const q = (LOG_TOP - y) / LOG_H;
-        return 0.35 - Math.abs(q - Math.round(q)) * LOG_H;
+        const L = logH(x);
+        const q = (yWallTop(x) - y) / L;
+        if (q < 0.5 || q > LOG_COUNT - 0.5) {
+          return -1;
+        }
+        return 0.35 - Math.abs(q - Math.round(q)) * L;
       }, { offset: 0.1 }),
       mat: 'dGroove',
       name: 'decal-log-chinks',
@@ -576,20 +511,20 @@ export const yagaHutBody = makePolyBody({
         if (!onRoof(x, y, z)) {
           return -1;
         }
-        const u = (EAVE_Z - Math.abs(z)) / SHINGLE_ROW;
+        const u = (P.hw(x) + EO - Math.abs(z)) / SHINGLE_ROW;
         const row = Math.floor(u);
         const rowLine = (0.5 - Math.abs(u - Math.round(u))) * SHINGLE_ROW;
         const v = (x + (row % 2) * SHINGLE_W * 0.5) / SHINGLE_W;
         const colLine = Math.abs(v - Math.round(v)) * SHINGLE_W;
         // 屋脊兩側 1.2 mm 不畫（屋脊壓條）
-        return Math.min(0.3 - Math.min(SHINGLE_ROW / 2 - rowLine, colLine), RIDGE_Y - 0.8 - y);
+        return Math.min(0.3 - Math.min(SHINGLE_ROW / 2 - rowLine, colLine), Math.abs(z) - 1.4);
       }, { offset: 0.1 }),
       mat: 'dShingleGap',
       name: 'decal-shingle-gaps',
     });
     // 屋脊壓條（深色 2.4 mm）
     parts.push({
-      geometry: kit.decal((x, y, z) => 1.2 - Math.abs(z), { offset: 0.12 }),
+      geometry: kit.decal((x, y, z) => (onRoof(x, y, z) ? 1.2 - Math.abs(z) : -1), { offset: 0.12 }),
       mat: 'dGroove',
       name: 'decal-ridge-board',
     });
@@ -600,15 +535,11 @@ export const yagaHutBody = makePolyBody({
     /** @type {(x: number, y: number) => number} 窗框外形（負值 = 在框內） */
     const sideFrame = (x, y) => {
       const ax = Math.abs(x - W.x);
-      // 側板
-      const boards = Math.max(ax - (W.w / 2 + 1.5), W.y0 - 1 - y, y - (W.y1 + 0.8));
-      // 窗台（外伸）
-      const sill = Math.max(ax - (W.w / 2 + 2.4), Math.abs(y - (W.y0 - 1.2)) - 0.6);
-      // 垂飾（窗台下的半圓扇）
-      const apron = Math.max(ax - (W.w / 2 + 1.2), W.y0 - 3.1 + 0.5 * Math.abs(Math.sin((Math.PI * (x - W.x)) / 2.2)) - y, y - (W.y0 - 1.6));
-      // 頂冠：尖拱（kokoshnik）
-      const crownH = 4.4 * (1 - (ax / (W.w / 2 + 2.3)) ** 1.6);
-      const crown = Math.max(ax - (W.w / 2 + 2.3), W.y1 + 0.6 - y, y - (W.y1 + 0.6 + crownH));
+      const boards = Math.max(ax - (W.w / 2 + 1.4), W.y0 - 1 - y, y - (W.y1 + 0.8));
+      const sill = Math.max(ax - (W.w / 2 + 2.3), Math.abs(y - (W.y0 - 1.2)) - 0.6);
+      const apron = Math.max(ax - (W.w / 2 + 1.1), W.y0 - 3.0 + 0.5 * Math.abs(Math.sin((Math.PI * (x - W.x)) / 2.2)) - y, y - (W.y0 - 1.6));
+      const crownH = 4.0 * (1 - (ax / (W.w / 2 + 2.2)) ** 1.6);
+      const crown = Math.max(ax - (W.w / 2 + 2.2), W.y1 + 0.6 - y, y - (W.y1 + 0.6 + crownH));
       return Math.min(boards, sill, apron, crown);
     };
     /** @type {(x: number, y: number, z: number) => boolean} 側牆、輪拱外 */
@@ -623,9 +554,7 @@ export const yagaHutBody = makePolyBody({
         if (!onSideWall(x, y, z)) {
           return -1;
         }
-        const ax = Math.abs(x - W.x);
-        // 頂冠的鏤空小圓
-        const fret = 0.7 - Math.hypot(ax, y - (W.y1 + 2.4));
+        const fret = 0.7 - Math.hypot(Math.abs(x - W.x), y - (W.y1 + 2.3));
         return Math.min(-sideFrame(x, y), sideHole(x, y), -fret);
       }, { offset: 0.14 }),
       mat: 'dWhite',
@@ -649,12 +578,12 @@ export const yagaHutBody = makePolyBody({
   src: {
     density_g_cm3: 'SPEC 1.14：ABS 約 1.05 g/cm³（推估）',
     wallThickness_mm: '推估：射出 ABS 殼 0.8 mm（同其他車殼）',
-    geometry: `本檔剖面（推估）：牆面 x ${X_REAR} ~ ${X_FRONT}＋四角圓木端頭沿 x 伸出 6.2 mm，總長約 119（batch5「長約 125–135」；為了俯視 IoU ≤ 0.82 縮短，見 DESIGN.md 第 8 節）；屋脊 ${RIDGE_Y}、屋簷半寬 ${EAVE_Z}、圓木牆 |z| ${WALL_IN}–${WALL_OUT}（輪胎外緣 34.75 之外）、牆底 ${WALL_BOTTOM.toFixed(1)}；煙囪頂約 54.7（batch5「高約 50–58（煙囪頂）」）；車殼外框半寬 ≤ 48（碰撞體不寬過導輪外緣 ±48.5）`,
-    wheelArches: '前後 R15（26 mm 輪胎半徑 13 + 2 mm）；31 mm 輪不切輪拱時間隙不足（需切輪拱，batch5 未要求）；輪拱內襯擋住殼內空腔',
-    logs: '圓木：殼面剖面每根 3 點鼓起 1 mm（高 3.8 mm）；四角端頭為 ABS 實心圓柱（R1.6、沿 x 伸出 6.2 / 沿 z 伸出 7.5 mm ≈ 實物 35–40 cm 的角頭，推估；側牆圓木端頭外移 0.75 mm 讓開前後輪胎），質量 = 封閉體積 × 1.05 g/cm³',
-    nalichnik: '車頭雕花窗框：白色 1.0 mm 立板（頂冠尖拱、側板、窗台、波浪垂飾，鏤空一大兩小圓）＋紅色 0.7 mm 十字窗櫺；側面窗為貼紙（推估）',
-    feet: '雞腳：每側 2 隻、各 3 前趾＋1 後趾的 ABS 實心掃掠件（趾徑 1–1.9 mm、長 3–6.4 mm，推估），最低點約 y 4.9，全在底盤側框（|z| ≤ 38.8、y ≤ 9.4）之外',
-    chimney: '煙囪：5.4 × 5.4 mm 實心方柱（屋面下 0.9 mm 起）＋7.2 × 1.2 × 7.2 mm 白灰帽（推估）',
+    geometry: `本檔站位產生器 P（推估，iter-115 改成低矮流線車殼）：殼 x ${X_REAR} ~ ${X_FRONT}；屋脊最高 41.5（iter-115 規格「車高 ≤ 45」）、屋簷 30.2、車頭封口頂 26.6、車尾 28；圓木牆半寬：翼子板 39.5、腰身 32.5（＋鼓起 0.8）、屋簷外伸 1.4；煙囪頂約 49.5（規格「含煙囪 ≤ 50」）；雞腳外側約 |z| 46（車殼外框半寬 ≤ 48，碰撞體不寬過導輪外緣 ±48.5）`,
+    wheelArches: '前後 R15（26 mm 輪胎半徑 13 + 2 mm）；31 mm 輪不切輪拱時間隙不足（需切輪拱，batch5 未要求）；輪拱內襯＋輪胎內側環形擋板（buildArchWell）擋住殼內空腔',
+    logs: '圓木：殼面剖面每根鼓起 0.8 mm（高約 4.5 mm，前後端隨牆高縮小）；接縫為銳利稜線＋0.7 mm 深色填縫貼紙（推估）',
+    nalichnik: '車頭雕花窗框：白色 1.0 mm 立板（iter-114 山牆窗框縮成 0.62 倍：頂冠尖拱、側板、窗台、波浪垂飾）＋紅色 0.7 mm 十字窗櫺；側面窗為貼紙（推估）',
+    feet: '雞腳：每側 2 隻；羽毛大腿粗 3.6–4.6 mm（髖在腰身牆上 y 18、膝在 |z| 40.5）、膝關節球 R1.75、跗蹠粗 2.3–2.7 mm＋4 圈鱗片環、腳踝球 R1.4、3 前趾（長 5.4–7.2）＋1 後趾（3.2）＋趾節球與爪尖（推估）；最低點約 y 4.3',
+    chimney: '煙囪：5.2 × 5.2 mm 實心方柱（屋面下 0.9 mm 起）＋6.8 × 1.2 × 6.8 mm 白灰帽（推估）',
     mounts: '對齊 chassis-midship 的車殼安裝點（SPEC 1.14）',
   },
 });
