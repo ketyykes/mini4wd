@@ -10,15 +10,14 @@ import { makePolyBody, finPlate } from './polyBody.js';
 import { namedMaterial, decalMaterial, sideDecal, mergeGeos, lerp } from './loft.js';
 import { monoCurve, buildStations } from './gazelleLeap.js';
 import { buildArchWell, chassisBlockedNearArch } from './kitsuneNinetail.js';
-import { profileZAtY } from './khepriScarab.js';
 
 /** @typedef {import('./loft.js').BodyPart} BodyPart */
 
 /** 站位參數表（x 由後到前，前後軸 x = ±40）；iter-113：馬頸從前軸上方（x 30）就從馬背長出、往前上升到頭頂（x 64），
  * 前胸在 x 57–62 往上收成喉部，x 62 以後是馬頭（長方馬臉：額頭往前下斜、下顎線往前微升、口鼻 x 80.2） */
 const XS = [-70, -66, -60, -50, -40, -20, 0, 20, 30, 36, 42, 48, 53, 57, 60, 62, 64, 66, 68, 70, 74, 77, 79, 80.2];
-/** @type {Record<string, (x: number) => number>} 原始站位曲線（iter-117 口鼻壓低前） */
-const P0 = {
+/** @type {Record<string, (x: number) => number>} */
+const P = {
   // 馬背 / 頸根兩側的背板高度：車尾臀部略低，中段平直；頸根往前下收成前胸；馬頭段 = 頭側下緣 + 2.5
   yD: monoCurve(XS, [33.5, 35, 36.2, 36.8, 37, 37, 37, 37, 37, 37, 36.7, 35.6, 33.4, 31.4, 30.4, 30.6, 34.5, 41, 45.5, 46.9, 47.3, 47.7, 48.3, 49.1]),
   // 中線頂：馬身段 = 背板 + 0.3（微拱）；頸頂稜從 x 30 往前上升到頭頂（x 64，60.6），額頭再往前下斜到口鼻（52）
@@ -31,51 +30,6 @@ const P0 = {
   // 側壁下緣：中段 13（底盤側框禁入區由 loft.js 自動讓開），車尾抬高離開後保桿；x 57 起往上收成喉部，x 68 以後是馬頭下顎線
   // iter-115：兩輪之間（x −20 → 20）壓低到 10.5（底盤側框頂 9.4 之上），配合腹側裙板封住電池艙
   yLow: monoCurve(XS, [19, 17.5, 15.5, 13.5, 13, 10.5, 10.5, 10.5, 13, 13, 13, 13.3, 13.8, 14.6, 19.5, 25, 32, 38.5, 43, 44.4, 44.8, 45.2, 45.8, 46.6]),
-};
-
-/** @type {number} iter-117：口鼻端（x 80.2）壓低量（mm）；x 66 以前不動 → 馬頭往前下傾、車頭前斜面更明顯 */
-const NOSE_DROP = 3;
-/** @type {(x: number) => number} 車頭壓低量（smoothstep，x 66 → 80.2） */
-const noseDrop = (x) => {
-  const t = Math.min(1, Math.max(0, (x - 66) / (80.2 - 66)));
-  return NOSE_DROP * t * t * (3 - 2 * t);
-};
-/** @type {Record<string, (x: number) => number>} 站位曲線（馬頭段的高度扣掉 noseDrop） */
-const P = {
-  yD: (x) => P0.yD(x) - noseDrop(x),
-  yN: (x) => P0.yN(x) - noseDrop(x),
-  nw: P0.nw,
-  hw: P0.hw,
-  yLow: (x) => P0.yLow(x) - noseDrop(x),
-};
-
-/** @type {{ x: number, y: number, radius: number }[]} 前後輪拱圓（側視，31 mm 輪胎半徑 15.5 + 2 mm） */
-const ARCHES = [
-  { x: 40, y: 13, radius: 17.5 },
-  { x: -40, y: 13, radius: 17.5 },
-];
-/** @type {(x: number, y: number) => number} 側視到最近輪拱圓周的距離（正值 = 在輪拱切口外） */
-const archRingDist = (x, y) => Math.min(...ARCHES.map((a) => Math.hypot(x - a.x, y - a.y) - a.radius));
-
-/** @type {number} iter-117：側板下緣往內收量（肩線在側板中段，往下內收成 tumblehome） */
-const TUCK = 3;
-/** @type {number} iter-117：翼子板唇外凸量（輪拱切口外緣一圈弧形眉） */
-const LIP = 1.6;
-/** @type {number[]} 側板上段（側板頂 → 肩線）加密點的比例：翼子板唇在 y 30–33 需要足夠的剖面點 */
-const SIDE_FRACS = [0.1, 0.2, 0.35, 0.5, 0.7, 0.85];
-/** @type {number} 肩線（側板中段，銳利稜線＝木板接合折角）在剖面中的索引 */
-const SHOULDER_INDEX = 6 + SIDE_FRACS.length;
-
-/**
- * 翼子板唇外凸量：d = 到最近輪拱圓周的距離（切口外為正），d ≈ 0.9 最高（LIP），往外約 3 mm 收回側板；切口內的殼面被輪拱切掉
- * @type {(x: number, y: number) => number}
- */
-const lipBulge = (x, y) => {
-  const d = archRingDist(x, y);
-  if (d < -1.5 || d > 4.5) {
-    return 0;
-  }
-  return LIP * Math.exp(-(((d - 0.9) / 1.3) ** 2));
 };
 
 /** @type {number} 馬背兩側倒角寬度（俯視 z 方向、側視 y 方向同值） */
@@ -99,33 +53,21 @@ const profile = (x) => {
   // 喉部與馬頭下緣（x 55 起）：側板下緣往中線收攏，前胸與下顎是封閉的殼面（不是兩片垂下的側板）
   // iter-114：收攏起點 x 55 → 57.5（前輪拱前緣到喉部之間原本是往內斜的側板，從側面看得穿到車底另一側的地板）
   const close = Math.min(1, Math.max(0, (x - 57.5) / 4));
-  const closeS = close * close * (3 - 2 * close);
-  // iter-117：側板下緣內收 TUCK（tumblehome），喉部以前照舊收到中線
-  const zLow = lerp(hw - TUCK, 0.02, closeS);
-  const yShoulder = lerp(ySide, yLow, 0.5);
-  // 翼子板唇只作用在馬身側板（喉部 / 馬頭不動）
-  const lip = (y) => (1 - closeS) * lipBulge(x, y);
+  const zLow = lerp(hw, 0.02, close * close * (3 - 2 * close));
   return [
     [0, yN],
     [0.6 * nw, yN - 0.25 * drop],
     [nw, yN - drop],
     [nw + 0.6, yD],
     [hw - ch, yD - 0.6],
-    [hw + lip(ySide), ySide],
-    ...SIDE_FRACS.map((f) => {
-      const y = lerp(ySide, yShoulder, f);
-      return [hw + lip(y), y];
-    }),
-    [hw + lip(yShoulder), yShoulder],
-    // 肩線以下的內收段中點微凸（弧形 tumblehome）；喉部以後是平的下顎面
-    [lerp(hw, zLow, lerp(0.3, 0.5, closeS)) + lip(lerp(yShoulder, yLow, 0.5)), lerp(yShoulder, yLow, 0.5)],
-    [zLow + lip(yLow), yLow],
+    [hw, ySide],
+    [hw, lerp(ySide, yLow, 0.5)],
+    [zLow, yLow],
   ];
 };
 
 // 頸部、喉部與馬頭每 0.5 mm 一站（曲率大）
-// iter-117：馬身段 2 → 1 mm 一站（翼子板唇的弧形眉才不會鋸齒）
-const STATIONS = [...buildStations(-70, 30, 1, profile).slice(0, -1), ...buildStations(30, 80.2, 0.5, profile)];
+const STATIONS = [...buildStations(-70, 30, 2, profile).slice(0, -1), ...buildStations(30, 80.2, 0.5, profile)];
 
 /**
  * 馬頸 / 馬頭的殼面（中線附近、頸根背板以上；x 62 以後全部）
@@ -134,6 +76,14 @@ const STATIONS = [...buildStations(-70, 30, 1, profile).slice(0, -1), ...buildSt
 const onNeck = (x, y, z) => x > 62 || (x > 30 && Math.abs(z) < P.nw(x) + 0.9 && y > P.yD(x) + 0.4);
 /** @type {(x: number, y: number, z: number) => boolean} 馬頸、前胸、喉部與馬頭（x > 50）：一律用橫向木板 */
 const onFront = (x, y, z) => x > 50 || onNeck(x, y, z);
+
+/** @type {{ x: number, y: number, radius: number }[]} 前後輪拱圓（側視，31 mm 輪胎半徑 15.5 + 2 mm） */
+const ARCHES = [
+  { x: 40, y: 13, radius: 17.5 },
+  { x: -40, y: 13, radius: 17.5 },
+];
+/** @type {(x: number, y: number) => number} 側視到最近輪拱圓周的距離（正值 = 在輪拱切口外） */
+const archRingDist = (x, y) => Math.min(...ARCHES.map((a) => Math.hypot(x - a.x, y - a.y) - a.radius));
 
 /** 木板寬度（側面橫向木板的高度、背板縱向木板的寬度） */
 const PLANK_SIDE = 4.2;
@@ -159,10 +109,8 @@ const oddBand = (v, v0, p) => {
   return Math.floor(q) % 2 !== 0 ? d : -d;
 };
 
-/** @type {(x: number) => number} 側板頂（倒角下緣）高度，和 profile 的 ySide 同算法 */
-const sideTopY = (x) => profile(x)[5][1];
-/** @type {(x: number, y: number, z: number) => boolean} 側板（倒角以下；iter-117 起下段內收，改用高度判斷） */
-const onSide = (x, y, z) => Math.abs(z) > P.hw(x) - 0.4 || (y < sideTopY(x) + 0.05 && Math.abs(z) > P.hw(x) - TUCK - 1.5);
+/** @type {(x: number, z: number) => boolean} 側板（倒角以下的垂直面） */
+const onSide = (x, z) => Math.abs(z) > P.hw(x) - 0.4;
 /** @type {(x: number, z: number) => boolean} 背板（倒角以內的頂面） */
 const onTop = (x, z) => Math.abs(z) < P.hw(x) - CH - 0.1;
 
@@ -280,8 +228,13 @@ const buildLiner = (arch, depth) => {
   const zIn = (t) => {
     const x = arch.x + r * Math.cos(t);
     const y = arch.y + r * Math.sin(t);
-    // iter-117：側板有翼子板唇與下段內收，改由剖面反查該高度的殼面 |z|
-    return profileZAtY(profile(x).slice(5), y) - 1.2;
+    const pts = profile(x);
+    const [zMid, yMid] = pts[6];
+    const [zLow, yLow] = pts[7];
+    if (y >= yMid) {
+      return P.hw(x) - 1.2;
+    }
+    return lerp(zMid, zLow, Math.min(1, (yMid - y) / Math.max(0.1, yMid - yLow))) - 1.2;
   };
   for (const sg of [-1, 1]) {
     for (let i = 0; i < n; i++) {
@@ -325,7 +278,7 @@ const CONFIG = {
   stations: STATIONS,
   // 平滑剖面：頸頂稜（2）、頸根（3）、倒角兩條稜線（4、5）、側板中段（6）為銳利稜線（iter-113：3、6 原為平滑點，Catmull-Rom 在直角轉角處過衝、殼面反折，
   // 背上兩條與喉部兩側出現露出內面的黑色裂縫；改成銳利稜線＝木板接合的折角；喉部 / 下顎的底面因此是平的）
-  hard: [2, 3, 4, 5, SHOULDER_INDEX],
+  hard: [2, 3, 4, 5, 6],
   wheelArches: [
     { x: 40, y: 13, radius: 17.5, cutZFrom: 21 },
     { x: -40, y: 13, radius: 17.5, cutZFrom: 21 },
@@ -347,11 +300,11 @@ const CONFIG = {
     { mat: 'oakMid', keep: (x, y, z) => (onFront(x, y, z) ? oddBand(y, PLANK_Y0, PLANK_SIDE) : -1) },
     { mat: 'oak', keep: (x, y, z) => (onFront(x, y, z) ? 1 : -1) },
     // 陶甕赭紅底板：側板最下一條（y < 15.4）與輪拱外緣 1.4 mm 一圈（馬腳下的輪座）
-    { mat: 'terracotta', keep: (x, y, z) => (onSide(x, y, z) ? Math.max(PLANK_Y0 - y, 2.4 - archRingDist(x, y)) : -1) },
+    { mat: 'terracotta', keep: (x, y, z) => (onSide(x, z) ? Math.max(PLANK_Y0 - y, 1.4 - archRingDist(x, y)) : -1) },
     // 深胡桃木：馬背兩側倒角（框邊木條）
-    { mat: 'walnut', keep: (x, y, z) => (!onSide(x, y, z) && !onTop(x, z) ? 1 : -1) },
+    { mat: 'walnut', keep: (x, y, z) => (!onSide(x, z) && !onTop(x, z) ? 1 : -1) },
     // 中橡木：側板橫向木板隔條交錯（和淺橡木只差一階，像同一批木料的色差，不做成斑馬紋）
-    { mat: 'oakMid', keep: (x, y, z) => (onSide(x, y, z) ? oddBand(y, PLANK_Y0, PLANK_SIDE) : -1) },
+    { mat: 'oakMid', keep: (x, y, z) => (onSide(x, z) ? oddBand(y, PLANK_Y0, PLANK_SIDE) : -1) },
     // 中橡木：背板縱向木板隔條交錯（中線一條淺橡木）
     { mat: 'oakMid', keep: (x, y, z) => (onTop(x, z) ? oddBand(Math.abs(z), -PLANK_TOP / 2, PLANK_TOP) : -1) },
     { mat: 'oak', keep: () => 1 },
@@ -435,7 +388,7 @@ const CONFIG = {
       const studs = [];
       for (const sg of [-1, 1]) {
         for (const [x, y] of [
-          [74.3, 49.6 - noseDrop(74.3)],
+          [74.3, 49.6],
           [65.2, 57],
         ]) {
           const c = new THREE.CylinderGeometry(1.3, 1.3, 0.8, 18);
@@ -492,7 +445,7 @@ const CONFIG = {
     // 木板接縫：側板橫向細縫、背板縱向細縫（深色 0.6 mm）
     parts.push({
       geometry: kit.decal((x, y, z) => {
-        if (onFront(x, y, z) || onSide(x, y, z)) {
+        if (onFront(x, y, z) || onSide(x, z)) {
           const q = (y - PLANK_Y0) / PLANK_SIDE;
           return y < PLANK_Y0 - 0.3 ? -1 : 0.3 - Math.abs(q - Math.round(q)) * PLANK_SIDE;
         }
@@ -538,7 +491,7 @@ const CONFIG = {
           const noseband = 0.7 - Math.abs(x - 74.3);
           const browband = y > P.yN(x) - 3.2 ? 0.7 - Math.abs(x - 65.6) : -1;
           const onHeadSide = Math.abs(z) > P.hw(x) - 1.2;
-          const cheek = onHeadSide ? 0.7 - segDist(x, y, 74.3, 49.6 - noseDrop(74.3), 65.2, 57) : -1;
+          const cheek = onHeadSide ? 0.7 - segDist(x, y, 74.3, 49.6, 65.2, 57) : -1;
           const throat = onHeadSide ? 0.7 - segDist(x, y, 65.2, 57, 66.2, 40) : -1;
           return Math.max(noseband, browband, cheek, throat);
         }
@@ -569,8 +522,8 @@ const CONFIG = {
         if (x < 74 || Math.abs(z) < 2.2) {
           return -1;
         }
-        const nostril = 1 - Math.hypot((x - 78.9) / 1.15, (y - 50.4 + noseDrop(78.9)) / 0.85);
-        const mouth = Math.min(0.35 - Math.abs(y - 47.2 + noseDrop(x) - 0.12 * (x - 80)), x - 75.6);
+        const nostril = 1 - Math.hypot((x - 78.9) / 1.15, (y - 50.4) / 0.85);
+        const mouth = Math.min(0.35 - Math.abs(y - 47.2 - 0.12 * (x - 80)), x - 75.6);
         return Math.max(nostril, mouth);
       }, { offset: 0.14 }),
       mat: 'dGroove',
@@ -582,7 +535,7 @@ const CONFIG = {
       const ph = ((u % 3.2) + 3.2) % 3.2;
       const du = Math.min(ph, 3.2 - ph);
       const d = Math.min(Math.hypot(du, v - 33.2), Math.hypot(du, v - 16.4)) - 0.45;
-      return Math.max(d, u - 58, -66 - u, 2.2 - Math.min(...STRAPS.map((xs) => Math.abs(u - xs))), 3.4 - archRingDist(u, v));
+      return Math.max(d, u - 58, -66 - u, 2.2 - Math.min(...STRAPS.map((xs) => Math.abs(u - xs))), 2.4 - archRingDist(u, v));
     };
     parts.push({
       geometry: mergeGeos([
@@ -595,7 +548,7 @@ const CONFIG = {
     // 馬具帶上的鉚釘（每帶側面 4 顆，深色，像釘頭）
     parts.push({
       geometry: kit.decal((x, y, z) => {
-        if (!onSide(x, y, z)) {
+        if (!onSide(x, z)) {
           return -1;
         }
         let d = Infinity;
@@ -612,7 +565,7 @@ const CONFIG = {
     // 士兵窗的赭紅窗框（0.7 mm，陶甕上的窗格）
     parts.push({
       geometry: kit.decal((x, y, z) => {
-        if (!onSide(x, y, z)) {
+        if (!onSide(x, z)) {
           return -1;
         }
         let d = Infinity;

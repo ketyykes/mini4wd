@@ -14,8 +14,8 @@ import { monoCurve, buildStations, smoothNormals } from './gazelleLeap.js';
 
 /** @type {number[]} 站位參數表（x 由後到前，前後軸 x = ±40）：車尾 −60、頭盾前緣 68.5（金齒尖到 71） */
 const XS = [-60, -58, -54, -48, -40, -28, -14, 0, 12, 17, 22, 27, 34, 42, 46, 49, 51, 58, 63, 66, 68.5];
-/** @type {Record<string, (x: number) => number>} 原始站位曲線（iter-117 車頭壓低前） */
-const P0 = {
+/** @type {Record<string, (x: number) => number>} */
+const P = {
   // 俯視半寬（鞘翅緣稜線）：鞘翅最寬 40（x −14）、x 22 前胸 / 鞘翅交界的深腰（25.5，甲蟲前胸與鞘翅之間的明顯縮頸）、前胸最寬 35.5、
   // x 46 → 49 前胸前角往內收一大階，接較窄的扁鏟頭（半寬 ≤ 20.5，留在輪拱切口 |z| 22 以內，頭側不被輪拱切開）
   hw: monoCurve(XS, [6, 14, 21.5, 29.5, 36, 39.5, 40, 39, 36.5, 30, 25.5, 30, 35, 35.5, 34, 23, 20.5, 19.5, 17, 13, 7.5]),
@@ -27,39 +27,12 @@ const P0 = {
   yLow: monoCurve(XS, [21, 19, 15.5, 12, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11.5, 11.8, 12, 12.4, 13.4, 14, 14.5, 15]),
 };
 
-/** @type {number} iter-117：鼻端（頭盾前緣 x 68.5）壓低量（mm）；x 44 以前不動，往前平滑增加 → 前胸前緣到頭盾的前斜面更明顯 */
-const NOSE_DROP = 3;
-/** @type {(x: number) => number} 車頭壓低量（smoothstep，x 44 → 68.5） */
-const noseDrop = (x) => {
-  const t = Math.min(1, Math.max(0, (x - 44) / (68.5 - 44)));
-  return NOSE_DROP * t * t * (3 - 2 * t);
-};
-/** @type {Record<string, (x: number) => number>} 站位曲線：殼頂與鞘翅緣稜線整段壓低，側裙下緣只壓一半（留底盤前端間隙） */
-const P = {
-  hw: P0.hw,
-  yTop: (x) => P0.yTop(x) - noseDrop(x),
-  yA: (x) => P0.yA(x) - noseDrop(x),
-  yLow: (x) => P0.yLow(x) - 0.5 * noseDrop(x),
-};
-
 /** @type {number} 圓頂超橢圓指數（> 2 → 比橢圓飽滿，甲蟲背的「肩」比較方） */
 const N_EXP = 2.5;
 /** @type {number[]} 圓頂剖面點的角度（度；90 = 中線頂、0 = 鞘翅緣稜線） */
 const DOME_ANGLES = [90, 76, 61, 46, 31, 16, 0];
-/** @type {number} 鞘翅緣稜線（圓頂與側裙交界，銳利稜線）在剖面中的索引 */
-const EDGE_INDEX = DOME_ANGLES.length - 1;
-/** @type {number} 側裙下緣往內收（iter-117：1.4 → 3.2，鞘翅緣稜線＝肩線，往下內收成 tumblehome，側視有陰影帶） */
-const SKIRT_TUCK = 3.2;
-/** @type {number[]} iter-117：翼子板唇斷面半徑 [外凸方向（z）, 殼面內寬度方向]；中心在殼面外 0.3 → 比殼面外凸 1.5 mm、寬 2.4 mm */
-const LIP_SECTION = [1.2, 1.2];
-/** @type {number} 翼子板唇中心到輪拱圓周的距離（切口外 1.4 mm） */
-const LIP_OFFSET = 1.4;
-
-/** @type {{ x: number, y: number, radius: number, cutZFrom: number }[]} 前後輪拱（R17.5：31 mm 輪胎半徑 15.5 + 2 mm） */
-const ARCHES = [
-  { x: 40, y: 13, radius: 17.5, cutZFrom: 22 },
-  { x: -40, y: 13, radius: 17.5, cutZFrom: 22 },
-];
+/** @type {number} 側裙下緣往內收（鞘翅緣稍微挑出側裙） */
+const SKIRT_TUCK = 1.4;
 
 /** @type {(v: number) => number} 超橢圓座標映射 */
 const se = (v) => Math.sign(v) * Math.abs(v) ** (2 / N_EXP);
@@ -72,21 +45,21 @@ const profile = (x) => {
   const hw = P.hw(x);
   const yA = P.yA(x);
   const ry = P.yTop(x) - yA;
-  const yLow = P.yLow(x);
   const dome = DOME_ANGLES.map((deg) => {
     const a = (deg * Math.PI) / 180;
     return [hw * se(Math.cos(a)), yA + ry * se(Math.sin(a))];
   });
-  // 側裙：肩線（鞘翅緣）往下內收，中段微凸（弧形 tumblehome）
-  const skirt = [
-    [hw - 0.35 * SKIRT_TUCK, lerp(yA, yLow, 0.5)],
-    [hw - SKIRT_TUCK, yLow],
-  ];
-  return [...dome, ...skirt];
+  return [...dome, [hw - SKIRT_TUCK, P.yLow(x)]];
 };
 
 /** @type {{ x: number, pts: number[][] }[]} 車尾、頭盾段每 0.75 mm 一站（曲率大），中段每 2 mm */
 const STATIONS = [...buildStations(-60, -50, 0.75, profile).slice(0, -1), ...buildStations(-50, 56, 2, profile).slice(0, -1), ...buildStations(56, 68.5, 0.75, profile)];
+
+/** @type {{ x: number, y: number, radius: number, cutZFrom: number }[]} 前後輪拱（R17.5：31 mm 輪胎半徑 15.5 + 2 mm） */
+const ARCHES = [
+  { x: 40, y: 13, radius: 17.5, cutZFrom: 22 },
+  { x: -40, y: 13, radius: 17.5, cutZFrom: 22 },
+];
 
 /** @type {number} 分區界線：前胸 / 鞘翅交界 x */
 const X_ELYTRA_FRONT = 22.6;
@@ -154,42 +127,6 @@ export function buildProfileLiner(arch, zFrom, profileFn, inset = 1.2) {
   g.computeVertexNormals();
   return g;
 }
-
-/**
- * iter-117 翼子板唇（金色弧形眉，實體）：沿輪拱切口外緣 LIP_OFFSET 的圓弧掃掠扁橢圓斷面，中心貼在殼面外 0.3 mm；
- * 只取殼面 |z| > 25 的連續最長一段（頭盾、車尾收窄處沒有輪拱切口，不加唇）
- * @type {(arch: { x: number, y: number, radius: number }) => THREE.BufferGeometry[]}
- */
-const buildFenderLip = (arch) => {
-  const r = arch.radius + LIP_OFFSET;
-  /** @type {number[][][]} 連續段 */
-  const runs = [];
-  /** @type {number[][]} */
-  let run = [];
-  for (let deg = 6; deg <= 174; deg += 3) {
-    const a = (deg * Math.PI) / 180;
-    const x = arch.x + r * Math.cos(a);
-    const y = arch.y + r * Math.sin(a);
-    const z = profileZAtY(profile(x), y);
-    if (z > 25) {
-      run.push([x, y, z + 0.3]);
-    } else if (run.length) {
-      runs.push(run);
-      run = [];
-    }
-  }
-  if (run.length) {
-    runs.push(run);
-  }
-  const best = runs.reduce((m, rr) => (rr.length > m.length ? rr : m), []);
-  if (best.length < 3) {
-    return [];
-  }
-  return [1, -1].map((sg) => {
-    const pts = best.map(([x, y, z]) => [x, y, sg * z]);
-    return smoothNormals(sweepEllipse(pts, pts.length * 3, () => LIP_SECTION, 12));
-  });
-};
 
 /** @type {() => Record<string, THREE.Material>} */
 const materials = () => ({
@@ -292,7 +229,7 @@ export const khepriScarabBody = makePolyBody({
   wallThickness_mm: 0.8,
   stations: STATIONS,
   // 鞘翅緣稜線（圓頂與側裙交界）是唯一的銳利稜線
-  hard: [EDGE_INDEX],
+  hard: [6],
   wheelArches: ARCHES,
   sideZMin: 30,
   zones: () => [
@@ -317,8 +254,6 @@ export const khepriScarabBody = makePolyBody({
       shell: true,
       name: 'arch-liners',
     });
-    // iter-117 翼子板唇：前後輪拱上方的金色弧形眉（比殼面外凸約 1.5 mm）
-    parts.push({ geometry: mergeGeos(ARCHES.flatMap((a) => buildFenderLip(a))), mat: 'gold', solid: true, outline: true, name: 'fender-lips' });
     // 鞘翅中縫：金色半圓細脊（實體），從前胸交界沿中線一路接到日輪底座
     const seamPts = [];
     for (let x = 21.6; x >= -40.5; x -= 2) {
