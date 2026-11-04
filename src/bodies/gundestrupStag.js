@@ -8,6 +8,7 @@ import * as THREE from 'three';
 import { makePolyBody, sweepEllipse } from './polyBody.js';
 import { namedMaterial, decalMaterial, mergeGeos, lerp } from './loft.js';
 import { monoCurve, buildStations, sdCircle } from './gazelleLeap.js';
+import { buildArchWell, chassisBlockedNearArch } from './kitsuneNinetail.js';
 
 /** @typedef {import('./loft.js').BodyPart} BodyPart */
 
@@ -21,9 +22,11 @@ const XS = [-68, -62, -57, -52, -40, -28, -22, -14, 0, 8, 16, 22, 30, 40, 50, 56
 /** @type {Record<string, (x: number) => number>} */
 const P = {
   // 半寬（俯視）：細尖的臀部 → 寬厚的後腿（47–48，罩住後輪）→ 細腰 30（座艙段；坐在底盤側壁 z 35 內側上方）→ 隆起的前胸 / 肩 48（x 22）→ 前輪 40 → 頸部收窄 19 → 鹿頭兩頰 22 → 鹿吻
-  hw: monoCurve(XS, [4, 10, 36, 48, 48, 47, 43, 30, 30, 32, 38, 48, 46, 40, 40, 40, 32, 24, 19, 22, 18, 12]),
+  // iter-114：最寬 48 → 47.6（車殼外框半寬 ≤ 48.0）；鹿頭段改成單調收窄（原本頸 19 → 兩頰 22 → 18 的凹凸讓銀面反光起皺）、前輪段 40 平台改成連續收斜
+  hw: monoCurve(XS, [4, 10, 36, 47.6, 47.6, 46.8, 43.5, 33, 30.5, 32, 38, 47.6, 46.5, 43.5, 39.5, 35, 30.5, 26.5, 22.8, 19.6, 16.2, 11]),
   // 中線頂（背線）：臀部 29 → 臀頂 37 → 背部低處 35（座艙罩）→ 鬐甲（肩峰）42 → 頸、額往前下到鼻尖 21.5
-  yTop: monoCurve(XS, [29, 33.5, 35.5, 36.5, 37, 36.5, 36, 35, 35.5, 36.5, 38.5, 40, 42, 41.5, 39, 36.5, 34, 30.5, 27.5, 25.5, 23.5, 21.5]),
+  // iter-114：鬐甲到鼻尖改成沿車長單純外凸（斜率一路變陡，原本 x 64 後斜率變緩 → 頸部下凹、反光像揉皺的鋁箔）；背部低處 35 → 36.2（座艙兩側的鞍形凹面變淺）
+  yTop: monoCurve(XS, [29, 33.5, 35.5, 36.5, 37, 36.8, 36.5, 36.2, 36.4, 37.2, 38.6, 39.8, 41.4, 41.2, 38.7, 36.5, 34.6, 32.5, 30.2, 27.5, 24.7, 21.5]),
   // 剖面最寬處的高度
   ySh: monoCurve(XS, [24, 24, 23, 22.5, 22, 22, 22, 21.5, 21.5, 21.5, 21.5, 22, 22.5, 22.5, 22.5, 22, 21.5, 21, 20.5, 20, 19.5, 19]),
   // 側裙下緣：中段 11（底盤側框段由 loft.js 自動讓到 9.9），臀部抬高離開後導輪，鹿吻下緣往上收
@@ -91,15 +94,18 @@ const buildLiner = (arch, depth, minZ) => {
   const a1 = Math.PI - 0.15;
   const pos = [];
   /** @type {(t: number) => number} */
-  const zIn = (t) => shellZ(arch.x + r * Math.cos(t), arch.y + r * Math.sin(t)) - 1.0;
+  // iter-114：外緣離殼外面 1.0 → 1.6 mm（解析式 shellZ 和平滑殼面在車頭 / 車尾收窄處差到 0.5 mm，內襯會穿出殼面）
+  const zIn = (t) => shellZ(arch.x + r * Math.cos(t), arch.y + r * Math.sin(t)) - 1.6;
   for (const sg of [-1, 1]) {
     for (let i = 0; i < n; i++) {
       const t0 = lerp(a0, a1, i / n);
       const t1 = lerp(a0, a1, (i + 1) / n);
       /** @type {(t: number, z: number) => number[]} */
       const p = (t, z) => [arch.x + r * Math.cos(t), arch.y + r * Math.sin(t), sg * z];
-      const A = p(t0, Math.max(minZ, zIn(t0) - depth));
-      const B = p(t1, Math.max(minZ, zIn(t1) - depth));
+      // iter-114：內緣不得超過外緣（原本 zIn < minZ 的角度，內襯被 minZ 撐到殼外面之外：前輪拱前緣、後輪拱後緣穿出殼面最多 3.5 mm、
+      // 而且四邊形反折、法線朝外——Blender 展示圖輪拱邊上的黑白條紋來源之一）；至少留 0.6 mm 寬、一律在殼內面以內
+      const A = p(t0, Math.min(zIn(t0) - 0.6, Math.max(minZ, zIn(t0) - depth)));
+      const B = p(t1, Math.min(zIn(t1) - 0.6, Math.max(minZ, zIn(t1) - depth)));
       const C = p(t1, zIn(t1));
       const D = p(t0, zIn(t0));
       if (sg > 0) {
@@ -268,6 +274,14 @@ export const gundestrupStagBody = makePolyBody({
       mat: 'liner',
       shell: true,
       name: 'arch-liners',
+    });
+    // iter-114：輪胎內側的環形擋板（|z| 22.9；離 26 mm 輪內側面 2.4、31 mm 輪 1.9 mm）——擋住從輪拱橫越車身看到另一側地板的視線
+    // （Blender 展示圖前輪拱內的黑白直條紋；原因與量測見 DESIGN.md「iter-114 修改」）
+    parts.push({
+      geometry: mergeGeos(ARCHES.map((a) => buildArchWell(a, 22.9, 12.3, 17.8, chassisBlockedNearArch))),
+      mat: 'liner',
+      shell: true,
+      name: 'arch-wells',
     });
 
     // 鹿角（實體件、外形件）：主幹銀、分叉的末段鍍金；角根埋進車頂 0.8 mm

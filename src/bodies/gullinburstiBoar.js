@@ -1,8 +1,9 @@
 // 金鬃野豬（body-gullinbursti-boar，第八階段神話組・北歐）：《散文埃達》中侏儒為 Freyr 打造的金鬃野豬 Gullinbursti。
 // 車身是前低後高的桶形拱背全罩（肩頸最高）：最前面一段短而寬的楔形青銅豬鼻（前端平面鼻盤＋兩個鼻孔）、兩側一對短獠牙；
-// 背脊一整列金色梳狀鬃毛片從肩部一路排到車尾，越往後越高，最後幾片成為 bristle-crest 尾翼；側面是 Urnes 風格交織動物紋（自繪 SDF 曲線）。
+// 背脊一整列金色梳狀鬃毛片從頭頂（豬鼻後方）一路排到車尾，高度大致均勻，最後幾片略高成為 bristle-crest 尾翼；側面是 Urnes 風格交織動物紋（自繪 SDF 曲線）。
+// iter-114（評審：主體灰色、金鬃只在後半段而且往後越長越高，「金鬃」的金色不夠）：主體改成金漆、交織紋改深色烏銅、鬃毛從頭頂延伸到車尾且高度均勻。
 // 設計：shared/design/body-gullinbursti-boar/DESIGN.md（典故、借用的古代語彙、和市售車殼 / 現代作品 / 既有車殼的差異）。
-// 塗裝全為自創：炭黑鐵灰主體＋亮金鬃毛＋金色交織紋＋青銅豬鼻；不用盧恩字母、不用任何被挪用的符號、不含文字與商標。
+// 塗裝全為自創：金漆主體＋真金屬亮金鬃毛＋深烏銅交織紋＋青銅豬鼻（iter-113 為炭黑鐵灰主體＋金色交織紋）；不用盧恩字母、不用任何被挪用的符號、不含文字與商標。
 import * as THREE from 'three';
 import { makePolyBody, finPlate, sweepEllipse } from './polyBody.js';
 import { namedMaterial, decalMaterial, sideDecal, mergeGeos, lerp } from './loft.js';
@@ -70,9 +71,10 @@ const shellZAt = (x, y) => {
 
 /** @type {() => Record<string, THREE.Material>} */
 const materials = () => ({
-  // 深鐵灰：緞面（roughness 0.58，低 clearcoat），和亮金鬃毛形成材質對比；刻意不用金屬黑（避開 Bergkaiser Fenrir 限定版的金屬黑＋黃細線，MYTH_RESEARCH F7）
-  iron: namedMaterial('paint-iron-charcoal', { color: 0x3d4046, roughness: 0.58, clearcoat: 0.15, clearcoatRoughness: 0.5 }),
-  iron2: namedMaterial('paint-iron-charcoal', { color: 0x3d4046, roughness: 0.58, clearcoat: 0.15, side: THREE.DoubleSide }),
+  // iter-114：主體金漆（paint- 且 roughness ≤ 0.5 → Blender 亮面漆；比真金屬鬃毛暗一階、偏紅銅的金，和亮金鬃毛仍分得出層次）
+  // 刻意不用金屬黑（避開 Bergkaiser Fenrir 限定版的金屬黑＋黃細線，MYTH_RESEARCH F7）
+  goldPaint: namedMaterial('paint-gold-burnished', { color: 0xb8862f, metalness: 0.55, roughness: 0.42, clearcoat: 0.5, clearcoatRoughness: 0.2 }),
+  goldPaint2: namedMaterial('paint-gold-burnished', { color: 0xb8862f, metalness: 0.55, roughness: 0.42, clearcoat: 0.5, side: THREE.DoubleSide }),
   // 真金屬：青銅豬鼻、金鬃毛（名稱含 -brass → Blender 換成金屬材質）
   bronze: namedMaterial('trim-bronze-brass', { color: 0x9c6b3c, metalness: 0.8, roughness: 0.34, clearcoat: 0.2 }),
   gold: namedMaterial('trim-gold-brass', { color: 0xe0b043, metalness: 0.85, roughness: 0.28, clearcoat: 0.3 }),
@@ -81,7 +83,8 @@ const materials = () => ({
   edge: namedMaterial('shell-edge-iron', { color: 0x3a3c42, roughness: 0.6, side: THREE.DoubleSide }),
   liner: namedMaterial('shell-wheelwell-iron', { color: 0x3a3c42, roughness: 0.7, side: THREE.DoubleSide }),
   nostril: decalMaterial('decal-nostril-dark', { color: 0x1a120c, roughness: 0.8, side: THREE.DoubleSide }),
-  dGold: decalMaterial('decal-gold-interlace', { color: 0xdcae48, metalness: 0.7, roughness: 0.32 }),
+  // 交織紋：深烏銅（金底上的黑金象嵌感，像 Urnes 木刻的陰影線）
+  dDark: decalMaterial('decal-niello-interlace', { color: 0x2e2118, roughness: 0.55 }),
   eye: namedMaterial('lamp-amber', { color: 0xffc23a, emissive: 0xff9a00, emissiveIntensity: 0.7, roughness: 0.1, clearcoat: 1.0 }),
   mount: namedMaterial('abs-mount-black', { color: 0x222326, roughness: 0.6 }),
 });
@@ -250,16 +253,24 @@ const interlaceSd = (u, v) => {
 // 實體件
 // ---------------------------------------------------------------------------
 
-/** @type {number[]} 鬃毛片的 x 位置（從肩部往後到車尾，13 片） */
-const BRISTLE_X = [6, 0.5, -5, -10.5, -16, -21.5, -27, -32.5, -38, -43.5, -49, -54, -58.5];
+/** @type {number[]} 鬃毛片的 x 位置（iter-114：從頭頂 x 47 一路往後到車尾 −58.5，每 5 mm 一片，共 22 片） */
+const BRISTLE_X = Array.from({ length: 22 }, (_, i) => lerp(47, -58.5, i / 21));
 /**
- * 鬃毛片高度（從殼面算起）：肩部 3.5，越往後越高，最後 3 片成為尾翼（最高 16）
+ * 鬃毛片高度（從殼面算起，iter-114 改成大致均勻）：頭頂前兩片 4.6 / 5.6，中段 6.2，最後 3 片 7 → 8.2 成為尾翼
  * @type {(i: number) => number}
  */
 const bristleH = (i) => {
   const n = BRISTLE_X.length;
-  const t = i / (n - 1);
-  return 3.5 + 6 * t * t + (i >= n - 3 ? (i - (n - 4)) * 2.2 : 0);
+  if (i === 0) {
+    return 4.6;
+  }
+  if (i === 1) {
+    return 5.6;
+  }
+  if (i >= n - 3) {
+    return 7 + 0.6 * (i - (n - 3));
+  }
+  return 6.2;
 };
 
 /**
@@ -354,7 +365,7 @@ export const gullinburstiBoarBody = makePolyBody({
   form: 'boar-hump',
   roof: 'closed',
   wing: 'bristle-crest',
-  theme: '金鬃野豬：前低後高的桶形拱背全罩（肩頸最高）、短寬楔形青銅豬鼻＋短獠牙、背脊一列越往後越高的金色梳狀鬃毛片成為尾翼、側面 Urnes 交織獸紋',
+  theme: '金鬃野豬：前低後高的桶形拱背全罩（肩頸最高）、短寬楔形青銅豬鼻＋短獠牙、金漆主體、背脊一列從頭頂排到車尾、高度均勻的真金屬金色梳狀鬃毛（尾端 3 片略高成尾翼）、側面深烏銅 Urnes 交織獸紋',
   material: 'ABS',
   density_g_cm3: 1.05,
   wallThickness_mm: 0.8,
@@ -369,19 +380,19 @@ export const gullinburstiBoarBody = makePolyBody({
   zones: () => [
     // 青銅豬鼻：最前面一段（後緣往後斜，側視是楔形的鼻套）
     { mat: 'bronze', keep: (x, y) => x - (SNOUT_X + 0.12 * (y - 16)) },
-    { mat: 'iron', keep: () => 1 },
+    { mat: 'goldPaint', keep: () => 1 },
   ],
   mats: { inner: 'inner', edge: 'edge', cap: 'bronze', mount: 'mount' },
   materials,
   extras: (kit) => {
     /** @type {BodyPart[]} */
     const parts = [];
-    // 背脊金鬃毛：13 片梳狀實體片（厚 1.2 mm），根部埋進中線殼面
-    const plates = BRISTLE_X.map((x, i) => finPlate(bristleOutline(x, bristleH(i)), 0, 1.2));
+    // 背脊金鬃毛：22 片梳狀實體片（厚 1.4 mm、0.35 mm 倒角），根部埋進中線殼面
+    const plates = BRISTLE_X.map((x, i) => finPlate(bristleOutline(x, bristleH(i)), 0, 1.4));
     parts.push({ geometry: mergeGeos(plates), mat: 'gold', solid: true, outline: true, name: 'bristle-crest' });
     // 獠牙
     parts.push({ geometry: mergeGeos([buildTusk(-1), buildTusk(1)]), mat: 'ivory', solid: true, outline: true, name: 'tusks' });
-    // 耳朵：肩前兩片往後倒的小三角片（鐵灰，實體）
+    // 耳朵：肩前兩片往後倒的小三角片（金漆，實體）
     /** @type {THREE.BufferGeometry[]} */
     const ears = [];
     for (const sg of [-1, 1]) {
@@ -400,7 +411,7 @@ export const gullinburstiBoarBody = makePolyBody({
       ear.translate(0, kit.surf.topY(30.5, 12.5) - 1, zc);
       ears.push(ear);
     }
-    parts.push({ geometry: mergeGeos(ears), mat: 'iron', solid: true, outline: true, name: 'ears' });
+    parts.push({ geometry: mergeGeos(ears), mat: 'goldPaint2', solid: true, outline: true, name: 'ears' });
     // 鼻盤上的兩個鼻孔（深色橢圓薄片，貼在前封口外 0.08 mm）
     /** @type {THREE.BufferGeometry[]} */
     const nostrils = [];
@@ -419,13 +430,13 @@ export const gullinburstiBoarBody = makePolyBody({
       shell: true,
       name: 'arch-liners',
     });
-    // 側面 Urnes 風格交織獸紋（金色，左右鏡射，獸頭都朝車頭）
+    // 側面 Urnes 風格交織獸紋（深烏銅，左右鏡射，獸頭都朝車頭）
     parts.push({
       geometry: mergeGeos([
         kit.decal(sideDecal(interlaceSd, { x0: 0, y0: 0, zMin: 22, side: 1 })),
         kit.decal(sideDecal(interlaceSd, { x0: 0, y0: 0, zMin: 22, side: -1 })),
       ]),
-      mat: 'dGold',
+      mat: 'dDark',
       name: 'decal-urnes-interlace',
     });
     // 眼睛（琥珀色小燈，杏仁形）：豬鼻後方的頭側
@@ -445,7 +456,7 @@ export const gullinburstiBoarBody = makePolyBody({
     density_g_cm3: 'SPEC 1.14：ABS 約 1.05 g/cm³（推估）',
     wallThickness_mm: '推估：射出 ABS 殼 0.8 mm（同其他款）',
     geometry: '本檔站位產生器 P（推估）：車殼 x −64 ~ 68（約 132 mm＋尾端鬃毛）、肩頸殼頂 43.6、鬃毛尾翼頂約 52、最寬 ±40（肩部，桶形斷面）；前輪上方殼頂 ≥ 36（31 mm 輪拱上方不開洞）',
-    bristles: '13 片梳狀鬃毛為實心 ABS 片（厚 1.2 mm），高度 3.5 → 16 mm 往後遞增，質量 = 封閉體積 × 1.05 g/cm³（推估）',
+    bristles: '22 片梳狀鬃毛為實心 ABS 片（厚 1.4 mm），從頭頂 x 47 到車尾 x −58.5、高度 4.6 → 6.2（均勻）→ 尾端 3 片 7–8.2（iter-114；原為肩部起 13 片 3.5 → 16 mm 往後遞增），質量 = 封閉體積 × 1.05 g/cm³（推估）',
     tusks: '獠牙為實心 ABS 掃掠件（根部直徑 2.3 mm），位於豬鼻兩側 |z| 15–19，離前導輪（|z| ≥ 35.5）遠（推估）',
     wheelArches: '前後 R17.5（31 mm 輪胎半徑 15.5 + 2 mm），切口從 |z| 21 起＋3 mm 深內襯',
     mounts: '對齊 chassis-midship 的車殼安裝點（SPEC 1.14）',

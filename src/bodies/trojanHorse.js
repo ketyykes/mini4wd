@@ -9,6 +9,7 @@ import * as THREE from 'three';
 import { makePolyBody, finPlate } from './polyBody.js';
 import { namedMaterial, decalMaterial, sideDecal, mergeGeos, lerp } from './loft.js';
 import { monoCurve, buildStations } from './gazelleLeap.js';
+import { buildArchWell, chassisBlockedNearArch } from './kitsuneNinetail.js';
 
 /** @typedef {import('./loft.js').BodyPart} BodyPart */
 
@@ -49,7 +50,8 @@ const profile = (x) => {
   const drop = Math.min(1.2, Math.max(0.05, (yN - yD) * 0.3));
   const ySide = yD - 0.6 - ch;
   // 喉部與馬頭下緣（x 55 起）：側板下緣往中線收攏，前胸與下顎是封閉的殼面（不是兩片垂下的側板）
-  const close = Math.min(1, Math.max(0, (x - 55) / 5));
+  // iter-114：收攏起點 x 55 → 57.5（前輪拱前緣到喉部之間原本是往內斜的側板，從側面看得穿到車底另一側的地板）
+  const close = Math.min(1, Math.max(0, (x - 57.5) / 4));
   const zLow = lerp(hw, 0.02, close * close * (3 - 2 * close));
   return [
     [0, yN],
@@ -149,15 +151,27 @@ const buildLiner = (arch, depth) => {
   const a0 = 0.12;
   const a1 = Math.PI - 0.12;
   const pos = [];
-  /** @type {(t: number) => number} 該角度的側板內面 z */
-  const zIn = (t) => P.hw(arch.x + r * Math.cos(t)) - 1.2;
+  /** @type {(t: number) => number} 該角度的側板內面 z（iter-114：依剖面最後兩點求該高度的側板 |z|，不再一律用半寬——
+   * x 55 以後喉部側板下緣往中線收，舊算法讓前輪拱前緣的內襯穿出殼面最多 9.4 mm、反折朝外，是輪拱前緣條紋的來源之一） */
+  const zIn = (t) => {
+    const x = arch.x + r * Math.cos(t);
+    const y = arch.y + r * Math.sin(t);
+    const pts = profile(x);
+    const [zMid, yMid] = pts[6];
+    const [zLow, yLow] = pts[7];
+    if (y >= yMid) {
+      return P.hw(x) - 1.2;
+    }
+    return lerp(zMid, zLow, Math.min(1, (yMid - y) / Math.max(0.1, yMid - yLow))) - 1.2;
+  };
   for (const sg of [-1, 1]) {
     for (let i = 0; i < n; i++) {
       const t0 = lerp(a0, a1, i / n);
       const t1 = lerp(a0, a1, (i + 1) / n);
       const p = (t, z) => [arch.x + r * Math.cos(t), arch.y + r * Math.sin(t), sg * z];
-      const A = p(t0, zIn(t0) - depth);
-      const B = p(t1, zIn(t1) - depth);
+      // 側板收到中線附近（喉部）時內襯變窄，最窄 0.3 mm、不小於 0
+      const A = p(t0, Math.max(0, zIn(t0) - Math.min(depth, Math.max(0.3, zIn(t0) - 21))));
+      const B = p(t1, Math.max(0, zIn(t1) - Math.min(depth, Math.max(0.3, zIn(t1) - 21))));
       const C = p(t1, zIn(t1));
       const D = p(t0, zIn(t0));
       // 法線朝輪心（內襯面向輪胎）
@@ -335,6 +349,14 @@ const CONFIG = {
       mat: 'liner',
       shell: true,
       name: 'arch-liners',
+    });
+    // iter-114：輪胎內側的環形擋板（|z| 22.9；離 26 mm 輪內側面 2.4、31 mm 輪 1.9 mm）——擋住從輪拱橫越車身看到另一側地板的視線
+    // （Blender 展示圖前輪拱內的黑白直條紋；原因與量測見 DESIGN.md「iter-114 修改」）
+    parts.push({
+      geometry: mergeGeos(ARCHES.map((a) => buildArchWell(a, 22.9, 12.3, 17.8, chassisBlockedNearArch))),
+      mat: 'liner',
+      shell: true,
+      name: 'arch-wells',
     });
 
     // ── 貼紙 ──

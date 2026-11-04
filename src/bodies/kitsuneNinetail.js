@@ -113,35 +113,97 @@ const placeEar = (g, sg) => {
 };
 
 /**
- * 狐耳（單側）：前面是三角耳面（底寬 11、高 20），背後收成一點（耳根往後 5.5 mm）的四面體——側視是有厚度的三角形，
- * 不是一片細板；耳根埋進前罩約 2.5 mm（和殼面接成一體）。耳內另貼 0.5 mm 黑漆三角片
+ * 狐耳（單側）：iter-114 改成有厚度的射出件——三角耳板（底寬 10、高 19，兩側微外凸、耳尖小圓角）擠出 1.6 mm、
+ * 四周 0.5 mm 圓角倒邊（總厚 2.6 mm），不再是邊緣銳利如刀的四面體（評審：耳朵像無厚度的薄片）；
+ * 耳根埋進前罩約 2.5 mm（和殼面接成一體）。耳內另貼一片 0.55 mm 黑漆三角片（略凸出耳面 0.35 mm）
  * @type {(sg: number) => { ear: THREE.BufferGeometry, inner: THREE.BufferGeometry }}
  */
 const buildEar = (sg) => {
-  /** @type {number[][]} 四面體頂點：左耳根、右耳根、耳尖、背後耳根 */
-  const V = [[-5.5, 0, 0], [5.5, 0, 0], [0, 20, 0], [0, 1.5, -5.5]];
-  const cen = [0, 1, 2].map((c) => V.reduce((acc, p) => acc + p[c], 0) / 4);
+  /** @type {THREE.Shape} 耳板外形（局部 u 橫向、v 往上） */
+  const shape = new THREE.Shape();
+  shape.moveTo(-5, 0);
+  shape.lineTo(5, 0);
+  shape.quadraticCurveTo(3.6, 10.5, 0.7, 18.6);
+  shape.quadraticCurveTo(0, 19.4, -0.7, 18.6);
+  shape.quadraticCurveTo(-3.6, 10.5, -5, 0);
+  /** @type {number} 擠出深度（不含倒邊） */
+  const depth = 1.6;
+  /** @type {number} 倒邊（圓角）尺寸 */
+  const bev = 0.5;
+  const ear = new THREE.ExtrudeGeometry(shape, { depth, bevelEnabled: true, bevelThickness: bev, bevelSize: bev, bevelSegments: 3, curveSegments: 10 });
+  // 耳面（前面）在局部 w = 0，耳板往後佔 w −2.6 → 0
+  ear.translate(0, 0, -(depth + bev));
+  const innerShape = new THREE.Shape();
+  innerShape.moveTo(-3.1, 3.4);
+  innerShape.lineTo(3.1, 3.4);
+  innerShape.quadraticCurveTo(2.2, 10, 0, 15.2);
+  innerShape.quadraticCurveTo(-2.2, 10, -3.1, 3.4);
+  const inner = new THREE.ExtrudeGeometry(innerShape, { depth: 0.55, bevelEnabled: false, curveSegments: 8 });
+  inner.translate(0, 0, -0.2);
+  return { ear: placeEar(ear, sg), inner: placeEar(inner, sg) };
+};
+
+/**
+ * 輪拱內側擋板（iter-114：修正 Blender 展示圖前輪拱內的黑白條紋）：
+ * 原本的輪拱內襯只是靠外側的一段圓柱面，從側面 / 前 3/4 看進輪拱，視線會穿過輪胎上方與前方的空隙、橫越車身、
+ * 從另一側輪拱與側裙下方看到地板（Blender 攝影棚地板在車旁最亮）→ 和車殼安裝柱、對側內面的深色交錯成直條紋。
+ * 這裡在輪胎內側（|z| = zw）補一片環形擋板（輪拱圓心為圓心，半徑 rIn → rOut、只取上半圈），把輪室從車身內部隔開。
+ * blocked(x, y) 回傳 true 的位置（底盤側框、安裝柱等，已含 1 mm 間隙）不放擋板。
+ * @type {(arch: { x: number, y: number }, zw: number, rIn: number, rOut: number, blocked: (x: number, y: number) => boolean) => THREE.BufferGeometry}
+ */
+export function buildArchWell(arch, zw, rIn, rOut, blocked) {
+  const nt = 56;
+  const nr = 6;
+  const a0 = 0.1;
+  const a1 = Math.PI - 0.1;
   /** @type {number[]} */
   const pos = [];
-  for (const [i, j, k] of [[0, 1, 2], [0, 2, 3], [1, 3, 2], [0, 3, 1]]) {
-    const [p, q, r] = [V[i], V[j], V[k]];
-    const e1 = [q[0] - p[0], q[1] - p[1], q[2] - p[2]];
-    const e2 = [r[0] - p[0], r[1] - p[1], r[2] - p[2]];
-    const n = [e1[1] * e2[2] - e1[2] * e2[1], e1[2] * e2[0] - e1[0] * e2[2], e1[0] * e2[1] - e1[1] * e2[0]];
-    const out = (p[0] - cen[0]) * n[0] + (p[1] - cen[1]) * n[1] + (p[2] - cen[2]) * n[2];
-    // 繞向朝外（封閉網格才能用散度定理算體積）
-    if (out >= 0) {
-      pos.push(...p, ...q, ...r);
-    } else {
-      pos.push(...p, ...r, ...q);
+  /** @type {(t: number, r: number) => number[]} */
+  const xy = (t, r) => [arch.x + r * Math.cos(t), arch.y + r * Math.sin(t)];
+  for (const sg of [-1, 1]) {
+    for (let i = 0; i < nt; i++) {
+      const t0 = lerp(a0, a1, i / nt);
+      const t1 = lerp(a0, a1, (i + 1) / nt);
+      for (let j = 0; j < nr; j++) {
+        const r0 = lerp(rIn, rOut, j / nr);
+        const r1 = lerp(rIn, rOut, (j + 1) / nr);
+        const q = [xy(t0, r0), xy(t1, r0), xy(t1, r1), xy(t0, r1)];
+        if (q.some(([x, y]) => blocked(x, y))) {
+          continue;
+        }
+        const [A, B, C, D] = q.map(([x, y]) => [x, y, sg * zw]);
+        // 法線朝輪胎（z 往外）
+        if (sg > 0) {
+          pos.push(...A, ...B, ...C, ...A, ...C, ...D);
+        } else {
+          pos.push(...A, ...C, ...B, ...A, ...D, ...C);
+        }
+      }
     }
   }
-  const ear = new THREE.BufferGeometry();
-  ear.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
-  ear.computeVertexNormals();
-  const shape = new THREE.Shape([[-3.4, 3.4], [3.4, 3.4], [0, 15.4]].map(([u, v]) => new THREE.Vector2(u, v)));
-  const inner = new THREE.ExtrudeGeometry(shape, { depth: 0.5, bevelEnabled: false });
-  return { ear: placeEar(ear, sg), inner: placeEar(inner, sg) };
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  g.computeVertexNormals();
+  return g;
+}
+
+/**
+ * chassis-midship 在輪拱內側（|z| 19–26）的障礙物（iter-114 量測，已加 1 mm 間隙）：
+ * 前後軸之間的底盤側框（前輪拱 x ≤ 25.5、後輪拱 x ≥ −27.5，頂 y 20.4–21.0；後輪拱 x ≥ −20.5 處頂 23.2）、
+ * 安裝柱（x ±33.5、±50，寬 < 1 mm、頂 y 19.6，|z| 21.4–24.6）；軸承座（軸心半徑 4.1）在擋板內徑以內
+ * @type {(x: number, y: number) => boolean}
+ */
+export const chassisBlockedNearArch = (x, y) => {
+  if (x > 0 && x < 26.5 && y < 22) {
+    return true;
+  }
+  if (x < 0 && x > -28.5 && y < (x > -21.5 ? 24.2 : 22)) {
+    return true;
+  }
+  if (y < 20.6 && [33.5, 50].some((px) => Math.abs(Math.abs(x) - px) < 1.8)) {
+    return true;
+  }
+  return false;
 };
 
 /** @type {number} 狐尾條數 */
@@ -338,6 +400,13 @@ export const kitsuneNinetailBody = makePolyBody({
       shell: true,
       name: 'arch-liners',
     });
+    // iter-114：輪胎內側的環形擋板（|z| 22.9 = 內襯內緣，接成一個輪室；離 26 mm 輪內側面 2.4、31 mm 輪 1.9 mm）
+    parts.push({
+      geometry: mergeGeos(ARCHES.map((a) => buildArchWell(a, 22.9, 12.3, 17.8, chassisBlockedNearArch))),
+      mat: 'liner',
+      shell: true,
+      name: 'arch-wells',
+    });
     // 狐耳（實體件）＋耳內黑漆
     const ears = [-1, 1].map((sg) => buildEar(sg));
     parts.push({ geometry: mergeGeos(ears.map((e) => e.ear)), mat: 'silver', solid: true, outline: true, name: 'fox-ears' });
@@ -423,7 +492,7 @@ export const kitsuneNinetailBody = makePolyBody({
     wallThickness_mm: '推估：射出 ABS 殼 0.8 mm（同其他車殼）；座艙罩同厚度以殼面積計入質量',
     geometry: '本檔站位產生器 P（推估）：長 145.5（車尾 −70 ~ 鼻尖 75.5，batch2 規格「長約 140–150」）、殼頂 34.3、座艙頂 44.6、耳尖約 49.8（batch2「高約 45–52（耳尖）」）；寬 ±40（座艙前的胸；座艙後細腰 ±27、後軸臀 ±37）',
     wheelArches: '前後 R17.5（31 mm 輪胎半徑 15.5 + 2 mm），可裝 26 / 31 mm 輪',
-    ears: '狐耳：ABS 實心四面體（前面三角耳面 底寬 11 × 高 20、耳根往後 5.5 mm）＋耳內 0.5 mm 黑漆片（推估），質量 = 封閉體積 × 1.05 g/cm³',
+    ears: '狐耳：ABS 實心耳板（底寬 10 × 高 19、擠出 1.6 mm＋0.5 mm 圓角倒邊，總厚 2.6 mm；iter-114 由四面體改）＋耳內 0.55 mm 黑漆片（推估），質量 = 封閉體積 × 1.05 g/cm³',
     tails: '九條狐尾：ABS 實心掃掠件（長 26–29 mm、最寬約 4.8 mm、厚約 3.1 mm，推估），根部錯開 2.4 mm 排在後甲板＋黑漆尾根座，展開成半開摺扇：尾尖 x −63 ~ −69.5、最外 |z| 34（車寬 ±36.7 以內）、尾尖高約 46–48（不碰後導輪：後導輪頂 y 20.5）',
     palette: '配色依 batch2 主 agent 決定（銀白＋靛藍＋黑漆＋少量金蒔繪，不用稻荷朱白、不用金毛 / 橘色主體、不用紅眼）；黑漆 #1B1B1B、金 #C9A54A 取 MYTH_RESEARCH 6-2（推估），其餘色碼自訂',
     mounts: '對齊 chassis-midship 的車殼安裝點（SPEC 1.14）',
