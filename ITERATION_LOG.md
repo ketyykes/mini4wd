@@ -2157,7 +2157,7 @@
 ### 驗證
 - 測試 16/16。
 - 外觀（`shared/reviews/iter-37/REVIEW.md`）：錨點 6.75（和 iter-36 相同）；本輪 7/7.5/7/7.5 = **7.25**（iter-36：7.50）。比例 7.5→7（wedge Blender 側視鼻部下垂、尾端斷崖、保桿板過長）、車殼設計 7.5→7（wedge 仍像平板＋貼紙）。
-- **總分 = 50.00 + 7.25 × 5 = 86.25 < iter-36 的 87.50 → 依規則 revert**（app：revert 257bf81、be7dd9b；根目錄：revert 9a8da9c）。截圖 `renders/iter-37_*` 與評語保留作紀錄。
+- **總分 = 50.00 + 7.25 × 5 = 86.25 < iter-36 的 87.50 → 依規則 revert**（app：revert 257bf81、be7dd9b；根目錄：revert 29a87f8）。截圖 `renders/iter-37_*` 與評語保留作紀錄。
 
 ### 迭代決策
 - 本輪三條線同時改，無法分辨哪一項扣分。下一輪改成**小步、可歸因**的改動：一次只動一款車殼或一個區塊，並對照 iter-36 的圖。
@@ -2970,7 +2970,7 @@
 - 截圖發現 15532 藍色雙層導輪畫成黑色：`assembly.js` 的 `rollerSpec` 沒有帶 `color`（iter-76 只補了 `rollerLayoutOf` 那層）→ 補上。
 - Blender 圖發現白色 slick 胎是黑色：`render/showcase.py` 的 `tire_material` 胎色寫死黑色 → GLB 胎色是淺色（max > 0.3）時改用 GLB 顏色，黑胎不變。
 - app 截圖 `renders/iter-81-p7_*`、`iter-81-p7parts_*`；Blender `render/out/config-p7-parts/` 4 張（351 s）。
-- 評審資料夾 `shared/reviews/iter-81/`（本輪＋對照＋錨點＋說明.md）。
+- 評審資料夾 `shared/reviews/iter-81/`（本輪＋對照＋錨點＋說明.md）。（2026-11-04 註：截圖已從根目錄 git 歷史移除，只剩 `REVIEW.md`。）
 
 ### 驗證
 - `node scripts/score.mjs`：**20/20**（04:51）。
