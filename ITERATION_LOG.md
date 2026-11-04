@@ -3717,3 +3717,53 @@
   - 殼面＋實體面數 ≤ 改前 × 1.1；合計 ≤ × 1.5。
   - 其他照第八階段：IoU ≤ 0.845、半寬 ≤ 48、長 ≤ 153、整車 ≤ 133 g。
 - 保留標準：逐款 A/B 判定「更炫」，而且 7 項沒有任何一項「差」。
+- 合併與修正（01:09–02:06）：
+  - B 組：serpent、tanngrisnir、gullinbursti 三款。主 agent 看 Blender 圖後要求兩項修正：tanngrisnir 的羊頭要有量體；serpent 加座艙罩與蛇脊。
+  - C 組：yaga-hut、firebird、kunpeng 三款。firebird 第二版去掉像火焰貼紙的側羽。
+  - A 組：trojan、khepri、minotaur 三款。
+  - 合併時兩組 IoU 超標，都由原組修正：
+    - tanngrisnir × 新 yaga-hut 俯視 0.877 → tanngrisnir 改成前寬後窄，降到 0.798。
+    - minotaur × D 組新 sleipnir 俯視 0.879 → minotaur 改成沙漏形，降到 0.822。
+  - Blender 座艙補光（`showcase.py` 的 `add_cockpit_light`）會照亮名稱含 cockpit 的網格，所以 serpent 的整流背被照成白色 → 網格改名 `headrest-fairing`。之後的規格都加上這條提醒。
+- 逐款 A/B 評審（`shared/reviews/iter-120/REVIEW.md`）：
+  - 整體 7.5 / 6.5 / 7.5 / 7 / 7 / 7 / 6.5，平均 7.00；對照組 6.93。
+  - 保留 5 款（判「更炫」且沒有任何一項「差」）：khepri、serpent、tanngrisnir、gullinbursti、kunpeng。
+  - **revert 4 款**（app `ba20977`）：
+    - trojan：更炫，但辨識度差（馬頭只剩口勒線、鬃毛像鋸齒），完成度差（前輪凸出、腰部露底盤）。
+    - minotaur：持平，牛頭變成扁平黑板，腰部露底盤。
+    - yaga-hut：更炫，但雞腳貼紙看不到、座艙光過曝、腰部露底盤。
+    - firebird：持平，覆羽堆成方形色塊。
+  - 這 4 款的 iter-120 版本另存在 `/tmp/mini4wd-p9/i120-*.js`，由 iter-122 重做。
+- 計分：主線 `ba20977`，score.mjs 02:16–02:35 **20/20**。
+  - `P16_collision_patches` 88.3 s（基準 65.3 s），`P17_phase7_laps` 204.5 s。
+  - 計分期間 load average 8–17（4 個 subagent 同時在跑 body-check）；P16 的單項計時要在安靜時重量。
+
+## iter-121（開始 2026-11-05 01:12）：神話組第二批 7 款（D：cerberus / sleipnir / heimdall；E：mushussu / gundestrup；F：kitsune / quetzal）
+
+- 規格同 batch1。
+- D 組第一版改動太小：主 agent 並排看圖時，cerberus 和 heimdall 幾乎看不出差別 → 要求更大膽的第二版。第二版的改動：
+  - cerberus：寬尾翼＋蛇頭端板、發光進氣口、斜向分割。
+  - heimdall：號角做成車身，往後變粗的楔形＋擴散器端板。
+  - sleipnir：鬃扇尾翼、深色底襯。
+- E 組：
+  - gundestrup：頂高 63.7 → 48.5；鹿角移到座艙後往後掃；銀釜動物浮雕帶改用貼紙。
+  - mushussu：細長低頸鼻、雙角導流、玫瑰花飾條紋、後掠雙層翼。
+- F 組：
+  - kitsune：上下兩層扁平尾片，尖端朱紅漸層；改成珍珠白＋黑漆斜分割；實體面數 0.83×。
+  - quetzal：張口楔形上顎、往後倒的羽領、平躺羽扇鴨尾；頂高 52.9 → 38.5。
+
+## iter-122（開始 2026-11-05 02:15）：iter-120 revert 的 4 款依評審意見重做
+
+- trojan：
+  - 馬頭側影：額頭到口鼻落差 13 mm，有立耳。
+  - 三綹往後飄的長鬃。
+  - 改成黑繪陶配色：上黑下赭紅。
+  - 前輪拱包住輪胎，加斜裙；尾翼降到座艙頂高度。
+- minotaur：額脊把眼、角、鼻環集中成一張臉；新月形金角往外上翹；加壁畫藍斜裙。
+- yaga-hut：
+  - 立體雞腳：一隻前跨、一隻後蹬，跗蹠是亮黃橙。
+  - 深炭灰側裙；座艙改成較深的琥珀色，自發光減半。
+  - 木瓦改深炭灰，加 izba 藍。
+- firebird：側面覆羽改成往後上斜排、前大後小的羽列；尾羽加寬並上翹，孔雀眼放大。
+- 合併後 body-check：11 款 26 mm 合法；俯視最大 0.844（yaga × tortoise-dome），其餘都 ≤ 0.842。
+- Blender 3 視角出圖；評審資料夾 `shared/reviews/iter-121/`，iter-121 與 iter-122 共 11 款一起做逐款 A/B。
