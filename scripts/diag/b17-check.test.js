@@ -1,7 +1,7 @@
 import { test } from 'vitest';
-import { listBodies } from '<專案根目錄>/app/src/bodies/index.js';
-import { bodyIoU } from '<專案根目錄>/app/src/bodies/silhouette.js';
-import { assemble, loadConfig } from '<專案根目錄>/app/src/assembly.js';
+import { listBodies } from '../../src/bodies/index.js';
+import { bodyIoU } from '../../src/bodies/silhouette.js';
+import { assemble, loadConfig } from '../../src/assembly.js';
 test('check', () => {
   const bodies = listBodies();
   const focus = ['body-griffin-vane', 'body-fastback-cabin', 'body-lowline-flat', 'body-zeppelin-xtail'];
