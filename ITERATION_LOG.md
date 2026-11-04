@@ -3592,3 +3592,17 @@
     - 原本想做雷神之鎚：ADL 仇恨符號資料庫收錄被挪用的 Thor's hammer → 依 GOAL 黑名單原則換成 Freyr 的金鬃野豬；北歐款一律不用盧恩字母。
   - 本輪車殼 subagent 2 個（worktree 建在 app repo：`iter112-greek`、`iter112-norse`）：trojan-horse＋cerberus-trihead、drakkar-prow＋gullinbursti-boar。預期：四款 26 mm 合法、trojan-horse / drakkar-prow 31 mm 不切輪拱合法、車殼 ≤ 17.5 g（整車 ≤ 133 g）、對既有 19 款 IoU < 0.85。
   - 概念圖：本階段時間有限，改用「文字＋手寫三視圖 SVG」（GOAL 允許的替代做法），不呼叫 AI 生圖。
+- 基準：主線 `c78a4a8` score.mjs 14:00–14:09 **20/20**；基準外觀評審（`shared/reviews/iter-112-baseline/REVIEW.md`，19 款陣容＋Blender）7 / 7 / 8 / 7.5 / 7 / 7 = **7.25**、總分 **86.25**（錨點 5.83）。
+- 研究：`shared/design/MYTH_RESEARCH.md`（8 體系、40 主題、ADL 仇恨符號 11 條、市售車殼撞名）。依研究修正主題：
+  - 龍首長船 → **蛇首長船** `body-serpent-longship`（Oseberg 船首是盤捲蛇頭，龍頭只見於文獻；避開 Dragon Jr.）。
+  - 九尾狐取材**民間傳說妖狐**，不用稻荷朱白、鳥居、寶珠；不用金毛 / 橘色（避開寶可夢、火影）。
+  - 鹿款改名 **Gundestrup 雄鹿**（Wicca 有角神仍有信仰；鹿角不可成 Y 字，ADL Life Rune）。
+  - 鯤鵬：車上不寫字（處理器品牌）、不做紅色海豚形（《大魚海棠》）。
+- 車殼 subagent（worktree 都建在 app repo）：希臘 trojan-horse / cerberus-trihead、北歐 serpent-longship / gullinbursti-boar、中國 kunpeng＋中美洲 quetzal-serpent、埃及 khepri-scarab＋日本 kitsune-ninetail。合併方式：cherry-pick，`src/bodies/index.js` 註冊衝突用 `/tmp/mini4wd-p8/resolve_index.py` 合併兩邊。
+- 測試調整（理由查證過，非放寬）：
+  - `P18_arch_cut` 原本寫死「31 mm 輪原本被擋 9 款」，三頭犬 / 羽蛇只做 26 mm 輪 → 改成「既有 19 款（非 myth）仍剛好 9 款」，神話款另外計數；逐款斷言不變。
+  - 同一測試在 25 款時超過 120 s 逾時（工作量隨款數線性增加，單跑時通過）→ 依規定不延長逾時，改成每款一個測試（`test.each`），最後一個測試檢查款數。
+- 計分：4 款時 19/20（P18 款數寫死 10≠9）→ 修正；6 款時 19/20（P18 逾時）→ 拆分；**8 款時 15:39–15:54 20/20**。
+- 8 款 body-check（26 mm 全合法；31 mm 不切輪拱合法：trojan-horse、serpent-longship、gullinbursti-boar、kunpeng、khepri-scarab、kitsune-ninetail）：車殼 10.5–17.35 g、整車 126.2–133.1 g（26 mm）、對全部車殼最大 IoU 0.81（kitsune × trail-canopy 俯視）。
+- 整車質量 135 g 上限依 SPEC 1.12 以預設組裝（26 mm）判定（既有 dartfrog-hop 換 31 mm 輪也是 138.4 g）；kitsune 31 mm 135.47 g、sleipnir 31 mm 136.24 g 記錄在 1.14b，不另判違規。
+- 外觀初看（主 agent，Blender front34）：木馬馬頭偏小；三頭犬三吻像管子、黑色亮面有波浪反光；長船船身窄、四輪外露（像船放在底盤上）；羽蛇方頭＋白牙像鱷魚；鯤鵬魚眼像圓形徽章。等評審意見後在 iter-113 修。
