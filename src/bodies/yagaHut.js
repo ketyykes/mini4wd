@@ -154,7 +154,7 @@ const materials = () => ({
   // 側裙（腰部遮住底盤的踏板）：深炭灰
   sill: namedMaterial('paint-sill-charcoal', { color: 0x2c2f33, roughness: 0.62, clearcoat: 0.08 }),
   // iter-127：往後飄的煙流（霧面暖灰白）
-  smoke: namedMaterial('paint-smoke-ash', { color: 0xd6d1c8, roughness: 0.92, clearcoat: 0.0 }),
+  smoke: namedMaterial('paint-ash-plume', { color: 0xd6d1c8, roughness: 0.92, clearcoat: 0.0 }),
   hole: namedMaterial('plastic-chimney-black', { color: 0x120d0a, roughness: 0.9 }),
   inner: namedMaterial('shell-inner-dark', { color: 0x1e1712, roughness: 0.85, side: THREE.BackSide }),
   edge: namedMaterial('shell-edge-wood', { color: 0x4a2f1b, roughness: 0.7, side: THREE.DoubleSide }),
