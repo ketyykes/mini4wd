@@ -7,6 +7,7 @@
 // 輪拱後緣加獅爪（黑趾墊＋白爪尖）、犬眼改餘燼色自發光、蛇尾鰭壓低貼背往後平飄。
 // iter-121 第二版：車尾加貼身微拱寬尾翼（翼展 ±30）＋蛇頭剪影端板（餘燼色眼），蛇尾改當尾翼中央支柱；前輪後方側面進氣口（黑口＋餘燼色發光內緣）；
 // 側面黑 / 赭紅改成從鼻尖往後上掃的斜向分割（白色細線）；三頭再往前下壓、前段再低 1.2–1.7 mm。
+// iter-127：拿掉架高薄翼與高端板，改成根部埋進車尾殼面、往後上揚的蛇尾翼（鴨尾式，頂 34.8 ≤ 座艙罩頂 35.7），翼尖接低矮蛇頭側片；蛇尾改成貼背的脊。
 // iter-124（評審修正）：輪拱後緣的趾墊貼紙拿掉（斜分割線只剩乾淨直線），改成每個輪拱後緣 3 片實體爪形導流片（黑釉＋白爪尖）；
 // 進氣口加霧面黑凹口內面＋槍灰導流柵＋陶土色刻線框，往後移 3 mm。
 // 塗裝：黑繪陶風格——赭紅陶土（霧面）＋半光澤黑釉（緞面，iter-113）、刻線（露出陶土色的細線）、白 / 深紅加彩、前胸項圈與回紋飾帶；全為自創，不含任何文字或商標。
@@ -405,7 +406,49 @@ const headMatrix = (pose) =>
 /** 蛇形尾鰭路徑（從座艙後方的背上順著往上彎、再往後微垂；根部沿背脊拉長融進殼面） */
 // iter-121：壓低成貼背的蛇形尾翼（頂 41.4 → 約 36），往後平飄，不再像提把
 // iter-121 第二版：蛇尾往後上升到尾翼下方，當尾翼的中央支柱，蛇頭從尾翼後緣下方探出
-const TAIL_PATH = [[-36, 28.4, 0], [-46, 30.4, 0], [-54, 32.8, 0], [-60, 34.3, 0], [-65, 34.6, 0], [-68.4, 34.0, 0]];
+// iter-127：蛇尾不再當尾翼的中央支柱，改成貼著背脊、沿蛇尾翼中線往後上揚的脊（頂 ≤ 座艙罩頂 35.8）
+const TAIL_PATH = [[-36, 29.2, 0], [-46, 29.6, 0], [-54, 30.2, 0], [-60, 31.4, 0], [-65, 32.7, 0], [-69.6, 33.9, 0]];
+
+/** @type {(x: number, z: number) => number} 殼頂面高度（頂拱公式，x 夾在殼長內） */
+const deckY = (x, z) => {
+  const xc = Math.max(-71, x);
+  const yC = P.yC(xc);
+  const yE = Math.min(P.yE(xc), yC - 0.8);
+  const u = Math.min(1, Math.abs(z) / P.hw(xc));
+  return yE + (yC - yE) * (1 - u ** 2.4);
+};
+
+/**
+ * 等厚翼板：中面點 mid(u, v)（u ∈ [−1, 1] 展向、v ∈ [0, 1] 前緣 → 後緣），上下各偏 thick / 2，四周補側壁 → 封閉網格
+ * @type {(o: { nU: number, nV: number, mid: (u: number, v: number) => number[], thick: number }) => THREE.BufferGeometry}
+ */
+const bentPlate = (o) => {
+  /** @type {(i: number, j: number, sg: number) => number[]} */
+  const at = (i, j, sg) => {
+    const [x, y, z] = o.mid(lerp(-1, 1, i / o.nU), j / o.nV);
+    return [x, y + sg * 0.5 * o.thick, z];
+  };
+  /** @type {number[]} */
+  const pos = [];
+  /** @type {(a: number[], b: number[], c: number[], d: number[]) => void} */
+  const quad = (a, b, c, d) => pos.push(...a, ...b, ...c, ...a, ...c, ...d);
+  for (let i = 0; i < o.nU; i++) {
+    for (let j = 0; j < o.nV; j++) {
+      quad(at(i, j, 1), at(i, j + 1, 1), at(i + 1, j + 1, 1), at(i + 1, j, 1));
+      quad(at(i, j, -1), at(i + 1, j, -1), at(i + 1, j + 1, -1), at(i, j + 1, -1));
+    }
+    quad(at(i, 0, -1), at(i, 0, 1), at(i + 1, 0, 1), at(i + 1, 0, -1));
+    quad(at(i, o.nV, 1), at(i, o.nV, -1), at(i + 1, o.nV, -1), at(i + 1, o.nV, 1));
+  }
+  for (let j = 0; j < o.nV; j++) {
+    quad(at(0, j, 1), at(0, j, -1), at(0, j + 1, -1), at(0, j + 1, 1));
+    quad(at(o.nU, j, -1), at(o.nU, j, 1), at(o.nU, j + 1, 1), at(o.nU, j + 1, -1));
+  }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  g.computeVertexNormals();
+  return g;
+};
 
 /** 座艙罩（暗紅煙燻，中後段）：x 12 → −32 */
 const CANOPY = {
@@ -436,7 +479,7 @@ const CONFIG = {
   form: 'tri-snout',
   roof: 'canopy',
   wing: 'serpent-tail',
-  theme: '前低後高的楔形寬肩全罩、三顆犬頭排成中間最前的箭頭隊形當前保桿（張口往前衝、耳朵後貼、餘燼色發光眼）、輪拱後緣獅爪、中後段暗紅煙燻座艙罩、貼背往後平飄的蛇形尾翼；黑繪陶的赭紅＋緞面黑釉＋刻線',
+  theme: '前低後高的楔形寬肩全罩、三顆犬頭排成中間最前的箭頭隊形當前保桿（張口往前衝、耳朵後貼、餘燼色發光眼）、輪拱後緣獅爪、中後段暗紅煙燻座艙罩、從車尾殼面長出、往後上揚的貼身蛇尾翼（翼尖收成蛇頭側片）；黑繪陶的赭紅＋緞面黑釉＋刻線',
   material: 'ABS',
   density_g_cm3: 1.05,
   wallThickness_mm: 0.8,
@@ -529,7 +572,7 @@ const CONFIG = {
 
     // ── 蛇形尾鰭（尾翼，實體件）：扁平斷面（左右 1.2、上下 3.4），從背上往上彎再往後；尾端蛇頭；尾下一片鰭膜連到背上 ──
     parts.push({
-      geometry: smoothNormals(sweepEllipse(TAIL_PATH, 40, (t) => [lerp(1.2, 0.85, t), lerp(3.4, 1.6, t)], 16)),
+      geometry: smoothNormals(sweepEllipse(TAIL_PATH, 40, (t) => [lerp(1.2, 0.85, t), lerp(1.8, 1.1, t)], 16)),
       mat: 'black2',
       solid: true,
       outline: true,
@@ -540,12 +583,12 @@ const CONFIG = {
       const g = new THREE.SphereGeometry(1, 18, 12);
       g.scale(2.4, 1.5, 1.7);
       g.rotateZ(0.12);
-      g.translate(-69.4, 33.3, 0);
+      g.translate(-70.6, 33.7, 0);
       parts.push({ geometry: g, mat: 'black2', solid: true, outline: true, name: 'serpent-head' });
       const eye = new THREE.SphereGeometry(0.55, 10, 8);
       eye.scale(1, 1, 0.6);
       parts.push({
-        geometry: mergeGeos([-1, 1].map((sg) => eye.clone().translate(-70, 33.9, sg * 1.45))),
+        geometry: mergeGeos([-1, 1].map((sg) => eye.clone().translate(-71.2, 34.3, sg * 1.45))),
         mat: 'addedWhite',
         solid: true,
         name: 'serpent-eyes',
@@ -560,7 +603,7 @@ const CONFIG = {
         const p = curve.getPointAt(t);
         const tg = curve.getTangentAt(t);
         const ring = new THREE.TorusGeometry(1, 0.2, 6, 28);
-        ring.scale(lerp(1.2, 0.85, t) + 0.1, lerp(3.4, 1.6, t) + 0.1, 1);
+        ring.scale(lerp(1.2, 0.85, t) + 0.1, lerp(1.8, 1.1, t) + 0.1, 1);
         // 環面法線對齊尾鰭切線
         ring.rotateY(Math.PI / 2);
         ring.applyMatrix4(new THREE.Matrix4().makeRotationZ(Math.atan2(tg.y, tg.x)));
@@ -570,39 +613,59 @@ const CONFIG = {
       parts.push({ geometry: mergeGeos(bands), mat: 'clay2', solid: true, name: 'serpent-bands' });
     }
 
-    // ── iter-121 第二版：貼身寬尾翼＋蛇頭端板 ──
-    // 尾翼：微拱薄翼（弦 x −57.5 → −68.5、翼展 ±30、厚 1.2，後緣微翹），翼頂 37.1（比座艙罩頂高約 1.5 mm，V7），中央由蛇尾撐住
+    // ── iter-127 蛇尾翼（評審「黑殼＋雙柱架高、帶端板的尾翼離 Black Saber 越來越近、有 GT 翼感」）──
+    //    拿掉架高的薄翼與高端板：翼板根部埋進車尾殼面（x −53，上表面低於殼面 0.1 mm），往後上揚成鴨尾，
+    //    後緣中央 −70.8 頂 34.8（座艙罩頂 35.8 以下）；展向跟著頂拱下垂，翼尖收窄往前掠，像一條壓扁的蛇尾；
+    //    翼尖往下接一片低矮的蛇頭剪影側片（吻尖朝後、餘燼色眼），下緣埋進車尾肩稜，和殼面連成一體
     {
-      const foil = [
-        [-57.5, 35.9],
-        [-61, 36.6],
-        [-68.5, 37.1],
-        [-68.5, 35.9],
-        [-61, 35.4],
-      ];
-      parts.push({ geometry: finPlate(foil, 0, 60), mat: 'black2', solid: true, outline: true, name: 'tail-wing' });
-      // 端板：側視是往前張口的蛇頭剪影（吻尖朝前、頭頂往後收），厚 1.2，貼在翼端外側
-      const plate = [
-        [-54.5, 35.4],
-        [-57, 39],
-        [-63, 39.8],
-        [-69.6, 38.8],
-        [-69.6, 33.4],
-        [-64, 32.6],
-        [-58.5, 33.6],
+      /** @type {(u: number) => number} 前緣 x */
+      const le = (u) => -53 - 2.5 * u * u;
+      /** @type {(u: number) => number} 後緣 x：中央最後、翼尖往前收（蛇尾尖形平面） */
+      const te = (u) => -70.8 + 3.6 * Math.abs(u) ** 1.6;
+      /** @type {(v: number) => number} 半翼展：根部 22.5 → 後緣 24.6 */
+      const span = (v) => lerp(22.5, 24.6, v);
+      /** @type {(u: number) => number} 後緣中面高度：中央 34.2 → 翼尖 31.6 */
+      const yTe = (u) => 34.2 - 2.6 * u * u;
+      parts.push({
+        geometry: bentPlate({
+          nU: 16,
+          nV: 6,
+          thick: 1.2,
+          mid: (u, v) => {
+            const x = lerp(le(u), te(u), v);
+            const z = u * span(v);
+            const yRoot = deckY(le(u), z) - 0.7;
+            return [x, lerp(yRoot, yTe(u), v ** 1.5), z];
+          },
+        }),
+        mat: 'black2',
+        solid: true,
+        outline: true,
+        name: 'serpent-tail-wing',
+      });
+      // 翼尖下方的蛇頭側片：上緣貼翼尖下表面、下緣埋進肩稜、後端是往後探的蛇吻
+      const zt = 24.0;
+      /** @type {number[][]} 側視輪廓（x, y） */
+      const head = [
+        [-60.5, deckY(-60.5, zt) - 0.6],
+        [-60.5, 30.8],
+        [-66.6, 31.6],
+        [-69.4, 30.6],
+        [-69.8, 29.4],
+        [-68.4, deckY(-68.4, zt) - 0.6],
       ];
       parts.push({
-        geometry: mergeGeos([finPlate(plate, 30.6, 1.2), finPlate(plate, -30.6, 1.2)]),
+        geometry: mergeGeos([finPlate(head, zt, 1.2), finPlate(head, -zt, 1.2)]),
         mat: 'black2',
         solid: true,
         outline: true,
         name: 'serpent-endplates',
       });
-      // 端板蛇眼（餘燼色發光小點，貼在端板外側）
+      // 蛇頭側片的眼（餘燼色發光小點，貼在側片外側）
       const eye = new THREE.SphereGeometry(0.6, 10, 8);
       eye.scale(1.2, 1, 0.5);
       parts.push({
-        geometry: mergeGeos([-1, 1].map((sg) => eye.clone().translate(-58, 37.4, sg * 31.25))),
+        geometry: mergeGeos([-1, 1].map((sg) => eye.clone().translate(-67.4, 30.4, sg * (zt + 0.65)))),
         mat: 'eyeGlow',
         solid: true,
         name: 'endplate-eyes',
@@ -803,7 +866,7 @@ const CONFIG = {
   src: {
     density_g_cm3: 'SPEC 1.14：ABS 約 1.05 g/cm³（推估）',
     wallThickness_mm: '推估：射出 ABS 殼 0.8 mm（同其他車殼）；座艙罩同厚度以殼面積計入質量',
-    geometry: '本檔站位產生器 P（推估）：iter-121 車殼外框長 150.8（蛇頭 x −71.8 → 中間犬頭鼻墊 79.0）、殼頂 29.4（前後輪上方 30.4）、鼻端 20.5、座艙罩頂約 36.8、蛇尾鰭頂約 36；俯視楔形：肩寬 95.2、後輪上方 58（後輪外側露出）；SPEC 1.14a 車殼外框長 ≤ 153 mm、半寬 ≤ 48.0',
+    geometry: '本檔站位產生器 P（推估）：iter-121 車殼外框長 150.8（蛇頭 x −71.8 → 中間犬頭鼻墊 79.0）、殼頂 29.4（前後輪上方 30.4）、鼻端 20.5、座艙罩頂約 36.8、蛇尾鰭頂約 36（iter-127：座艙罩頂 35.7、蛇尾翼頂 34.8、蛇頭 x −73.0）；俯視楔形：肩寬 95.2、後輪上方 58（後輪外側露出）；SPEC 1.14a 車殼外框長 ≤ 153 mm、半寬 ≤ 48.0',
     wheelArches: '前後 R15.2（26 mm 輪胎半徑 13 + 2.2 mm，同 owl-hush / mantis-scythe），cutZFrom 23.8；只對應 26 mm 輪（低車身）',
     snouts: '三顆犬頭的上半顆是壁厚 1.4 mm（× 縮放 1.04–1.12）、後端開口的中空射出件，下顎、耳、鼻墊、口內、眼、犬齒與蛇形尾鰭為實心 ABS 件；質量 = 封閉體積 × 1.05 g/cm³（推估）',
     mounts: '對齊 chassis-midship 的車殼安裝點（SPEC 1.14）',

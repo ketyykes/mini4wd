@@ -131,6 +131,9 @@ const materials = () => ({
   // iter-116 戰車輪浮雕：淺橡木輪輞與輻條
   dWheel: decalMaterial('decal-oak-wheel', { color: 0xa47448, roughness: 0.66 }),
   mount: namedMaterial('abs-mount-black', { color: 0x222326, roughness: 0.6 }),
+  // iter-127（評審「最不炫 3 款」「平甲板中段仍空」）：引擎蓋中央的鍛銀賽車條（金屬，和全車木褐拉開）＋輪拱的雷光藍發光縫
+  dSilver: decalMaterial('decal-forged-silver', { color: 0xc9cdd3, metalness: 0.75, roughness: 0.28, clearcoat: 0.3 }),
+  dGlow: decalMaterial('decal-thunder-glow', { color: 0x58b4ff, emissive: 0x2f8cff, emissiveIntensity: 0.9, roughness: 0.3 }),
 });
 
 // ---------------------------------------------------------------------------
@@ -544,6 +547,48 @@ export const tanngrisnirChariotBody = makePolyBody({
       }
     }
     parts.push({ geometry: mergeGeos(rivets), mat: 'bronze', solid: true, name: 'bronze-rivets' });
+    // iter-127 鍛銀賽車條：引擎蓋中央從座艙前緣（x −4，半寬 2.2）往車頭展開成矛尖形（x 57，半寬 6），外緣 0.6 mm 青銅收邊；
+    // 直邊、單一條、不做閃電折線（MYTH_RESEARCH H9；也避開「銀殼＋藍閃電」的劇中車組合），填滿原本空著的平甲板中段
+    /** @type {(x: number, z: number) => number} 賽車條外形距離（負值 = 條內） */
+    const silverSd = (x, z) => {
+      const w = lerp(2.2, 6, Math.max(0, Math.min(1, (x + 4) / 61)));
+      // 車頭端收成尖角：x 50 之後半寬再乘上往 x 59 收尖的比例
+      const tip = Math.max(0, Math.min(1, (59 - x) / 9));
+      return Math.max(Math.abs(z) - w * Math.min(1, 0.35 + tip), -4 - x, x - 59);
+    };
+    /** @type {(x: number, y: number, z: number) => boolean} 引擎蓋頂面 */
+    const onHood = (x, y, z) => x > -5 && Math.abs(z) < Z_FENDER - 2 && y > P.yR(x) - 0.5 + (P.yA(x) < P.yR(x) ? P.yA(x) - P.yR(x) : 0) && DECK.sd(x, y, z) > 1.2;
+    parts.push({
+      geometry: kit.decal((x, y, z) => (onHood(x, y, z) ? -silverSd(x, z) - 0.6 : -1), { offset: 0.24 }),
+      mat: 'dSilver',
+      name: 'decal-hood-silver-stripe',
+    });
+    parts.push({
+      geometry: kit.decal((x, y, z) => {
+        if (!onHood(x, y, z)) {
+          return -1;
+        }
+        const d = silverSd(x, z);
+        return Math.min(-d, d + 0.6);
+      }, { offset: 0.22 }),
+      mat: 'dBronze',
+      name: 'decal-hood-stripe-edge',
+    });
+    // iter-127 雷光藍發光縫：前後輪拱切口內緣一道 0.55 mm 的發光線（在鍛鐵輪拱箍內側，鉚釘之內）
+    parts.push({
+      geometry: kit.decal((x, y, z) => {
+        if (!onSide(x, z)) {
+          return -1;
+        }
+        let d = Infinity;
+        for (const a of ARCHES) {
+          d = Math.min(d, Math.abs(Math.hypot(x - a.x, y - a.y) - a.radius - 0.35) - 0.28);
+        }
+        return -d;
+      }, { offset: 0.4 }),
+      mat: 'dGlow',
+      name: 'decal-arch-thunder-glow',
+    });
     return parts;
   },
   src: {

@@ -32,7 +32,9 @@ const P = {
   // 兩輪之間 29 的細腰 → 後輪上方最寬的後翼子板 43.5 → 平切的寬車尾 31（kamm tail）；俯視避開 tortoise-dome（四輪等寬凸包）、skeleton（等寬直框）、mantis-scythe（前寬後窄）的輪廓（IoU）
   hw: monoCurve(XS, [27, 33.5, 40, 41, 37.5, 30.5, 29, 29.5, 33.5, 37.4, 29.5, 15.5, 8.2, 5.5]),
   // 屋脊（中線殼頂）：iter-120 前低後高的楔形車頂——鼻端 18.4 一路往後升到後輪上方 35.6（原本是座艙段 41.5 的屋脊駝峰）
-  yTop: monoCurve(XS, [32.6, 34, 34.6, 34.6, 34.4, 33.8, 33, 32, 31.1, 30.2, 27.6, 24.2, 20.6, 17.6]),
+  // iter-127（評審連兩輪「仍是平板車」）：屋脊改成從車尾一路往前下壓的楔形——車尾 38 → 座艙 33.4 → 前輪上方 28.6 → 鼻端 16，
+  // 側視像一間往前衝、低頭的小屋（原本 34.6 一路平到前輪才降）；屋簷 yS 不動（前輪擋泥板隆起與輪拱間隙不變）
+  yTop: monoCurve(XS, [36.2, 37.6, 38, 37.4, 36.4, 35, 33.4, 31.6, 29.8, 28.6, 26.4, 23, 19.4, 16]),
   // 屋簷外緣高度（頂面與側面交界＝肩線）：前輪上方隆起成擋泥板（28.2，V1），往前壓到鼻端 16.6
   yS: monoCurve(XS, [27.4, 28.4, 29.2, 29.6, 29.2, 28.4, 27.6, 27, 27.2, 28.2, 25.6, 21.8, 18.2, 15.8]),
   // 側裙（最下一根圓木）下緣：車尾封口下緣 14.2（遮住後齒輪箱）
@@ -112,6 +114,8 @@ const logIndex = (x, y) => Math.floor((yWallTop(x) - y) / logH(x));
 
 /** @type {number} 木瓦直列的列距（iter-124：固定 |z| 間距，從屋脊往外量；評審「瓦片紋在曲面上扭成波浪」→ 列線是俯視的直線，不再跟著屋簷外緣彎） */
 const SHINGLE_ROW = 3.4;
+/** @type {number} iter-127：鼻端楔形段起點 x（之前不畫瓦縫與深色瓦） */
+const NOSE_PLAIN_X = 49;
 /** @type {number} 每片木瓦沿 x 的長度（橫向搭接線間距） */
 const SHINGLE_W = 3.6;
 /** @type {(x: number, z: number) => { col: number, colLine: number, courseLine: number, course: number }} 直列木瓦座標：列編號、到最近列線距離、到最近搭接線距離、搭接編號（相鄰列錯開半片） */
@@ -149,6 +153,8 @@ const materials = () => ({
   clawTip: namedMaterial('paint-claw-horn', { color: 0x2b1e14, roughness: 0.5, clearcoat: 0.1 }),
   // 側裙（腰部遮住底盤的踏板）：深炭灰
   sill: namedMaterial('paint-sill-charcoal', { color: 0x2c2f33, roughness: 0.62, clearcoat: 0.08 }),
+  // iter-127：往後飄的煙流（霧面暖灰白）
+  smoke: namedMaterial('paint-smoke-ash', { color: 0xd6d1c8, roughness: 0.92, clearcoat: 0.0 }),
   hole: namedMaterial('plastic-chimney-black', { color: 0x120d0a, roughness: 0.9 }),
   inner: namedMaterial('shell-inner-dark', { color: 0x1e1712, roughness: 0.85, side: THREE.BackSide }),
   edge: namedMaterial('shell-edge-wood', { color: 0x4a2f1b, roughness: 0.7, side: THREE.DoubleSide }),
@@ -274,7 +280,8 @@ const buildBargeboards = (xFace, dir) => {
  */
 const buildExhaust = () => {
   const a = new THREE.Vector3(-35.5, P.yTop(-35.5) - 1.2, 0);
-  const b = new THREE.Vector3(-55, 38.6, 0);
+  // iter-127：屋脊後段升高，管口跟著抬到 y 42.4（仍往後傾）
+  const b = new THREE.Vector3(-57, 42.4, 0);
   const dir = b.clone().sub(a);
   const len = dir.length();
   dir.normalize();
@@ -288,6 +295,27 @@ const buildExhaust = () => {
     return g;
   };
   return { pipe: seg(2.6, 2.2, len - 1.2, (len - 1.2) / 2), ring: seg(2.75, 2.75, 1.4, len - 0.9), flue: seg(1.6, 1.6, 0.3, len - 0.05) };
+};
+
+/**
+ * 往後飄的煙流（iter-127）：從排氣管口往後、微微上升的 3 團漸小的煙（沿 x 拉長的橢球，彼此重疊成一道煙尾），
+ * 側視讀成「奔跑中的小屋冒著煙」；最後一團停在車尾封口 x −67 之內
+ * @type {() => THREE.BufferGeometry}
+ */
+const buildSmoke = () => {
+  /** @type {THREE.BufferGeometry[]} */
+  const geos = [];
+  for (const [x, y, r, sx] of [
+    [-59.4, 44.0, 2.3, 1.35],
+    [-62.8, 45.0, 1.9, 1.5],
+    [-65.6, 45.5, 1.4, 1.6],
+  ]) {
+    const g = new THREE.SphereGeometry(r, 12, 8);
+    g.scale(sx, 1, 1);
+    g.translate(x, y, 0);
+    geos.push(g);
+  }
+  return mergeGeos(geos);
 };
 
 /**
@@ -515,6 +543,7 @@ export const yagaHutBody = makePolyBody({
     parts.push({ geometry: ex.pipe, mat: 'brick', solid: true, outline: true, name: 'exhaust-pipe' });
     parts.push({ geometry: ex.ring, mat: 'white', solid: true, outline: true, name: 'exhaust-ring' });
     parts.push({ geometry: ex.flue, mat: 'hole', solid: true, name: 'exhaust-flue' });
+    parts.push({ geometry: buildSmoke(), mat: 'smoke', solid: true, outline: true, name: 'exhaust-smoke' });
 
     // ---- 貼紙 ----
     // 圓木接縫（苔蘚填縫，深色 0.7 mm）
@@ -572,7 +601,8 @@ export const yagaHutBody = makePolyBody({
     // 木瓦縫（iter-124 直列瓦）：沿車長方向的直列縫（固定 |z|）＋每片之間的橫向搭接縫（固定 x，相鄰列錯開半片），線寬 0.6
     parts.push({
       geometry: kit.decal((x, y, z) => {
-        if (!onRoof(x, y, z)) {
+        // iter-127（評審「鼻端瓦片屋頂邊緣呈鋸齒、往下翻，像紙邊」）：楔形鼻段（x > 49）不畫瓦縫，鼻端是一片乾淨的炭灰屋面
+        if (!onRoof(x, y, z) || x > NOSE_PLAIN_X) {
           return -1;
         }
         const g = shingleGrid(x, z);
@@ -585,7 +615,7 @@ export const yagaHutBody = makePolyBody({
     // 深色木瓦（直列瓦每 3 片一片深色；只畫在瓦縫之內）
     parts.push({
       geometry: kit.decal((x, y, z) => {
-        if (!onRoof(x, y, z)) {
+        if (!onRoof(x, y, z) || x > NOSE_PLAIN_X) {
           return -1;
         }
         const g = shingleGrid(x, z);

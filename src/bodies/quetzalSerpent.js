@@ -583,7 +583,10 @@ export const quetzalSerpentBody = makePolyBody({
     // iter-124（評審：平躺的尾羽在前 3/4 幾乎看不到）：外側兩片沿羽軸往上翹 roll 度（20°），羽尖分成海菊蛤紅帶＋綠松石尖兩個明顯色塊
     // iter-125（評審：前 3/4 仍幾乎看不到尾羽）：外側兩片翹 20° → 33°、次外側兩片也翹 12°（後視成一道往上張的羽扇），
     // 羽尖海菊蛤紅帶加寬（0.6–0.76 L → 0.48–0.76 L）
-    const FAN = { x: -51, angles: [-50, -25, 0, 25, 50], len: [14, 17, 20, 17, 14], tilt: 7, roll: [33, 12, 0, 12, 33] };
+    // iter-127（評審：「羽扇比基準小，前 3/4 像一朵小花」→「再加大一圈、外側羽片加長、加一片中翹的綠松石羽」）：
+    // 羽根往前移 1 mm（x −51 → −50）、5 片加長（14 / 17 / 20 → 19 / 21 / 22）、加寬（半寬 3.6 → 4.2）、張角加大（±25 / ±50 → ±29 / ±58）、
+    // 外側再翹（33° → 36°、次外側 12° → 15°）；仍貼著車尾往後掃（整扇 7° 後揚），不立起
+    const FAN = { x: -50, angles: [-58, -29, 0, 29, 58], len: [19, 21, 22, 21, 19], w: 4.2, tilt: 7, roll: [36, 15, 0, 15, 36] };
     /** @type {THREE.BufferGeometry[]} */
     const plumes = [];
     /** @type {THREE.BufferGeometry[]} */
@@ -605,7 +608,7 @@ export const quetzalSerpentBody = makePolyBody({
         [0.48 * L, 0.76 * L, plumeBands],
         [0.76 * L, L, plumeTips],
       ]) {
-        const g = flatPlate(toPlan(featherOutline(L, 3.6, a0, a1)), 0, 1.2);
+        const g = flatPlate(toPlan(featherOutline(L, FAN.w, a0, a1)), 0, 1.2);
         if (FAN.roll[i]) {
           // 外側羽片：繞「過羽根、俯視垂直於羽軸」的水平軸轉，羽尖往上翹
           const axis = new THREE.Vector3(perp[0], 0, perp[1]);
@@ -620,6 +623,21 @@ export const quetzalSerpentBody = makePolyBody({
         out.push(g);
       }
     });
+    // iter-127 中翹的綠松石羽：羽扇中央上方一片往後上揚 20° 的短羽（長 17、半寬 3.4），羽根在 x −46.5、埋進殼面；
+    // 羽身綠松石、羽尖一段海菊蛤紅帶＋金屬綠尖（和下層 5 片的配色反過來），前 3/4 在座艙罩後方露出一道往後掃的羽脊
+    const CREST = { x: -46.5, len: 17, w: 3.4, tilt: 20 };
+    const yCrest = top(CREST.x) - 0.9;
+    for (const [a0, a1, out] of [
+      [0, 0.6 * CREST.len, plumeTips],
+      [0.6 * CREST.len, 0.8 * CREST.len, plumeBands],
+      [0.8 * CREST.len, CREST.len, plumes],
+    ]) {
+      const g = flatPlate(featherOutline(CREST.len, CREST.w, a0, a1).map(([b, a]) => [CREST.x - a, b]), 0, 1.2);
+      g.translate(-CREST.x, 0, 0);
+      g.rotateZ((-CREST.tilt * Math.PI) / 180);
+      g.translate(CREST.x, yCrest, 0);
+      out.push(g);
+    }
     parts.push({ geometry: mergeGeos(plumes), mat: 'plume', solid: true, outline: true, name: 'quetzal-plume-fan' });
     parts.push({ geometry: mergeGeos(plumeBands), mat: 'red2', solid: true, outline: true, name: 'quetzal-plume-bands' });
     parts.push({ geometry: mergeGeos(plumeTips), mat: 'turq2', solid: true, outline: true, name: 'quetzal-plume-tips' });
