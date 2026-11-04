@@ -3620,3 +3620,13 @@
 - 計分：主線 `c53d1db`（14 款）score.mjs 16:38–16:52 **20/20**。
 - Blender 5 視角（64 samples）：mushussu-gate、gundestrup-stag、tanngrisnir-chariot、heimdall-horn、cerberus-trihead、quetzal-serpent、trojan-horse、minotaur-maze 全部輸出；陣容圖 `render/out/lineup_myth_{greek,norse,others}.png`、`lineup_myth.png`。
 - 保留：分數持平 20/20，第八階段新增款數 0 → 14、P20 第八階段定義通過。
+- 外觀評審（`shared/reviews/iter-113/REVIEW.md`，神話 14 款首次）：6 / 7 / 8 / 7 / 7 / 7 = **7.00**、總分 **85.00**（基準 86.25）；必修（原創性 / 仇恨符號 / 宗教）無；不看檔名約 9 / 14 猜得出主題。第 1 項比例 6（基準 7）、第 4 項完成度 7（基準 7.5）低於基準 → iter-114 修。
+
+## iter-114（開始 2026-11-04 17:35，TZ=Asia/Taipei date）：依評審修比例與完成度
+
+- 計畫：三個修正 subagent（worktree p8-h / p8-i / p8-j，各自只改分到的 body 檔），規格 `/tmp/mini4wd-p8/batch6.md`：
+  - H：mushussu-gate（方磚 → 翼子板包＋車頭車尾斜面、封住車尾、穆修胡修浮雕重畫）、minotaur-maze（厚平板 → 有車頭車尾的流線殼、牛頭特徵）。
+  - I：serpent-longship（側裙蓋住輪胎上半與電池艙、船首蛇頭）、tanngrisnir（車頭缺口）、kunpeng（側面中段補殼、尾翼加厚、輪拱條紋）、quetzal（羽冠加厚、前輪拱、頂面紋路）。
+  - J：sleipnir（立體浮雕八足、車頭折痕）、gullinbursti（主體金色、鬃毛均勻）、kitsune（耳朵加厚）、trojan / gundestrup / kitsune 輪拱條紋、gundestrup 銀面波浪反光。
+  - 斯拉夫組（G，iter-113 晚段開工）：firebird、yaga-hut，新體系 `slavic`。
+- 預期：20/20；外觀六項都不低於基準 7 / 7 / 8 / 7.5 / 7 / 7。下次評審加 bottom 視角讓第 6 項有依據。
