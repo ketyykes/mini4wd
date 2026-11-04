@@ -3861,3 +3861,12 @@
   - quetzal：羽扇面積約 1.5 倍，加中央翹起的綠松石羽。
 - minotaur 第四版（`a93123b`）：從基準出發，保留立體黑牛頭、耳朵、圓拱；移植圓斷面粗長前彎金角，整體壓低（正面面積 −3.9%），加側面金細線。
 - 合併後 body-check：全部 26 mm 合法；IoU 都 ≤ 0.845；設定檔全部合法。
+- 逐款 A/B（`shared/reviews/iter-127/REVIEW.md`；最終陣容 7 項 7.5 / 7.5 / 8 / 8 / 7.5 / 7 / 7.5，平均 7.57，對照 6.93）：
+  - 保留：
+    - trojan、cerberus、tanngrisnir、quetzal：更炫，無差。cerberus 拿掉架高翼後，Black Saber 風險解除，原創性 7.5 → 8。
+    - minotaur 第四版：小幅更炫，無差 → **神話組 16 / 16 全部通過**。
+  - tortoise：小幅更炫，但完成度差（後甲板段差、中線斷開）→ 退回 iter-125 保留版。
+  - yaga：更炫，但完成度差，煙流渲染成深色亮球。
+    - 原因：材質名 `paint-smoke-ash` 含 `smoke`，被 `render/showcase.py` 歸成煙燻玻璃類別（`render/README.md` 材質對照表）。
+    - 修正：改名 `paint-ash-plume`，重新出圖後單獨複評。
+- 06:21 起：最終計分 → yaga / tortoise 5 視角、5 款 bottom / track 出圖 → P16 / P18 基準與主線交錯計時（`/tmp/mini4wd-p9/timing.sh`）。
