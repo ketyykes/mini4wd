@@ -1,9 +1,10 @@
-// 聖甲蟲凱布利推日（body-khepri-scarab，第八階段神話組・埃及）：短胖的橢圓甲蟲背全罩——
-// 前段是較小的前胸背板（pronotum，前緣往下一階接頭部）、後段兩片鞘翅（elytra，中線一道金色接縫、金色縱紋），
-// 頭部是往前下斜的扁鏟形頭盾（clypeus），前緣一圈 6 枚金色小齒；車尾鞘翅接縫的末端立一面紅玉髓日輪（實心薄盤＋金框，不加放射紋）。
+// 聖甲蟲凱布利推日（body-khepri-scarab，第八階段神話組・埃及；第九階段 iter-120 改成推日的淚滴楔形全罩）：
+// 甲殼前高後低——前胸背板（pronotum）最高、兩片鞘翅（elytra）往後壓低並收尖成淚滴形尖尾；俯視前寬後尖，前後輪全罩。
+// 車頭是金色扁鏟頭盾（clypeus）做成的前保桿，兩支金色前腿從頭盾下緣往前托住鼻前的紅玉髓日輪（推日：日輪在導輪之間、車長內）；
+// 鞘翅分縫＝金色寬中線條（賽車中線條，從頭盾一路到尾尖），兩側綠松石細邊；鞘翅是青金石珍珠漆（亮面清漆，炫砲手法 5）。
 // 設計：shared/design/body-khepri-scarab/DESIGN.md（典故與文物對應 MYTH_RESEARCH 埃及節 E1、E2、E3、E7、E8；黑名單 E10 Blue Beetle、Victory Magnum 鍬形蟲）。
-// 剖面為本檔站位產生器（推估）：超橢圓（指數 2.5）甲蟲圓頂＋鞘翅緣稜線下方的黑色側裙。
-// 塗裝全為自創：青金石藍鞘翅（霧面）、彩陶綠松石前胸（霧面）、金色頭盾與細線（金屬）、紅玉髓日輪（亮面）、玄武岩黑側裙；
+// 剖面為本檔站位產生器（推估）：超橢圓（指數 2.2）甲蟲圓頂＋鞘翅緣稜線下方往內收的黑色側裙。
+// 塗裝全為自創：青金石珍珠藍鞘翅、彩陶綠松石前胸（霧面）、金色頭盾與中線條（金屬）、紅玉髓日輪（亮面）、玄武岩黑側裙；
 // 不含任何廠商 / 作品名稱、商標、文字或神的人臉。
 import * as THREE from 'three';
 import { makePolyBody, sweepEllipse, flatPlate } from './polyBody.js';
@@ -12,27 +13,27 @@ import { monoCurve, buildStations, smoothNormals } from './gazelleLeap.js';
 
 /** @typedef {import('./loft.js').BodyPart} BodyPart */
 
-/** @type {number[]} 站位參數表（x 由後到前，前後軸 x = ±40）：車尾 −60、頭盾前緣 68.5（金齒尖到 71） */
-const XS = [-60, -58, -54, -48, -40, -28, -14, 0, 12, 17, 22, 27, 34, 42, 46, 49, 51, 58, 63, 66, 68.5];
+/** @type {number[]} 站位參數表（x 由後到前，前後軸 x = ±40）：鞘翅尾端 −70、頭盾前緣 76（日輪前緣約 79.9） */
+const XS = [-70, -66, -60, -52, -43, -32, -18, -4, 10, 19, 26, 32, 40, 46, 50, 54, 60, 66, 72, 76];
 /** @type {Record<string, (x: number) => number>} */
 const P = {
-  // 俯視半寬（鞘翅緣稜線）：鞘翅最寬 40（x −14）、x 22 前胸 / 鞘翅交界的深腰（25.5，甲蟲前胸與鞘翅之間的明顯縮頸）、前胸最寬 35.5、
-  // x 46 → 49 前胸前角往內收一大階，接較窄的扁鏟頭（半寬 ≤ 20.5，留在輪拱切口 |z| 22 以內，頭側不被輪拱切開）
-  hw: monoCurve(XS, [6, 14, 21.5, 29.5, 36, 39.5, 40, 39, 36.5, 30, 25.5, 30, 35, 35.5, 34, 23, 20.5, 19.5, 17, 13, 7.5]),
-  // 中線殼頂：鞘翅最高 48（x −14）往後圓圓地收到車尾；x 22 腰部微凹；x 46–51 前胸前緣往下一階接扁平頭盾
-  yTop: monoCurve(XS, [26, 31, 37, 42, 45.5, 47.5, 48, 47.2, 45.5, 44.3, 43, 43.6, 43, 40.4, 38.2, 33.2, 30.6, 26.4, 23.6, 21.6, 19.8]),
+  // 俯視半寬（鞘翅緣稜線）：聖甲蟲的比例——鞘翅比前胸寬（42.2 vs 36.8）、x 26 前胸 / 鞘翅交界的深腰（24.5，甲蟲的招牌縮頸）、鞘翅往後收成寬圓的尾端（29）；
+  // 頭盾 x 54 → 74 收成扁鏟形前保桿（31 → 10.5）
+  hw: monoCurve(XS, [29, 35, 39.5, 41.8, 42.2, 42.2, 41.6, 40, 37.5, 31, 24.5, 34, 36.8, 35.6, 31, 24, 19, 15.5, 12, 9]),
+  // 中線殼頂：前胸頂 42.4（x 10）最高，鞘翅往後一路壓低到尾端 25（前高後低的楔形）；前胸往前降到頭盾 18.5（鼻尖低）
+  yTop: monoCurve(XS, [24, 26, 29, 32.5, 35.5, 38.5, 40.8, 42, 42.4, 41.6, 40.8, 41, 39.5, 36.6, 33.6, 29.6, 25, 21.5, 19.5, 18.5]),
   // 鞘翅緣稜線高度（圓頂下緣、側裙上緣）
-  yA: monoCurve(XS, [23, 22.5, 21.5, 20.5, 20, 19.5, 19.5, 19.5, 19.5, 19.5, 19.5, 19.5, 19.5, 19.5, 19.3, 19, 18.7, 17.8, 16.8, 16.2, 15.6]),
+  yA: monoCurve(XS, [21.5, 21, 20.5, 20, 19.8, 19.5, 19.5, 19.5, 19.5, 19.5, 19.5, 19.5, 19.5, 19.3, 19, 18.5, 17.5, 17, 16.5, 16]),
   // 側裙下緣
-  yLow: monoCurve(XS, [21, 19, 15.5, 12, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11.5, 11.8, 12, 12.4, 13.4, 14, 14.5, 15]),
+  yLow: monoCurve(XS, [21, 19.5, 16.5, 13.2, 11.5, 11, 11, 11, 11, 11, 11, 11.2, 11.5, 11.8, 12, 12.5, 13.5, 14.2, 14.8, 15]),
 };
 
 /** @type {number} 圓頂超橢圓指數（> 2 → 比橢圓飽滿，甲蟲背的「肩」比較方） */
-const N_EXP = 2.5;
+const N_EXP = 2.2;
 /** @type {number[]} 圓頂剖面點的角度（度；90 = 中線頂、0 = 鞘翅緣稜線） */
 const DOME_ANGLES = [90, 76, 61, 46, 31, 16, 0];
-/** @type {number} 側裙下緣往內收（鞘翅緣稍微挑出側裙） */
-const SKIRT_TUCK = 1.4;
+/** @type {number} 側裙下緣往內收（鞘翅緣挑出側裙＝下半內收 tumblehome） */
+const SKIRT_TUCK = 2.2;
 
 /** @type {(v: number) => number} 超橢圓座標映射 */
 const se = (v) => Math.sign(v) * Math.abs(v) ** (2 / N_EXP);
@@ -52,8 +53,8 @@ const profile = (x) => {
   return [...dome, [hw - SKIRT_TUCK, P.yLow(x)]];
 };
 
-/** @type {{ x: number, pts: number[][] }[]} 車尾、頭盾段每 0.75 mm 一站（曲率大），中段每 2 mm */
-const STATIONS = [...buildStations(-60, -50, 0.75, profile).slice(0, -1), ...buildStations(-50, 56, 2, profile).slice(0, -1), ...buildStations(56, 68.5, 0.75, profile)];
+/** @type {{ x: number, pts: number[][] }[]} 尾尖、頭盾段每 1 mm 一站（曲率大），中段每 2 mm */
+const STATIONS = [...buildStations(-70, -60, 1, profile).slice(0, -1), ...buildStations(-60, 56, 2, profile).slice(0, -1), ...buildStations(56, 76, 1, profile)];
 
 /** @type {{ x: number, y: number, radius: number, cutZFrom: number }[]} 前後輪拱（R17.5：31 mm 輪胎半徑 15.5 + 2 mm） */
 const ARCHES = [
@@ -62,12 +63,12 @@ const ARCHES = [
 ];
 
 /** @type {number} 分區界線：前胸 / 鞘翅交界 x */
-const X_ELYTRA_FRONT = 22.6;
+const X_ELYTRA_FRONT = 26;
 /** @type {number} 分區界線：頭盾後緣 x */
-const X_HEAD = 50.4;
+const X_HEAD = 52;
 
-/** @type {{ x: number, y: number, r: number, thick: number }} 日輪（實心薄盤，盤面朝側面；立在鞘翅接縫末端） */
-const DISC = { x: -48, y: 46.5, r: 9.5, thick: 2 };
+/** @type {{ x: number, y: number, r: number, thick: number, lean: number }} 日輪（實心薄盤，盤面朝前、往後仰 lean 弧度；鼻前推日） */
+const DISC = { x: 77.6, y: 21, r: 6.5, thick: 2, lean: 0.35 };
 
 /**
  * 由半剖面折線反查某高度的殼外表面 z（剖面點 z 由中線往外遞增、y 由上往下遞減）
@@ -131,7 +132,8 @@ export function buildProfileLiner(arch, zFrom, profileFn, inset = 1.2) {
 /** @type {() => Record<string, THREE.Material>} */
 const materials = () => ({
   // 青金石：霧面石材（paint- 且 roughness > 0.5 → Blender 緞面）
-  lapis: namedMaterial('paint-lapis-blue', { color: 0x26619c, roughness: 0.6, clearcoat: 0.1 }),
+  // iter-120：青金石珍珠漆（亮面清漆＋微金屬，評審「塑膠感偏平」）
+  lapis: namedMaterial('paint-lapis-pearl', { color: 0x1f4f96, roughness: 0.26, metalness: 0.35, clearcoat: 1.0, clearcoatRoughness: 0.06 }),
   // 彩陶（faience）綠松石：霧面釉
   faience: namedMaterial('paint-faience-turquoise', { color: 0x2f9e98, roughness: 0.56, clearcoat: 0.15 }),
   // 玄武岩黑側裙（霧面）
@@ -172,22 +174,18 @@ const buildTooth = (x, z, nx, nz, y, base, len) => {
 };
 
 /**
- * 頭盾 6 枚金齒：鼻端封口前方 2 枚（朝前）＋左右頭盾弧緣各 2 枚（沿俯視外法線）
+ * 頭盾 6 枚金齒：左右頭盾弧緣各 3 枚（沿俯視外法線；鼻端正前方留給日輪）
  * @type {() => THREE.BufferGeometry}
  */
 const buildClypeusTeeth = () => {
   const geos = [];
-  const xEnd = XS[XS.length - 1];
   for (const sg of [-1, 1]) {
-    // 前緣 2 枚（z ±3.8，朝前）
-    geos.push(buildTooth(xEnd, sg * 3.8, 1, 0, P.yA(xEnd) + 0.8, 3.6, 2.4));
-    // 弧緣 2 枚：外法線由俯視半寬曲線的斜率求得
-    for (const xt of [65.6, 61.2]) {
+    for (const xt of [72, 67, 62]) {
       const h = P.hw(xt);
       const dh = (P.hw(xt + 0.5) - P.hw(xt - 0.5)) / 1;
       // 外法線 ∝ (−dh, 1)（俯視：x 增加時半寬減少 → 法線朝前外）
       const len = Math.hypot(dh, 1);
-      geos.push(buildTooth(xt, sg * h, -dh / len, sg / len, P.yA(xt) + 0.8, 3.6, 2.2));
+      geos.push(buildTooth(xt, sg * h, -dh / len, sg / len, P.yA(xt) + 0.8, 3.4, 2.2));
     }
   }
   return mergeGeos(geos);
@@ -223,7 +221,7 @@ export const khepriScarabBody = makePolyBody({
   form: 'scarab-dome',
   roof: 'closed',
   wing: 'sun-disc',
-  theme: '短胖橢圓甲蟲背全罩：前胸背板＋兩片鞘翅（金色中縫與縱紋）、扁鏟頭盾前緣 6 枚金齒，車尾立一面紅玉髓日輪——推動太陽的晨日聖甲蟲',
+  theme: '推日的淚滴楔形甲蟲全罩：前胸最高、鞘翅往後壓低收尖；金色扁鏟頭盾前保桿與兩支金前腿托住鼻前的紅玉髓日輪；鞘翅分縫＝金色寬中線條、青金石珍珠漆鞘翅＋金縱紋——推動太陽的晨日聖甲蟲',
   material: 'ABS',
   density_g_cm3: 1.05,
   wallThickness_mm: 0.8,
@@ -254,27 +252,42 @@ export const khepriScarabBody = makePolyBody({
       shell: true,
       name: 'arch-liners',
     });
-    // 鞘翅中縫：金色半圓細脊（實體），從前胸交界沿中線一路接到日輪底座
-    const seamPts = [];
-    for (let x = 21.6; x >= -40.5; x -= 2) {
-      seamPts.push([x, P.yTop(x) - 0.15, 0]);
+    // 日輪（推日）：紅玉髓實心薄盤（16 段），盤面朝前、往後仰 20°，立在鼻前導輪之間；金框圓環（6 × 24 段）
+    /** @type {(g: THREE.BufferGeometry) => THREE.BufferGeometry} 盤軸（y）轉成朝前往上仰，再移到鼻前 */
+    const placeDisc = (g) => {
+      g.rotateZ(-Math.PI / 2 + DISC.lean);
+      g.translate(DISC.x, DISC.y, 0);
+      return g;
+    };
+    parts.push({ geometry: placeDisc(new THREE.CylinderGeometry(DISC.r, DISC.r, DISC.thick, 16)), mat: 'carnelian', solid: true, outline: true, name: 'sun-disc' });
+    {
+      const rim = new THREE.TorusGeometry(DISC.r, 0.7, 6, 24);
+      // 圓環在 xy 平面（軸 z）→ 先轉成軸 y，再跟盤一起擺
+      rim.rotateX(Math.PI / 2);
+      parts.push({ geometry: placeDisc(rim), mat: 'gold', solid: true, outline: true, name: 'sun-disc-rim' });
     }
-    parts.push({ geometry: smoothNormals(sweepEllipse(seamPts, 90, () => [0.85, 0.75], 12)), mat: 'gold', solid: true, outline: true, name: 'elytra-seam' });
-    // 日輪：紅玉髓實心薄盤（盤面朝側面、底部埋進鞘翅 4 mm）＋金框；不加放射紋（MYTH_RESEARCH 3-3、H3）
-    const disc = new THREE.CylinderGeometry(DISC.r, DISC.r, DISC.thick, 64);
-    disc.rotateX(Math.PI / 2);
-    disc.translate(DISC.x, DISC.y, 0);
-    parts.push({ geometry: disc, mat: 'carnelian', solid: true, outline: true, name: 'sun-disc' });
-    const rim = new THREE.TorusGeometry(DISC.r, 0.85, 12, 96);
-    rim.translate(DISC.x, DISC.y, 0);
-    parts.push({ geometry: rim, mat: 'gold', solid: true, outline: true, name: 'sun-disc-rim' });
+    // 金色前腿：從頭盾下緣兩側往前伸、托住日輪下半的兩支細腿（橢圓斷面 1.1 × 0.8）
+    {
+      /** @type {THREE.BufferGeometry[]} */
+      const legs = [];
+      for (const sg of [-1, 1]) {
+        const pts = [
+          [64, P.yA(64) - 0.6, sg * (P.hw(64) - 2.6)],
+          [71, 16.4, sg * 9.5],
+          [76.2, 16.2, sg * 5.6],
+          [78.6, 17.6, sg * 3.6],
+        ];
+        legs.push(sweepEllipse(pts, 12, (t) => [lerp(1.1, 0.7, t), lerp(0.85, 0.6, t)], 8));
+      }
+      parts.push({ geometry: smoothNormals(mergeGeos(legs)), mat: 'gold', solid: true, outline: true, name: 'fore-legs' });
+    }
     // 頭盾前緣 6 枚金齒（clypeus 鋸齒）
     parts.push({ geometry: buildClypeusTeeth(), mat: 'gold2', solid: true, outline: true, name: 'clypeus-teeth' });
-    // 複眼：頭側一對花崗岩黑半球（頭盾與前胸交界的兩側）
+    // 複眼：頭盾兩側一對花崗岩黑半球（iter-120 移到 x 59，離開前輪）
     const eyes = [-1, 1].map((sg) => {
-      const e = new THREE.SphereGeometry(2.3, 20, 14);
+      const e = new THREE.SphereGeometry(2.3, 12, 8);
       e.scale(1.25, 0.9, 1);
-      e.translate(53, P.yA(53) + 1.6, sg * (P.hw(53) - 1.1));
+      e.translate(59, P.yA(59) + 1.6, sg * (P.hw(59) - 1.1));
       return e;
     });
     parts.push({ geometry: mergeGeos(eyes), mat: 'eye', solid: true, outline: true, name: 'eyes' });
@@ -284,7 +297,7 @@ export const khepriScarabBody = makePolyBody({
     const STRIAE = [0.22, 0.42, 0.62, 0.81];
     parts.push({
       geometry: kit.decal((x, y, z) => {
-        if (x > X_ELYTRA_FRONT - 2.2 || x < -55) {
+        if (x > X_ELYTRA_FRONT - 2.2 || x < -65) {
           return -1;
         }
         const h = P.hw(x);
@@ -293,7 +306,7 @@ export const khepriScarabBody = makePolyBody({
         for (const f of STRIAE) {
           d = Math.min(d, Math.abs(az - f * h));
         }
-        return Math.min(0.33 - d, y - P.yA(x) - 1.2, X_ELYTRA_FRONT - 2.2 - x, x + 55);
+        return Math.min(0.33 - d, y - P.yA(x) - 1.2, X_ELYTRA_FRONT - 2.2 - x, x + 65, Math.abs(z) - 4.6);
       }),
       mat: 'dGold',
       name: 'decal-elytra-striae',
@@ -301,10 +314,10 @@ export const khepriScarabBody = makePolyBody({
     // 鞘翅緣金線（沿稜線上方）＋前胸前後緣金線
     parts.push({
       geometry: kit.decal((x, y, z) => {
-        const margin = Math.min(0.4 - Math.abs(y - (P.yA(x) + 0.45)), X_HEAD - 0.3 - x, x + 57.5);
+        const margin = Math.min(0.4 - Math.abs(y - (P.yA(x) + 0.45)), X_HEAD - 0.3 - x, x + 67.5);
         const top = y - P.yA(x) - 0.6;
-        const rear = Math.min(0.75 - Math.abs(x - (X_ELYTRA_FRONT - 0.75)), top);
-        const front = Math.min(0.7 - Math.abs(x - (X_HEAD - 0.9)), top);
+        const rear = Math.min(0.75 - Math.abs(x - (X_ELYTRA_FRONT - 0.75)), top, Math.abs(z) - 4.6);
+        const front = Math.min(0.7 - Math.abs(x - (X_HEAD - 0.9)), top, Math.abs(z) - 4.6);
         return Math.max(margin, rear, front);
       }),
       mat: 'dGold',
@@ -315,12 +328,20 @@ export const khepriScarabBody = makePolyBody({
     const cellSd = (x, y, z) => {
       const ph = ((Math.abs(z) % 3.4) + 3.4) % 3.4;
       const dz = Math.min(ph, 3.4 - ph);
-      return Math.min(dz - 0.4, 0.95 - Math.abs(x - 25.6), y - P.yA(x) - 2.4);
+      return Math.min(dz - 0.4, 0.95 - Math.abs(x - 29), y - P.yA(x) - 2.4, Math.abs(z) - 4.6);
     };
-    parts.push({ geometry: kit.decal((x, y) => Math.min(1.75 - Math.abs(x - 25.6), y - P.yA(x) - 1.8)), mat: 'dGold', name: 'decal-inlay-band' });
+    parts.push({ geometry: kit.decal((x, y) => Math.min(1.75 - Math.abs(x - 29), y - P.yA(x) - 1.8)), mat: 'dGold', name: 'decal-inlay-band' });
     parts.push({ geometry: kit.decal(cellSd, { offset: 0.12 }), mat: 'dCarnelian', name: 'decal-inlay-cells' });
     // 前胸中央一道青金石細縱線（前胸背板的中線溝）
-    parts.push({ geometry: kit.decal((x, y, z) => Math.min(0.4 - Math.abs(z), x - 28, X_HEAD - 3 - x)), mat: 'dLapis', name: 'decal-pronotum-midline' });
+    // 鞘翅分縫＝金色寬中線條（賽車中線條，寬 6 mm，從頭盾後緣一路到尾尖）＋兩側綠松石細邊（0.7 mm）
+    parts.push({ geometry: kit.decal((x, y, z) => Math.min(3 - Math.abs(z), X_HEAD - x, y - P.yA(x) - 0.6), { offset: 0.1 }), mat: 'dGold', name: 'decal-center-stripe' });
+    parts.push({
+      geometry: kit.decal((x, y, z) => Math.min(0.35 - Math.abs(Math.abs(z) - 3.75), X_HEAD - x, y - P.yA(x) - 0.6), { offset: 0.1 }),
+      mat: 'dTurquoise',
+      name: 'decal-center-pinstripes',
+    });
+    // 鞘翅中縫（中線條正中一道青金石細線＝左右鞘翅的接縫）
+    parts.push({ geometry: kit.decal((x, y, z) => Math.min(0.3 - Math.abs(z), X_ELYTRA_FRONT - x, y - P.yA(x) - 0.6), { offset: 0.14 }), mat: 'dLapis', name: 'decal-elytra-suture' });
     // 側裙上的有翼聖甲蟲翼帶（前後輪之間）：金底、上排紅玉髓覆羽、下排綠松石飛羽
     for (const side of [-1, 1]) {
       const opt = { x0: 0, y0: 0, zMin: 30, side };
@@ -341,10 +362,10 @@ export const khepriScarabBody = makePolyBody({
   src: {
     density_g_cm3: 'SPEC 1.14：ABS 約 1.05 g/cm³（推估）',
     wallThickness_mm: '推估：射出 ABS 殼 0.8 mm（同其他車殼）',
-    geometry: '本檔站位產生器 P（推估）：長 131（車尾 −60 ~ 頭盾金齒尖 71，batch2 規格「長約 125–135、短胖」）、鞘翅頂 48、日輪頂 57.4（batch2「高約 44–50」＋日輪「直立、不超高」）；寬 ±40（鞘翅最寬）',
+    geometry: '本檔站位產生器 P（推估，iter-120）：長 150.8（鞘翅尾端 −70 ~ 日輪前緣 80.8，≤ 153，SPEC 1.14a）、前胸頂 42.4（x 10，全車最高）往後壓低到尾端 25、往前降到頭盾鼻端 18.5；寬：鞘翅 ±42.2、前胸 ±36.8、x 26 深腰 ±24.5、頭盾鼻端 ±9；俯視半寬依輪廓 IoU 掃描決定',
     wheelArches: '前後 R17.5（31 mm 輪胎半徑 15.5 + 2 mm，同 zeppelin / griffin），可裝 26 / 31 mm 輪',
-    disc: '日輪：紅玉髓色實心 ABS 薄盤 R9.5 × 2 mm＋金框（圓環斷面 R0.85）；盤底埋進鞘翅約 5 mm（和殼面接成一體）；質量 = 封閉體積 × 1.05 g/cm³（推估）',
-    teeth: '頭盾 6 枚金齒：ABS 電鍍件 1.2 mm 厚三角片（推估）；齒數取 batch2 規格「前緣 5–6 個小齒」',
+    disc: 'iter-120 日輪移到鼻前（推日）：紅玉髓色實心 ABS 薄盤 R6.5 × 2 mm（16 段）、盤面朝前往後仰 20°，中心 x 77.6、y 21（在左右前導輪 |z| 35.5 以內、車長內）＋金框（圓環斷面 R0.7，6 × 24 段）；兩支金色前腿（橢圓斷面 φ2.2 → φ1.4）從頭盾下緣托住日輪；質量 = 封閉體積 × 1.05 g/cm³（推估）',
+    teeth: '頭盾 6 枚金齒：ABS 電鍍件 1.2 mm 厚三角片（推估），左右頭盾弧緣各 3 枚（iter-120：鼻端正前方讓給日輪）',
     palette: '色碼取 MYTH_RESEARCH 3-2（推估）：金 #C9A227、青金石 #26619C、紅玉髓 #B1342A、綠松石 #3FB8AF（E2 Met 16.1.3 胸飾材質）',
     mounts: '對齊 chassis-midship 的車殼安裝點（SPEC 1.14）',
   },
