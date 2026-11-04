@@ -50,7 +50,7 @@ const roofY = (az) => RIDGE_Y - ((RIDGE_Y - EAVE_Y) * az) / EAVE_Z;
 /**
  * 半剖面：屋脊 → 屋簷外緣 → 封簷板（垂直）→ 屋簷底（水平往內）→ 4 根圓木（每根 3 點鼓起 + 接縫）→ 牆底
  * 中段每站同一個剖面（木屋是直的長方體）；剖面在屋簷底與圓木處 z 會往內收，封口用一般多邊形三角化。
- * 前後端 |x| > END_RAISE_X：低於 GABLE_BOTTOM 的點往上收（山牆不蓋到輪胎，前後輪 26 / 31 mm 都留間隙）
+ * 前後端 |x| > END_RAISE_X：低於 GABLE_BOTTOM 的點往上收（山牆不蓋到輪胎）
  * @type {(x: number) => number[][]}
  */
 const profile = (x) => {
@@ -73,7 +73,7 @@ const profile = (x) => {
 /** @type {{ x: number, pts: number[][] }[]} */
 const STATIONS = [...buildStations(X_REAR, X_REAR + 2, 0.25, profile).slice(0, -1), ...buildStations(X_REAR + 2, X_FRONT - 2, 4, profile).slice(0, -1), ...buildStations(X_FRONT - 2, X_FRONT, 0.25, profile)];
 
-/** @type {{ x: number, y: number, radius: number, cutZFrom: number }[]} 前後輪拱（R15：牆在輪胎外側，31 mm 輪也不碰牆） */
+/** @type {{ x: number, y: number, radius: number, cutZFrom: number }[]} 前後輪拱（R15：26 mm 輪胎半徑 13 + 2 mm；31 mm 輪需切輪拱） */
 const ARCHES = [
   { x: 40, y: 13, radius: 15, cutZFrom: 30 },
   { x: -40, y: 13, radius: 15, cutZFrom: 30 },
@@ -649,8 +649,8 @@ export const yagaHutBody = makePolyBody({
   src: {
     density_g_cm3: 'SPEC 1.14：ABS 約 1.05 g/cm³（推估）',
     wallThickness_mm: '推估：射出 ABS 殼 0.8 mm（同其他車殼）',
-    geometry: `本檔剖面（推估）：牆面 x ${X_REAR} ~ ${X_FRONT}＋四角圓木端頭沿 x 伸出 6.2 mm（batch5「長約 125–135（短胖）」）；屋脊 ${RIDGE_Y}、屋簷半寬 ${EAVE_Z}、圓木牆 |z| ${WALL_IN}–${WALL_OUT}（輪胎外緣 34.75 之外）、牆底 ${WALL_BOTTOM.toFixed(1)}；煙囪頂約 54.6（batch5「高約 50–58（煙囪頂）」）；車殼外框半寬 ≤ 48（碰撞體不寬過導輪外緣 ±48.5）`,
-    wheelArches: '前後 R15（26 mm 輪胎半徑 13 + 2 mm；圓木牆在輪胎外側，31 mm 輪也不碰牆，只看間隙）；輪拱內襯擋住殼內空腔',
+    geometry: `本檔剖面（推估）：牆面 x ${X_REAR} ~ ${X_FRONT}＋四角圓木端頭沿 x 伸出 6.2 mm，總長約 119（batch5「長約 125–135」；為了俯視 IoU ≤ 0.82 縮短，見 DESIGN.md 第 8 節）；屋脊 ${RIDGE_Y}、屋簷半寬 ${EAVE_Z}、圓木牆 |z| ${WALL_IN}–${WALL_OUT}（輪胎外緣 34.75 之外）、牆底 ${WALL_BOTTOM.toFixed(1)}；煙囪頂約 54.7（batch5「高約 50–58（煙囪頂）」）；車殼外框半寬 ≤ 48（碰撞體不寬過導輪外緣 ±48.5）`,
+    wheelArches: '前後 R15（26 mm 輪胎半徑 13 + 2 mm）；31 mm 輪不切輪拱時間隙不足（需切輪拱，batch5 未要求）；輪拱內襯擋住殼內空腔',
     logs: '圓木：殼面剖面每根 3 點鼓起 1 mm（高 3.8 mm）；四角端頭為 ABS 實心圓柱（R1.6、沿 x 伸出 6.2 / 沿 z 伸出 7.5 mm ≈ 實物 35–40 cm 的角頭，推估；側牆圓木端頭外移 0.75 mm 讓開前後輪胎），質量 = 封閉體積 × 1.05 g/cm³',
     nalichnik: '車頭雕花窗框：白色 1.0 mm 立板（頂冠尖拱、側板、窗台、波浪垂飾，鏤空一大兩小圓）＋紅色 0.7 mm 十字窗櫺；側面窗為貼紙（推估）',
     feet: '雞腳：每側 2 隻、各 3 前趾＋1 後趾的 ABS 實心掃掠件（趾徑 1–1.9 mm、長 3–6.4 mm，推估），最低點約 y 4.9，全在底盤側框（|z| ≤ 38.8、y ≤ 9.4）之外',
