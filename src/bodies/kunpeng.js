@@ -32,11 +32,13 @@ const P = {
   // 魚腹在後輪前（x −26 → −18）收回窄鳥身，後輪仍在窄鳥身外側由鵬翼罩住
   hw: monoCurve(XS, [13, 17, 19.5, 20, 20, 20.5, 25, 33, 35.5, 35.5, 36.5, 37, 36, 31.5, 27, 24, 22]),
   // 中線頂：魚頭頂（前輪上方 41.5）最高，往後緩降成鳥背；低扁
-  yTop: monoCurve(XS, [28, 31, 33, 34, 34.5, 35, 35.5, 36.5, 38, 39.5, 40.5, 41.5, 41, 40, 38.5, 37, 36]),
+  // iter-120：改成前低後高的楔形魚身（評審「魚頭圓鈍」）——最高點移到座艙段（36.6），魚頭往鼻端一路下壓；全車頂高 41.6 → 約 36.6（正面面積）
+  yTop: monoCurve(XS, [28, 31, 33, 34.2, 35, 35.6, 36, 36.4, 36.6, 36.4, 36, 35.4, 34.6, 33.2, 31.6, 30.4, 29.6]),
   // 側線（魚的側線＝剖面最寬處的高度）
-  ySh: monoCurve(XS, [27, 26.5, 26, 26, 26, 25.5, 25, 24, 23.5, 23, 23, 23, 23, 23, 23, 23, 23]),
+  // iter-120：魚頭的側線往鼻端下壓（鼻尖離地約 16，V3）
+  ySh: monoCurve(XS, [27, 26.5, 26, 26, 26, 25.5, 25, 24, 23.5, 23, 23, 23, 22.6, 21.2, 19.4, 17.6, 16.4]),
   // 側裙下緣：前半魚身與中段魚腹 10.5–13（底盤側壁頂 9.4 之上）；後半窄鳥身約 17（底盤上方，不和底盤重疊；iter-114 由 18–23 壓低，車尾不露後齒輪）
-  yLow: monoCurve(XS, [19.5, 17.5, 16.8, 16.8, 17, 16.5, 12, 10.5, 10.5, 11, 11, 11, 11.5, 12, 12.5, 13, 13]),
+  yLow: monoCurve(XS, [19.5, 17.5, 16.8, 16.8, 17, 16.5, 12, 10.5, 10.5, 11, 11, 11, 11.5, 12, 12.4, 12.6, 12.6]),
 };
 
 /**
@@ -45,8 +47,9 @@ const P = {
  */
 const endFactor = (x) => {
   if (x > X_HEAD) {
+    // iter-120：四分之一橢圓（圓鈍魚頭）→ (1 − u^1.5)^0.9 的尖楔魚吻（評審「魚頭鼻端收尖」）
     const u = Math.min(1, (x - X_HEAD) / (X_NOSE - X_HEAD));
-    return Math.max(0.07, Math.sqrt(1 - u * u));
+    return Math.max(0.06, (1 - u ** 1.5) ** 0.9);
   }
   if (x < X_TAILROUND) {
     const u = Math.min(1, (X_TAILROUND - x) / (X_TAILROUND - X_TAIL + 2.5));
@@ -181,8 +184,9 @@ const materials = () => ({
   // 水墨分段（霧面 / 緞面：roughness > 0.5，Blender 以緞面漆處理）
   ink: namedMaterial('paint-ink-black-satin', { color: 0x1c1f24, roughness: 0.62, clearcoat: 0.15, clearcoatRoughness: 0.5 }),
   ink2: namedMaterial('paint-ink-black-satin', { color: 0x1c1f24, roughness: 0.62, clearcoat: 0.15, side: THREE.DoubleSide }),
-  slate: namedMaterial('paint-slate-blue-grey', { color: 0x4f6470, roughness: 0.6, clearcoat: 0.1 }),
-  slate2: namedMaterial('paint-slate-blue-grey', { color: 0x4f6470, roughness: 0.6, clearcoat: 0.1, side: THREE.DoubleSide }),
+  // iter-120：青灰改成珍珠金屬漆（評審「塑膠感偏平」）：低粗糙度＋清漆＋少量金屬感
+  slate: namedMaterial('paint-slate-pearl', { color: 0x4a6170, roughness: 0.3, metalness: 0.35, clearcoat: 0.9, clearcoatRoughness: 0.1 }),
+  slate2: namedMaterial('paint-slate-pearl', { color: 0x4a6170, roughness: 0.3, metalness: 0.35, clearcoat: 0.9, clearcoatRoughness: 0.1, side: THREE.DoubleSide }),
   mist: namedMaterial('paint-mist-grey', { color: 0x98a8ae, roughness: 0.62, clearcoat: 0.1 }),
   mist2: namedMaterial('paint-mist-grey', { color: 0x98a8ae, roughness: 0.62, clearcoat: 0.1, side: THREE.DoubleSide }),
   paper: namedMaterial('paint-rice-paper-white', { color: 0xece8de, roughness: 0.66, clearcoat: 0.05 }),
@@ -319,24 +323,25 @@ const mirrorZ = (g) => {
 };
 
 /** @type {{ y: number, covert: number[][], primaries: number[][] }} 鵬翼（右翼，俯視 (x, z)；左翼鏡射）：覆羽板前緣從翼根往後外掠，後半由 5 片分段飛羽組成 */
+// iter-120：評審「鵬翼加大並後掠成大尾翼」→ 覆羽板前緣從 x −14 起（原 −18）、翼尖後移到 x −53，飛羽加長到 x −64 ~ −71.5（原 −60 ~ −68），上反角 4° → 7°
 const WING = {
   y: 30.6,
   covert: [
-    [-18, 18],
-    [-32, 34],
-    [-45, 45.5],
-    [-51, 47],
-    [-50, 41],
-    [-45, 30],
-    [-39, 18],
+    [-14, 17.5],
+    [-30, 33],
+    [-46, 45.2],
+    [-53.5, 46.6],
+    [-52.5, 40.5],
+    [-46.5, 29.5],
+    [-38.5, 17.5],
   ],
   // 飛羽（由翼尖往翼根）：每片 [根 x, 根 z, 尖 x, 尖 z, 半寬]；後緣分成 5 段（羽尖鋸齒），往後掠、和窄鳥身之間留開口
   primaries: [
-    [-49, 44.5, -67, 46.2, 2.0],
-    [-47.5, 39.8, -68, 41.4, 2.1],
-    [-46, 35.2, -67, 36.4, 2.1],
-    [-44.5, 30.6, -64.5, 31.4, 2.0],
-    [-43, 26.0, -60, 26.4, 1.9],
+    [-51, 44.2, -71, 45.6, 1.9],
+    [-49.5, 39.6, -71.5, 41.4, 2.1],
+    [-48, 35.0, -70.5, 36.6, 2.1],
+    [-46.5, 30.4, -68, 31.6, 2.0],
+    [-45, 25.8, -64, 26.6, 1.9],
   ],
 };
 
@@ -367,7 +372,7 @@ export const kunpengBody = makePolyBody({
   form: 'fish-bird',
   roof: 'clear',
   wing: 'peng-wings',
-  theme: '《莊子・逍遙遊》北冥之魚化為大鵬：前半圓鈍魚頭與魚鱗、後半鱗化為羽、車尾一對低寬後掠的鵬翼，頂部一道水天之間的長條透明窗',
+  theme: '《莊子・逍遙遊》北冥之魚化為大鵬：前低後高的楔形魚身＋尖楔魚吻與細長魚眼、後半鱗化為羽、車尾一對加大後掠的鵬翼尾翼，頂部一道水天之間的長條透明窗，側面一道往後上方掃的波濤 livery，青灰珍珠漆',
   material: 'ABS',
   density_g_cm3: 1.05,
   wallThickness_mm: 0.8,
@@ -434,7 +439,7 @@ export const kunpengBody = makePolyBody({
       return sweepEllipse(pts, 12, (t) => [0.4, 0.3 * (1 - 0.5 * t)], 6);
     });
     /** @type {(g: THREE.BufferGeometry) => THREE.BufferGeometry} */
-    const tilt = (g) => dihedral(g, WING.y, 25, 4);
+    const tilt = (g) => dihedral(g, WING.y, 25, 7);
     const covert = tilt(covertR);
     const feathersA = WING.primaries.map((_, i) => tilt(featherR[i])).filter((_, i) => i % 2 === 0);
     const feathersB = WING.primaries.map((_, i) => tilt(featherR[i])).filter((_, i) => i % 2 === 1);
@@ -468,11 +473,12 @@ export const kunpengBody = makePolyBody({
     // 魚眼（iter-116：評審「同心圓像軍機圓標」→ 改成杏仁形魚眼＋往後拉的眼線，不再有同心圓）：
     // 墨黑杏仁形眼線框（0.7 mm）＋淡金米色虹膜（被上下眼瞼切成杏仁形）＋偏前上方的墨黑瞳孔＋一道往後、略往上拉長的尖尾眼線（水墨畫魚眼的筆法）
     /** @type {{ x: number, y: number }} 魚眼中心（側視） */
-    const EYE = { x: 66, y: 27.5 };
+    // iter-120：評審「眼睛大、表情卡通」→ 杏仁形拉成細長的眼縫（半長 3.6 → 4.4、半高 1.9 → 1.05），位置隨尖楔魚吻往後下移
+    const EYE = { x: 61.5, y: 23.6 };
     /** @type {number} 杏仁形半長（沿車長） */
-    const EYE_A = 3.6;
+    const EYE_A = 4.4;
     /** @type {number} 杏仁形半高 */
-    const EYE_B = 1.9;
+    const EYE_B = 1.05;
     /** @type {number} 構成杏仁形的兩個圓的半徑（兩圓交集 = 杏仁形，尖端在 ±EYE_A） */
     const EYE_R = (EYE_A * EYE_A + EYE_B * EYE_B) / (2 * EYE_B);
     /**
@@ -483,7 +489,7 @@ export const kunpengBody = makePolyBody({
     /** @type {number[][]} 往後拉的眼線尾中線（從眼後角往後 5.4 mm、末端往上 1.1 mm 的弧，取 12 段折線） */
     const EYE_TAIL = Array.from({ length: 13 }, (_, i) => {
       const t = i / 12;
-      return [-EYE_A + 0.4 - 5.4 * t, 1.1 * t * t, t];
+      return [-EYE_A + 0.4 - 6.6 * t, 1.5 * t * t, t];
     });
     /**
      * 眼線尾距離：沿中線漸細，半寬 0.5 → 0.3（最細處線寬 0.6 mm）
@@ -503,7 +509,7 @@ export const kunpengBody = makePolyBody({
       return d;
     };
     /** @type {(sd: (dx: number, dy: number) => number) => (x: number, y: number, z: number) => number} 兩側魚頭貼紙（世界 x，不鏡射） */
-    const eyeDecal = (sd) => (x, y, z) => (Math.abs(z) < 18 ? -1 : -sd(x - EYE.x, y - EYE.y));
+    const eyeDecal = (sd) => (x, y, z) => (Math.abs(z) < 0.6 * sec(x).hw ? -1 : -sd(x - EYE.x, y - EYE.y));
     // 虹膜（淡色，杏仁形內）
     parts.push({ geometry: kit.decal(eyeDecal(sdAlmond)), mat: 'eye', name: 'lamp-eye' });
     // 眼線框（杏仁形外側 0.7 mm 帶）＋眼尾
@@ -514,13 +520,13 @@ export const kunpengBody = makePolyBody({
     });
     // 瞳孔：偏前上方、上緣被上眼瞼切掉一點（不是完整的同心圓）
     parts.push({
-      geometry: kit.decal(eyeDecal((dx, dy) => Math.max(Math.hypot(dx - 0.5, dy - 0.25) - 1.35, sdAlmond(dx, dy))), { offset: 0.12 }),
+      geometry: kit.decal(eyeDecal((dx, dy) => Math.max(Math.hypot(dx - 0.8, dy - 0.15) - 0.85, sdAlmond(dx, dy))), { offset: 0.12 }),
       mat: 'dInk',
       name: 'decal-eye-pupil',
     });
     // 口線：鼻端一道往後微下彎的墨線（魚口）
     parts.push({
-      geometry: kit.decal((x, y) => (x < 68.5 ? -1 : 0.45 - Math.abs(y - (20.6 - 0.08 * (X_NOSE - x))))),
+      geometry: kit.decal((x, y) => (x < 68.5 ? -1 : 0.45 - Math.abs(y - (sec(x).ySh - 1.0 - 0.05 * (X_NOSE - x))))),
       mat: 'dInk',
       name: 'decal-mouth',
     });
@@ -557,16 +563,30 @@ export const kunpengBody = makePolyBody({
       mat: 'dGold',
       name: 'decal-peng-feathers',
     });
-    // 波濤紋：腹側留白上一道連續起伏的墨線（鯤在北冥），由魚頭到後輪前
+    // 波濤 livery（iter-120）：從魚吻下緣往後上方斜掃到鵬翼翼根的一道米白寬帶（上緣是起伏的浪頭），帶上方一道淡金細浪線（V12 / V13 的配置：圖形從鼻尖往後掃）
+    /** @type {(x: number) => number} 波濤帶中線高度（鼻端在側線下 4.6 mm，往後每 10 mm 升 0.8 mm） */
+    const waveY = (x) => sec(x).ySh - 4.6 + 0.08 * (66 - x);
+    /** @type {(x: number, z: number) => boolean} 側面（魚頭到鳥身前段） */
+    const onFlank = (x, z) => x < 70 && x > -26 && Math.abs(z) > 0.8 * sec(x).hw;
     parts.push({
       geometry: kit.decal((x, y, z) => {
-        if (Math.abs(z) < 26 || x > 60 || x < -22) {
+        if (!onFlank(x, z)) {
           return -1;
         }
-        const yw = sec(x).ySh - 6.2 + 1.1 * Math.sin(x / 3.2);
-        return 0.33 - Math.abs(y - yw);
+        const yc = waveY(x);
+        return Math.min(yc + 0.9 + 0.55 * Math.sin(x / 2.4) - y, y - (yc - 0.9));
       }),
-      mat: 'dInk',
+      mat: 'dPaper',
+      name: 'decal-wave-band',
+    });
+    parts.push({
+      geometry: kit.decal((x, y, z) => {
+        if (!onFlank(x, z) || x > 64) {
+          return -1;
+        }
+        return 0.34 - Math.abs(y - (waveY(x) + 2.5 + 0.5 * Math.sin(x / 2.4 + 1.2)));
+      }, { offset: 0.12 }),
+      mat: 'dGold',
       name: 'decal-wave-line',
     });
     // 朱砂無字印章：車尾側面一枚圓角方印（紅底、米白內框與一道雲紋，不含任何文字）
@@ -597,8 +617,8 @@ export const kunpengBody = makePolyBody({
   src: {
     density_g_cm3: 'SPEC 1.14：ABS 約 1.05 g/cm³（推估）',
     wallThickness_mm: '推估：射出 ABS 殼 0.8 mm（同其他款）；水天窗片同厚度，以殼面積計入質量',
-    geometry: '本檔站位產生器 P＋endFactor（推估）：長 150（鼻尖 x 78、車尾 x −72，≤ 153 避免立體橋刮底）、殼頂約 41.6（魚頭頂，前輪上方）、低扁；前輪拱 R17.5（31 mm 輪半徑 15.5 + 2 mm）；後半窄鳥身半寬 20、下緣 ≥ 18（在後輪內側、底盤上方）',
-    wings: '鵬翼覆羽板厚 2.0（iter-114 前 1.4）、飛羽厚 1.6（前 1.2）、上下緣倒圓角 0.45–0.5、羽軸 0.8 × 0.6 圓肋、扇尾厚 1.6（前 1.2），均為 ABS 實心件（推估），質量 = 封閉體積 × 1.05 g/cm³；翼面高 y ≈ 30.6，高於 31 mm 後輪頂 28.5 與後上導輪 20.5',
+    geometry: '本檔站位產生器 P＋endFactor（推估）：長 150（鼻尖 x 78、車尾 x −72，≤ 153 避免立體橋刮底）；iter-120 改成前低後高的楔形：殼頂 36.6（座艙段）、鼻尖離地約 16、尖楔魚吻 (1 − u^1.5)^0.9 收尖；前輪拱 R17.5（31 mm 輪半徑 15.5 + 2 mm）；後半窄鳥身半寬 20、下緣 ≥ 18（在後輪內側、底盤上方）',
+    wings: '鵬翼（iter-120 加大後掠：覆羽板 x −14 ~ −53.5、飛羽尖 x −64 ~ −71.5、上反 7°）覆羽板厚 2.0（iter-114 前 1.4）、飛羽厚 1.6（前 1.2）、上下緣倒圓角 0.45–0.5、羽軸 0.8 × 0.6 圓肋、扇尾厚 1.6（前 1.2），均為 ABS 實心件（推估），質量 = 封閉體積 × 1.05 g/cm³；翼面高 y ≈ 30.6，高於 31 mm 後輪頂 28.5 與後上導輪 20.5',
     myth: '典故《莊子・逍遙遊》（MYTH_RESEARCH Z1）；魚首 / 鵬身造型參考故宮〈松花石鯤鵬硯〉故文001376 的「魚尾、鷹首鳳身」描述（Z4），本款魚頭不做龍首（避免龍頭車身撞形）',
     mounts: '對齊 chassis-midship 的車殼安裝點（SPEC 1.14）',
   },

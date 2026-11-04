@@ -7,27 +7,29 @@
 // 設計：shared/design/body-firebird/DESIGN.md（研究一節列出實際打開的來源）。剖面為本檔站位產生器（推估）。
 // 不含任何廠商 / 作品名稱、商標、文字或人臉。
 import * as THREE from 'three';
-import { makePolyBody, sweepEllipse, finPlate } from './polyBody.js';
+import { makePolyBody, sweepEllipse } from './polyBody.js';
 import { namedMaterial, decalMaterial, mergeGeos, lerp } from './loft.js';
 import { monoCurve, buildStations, smoothNormals } from './gazelleLeap.js';
 import { buildProfileLiner } from './khepriScarab.js';
 
 /** @typedef {import('./loft.js').BodyPart} BodyPart */
 
-/** @type {number[]} 站位參數表（x 由後到前，前後軸 x = ±40）：車尾 −61、鳥喙尖 75 */
-const XS = [-61, -57, -51, -40, -28, -14, 0, 14, 28, 40, 50, 58, 64, 69, 72.5, 75];
+/** @type {number[]} 站位參數表（x 由後到前，前後軸 x = ±40）：車尾 −58（iter-120 由 −61 縮短，車尾由尾羽翼接續）、鳥喙尖 75 */
+const XS = [-58, -54.5, -49.5, -40, -28, -14, 0, 14, 28, 40, 50, 58, 64, 69, 72.5, 75];
 /** @type {Record<string, (x: number) => number>} */
 const P = {
   // 俯視半寬（翅緣）：飛鳥俯視——翅膀長在身體前段（翅尖最寬 46.5 在前輪上方 x 40），翅後緣往後掠收成細長的鳥身（座艙段 24.5–26）
   // 與尾根（後輪上方 23、車尾 12）；翅前緣往前收成鳥頸（x 58：20）與鳥頭、鳥喙尖 1.6。後輪胎外側露在殼外（輪拱 R17.5 切開側裙，間隙照常）
-  hw: monoCurve(XS, [12, 15, 18.5, 23, 24, 24.5, 26, 32.5, 43, 46.5, 40, 20, 11.5, 6.6, 3.8, 1.6]),
+  // iter-120：翅尖 46.5 → 43.2、x 28 處 43 → 40.5（正面面積與殼面三角面數都跟著縮）
+  hw: monoCurve(XS, [13, 16, 19.5, 23, 24, 24.5, 26, 31.5, 40.5, 43.2, 37.5, 19.5, 11.5, 6.6, 3.8, 1.6]),
   // 中線殼頂（鳥背）：前後輪上方 33.6、座艙段 32.4 的低背，往前下斜成鳥頭與鳥喙（喙尖 16.8）
-  yTop: monoCurve(XS, [27.5, 30, 32.4, 33.6, 33.2, 32.6, 32.4, 32.6, 33.2, 33.6, 31.6, 28.4, 25.4, 22, 19.2, 16.8]),
+  // iter-120：整體壓低 0.6 mm，鳥頭往前下壓成楔形尖鼻（喙尖 16.8 → 15.2，V3 鼻尖離地 10–16）
+  yTop: monoCurve(XS, [27.5, 30, 31.8, 32.6, 32.3, 31.8, 31.6, 31.8, 32.3, 32.6, 30.6, 27, 23.6, 20.4, 17.6, 15.2]),
   // 翅緣（頂面與側裙交界，銳利稜線）：前後輪上方隆起到 32.4（高過 R17.5 輪拱頂 30.5，輪胎上方有完整的殼面），
   // 中段翅緣往下垂到 26.8（翅後緣收進鳥身處）
-  yS: monoCurve(XS, [24, 27, 30.8, 32.4, 30.4, 27.6, 26.8, 27.6, 30.4, 32.4, 30.8, 25.5, 21.8, 18.8, 17.2, 16]),
+  yS: monoCurve(XS, [24, 27, 30.4, 31.8, 30.1, 27.6, 26.8, 27.6, 30.1, 31.8, 29.8, 24.6, 20.8, 17.8, 16, 14.6]),
   // 側裙下緣
-  yLow: monoCurve(XS, [15, 13.5, 11.5, 10.6, 10.5, 10.5, 10.5, 10.5, 10.5, 10.6, 11, 12, 13, 14, 14.8, 15.4]),
+  yLow: monoCurve(XS, [15, 13.5, 11.5, 10.6, 10.5, 10.5, 10.5, 10.5, 10.5, 10.6, 11, 12, 12.6, 13, 13.2, 13.4]),
 };
 
 /**
@@ -52,8 +54,12 @@ const profile = (x) => {
   ];
 };
 
-/** @type {{ x: number, pts: number[][] }[]} 車尾與頭部每 0.75 mm 一站，中段每 2 mm */
-const STATIONS = [...buildStations(-61, -51, 0.75, profile).slice(0, -1), ...buildStations(-51, 58, 2, profile).slice(0, -1), ...buildStations(58, 75, 0.75, profile)];
+/**
+ * 車尾與頭部每 1 mm 一站，中段每 2 mm（iter-120：0.75 → 1 mm。曲面內部固定每 0.5 mm 取樣，0.75 mm 站距會讓兩端變成每 0.375 mm 一列，
+ * 多出約 6% 的殼面三角面，外觀看不出差別）
+ * @type {{ x: number, pts: number[][] }[]}
+ */
+const STATIONS = [...buildStations(-58, -50, 1, profile).slice(0, -1), ...buildStations(-50, 58, 2, profile).slice(0, -1), ...buildStations(58, 75, 1, profile)];
 
 /** @type {{ x: number, y: number, radius: number, cutZFrom: number }[]} 前後輪拱（R17.5：31 mm 輪胎半徑 15.5 + 2 mm） */
 const ARCHES = [
@@ -63,14 +69,20 @@ const ARCHES = [
 /** @type {(x: number, y: number) => number} 側視到最近輪拱圓周的距離（正值 = 在輪拱切口外） */
 const archRingDist = (x, y) => Math.min(...ARCHES.map((a) => Math.hypot(x - a.x, y - a.y) - a.radius));
 
-/** @type {{ xc: number, a: number, b: number, n: number }} 座艙罩俯視外形（超橢圓：中心 x 6、前後半長 19、半寬 10.5） */
-const CANOPY = { xc: 6, a: 19, b: 10.5, n: 2.4 };
+/**
+ * 座艙罩（iter-120）：半橢球殼（俯視橢圓：中心 x 6、前後半長 19、半寬 10.5；底面 y 30、頂 37.8）。
+ * 原本用 loft 的座艙曲面（每 0.35 mm 取樣，2.8 萬面＋座艙底 4.9 千面），改成 16 × 6 段的半橢球殼（約 200 面），以殼面積計入質量
+ * @type {{ xc: number, a: number, b: number, y0: number, h: number }}
+ */
+const CANOPY = { xc: 6, a: 19, b: 10.5, y0: 30, h: 7.8 };
 
 /** @type {(x: number) => number} 座艙罩俯視半寬 */
 const canopyHalfW = (x) => {
   const q = Math.min(1, Math.abs(x - CANOPY.xc) / CANOPY.a);
-  return CANOPY.b * (1 - q ** CANOPY.n) ** (1 / CANOPY.n);
+  return CANOPY.b * Math.sqrt(1 - q * q);
 };
+/** @type {(x: number, z: number) => number} 座艙罩俯視橢圓的正規化半徑（1 = 底緣） */
+const canopyR = (x, z) => Math.hypot((x - CANOPY.xc) / CANOPY.a, z / CANOPY.b);
 
 /** @type {number} 金色鳥喙的起點 x */
 const X_BEAK = 70.2;
@@ -84,6 +96,8 @@ const materials = () => ({
   black2: namedMaterial('paint-khokhloma-black', { color: 0x0e0b0a, roughness: 0.26, clearcoat: 0.9, clearcoatRoughness: 0.08, side: THREE.DoubleSide }),
   // 朱紅：霧面（roughness > 0.5 → Blender 緞面）
   cinnabar: namedMaterial('paint-cinnabar-red', { color: 0xb3261e, roughness: 0.56, clearcoat: 0.1 }),
+  // 火焰橘（iter-120：尾羽與側面羽片的紅 → 橘 → 金漸層中段；亮面漆）
+  orange: namedMaterial('paint-flame-orange', { color: 0xe8661a, roughness: 0.42, clearcoat: 0.5, clearcoatRoughness: 0.15 }),
   // 金：真金屬（名稱含 -brass → Blender metallic）
   gold: namedMaterial('trim-gold-brass', { color: 0xd1a23e, metalness: 0.8, roughness: 0.3, clearcoat: 0.3 }),
   // 琥珀色座艙罩（火光透過鳥背）
@@ -97,156 +111,137 @@ const materials = () => ({
   dGold: decalMaterial('decal-gold-khokhloma', { color: 0xd6a640, metalness: 0.75, roughness: 0.3 }),
   dRed: decalMaterial('decal-cinnabar', { color: 0xc0281c, roughness: 0.5 }),
   dBlack: decalMaterial('decal-lacquer-black', { color: 0x0e0b0a, roughness: 0.3, clearcoat: 0.6 }),
+  dOrange: decalMaterial('decal-flame-orange', { color: 0xe8661a, roughness: 0.42 }),
+  dShadow: decalMaterial('decal-relief-shadow', { color: 0x050404, roughness: 0.6 }),
 });
 
-/** @type {number} 尾羽根數 */
-const PLUME_COUNT = 5;
-
-/** @type {number[][]} 各根尾羽的羽端圓斑中心 [x, y, |z|]（依 |k| = 0 … 2）：中央最長最高，兩側較短較低、往外張 */
-const PLUME_EYES = [
-  [-67.4, 45.2, 0],
-  [-65.6, 42.6, 5.6],
-  [-62.8, 39.6, 10.8],
+/**
+ * 三支長尾羽（iter-120：評審「羽冠直立」→ 頭頂冠羽拿掉，改成 3 支從座艙後方沿背脊往後飄、到車尾併成尾翼的長羽）：
+ * [羽根 x, 羽根 |z|, 羽梢 x, 羽梢 |z|, 羽梢高 y]；中央最長最高，兩側往外張開，三片羽梢在車尾併成一面低而寬的羽翼（V7：貼近車身）
+ * @type {number[][]}
+ */
+const PLUMES = [
+  [-14, 0, -70.5, 0, 40.6],
+  [-18, 4.2, -66.5, 12.5, 39.4],
 ];
 
 /**
- * 單根尾羽中心線（k = −2 … 2）：羽根錯開排在後甲板中線兩側（z = 2.4k），先貼著後甲板往後拖、後段再往上揚到羽端圓斑
- * @type {(k: number) => number[][]} 33 個點（s = 0 … 1）
+ * 單支尾羽中心線：前段貼著背脊（殼面上 0.25 mm）往後拖，s > 0.42 後才往上揚到羽梢（被風往後吹的拖曳姿態）
+ * @type {(top: (x: number, z: number) => number, spec: number[], sg: number) => number[][]} 17 個點
  */
-const plumePath = (k) => {
-  const n = 32;
-  const ak = Math.abs(k);
-  const sg = Math.sign(k);
-  const xr = -30 - 1.2 * ak;
-  const zr = 2.4 * k;
-  const yr = P.yTop(xr) - 0.9 - 0.03 * zr * zr;
-  const [xe, ye, aze] = PLUME_EYES[ak];
-  const ze = sg * aze;
+const plumePath = (top, [xr, zr, xe, ze, ye], sg) => {
   /** @type {number[][]} */
   const pts = [];
+  const n = 16;
   for (let i = 0; i <= n; i++) {
     const s = i / n;
     const x = lerp(xr, xe, s);
-    const z = lerp(zr, ze, s * s);
-    // 拖曳：前段貼近殼面（低升幅），後段才往上揚
-    const y = yr + (ye - yr) * (0.18 * s + 0.82 * s ** 2.4);
-    pts.push([x, y, z]);
+    const z = sg * lerp(zr, ze, s * s);
+    const yDeck = top(Math.max(-57.5, x), z) + 0.25;
+    const w = Math.max(0, (s - 0.42) / 0.58) ** 1.5;
+    pts.push([x, lerp(yDeck, ye, w), z]);
   }
   return pts;
 };
 
-/** @type {(s: number) => number[]} 尾羽斷面半徑 [橫向, 垂直]：直立的細長羽片（厚 1.3、高 1.8 → 3.4），根部稍粗 */
-const plumeRadius = (s) => [lerp(0.75, 0.6, s), lerp(1.0, 1.7, s) + 0.25 * Math.sin(Math.PI * s)];
+/** @type {(s: number) => number[]} 尾羽斷面半徑 [橫向, 垂直]：前段細長羽軸（2.4 × 1.6），後段攤平成寬 7 mm、厚 1.5 mm 的水平羽片（尾翼面） */
+const plumeRadius = (s) => {
+  const t = Math.max(0, (s - 0.35) / 0.65);
+  return [lerp(1.2, 3.5, t ** 0.8) * (s > 0.94 ? lerp(1, 0.55, (s - 0.94) / 0.06) : 1), lerp(0.8, 0.75, t)];
+};
 
-/** @type {[number, number, string][]} 尾羽分段上色：[s0, s1, 材質鍵]（黑漆羽根 → 朱紅羽身 → 金色羽梢） */
+/** @type {[number, number, string][]} 尾羽分段上色：[s0, s1, 材質鍵]（朱紅羽根 → 火焰橘羽身 → 金色羽梢） */
 const PLUME_SEGMENTS = [
-  [0, 0.22, 'black2'],
-  [0.22, 0.7, 'cinnabar'],
+  [0, 0.34, 'cinnabar'],
+  [0.34, 0.7, 'orange'],
   [0.7, 1, 'gold'],
 ];
 
 /**
- * 側視橢圓立板（羽端圓斑的各層）：中心 (cx, cy)、半軸 a × b、長軸轉 rot（弧度）、沿 z 厚 thick
- * @type {(cx: number, cy: number, a: number, b: number, rot: number, zc: number, thick: number) => THREE.BufferGeometry}
+ * 三支尾羽＋羽梢孔雀眼（水平的三層薄圓片：金框 → 朱紅 → 黑漆瞳，疊在羽片頂面），依材質分組合併
+ * @type {(top: (x: number, z: number) => number) => Record<string, THREE.BufferGeometry[]>}
  */
-const ellipsePlate = (cx, cy, a, b, rot, zc, thick) => {
-  /** @type {number[][]} */
-  const pts = [];
-  const n = 36;
-  for (let i = 0; i < n; i++) {
-    const t = (2 * Math.PI * i) / n;
-    const u = a * Math.cos(t);
-    const v = b * Math.sin(t);
-    pts.push([cx + u * Math.cos(rot) - v * Math.sin(rot), cy + u * Math.sin(rot) + v * Math.cos(rot)]);
-  }
-  return finPlate(pts, zc, thick);
-};
-
-/**
- * 五根尾羽＋羽端孔雀眼圓斑（金框 → 朱紅 → 黑漆瞳），依材質分組合併
- * @type {() => Record<string, THREE.BufferGeometry[]>}
- */
-const buildPlumes = () => {
+const buildPlumes = (top) => {
   /** @type {Record<string, THREE.BufferGeometry[]>} */
   const byMat = {};
-  for (let k = -(PLUME_COUNT - 1) / 2; k <= (PLUME_COUNT - 1) / 2; k++) {
-    const path = plumePath(k);
-    const n = path.length - 1;
-    for (const [s0, s1, mat] of PLUME_SEGMENTS) {
-      const i0 = Math.round(s0 * n);
-      const i1 = Math.round(s1 * n);
-      const g = sweepEllipse(path.slice(i0, i1 + 1), Math.max(6, (i1 - i0) * 2), (t) => plumeRadius(lerp(s0, s1, t)), 12);
-      (byMat[mat] ??= []).push(smoothNormals(g));
+  for (const spec of PLUMES) {
+    for (const sg of spec[1] === 0 ? [1] : [-1, 1]) {
+      const path = plumePath(top, spec, sg);
+      const n = path.length - 1;
+      for (const [s0, s1, mat] of PLUME_SEGMENTS) {
+        const i0 = Math.round(s0 * n);
+        const i1 = Math.round(s1 * n);
+        const g = sweepEllipse(path.slice(i0, i1 + 1), Math.max(4, (i1 - i0) * 2), (t) => plumeRadius(lerp(s0, s1, t)), 8);
+        (byMat[mat] ??= []).push(smoothNormals(g));
+      }
+      // 孔雀眼：羽梢前 2.6 mm、羽片頂面上
+      const [xe, ye, ze] = path[n - 1];
+      const rot = Math.atan2(path[n][2] - path[n - 2][2], path[n][0] - path[n - 2][0]);
+      for (const [r, h, mat] of [
+        [3.0, 0.35, 'gold'],
+        [1.9, 0.55, 'cinnabar'],
+        [0.85, 0.75, 'black2'],
+      ]) {
+        const disc = new THREE.CylinderGeometry(1, 1, h, 16);
+        disc.scale(r * 1.25, 1, r * 0.85);
+        disc.rotateY(-rot);
+        disc.translate(xe, ye + 0.6 + h / 2 - 0.2, ze);
+        (byMat[mat] ??= []).push(disc);
+      }
     }
-    // 羽端圓斑：長軸沿羽梢方向（往後上），三層同心橢圓立板，越內層越厚 → 側看是凸起的孔雀眼
-    const [xe, ye] = path[n];
-    const [xp, yp] = path[n - 2];
-    const rot = Math.atan2(ye - yp, xe - xp);
-    const ze = path[n][2];
-    // 外圈往羽梢方向偏 1 mm（像羽片包著圓斑）
-    const ox = Math.cos(rot) * 0.8;
-    const oy = Math.sin(rot) * 0.8;
-    (byMat.gold ??= []).push(ellipsePlate(xe + ox, ye + oy, 4.4, 3.1, rot, ze, 1.1));
-    (byMat.cinnabar ??= []).push(ellipsePlate(xe, ye, 2.9, 2.1, rot, ze, 1.5));
-    (byMat.black2 ??= []).push(ellipsePlate(xe - ox * 0.4, ye - oy * 0.4, 1.3, 1.1, rot, ze, 1.9));
   }
   return byMat;
 };
 
 /**
- * 頭頂冠羽：三片往後掠、羽尖微翹的金色薄羽（中片 + 兩側往外張 14°），根部埋進頭頂 1 mm
- * @type {(top: (x: number, z: number) => number) => THREE.BufferGeometry}
+ * 側面長羽片（iter-120：評審「側面紅羽像火焰貼紙」→ 改成從前輪拱後緣往後拉長的 3 片尖羽，羽軸筆直、羽尖不上捲，
+ * 羽根沿著前輪拱的圓弧排列）：[羽根 x, 羽根 y, 長, 最大半寬, 傾角（度，正 = 往後上）]
+ * @type {number[][]}
  */
-const buildCrest = (top) => {
-  /** @type {(x0: number, len: number, rise: number, zc: number) => number[][]} */
-  const feather = (x0, len, rise, zc) => {
-    const yb = top(x0, zc) - 1;
-    const yb2 = top(x0 - 3.2, zc) - 1;
-    return [
-      [x0, yb],
-      [x0 - 0.6, yb + rise * 0.55],
-      [x0 - len * 0.55, yb + rise * 0.92],
-      [x0 - len, yb + rise],
-      [x0 - len * 0.82, yb + rise * 0.62],
-      [x0 - 3.2, yb2 + 1.1],
-      [x0 - 3.2, yb2],
-    ];
-  };
-  return mergeGeos([
-    finPlate(feather(66.5, 10.5, 6.2, 0), 0, 1.3),
-    finPlate(feather(65, 8.6, 4.8, 1.9), 1.9, 1.1, -14),
-    finPlate(feather(65, 8.6, 4.8, -1.9), -1.9, 1.1, 14),
-  ]);
+const SIDE_FEATHERS = [
+  [23.6, 22.6, 40, 2.2, -2.5],
+  [22.2, 18.6, 46, 2.5, 0],
+  [20.8, 14.9, 35, 1.9, 2],
+];
+
+/**
+ * 側面長羽片的距離場：回傳 { d：到羽片邊界的距離（負值 = 羽內）、rachis：到羽軸的距離、k：第幾片 }
+ * @type {(x: number, y: number) => { d: number, rachis: number, k: number }}
+ */
+const sideFeathers = (x, y) => {
+  let best = { d: Infinity, rachis: Infinity, k: -1 };
+  SIDE_FEATHERS.forEach(([x0, y0, len, w, deg], k) => {
+    const ang = (deg * Math.PI) / 180;
+    const dx = x0 - x;
+    const dy = y - y0;
+    // 局部座標：a 沿羽軸往後、b 垂直
+    const a = dx * Math.cos(ang) + dy * Math.sin(ang);
+    const b = -dx * Math.sin(ang) + dy * Math.cos(ang);
+    const t = Math.max(0, Math.min(1, a / len));
+    // 羽片外形：羽根收窄、前 1/3 最寬、往後拉成細長尖羽
+    const half = w * Math.sin(Math.PI * Math.min(1, t ** 0.5)) ** 0.6;
+    const d = Math.max(Math.abs(b) - half, -a, a - len);
+    if (d < best.d) {
+      best = { d, rachis: Math.max(Math.abs(b), -a, a - 0.9 * len), k };
+    }
+  });
+  return best;
 };
 
 /**
- * 側面火焰羽紋（Khokhloma 的捲草 / 火焰羽）：從前方低處往後上方甩出的長羽舌，羽尖往上捲；回傳到羽形邊界的近似距離（負值 = 在羽內）
- * @type {(x: number, y: number) => number}
+ * 翼尖羽緣（iter-120）：前輪上方的翅面外緣一圈朱紅，內緣是 5 道往後指的尖羽（初級飛羽的羽尖），取代整片黑漆；回傳負值 = 在朱紅帶內
+ * @type {(x: number, y: number, z: number) => number}
  */
-const flameFeathers = (x, y) => {
-  let best = Infinity;
-  // [羽根 x, 羽根 y, 長, 最大半寬]
-  for (const [x0, y0, len, w] of [
-    [21.5, 12.6, 21, 3.1],
-    [9.5, 13.4, 20, 2.9],
-    [-2.5, 12.8, 19.5, 3],
-    [-13.5, 13.6, 13, 2.4],
-  ]) {
-    // 局部座標：a 沿羽（往後上 16°），b 垂直
-    const ang = (16 * Math.PI) / 180;
-    const dx = x0 - x;
-    const dy = y - y0;
-    const a = dx * Math.cos(ang) + dy * Math.sin(ang);
-    const b0 = -dx * Math.sin(ang) + dy * Math.cos(ang);
-    const t = a / len;
-    // 羽尖往上捲
-    const b = b0 - 3.2 * Math.max(0, t) ** 2.2;
-    const tc = Math.max(0, Math.min(1, t));
-    const half = w * Math.sin(Math.PI * tc ** 0.7) ** 0.8;
-    const d = Math.max(Math.abs(b) - half, -a, a - len);
-    best = Math.min(best, d);
+const wingTipBand = (x, y, z) => {
+  if (y < P.yS(x) - 0.4 || x < 16 || x > 54) {
+    return 1;
   }
-  return best;
+  const w = P.hw(x) - Math.abs(z);
+  // 鋸齒：每 7.5 mm 一羽，羽尖朝車尾（往後漸寬、到羽尖突然收回）
+  const ph = (((x - 16) % 7.5) + 7.5) % 7.5;
+  const tooth = 3.4 * (1 - ph / 7.5);
+  const fade = Math.min(1, (x - 16) / 8, (54 - x) / 6);
+  return w - (3 + tooth) * Math.max(0, fade);
 };
 
 export const firebirdBody = makePolyBody({
@@ -259,7 +254,7 @@ export const firebirdBody = makePolyBody({
   form: 'firebird-glide',
   roof: 'canopy',
   wing: 'plume-train',
-  theme: '低而流線的鳥身＋前段展開往後掠的寬翅膀（俯視飛鳥形）、金色短喙與三片冠羽、琥珀座艙罩；車尾 5 根往後上方拖曳的長尾羽，羽端金框朱紅孔雀眼；Khokhloma 黑漆＋朱紅＋金的火焰羽紋',
+  theme: '低而流線的鳥身＋前段展開往後掠的寬翅膀（俯視飛鳥形，翼尖朱紅尖羽）、低壓的金色尖喙、琥珀座艙罩；3 支從座艙後方沿背脊往後飄的長尾羽在車尾併成低寬羽翼（朱紅 → 橘 → 金，羽梢孔雀眼）；側面 3 片從前輪拱往後拉長的尖羽',
   material: 'ABS',
   density_g_cm3: 1.05,
   wallThickness_mm: 0.8,
@@ -267,32 +262,18 @@ export const firebirdBody = makePolyBody({
   // 翅緣是銳利稜線
   hard: [5],
   wheelArches: ARCHES,
-  canopy: {
-    section: 'ellipse',
-    // 超橢圓座艙：x 25 → −13（每 1.27 mm 一站）；最寬 10.5、最高 8.4（座艙頂約 39.9）
-    stations: (() => {
-      /** @type {{ x: number, yBase: number, yTop: number, halfW: number }[]} */
-      const out = [];
-      for (let i = 0; i <= 30; i++) {
-        const u = i / 30;
-        const x = lerp(25, -13, u);
-        const halfW = Math.max(2.4, canopyHalfW(x));
-        const rise = 8.4 * Math.sin(Math.PI * u ** 0.75) ** 0.6;
-        out.push({ x, yBase: 0, yTop: rise, halfW });
-      }
-      return out;
-    })(),
-  },
   sideZMin: 30,
   zones: () => [
     // 金色鳥喙
     { mat: 'gold', keep: (x) => x - X_BEAK },
     // 朱紅裙帶（側裙最下 2.4 mm）
     { mat: 'cinnabar', keep: (x, y) => yRedBand(x) - y },
+    // 翼尖朱紅尖羽（iter-120）
+    { mat: 'cinnabar', keep: (x, y, z) => -wingTipBand(x, y, z) },
     // 黑漆
     { mat: 'black', keep: () => 1 },
   ],
-  mats: { inner: 'inner', edge: 'edge', cap: 'black', glass: 'glass', cockpit: 'black', mount: 'mount' },
+  mats: { inner: 'inner', edge: 'edge', cap: 'black', mount: 'mount' },
   materials,
   extras: (kit) => {
     /** @type {BodyPart[]} */
@@ -306,34 +287,38 @@ export const firebirdBody = makePolyBody({
       shell: true,
       name: 'arch-liners',
     });
-    // 冠羽（金，實體件）
-    parts.push({ geometry: buildCrest(top), mat: 'gold', solid: true, outline: true, name: 'firebird-crest' });
-    // 五根尾羽＋孔雀眼羽端（實體件，依段上色）
-    for (const [mat, geos] of Object.entries(buildPlumes())) {
+    // 座艙罩：半橢球殼（琥珀煙燻，殼面積計入質量）
+    {
+      const dome = new THREE.SphereGeometry(1, 16, 6, 0, Math.PI * 2, 0, Math.PI / 2);
+      dome.scale(CANOPY.a, CANOPY.h, CANOPY.b);
+      dome.translate(CANOPY.xc, CANOPY.y0, 0);
+      parts.push({ geometry: dome, mat: 'glass', shell: true, renderOrder: 3, name: 'canopy-dome' });
+    }
+    // 三支長尾羽＋孔雀眼羽梢（實體件，依段上色）
+    for (const [mat, geos] of Object.entries(buildPlumes(top))) {
       parts.push({ geometry: mergeGeos(geos), mat, solid: true, outline: true, name: `plume-train-${mat}` });
     }
-    // 尾羽根座：金色扁橢球，把五根羽根和後甲板接成一體
-    const boss = new THREE.SphereGeometry(1, 32, 16);
-    boss.scale(5.2, 1.8, 7.6);
-    boss.translate(-31.8, P.yTop(-31.8) - 0.4, 0);
+    // 尾羽根座：金色扁橢球，把三支羽根和座艙後緣接成一體
+    const boss = new THREE.SphereGeometry(1, 16, 10);
+    boss.scale(4.2, 1.4, 6.4);
+    boss.translate(-15.5, top(-15.5, 0) - 0.3, 0);
     parts.push({ geometry: boss, mat: 'gold', solid: true, outline: true, name: 'plume-root-boss' });
 
     // ---- 貼紙 ----
     // 座艙框（金，座艙罩外圍 1.2 mm）＋座艙到羽根座的金色背脊線＋座艙到冠羽的金色頸線
     parts.push({
       geometry: kit.decal((x, y, z) => {
-        const u = kit.underCanopy(x, z);
-        const ring = x > -14.2 && x < 26.2 ? Math.min(u + 1.2, 0.05 - u) : -1;
-        const spine = Math.min(0.5 - Math.abs(z), -12.5 - x, x + 30);
+        const r = canopyR(x, z);
+        const ring = Math.min(r - 0.99, 1 + 1.2 / CANOPY.b - r);
         const neck = Math.min(0.45 - Math.abs(z), x - 25.8, 58 - x);
-        return Math.max(ring, spine, neck);
+        return Math.max(ring, neck);
       }),
       mat: 'dGold',
       name: 'decal-canopy-frame',
     });
     // 翅緣金線（沿翅緣稜線內側 0.7 mm）
     parts.push({
-      geometry: kit.decal((x, y, z) => Math.min(0.35 - Math.abs(Math.abs(z) - (P.hw(x) - 1.2)), X_BEAK - 1 - x, x + 59, y - P.yS(x) + 0.1)),
+      geometry: kit.decal((x, y, z) => Math.min(0.35 - Math.abs(Math.abs(z) - (P.hw(x) - 1.2)), X_BEAK - 1 - x, x + 56, y - P.yS(x) + 0.1)),
       mat: 'dGold',
       name: 'decal-wing-edge',
     });
@@ -341,7 +326,7 @@ export const firebirdBody = makePolyBody({
     parts.push({
       geometry: kit.decal((x, y, z) => {
         const az = Math.abs(z);
-        if (x < -24 || x > 47 || az < canopyHalfW(x) + 3.2 || az > P.hw(x) - 2.6) {
+        if (x < -12 || x > 47 || az < canopyHalfW(x) + 3.2 || az > P.hw(x) - 2.6 || wingTipBand(x, y, z) < 0.6) {
           return -1;
         }
         const R = 3.4;
@@ -360,33 +345,70 @@ export const firebirdBody = makePolyBody({
       mat: 'dGold',
       name: 'decal-wing-scales',
     });
-    // 側面火焰羽紋：朱紅羽舌＋金色外框（線寬 0.7）
+    // 側面長羽片（iter-120）：上片火焰橘、中下片朱紅；金色羽軸＋金框（線寬 0.7）；羽片下緣一道 0.6 mm 黑影，讓羽片看起來是浮起的浮雕
     /** @type {(x: number, y: number, z: number) => boolean} 側裙（翅緣以下、輪拱外） */
     const onSkirt = (x, y, z) => Math.abs(z) > P.hw(x) - 0.2 && y < P.yS(x) - 0.6 && y > yRedBand(x) + 0.3 && archRingDist(x, y) > 1.2;
-    parts.push({
-      geometry: kit.decal((x, y, z) => (onSkirt(x, y, z) ? -flameFeathers(x, y) : -1), { offset: 0.1 }),
-      mat: 'dRed',
-      name: 'decal-flame-feathers-red',
-    });
-    parts.push({
-      geometry: kit.decal((x, y, z) => (onSkirt(x, y, z) ? 0.36 - Math.abs(flameFeathers(x, y) + 0.1) : -1), { offset: 0.14 }),
-      mat: 'dGold',
-      name: 'decal-flame-feathers-gold',
-    });
-    // 側面金色細捲鬚（Khokhloma「草紋」）：羽舌之間的小金點（漿果）
     parts.push({
       geometry: kit.decal((x, y, z) => {
         if (!onSkirt(x, y, z)) {
           return -1;
         }
+        const f = sideFeathers(x, y);
+        return f.k === 0 ? -1 : -f.d;
+      }, { offset: 0.1 }),
+      mat: 'dRed',
+      name: 'decal-side-feathers-red',
+    });
+    parts.push({
+      geometry: kit.decal((x, y, z) => {
+        if (!onSkirt(x, y, z)) {
+          return -1;
+        }
+        const f = sideFeathers(x, y);
+        return f.k === 0 ? -f.d : -1;
+      }, { offset: 0.1 }),
+      mat: 'dOrange',
+      name: 'decal-side-feathers-orange',
+    });
+    parts.push({
+      geometry: kit.decal((x, y, z) => {
+        if (!onSkirt(x, y, z)) {
+          return -1;
+        }
+        const f = sideFeathers(x, y);
+        return Math.max(0.35 - Math.abs(f.d + 0.1), Math.min(0.3 - f.rachis, -f.d));
+      }, { offset: 0.14 }),
+      mat: 'dGold',
+      name: 'decal-side-feathers-gold',
+    });
+    parts.push({
+      geometry: kit.decal((x, y, z) => {
+        if (!onSkirt(x, y, z)) {
+          return -1;
+        }
+        const below = sideFeathers(x, y + 0.75);
+        const here = sideFeathers(x, y);
+        return Math.min(-below.d, here.d);
+      }, { offset: 0.08 }),
+      mat: 'dShadow',
+      name: 'decal-side-feathers-shadow',
+    });
+    // 頭頂冠羽（iter-120 改成貼紙）：三道從眼後往後飄、貼著頭頂的金色細羽
+    parts.push({
+      geometry: kit.decal((x, y, z) => {
+        if (x < 46 || x > 67 || y < P.yS(x)) {
+          return -1;
+        }
+        const t = (67 - x) / 21;
         let d = Infinity;
-        for (const [bx, by] of [[15.6, 21], [3.4, 21.4], [-8.6, 21], [-19.5, 20.4], [26.5, 19.6]]) {
-          d = Math.min(d, Math.hypot(x - bx, y - by) - 0.75);
+        for (const zc of [0, 2.2, -2.2]) {
+          const zz = zc * (1 + 1.6 * t);
+          d = Math.min(d, Math.abs(z - zz) - 0.45 * (1 - 0.6 * t));
         }
         return -d;
-      }, { offset: 0.12 }),
-      mat: 'dRed',
-      name: 'decal-berries',
+      }, { offset: 0.1 }),
+      mat: 'dGold',
+      name: 'decal-crest-plumes',
     });
     // 鳥眼：水晶燈片＋金色眼框（頭部兩側上面）
     /** @type {(grow: number) => (x: number, y: number, z: number) => number} */
@@ -417,10 +439,11 @@ export const firebirdBody = makePolyBody({
   src: {
     density_g_cm3: 'SPEC 1.14：ABS 約 1.05 g/cm³（推估）',
     wallThickness_mm: '推估：射出 ABS 殼 0.8 mm（同其他車殼）；座艙罩同厚度以殼面積計入質量',
-    geometry: '本檔站位產生器 P（推估）：殼面 x −61 ~ 75（鳥喙尖），尾羽孔雀眼尖約 x −72（batch5 規格「長約 145–153」）；殼頂 32.4–33.6、座艙頂約 40.8、尾羽頂約 50（batch5「高約 40–50（尾羽頂）」）；前段翅膀半寬 46.5 + 側裙外張 1.0（外框 ±46.6）（車殼外框半寬 ≤ 48，避免碰撞體寬過導輪外緣 ±48.5）',
+    geometry: '本檔站位產生器 P（推估；iter-120 改）：殼面 x −58 ~ 75（鳥喙尖），尾羽翼梢約 x −71；殼頂 31.6–32.6、座艙頂約 37.8、尾羽翼頂約 41.3（第九階段 V7：尾翼比座艙頂高 ≤ 10）；前段翅膀半寬 43.2 + 側裙外張 1.0（外框 ±43.3）',
     wheelArches: '前後 R17.5（31 mm 輪胎半徑 15.5 + 2 mm），可裝 26 / 31 mm 輪；輪拱內襯擋住殼內空腔',
-    plumes: '尾羽：5 根 ABS 實心掃掠件（厚約 1.3、高 2–3.4 mm，推估），羽端三層同心橢圓立板（金 8.8 × 6.2 × 1.1、朱紅 5.8 × 4.2 × 1.5、黑 2.6 × 2.2 × 1.9 mm）；根部錯開 2.4 mm 排在後甲板＋金色根座',
-    crest: '冠羽：3 片金色立板（厚 1.1–1.3，中片長 10.5、高 6.2；兩側外張 14°，推估），質量 = 封閉體積 × 1.05 g/cm³',
+    plumes: '尾羽（iter-120）：3 支 ABS 實心掃掠件（8 段斷面），前段羽軸 2.4 × 1.6 mm 貼背脊，後段攤平成寬約 7、厚 1.5 mm 的水平羽片併成尾翼；羽梢孔雀眼為三層水平薄圓片（金 7.5 × 5.1 × 0.35、朱紅 4.8 × 3.2 × 0.55、黑 2.1 × 1.4 × 0.75 mm，推估）；質量 = 封閉體積 × 1.05 g/cm³',
+    crest: '冠羽（iter-120）：改成頭頂三道往後飄的金色貼紙（不再是直立實體件）',
+    canopy: '座艙罩（iter-120）：半橢球殼 38 × 21 mm、高 7.8 mm，16 × 6 段，以殼面積 × 0.8 mm 計入質量（推估）',
     palette: 'Khokhloma 漆器的黑＋朱紅＋金（研究來源見 DESIGN.md）；色碼自訂（推估）',
     mounts: '對齊 chassis-midship 的車殼安裝點（SPEC 1.14）',
   },
