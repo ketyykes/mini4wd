@@ -3665,3 +3665,7 @@
 
 - 計畫（規格 `/tmp/mini4wd-p8/batch9.md`，22:35 前 commit）：Q trojan、khepri；R yaga-hut、minotaur。只改輪廓剖面：側面 tumblehome 內收、輪拱上方翼子板唇、車頭壓低；yaga-hut 雞腳收到車身側面、最低點 ≥ 底盤最低點。預期 20/20、比例 7。
 - 退路：若計分 < 20/20 或評審比例沒進步 → revert 回 iter-116（`25e7b77`）。
+- Q（22:06）：trojan 側板中段肩線、往下內收 3 mm，四個輪拱外緣外推 ≤ 1.6 mm（赭紅輪座圈加寬成唇），馬頭口鼻低 3 mm；khepri 側裙內收 1.4 → 3.2 mm 弧形下收、頭盾前緣低 3 mm、金色實體翼子板眉（殼面直接推凸會讓圓頂起皺，改用實體件）。共用 `buildProfileLiner` / `buildBellySkirt` / `buildSlantSkirt` 未改，heimdall、quetzal、kitsune、tanngrisnir 的 body-check 與改前逐行相同。
+- R（22:13）：minotaur 肩線移到側壁 42% 高、往下內收 ≤ 3.8 mm、外凸 1.2–1.8 mm 翼子板唇（牛肩 47.4 → 46.4 讓唇外緣 ≤ 47.9）、鼻端 20.6 → 18.2；yaga-hut 下兩根圓木內收 2.8 mm、白色翼子板唇、車頭封口頂 26.6 → 24.4，雞腳改成貼側面的 Z 形折疊（最低點 y 4.3 → 9.6，底盤最低點 y 2.2），腰身 32.5 → 30.3 把俯視 IoU 壓回 0.841。
+- 合併後主線：trojan 俯視最大 IoU 0.843（× zeppelin-xtail）、yaga 0.841、minotaur 0.826；4 款 26 mm 合法；trojan、khepri 單跑 3 圈通過。
+- 計分：主線 score.mjs 22:14–22:30 **20/20**。Blender 重出 4 款；陣容圖 5 張重出。
