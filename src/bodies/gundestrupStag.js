@@ -23,14 +23,18 @@ const XS = [-68, -62, -57, -52, -40, -28, -22, -14, 0, 8, 16, 22, 30, 40, 50, 56
 const P = {
   // 半寬（俯視）：細尖的臀部 → 寬厚的後腿（47–48，罩住後輪）→ 細腰 30（座艙段；坐在底盤側壁 z 35 內側上方）→ 隆起的前胸 / 肩 48（x 22）→ 前輪 40 → 頸部收窄 19 → 鹿頭兩頰 22 → 鹿吻
   // iter-114：最寬 48 → 47.6（車殼外框半寬 ≤ 48.0）；鹿頭段改成單調收窄（原本頸 19 → 兩頰 22 → 18 的凹凸讓銀面反光起皺）、前輪段 40 平台改成連續收斜
-  hw: monoCurve(XS, [4, 10, 36, 47.6, 47.6, 46.8, 43.5, 33, 30.5, 32, 38, 47.6, 46.5, 43.5, 39.5, 35, 30.5, 26.5, 22.8, 19.6, 16.2, 11]),
+  // iter-121：鹿吻收得更細長（x 60 → 80 半寬 30.5 → 8；細長的鹿吻＋低鼻，也讓俯視 IoU 和 sleipnir 拉開）
+  hw: monoCurve(XS, [4, 10, 36, 47.6, 47.6, 46.8, 43.5, 33, 30.5, 32, 38, 47.6, 46.5, 43.5, 39.5, 35, 30, 24.5, 19.6, 15.6, 12, 8]),
   // 中線頂（背線）：臀部 29 → 臀頂 37 → 背部低處 35（座艙罩）→ 鬐甲（肩峰）42 → 頸、額往前下到鼻尖 21.5
   // iter-114：鬐甲到鼻尖改成沿車長單純外凸（斜率一路變陡，原本 x 64 後斜率變緩 → 頸部下凹、反光像揉皺的鋁箔）；背部低處 35 → 36.2（座艙兩側的鞍形凹面變淺）
-  yTop: monoCurve(XS, [29, 33.5, 35.5, 36.5, 37, 36.8, 36.5, 36.2, 36.4, 37.2, 38.6, 39.8, 41.4, 41.2, 38.7, 36.5, 34.6, 32.5, 30.2, 27.5, 24.7, 21.5]),
+  // iter-121（第九階段）：整條背線壓低（鬐甲 41.4 → 37.5、背部 36.2 → 34），鹿吻往前一路下斜到鼻尖 16.5（LG1 低尖鼻 V3）；鬐甲到鼻尖仍是斜率一路變陡的單純外凸
+  yTop: monoCurve(XS, [27, 31, 33, 34, 34.5, 34.5, 34.3, 34, 34, 34.5, 35.5, 36.5, 37.5, 37.3, 34.8, 32.6, 30.6, 28.4, 26, 23.4, 20.2, 16.5]),
   // 剖面最寬處的高度
-  ySh: monoCurve(XS, [24, 24, 23, 22.5, 22, 22, 22, 21.5, 21.5, 21.5, 21.5, 22, 22.5, 22.5, 22.5, 22, 21.5, 21, 20.5, 20, 19.5, 19]),
+  // iter-121：鹿吻段的最寬處跟著鼻尖往下收（19 → 14.2），鼻端變成低而扁的鏟形吻
+  ySh: monoCurve(XS, [24, 24, 23, 22.5, 22, 22, 22, 21.5, 21.5, 21.5, 21.5, 22, 22.5, 22.5, 22, 21, 20, 19, 17.8, 16.6, 15.4, 14.2]),
   // 側裙下緣：中段 11（底盤側框段由 loft.js 自動讓到 9.9），臀部抬高離開後導輪，鹿吻下緣往上收
-  yLow: monoCurve(XS, [22, 19, 15, 13, 12, 12, 11.5, 11, 11, 11, 11, 11.5, 12, 12, 12, 12.5, 13, 14, 15, 16, 17, 18]),
+  // iter-121：鹿吻下緣 18 → 13（低鼻；仍在底盤前保險桿之上，以 body-check 間隙驗證）
+  yLow: monoCurve(XS, [22, 19, 15, 13, 12, 12, 11.5, 11, 11, 11, 11, 11.5, 12, 12, 12, 12.2, 12.4, 12.6, 12.8, 13, 13, 13]),
 };
 
 /** @type {number} 上半斷面超橢圓指數（< 1 = 比橢圓飽滿的鹿背） */
@@ -122,39 +126,94 @@ const buildLiner = (arch, depth, minZ) => {
 };
 
 /**
- * La Tène 單向卷鬚（running scroll）：沿 x 的波浪主線，每個波峰 / 波谷各接一個往同一方向捲的小卷圈（全部同向，不做三臂旋轉）
- * 回傳 { line: 線條距離, boss: 卷圈中心紅琺瑯圓點距離 }；u 往車頭、v 往上（以帶中線為 0）
- * @type {(u: number, v: number) => { line: number, boss: number }}
+ * 線段（膠囊）距離
+ * @type {(u: number, v: number, a: number[], b: number[], r: number) => number}
  */
-const scrollSd = (u, v) => {
-  const period = 11;
-  const amp = 2.2;
-  const k = (2 * Math.PI) / period;
-  // 波浪主線（用斜率修正近似成等寬線）
-  const yw = amp * Math.sin(k * u);
-  const slope = amp * k * Math.cos(k * u);
-  const wave = Math.abs(v - yw) / Math.sqrt(1 + slope * slope) - 0.33;
-  // 卷圈：每半週期一個，圓心在波峰 / 波谷內側往前 1.6 mm，半徑 1.5；只畫 300° 的開口圓（開口朝波線，像卷鬚收尾）
-  let curl = Infinity;
-  let boss = Infinity;
-  const j0 = Math.floor(u / (period / 2));
-  for (let j = j0 - 1; j <= j0 + 1; j++) {
-    const up = j % 2 === 0 ? 1 : -1;
-    const cu = j * (period / 2) + period / 4 + 1.6;
-    const cv = up * (amp - 1.5);
-    const du = u - cu;
-    const dv = v - cv;
-    const ang = Math.atan2(dv * up, -du);
-    const ring = Math.abs(Math.hypot(du, dv) - 1.5) - 0.33;
-    // 開口：朝波線那一側（ang 接近 0）留 60° 不畫
-    curl = Math.min(curl, Math.abs(ang) < Math.PI / 6 ? Infinity : ring);
-    boss = Math.min(boss, Math.hypot(du, dv) - 0.55);
-  }
-  return { line: Math.min(wave, curl), boss };
+const sdSeg = (u, v, [ax, ay], [bx, by], r) => {
+  const dx = bx - ax;
+  const dy = by - ay;
+  const h = Math.max(0, Math.min(1, ((u - ax) * dx + (v - ay) * dy) / (dx * dx + dy * dy)));
+  return Math.hypot(u - ax - h * dx, v - ay - h * dy) - r;
 };
 
-/** @type {{ x0: number, x1: number, y: number }} 卷鬚紋帶：前後輪拱之間、腰側（側視） */
-const SCROLL = { x0: -13.5, x1: 15.5, y: 18.6 };
+/**
+ * 橢圓近似距離
+ * @type {(u: number, v: number, cx: number, cy: number, rx: number, ry: number) => number}
+ */
+const sdEll = (u, v, cx, cy, rx, ry) => (Math.hypot((u - cx) / rx, (v - cy) / ry) - 1) * Math.min(rx, ry);
+
+/**
+ * iter-121（取自 iter-118 版，全部是貼紙、不加面數到碰撞）：仿 Gundestrup 銀釜的動物浮雕帶（只有動物：雄鹿、羊角蛇、狼，全部朝車頭行進；不做人物、不做盤腿坐像）。
+ * u 往車頭、v 往上（帶中線 0），動物高約 ±4，回傳到動物剪影的距離（線寬 ≥ 0.8 mm）
+ * @type {(u: number, v: number) => number}
+ */
+const animalSd = (u, v) => {
+  // 雄鹿（中心 u −13）：身體、頸、頭、四腿、兩支小分叉角
+  const du = u + 13;
+  const stag = Math.min(
+    sdEll(du, v, -0.4, 0.2, 3.2, 1.45),
+    sdSeg(du, v, [2.2, 0.8], [3.4, 2.6], 0.6),
+    sdEll(du, v, 4.1, 2.7, 1.05, 0.6),
+    sdSeg(du, v, [-2.6, -0.2], [-3.0, -3.7], 0.42),
+    sdSeg(du, v, [-1.4, -0.4], [-1.1, -3.7], 0.42),
+    sdSeg(du, v, [1.3, -0.4], [1.8, -3.7], 0.42),
+    sdSeg(du, v, [2.3, -0.2], [2.7, -3.7], 0.42),
+    sdSeg(du, v, [3.6, 3.1], [3.0, 4.1], 0.32),
+    sdSeg(du, v, [3.3, 3.6], [2.3, 3.9], 0.32),
+    sdSeg(du, v, [-3.5, 0.6], [-4.3, 1.3], 0.35),
+  );
+  // 羊角蛇（中心 u 0）：波浪蛇身由尾到頭漸粗，頭部一個捲曲羊角（開口圓）
+  let serpent = Infinity;
+  const nS = 18;
+  /** @type {(t: number) => number[]} */
+  const sp = (t) => [-5 + 9.6 * t, 1.6 * Math.sin(t * 2.4 * Math.PI) - 0.6];
+  for (let i = 0; i < nS; i++) {
+    const t0 = i / nS;
+    serpent = Math.min(serpent, sdSeg(u, v, sp(t0), sp((i + 1) / nS), lerp(0.3, 0.62, t0)));
+  }
+  const [hx, hy] = sp(1);
+  serpent = Math.min(serpent, sdEll(u, v, hx + 0.6, hy + 0.1, 1.0, 0.6));
+  const horn = Math.abs(Math.hypot(u - hx - 0.1, v - hy - 1.2) - 0.8) - 0.3;
+  serpent = Math.min(serpent, Math.atan2(v - hy - 1.2, u - hx - 0.1) < -1.2 ? Infinity : horn);
+  // 狼（中心 u 13）：較低長的身體、長吻、尖耳、下垂的尾巴
+  const dw = u - 13;
+  const wolf = Math.min(
+    sdEll(dw, v, -0.5, 0.0, 3.4, 1.25),
+    sdSeg(dw, v, [2.4, 0.5], [3.3, 1.6], 0.65),
+    sdEll(dw, v, 3.8, 1.7, 1.0, 0.7),
+    sdSeg(dw, v, [4.2, 1.5], [5.4, 1.1], 0.38),
+    sdSeg(dw, v, [3.5, 2.2], [3.3, 3.2], 0.3),
+    sdSeg(dw, v, [-3.6, 0.3], [-5.2, -1.6], 0.38),
+    sdSeg(dw, v, [-2.8, -0.4], [-3.3, -3.7], 0.42),
+    sdSeg(dw, v, [-1.6, -0.6], [-1.3, -3.7], 0.42),
+    sdSeg(dw, v, [1.4, -0.5], [1.9, -3.7], 0.42),
+    sdSeg(dw, v, [2.4, -0.3], [2.8, -3.7], 0.42),
+  );
+  return Math.min(stag, serpent, wolf);
+};
+
+/** @type {{ x0: number, x1: number, y: number, h: number }} 浮雕帶：前後輪拱之間的腰側（側視），半高 h（不含珠點邊框） */
+const FRIEZE = { x0: -20, x1: 20, y: 18.6, h: 4.3 };
+
+/**
+ * 側面兩道深色凹槽速度線（iter-121，評審「側面加深色凹槽線把銀面分割出速度線」）：從前輪拱後上方起、往車尾微微上揚、
+ * 尾端漸細收尖；回傳到線中心的距離減半寬（正值 = 線外）。k 為第幾道（0 上、1 下）
+ * @type {(x: number, y: number, k: number) => number}
+ */
+const grooveSd = (x, y, k) => {
+  /** @type {number} 線頭（車頭端）x */
+  const xa = k === 0 ? 30 : 22;
+  /** @type {number} 線尾（車尾端）x；上線從後輪拱頂上方越過，下線停在後輪拱前 */
+  const xb = k === 0 ? -62 : -22;
+  if (x > xa || x < xb) {
+    return 1;
+  }
+  const u = (xa - x) / (xa - xb);
+  const yc = k === 0 ? 29 + 4 * u : 25 + 1.5 * u;
+  // 線頭寬 1.5、往後收到 0.35（像被風拉長的刻線）
+  const half = lerp(0.75, 0.18, u ** 0.8);
+  return Math.abs(y - yc) - half;
+};
 
 /** @type {() => Record<string, THREE.Material>} */
 const materials = () => ({
@@ -177,6 +236,10 @@ const materials = () => ({
   dGold: decalMaterial('decal-gilt', { color: 0xc9a43b, roughness: 0.32, metalness: 0.7 }),
   dRed: decalMaterial('decal-enamel-red', { color: 0xb0302b, roughness: 0.25 }),
   dDark: decalMaterial('decal-niello-dark', { color: 0x2a2c30, roughness: 0.5 }),
+  // iter-121：浮雕帶凹處的氧化暗部（霧面）、凸起動物的亮銀、深色凹槽速度線（藍黑烏銀，不用棕黑）
+  dRecess: decalMaterial('decal-oxidized-recess', { color: 0x2f3134, roughness: 0.75 }),
+  dSilver: decalMaterial('decal-relief-silver', { color: 0xd2d3d2, roughness: 0.3, metalness: 0.85 }),
+  dGroove: decalMaterial('decal-niello-groove', { color: 0x1a1f29, roughness: 0.55 }),
   mount: namedMaterial('abs-mount-black', { color: 0x222326, roughness: 0.6 }),
   liner: namedMaterial('shell-wheelwell-patina', { color: 0x34373b, roughness: 0.7, side: THREE.DoubleSide }),
 });
@@ -187,37 +250,44 @@ const materials = () => ({
  * @typedef {{ beam: number[][], tines: number[][] }} AntlerDef
  */
 
-/** @type {AntlerDef} 右角：4 個分叉（眉叉往前上、第二叉、第三叉、頂端分叉） */
+/**
+ * iter-121（第九階段）：鹿角從車尾移到座艙正後方（角根 x −25），主幹貼著背線往後上方掃（像被風往後吹的角冠，兼當尾部導流件）；
+ * 角根左右分開（z ±8.5 / ±9.5）、各 3–4 個往後上方的分叉、左右長度與角度不同，不形成 Y 字剖面（MYTH_RESEARCH H7）。
+ * 分叉尖一律壓在 y 48.2 以下（車殼頂高 ≤ 49，V17）。
+ * @type {AntlerDef} 右角
+ */
 const ANTLER_R = {
   beam: [
-    [-29, 0, 9],
-    [-35, 46, 14.5],
-    [-46, 54.5, 21],
-    [-56.5, 59, 26],
-    [-63, 61, 28.5],
+    [-25, 0, 8.5],
+    [-31, 39.5, 12.5],
+    [-41, 43.5, 17.5],
+    [-52, 46, 22.5],
+    [-61, 46.8, 25.5],
   ],
   tines: [
-    [0.16, 6.5, 5.5, 2.5],
-    [0.36, 3.5, 7.5, 4],
-    [0.6, 0.5, 6.5, 5.5],
-    [0.84, -1.5, 3.8, 6.5],
+    [0.18, 1.5, 5.5, 2],
+    [0.4, -1.5, 4.5, 3.5],
+    [0.62, -3, 3.2, 4.5],
+    [0.84, -3.5, 1.4, 5],
   ],
 };
 /** @type {AntlerDef} 左角：3 個分叉，角度與長度都和右角不同（自然鹿角的不對稱） */
 const ANTLER_L = {
   beam: [
-    [-29, 0, 9],
-    [-36, 47, 15.5],
-    [-47.5, 55.5, 22.5],
-    [-57.5, 59.5, 27.5],
-    [-64, 60.5, 31],
+    [-25, 0, 9.5],
+    [-32, 40, 14],
+    [-42.5, 44.2, 19],
+    [-53.5, 46.4, 24],
+    [-62, 47, 27.5],
   ],
   tines: [
-    [0.2, 7.5, 4.5, 1.5],
-    [0.46, 2.5, 8, 5],
-    [0.74, -0.5, 5.5, 7],
+    [0.22, 1, 5.8, 1.5],
+    [0.5, -2, 4, 4],
+    [0.76, -3.5, 2, 5.5],
   ],
 };
+/** @type {number} 分叉尖的高度上限（車殼頂高 ≤ 49） */
+const ANTLER_Y_MAX = 48.2;
 
 export const gundestrupStagBody = makePolyBody({
   id: 'body-gundestrup-stag',
@@ -239,7 +309,7 @@ export const gundestrupStagBody = makePolyBody({
   wheelArches: ARCHES,
   canopy: {
     section: 'ellipse',
-    // 中段座艙罩：x 12 → −22，最寬 12、最高 7（罩頂約 42）
+    // 中段座艙罩：x 12 → −22，最寬 11、最高 5.2（iter-121：7 → 5.2，罩頂約 39.2，小而低的有色座艙 V5）
     stations: (() => {
       /** @type {{ x: number, yBase: number, yTop: number, halfW: number }[]} */
       const out = [];
@@ -247,8 +317,8 @@ export const gundestrupStagBody = makePolyBody({
       for (let i = 0; i <= n; i++) {
         const u = i / n;
         const x = lerp(12, -22, u);
-        const halfW = i === 0 || i === n ? 2.5 : 12 * Math.sin(Math.PI * u ** 0.9) ** 0.5;
-        const rise = 7 * Math.sin(Math.PI * u ** 0.85) ** 0.6;
+        const halfW = i === 0 || i === n ? 2.5 : 11 * Math.sin(Math.PI * u ** 0.9) ** 0.5;
+        const rise = 5.2 * Math.sin(Math.PI * u ** 0.85) ** 0.6;
         out.push({ x, yBase: 0, yTop: rise, halfW });
       }
       return out;
@@ -308,16 +378,17 @@ export const gundestrupStagBody = makePolyBody({
         }
         return out;
       };
-      silver.push(sweepEllipse(sample(0, split, 16), 40, (t) => [beamR(t * split), beamR(t * split)], 12));
-      gold.push(sweepEllipse(sample(split, 1, 4), 10, (t) => {
+      // iter-121：低分段（主幹 16 × 8、角尖 4 × 8；原本 40 × 12）
+      silver.push(sweepEllipse(sample(0, split, 16), 16, (t) => [beamR(t * split), beamR(t * split)], 8));
+      gold.push(sweepEllipse(sample(split, 1, 4), 4, (t) => {
         const r = lerp(beamR(split), 0.45, t);
         return [r, r];
-      }, 12));
+      }, 8));
       // 分叉：從主幹點往外彎（二次曲線，控制點在中段往外側偏 1.5 mm），末 40% 鍍金
       for (const [t, dx, dy, dz] of def.tines) {
         const p0 = curve.getPointAt(t);
         const r0 = beamR(t) * 0.82;
-        const tip = [p0.x + dx, p0.y + dy, p0.z + sg * dz];
+        const tip = [p0.x + dx, Math.min(ANTLER_Y_MAX, p0.y + dy), p0.z + sg * dz];
         const ctrl = [p0.x + dx * 0.45, p0.y + dy * 0.6, p0.z + sg * (dz * 0.45 + 1.5)];
         /** @type {(s: number) => number[]} 二次 Bezier */
         const bez = (s) => [0, 1, 2].map((c) => (1 - s) ** 2 * [p0.x, p0.y, p0.z][c] + 2 * (1 - s) * s * ctrl[c] + s * s * tip[c]);
@@ -330,14 +401,14 @@ export const gundestrupStagBody = makePolyBody({
         for (let i = 0; i <= 4; i++) {
           b.push(bez(cut + ((1 - cut) * i) / 4));
         }
-        silver.push(sweepEllipse(a, 12, (s) => {
+        silver.push(sweepEllipse(a, 6, (s) => {
           const r = lerp(r0, r0 * 0.62, s);
           return [r, r];
-        }, 10));
-        gold.push(sweepEllipse(b, 8, (s) => {
+        }, 6));
+        gold.push(sweepEllipse(b, 4, (s) => {
           const r = lerp(r0 * 0.62, 0.4, s);
           return [r, r];
-        }, 10));
+        }, 6));
       }
       return { silver, gold };
     };
@@ -364,12 +435,13 @@ export const gundestrupStagBody = makePolyBody({
       const len = Math.hypot(z, y - cy) || 1;
       torcPts.push([x, y + ((y - cy) / len) * 0.9, z + (z / len) * 0.9]);
     }
-    const torc = sweepEllipse(torcPts, 120, (t) => {
+    // iter-121：低分段（56 × 8；原本 120 × 12），扭節數不變
+    const torc = sweepEllipse(torcPts, 56, (t) => {
       const r = 0.95 + 0.22 * Math.cos(t * 28 * Math.PI);
       return [r, r];
-    }, 12);
+    }, 8);
     const balls = [torcPts[0], torcPts[torcPts.length - 1]].map(([x, y, z]) => {
-      const b = new THREE.SphereGeometry(1.75, 20, 14);
+      const b = new THREE.SphereGeometry(1.75, 12, 8);
       b.translate(x, y, z);
       return b;
     });
@@ -392,30 +464,42 @@ export const gundestrupStagBody = makePolyBody({
       name: 'decal-dorsal-line',
     });
 
-    // 側面 La Tène 單向卷鬚紋帶（金）＋卷圈中心紅琺瑯圓點：前後輪拱之間的腰側，車兩側都朝同一方向（往車頭）
-    /** @type {(x: number, y: number, z: number) => { line: number, boss: number } | null} */
-    const scrollAt = (x, y, z) => (Math.abs(z) < 26 || x < SCROLL.x0 || x > SCROLL.x1 ? null : scrollSd(x, y - SCROLL.y));
+    // iter-121：側面仿銀釜的動物浮雕帶（取代原本的卷鬚紋帶；iter-118 未合併的改動，改成全貼紙）——氧化暗底＋亮銀動物＋上下鍍金珠點與細邊；兩側動物都朝車頭
+    /** @type {(x: number, y: number, z: number) => boolean} */
+    const inFrieze = (x, y, z) => Math.abs(z) >= 26 && x >= FRIEZE.x0 && x <= FRIEZE.x1;
     parts.push({
-      geometry: kit.decal((x, y, z) => {
-        const r = scrollAt(x, y, z);
-        return r ? -r.line : -1;
-      }),
-      mat: 'dGold',
-      name: 'decal-la-tene-scroll',
+      geometry: kit.decal((x, y, z) => (inFrieze(x, y, z) ? FRIEZE.h - Math.abs(y - FRIEZE.y) : -1)),
+      mat: 'dRecess',
+      name: 'decal-frieze-recess',
+    });
+    parts.push({
+      geometry: kit.decal((x, y, z) => (inFrieze(x, y, z) && Math.abs(y - FRIEZE.y) < FRIEZE.h ? -animalSd(x, y - FRIEZE.y) : -1), { offset: 0.4 }),
+      mat: 'dSilver',
+      name: 'decal-frieze-animals',
     });
     parts.push({
       geometry: kit.decal((x, y, z) => {
-        const r = scrollAt(x, y, z);
-        return r ? -r.boss : -1;
-      }),
-      mat: 'dRed',
-      name: 'decal-enamel-bosses',
-    });
-    // 卷鬚紋帶上下兩道鍍金細邊
-    parts.push({
-      geometry: kit.decal((x, y, z) => (Math.abs(z) < 26 || x < SCROLL.x0 - 1 || x > SCROLL.x1 + 1 ? -1 : 0.32 - Math.abs(Math.abs(y - SCROLL.y) - 4.6))),
+        if (Math.abs(z) < 26 || x < FRIEZE.x0 - 0.5 || x > FRIEZE.x1 + 0.5) {
+          return -1;
+        }
+        const dv = Math.abs(y - FRIEZE.y);
+        const bead = 0.42 - Math.hypot(x - FRIEZE.x0 - 1.6 * Math.round((x - FRIEZE.x0) / 1.6), dv - (FRIEZE.h + 0.65));
+        const rim = 0.32 - Math.abs(dv - (FRIEZE.h + 1.5));
+        return Math.max(bead, rim);
+      }, { offset: 0.25 }),
       mat: 'dGold',
-      name: 'decal-scroll-borders',
+      name: 'decal-frieze-beads',
+    });
+    // iter-121：上側面兩道深色凹槽速度線（避開前後輪拱）
+    parts.push({
+      geometry: kit.decal((x, y, z) => {
+        if (Math.abs(z) < 14) {
+          return -1;
+        }
+        return -Math.min(grooveSd(x, y, 0), grooveSd(x, y, 1));
+      }),
+      mat: 'dGroove',
+      name: 'decal-speed-grooves',
     });
     // 肩部（前輪拱上方）一道沿拱弧的鍍金細線＋三個紅琺瑯圓點（錘起的肩肌輪廓）
     parts.push({
