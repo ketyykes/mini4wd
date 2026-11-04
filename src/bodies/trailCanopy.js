@@ -7,7 +7,7 @@
 import * as THREE from 'three';
 import { makePolyBody, buildDriver, finPlate, flatPlate } from './polyBody.js';
 import { monoTable, cabinStations } from './fastbackCabin.js';
-import { namedMaterial, decalMaterial, sdNumber, sdRoundRect, sdBar, sideDecal, topDecal, mergeGeos } from './loft.js';
+import { namedMaterial, decalMaterial, sdNumber, sdRoundRect, sideDecal, topDecal, mergeGeos } from './loft.js';
 
 /** @typedef {import('./loft.js').KeepFn} KeepFn */
 
@@ -223,9 +223,10 @@ export const trailCanopyBody = makePolyBody({
     parts.push({ geometry: drv.helmet, mat: 'helmet', solid: true, name: 'cockpit-helmet' });
 
 
-    // 單支柱單片低位平板擾流（PC，實心件）：平板 x −57 → −68、半翼展 25（翼端後掠），板面 y 34.6（比座艙罩頂低 7 mm，離尾甲板約 7 mm）；
-    // 中央單支柱（前後寬 6 mm）插進尾段殼面
-    const yPlate = 34.6;
+    // 單支柱單片平板擾流（PC，實心件）：平板 x −57 → −68、半翼展 25（翼端後掠）；中央單支柱（前後寬 6 mm）插進尾段殼面。
+    // iter-123（第九階段，評審「尾翼升高並加端板」）：板面 y 34.6 → 38.0（離尾甲板約 10.5 mm，仍比座艙罩頂 41.5 低），
+    // 兩端加螢光橘端板（前低後高的後掠梯形）
+    const yPlate = 38.0;
     const plate = flatPlate(
       [
         [-57, -22.5],
@@ -260,6 +261,21 @@ export const trailCanopyBody = makePolyBody({
       outline: true,
       name: 'spoiler-strut',
     });
+    // 端板（iter-123，PC 實心件 0.8 mm，螢光橘內噴）：前緣貼著平板前緣、往後下斜到板下 4.5 mm，後緣高出板面 3 mm
+    const endplatePts = [
+      [-57.2, yPlate + 0.7],
+      [-57.8, yPlate - 2.2],
+      [-68.6, yPlate - 4.5],
+      [-68.6, yPlate + 3.0],
+      [-62, yPlate + 1.6],
+    ];
+    parts.push({
+      geometry: mergeGeos([finPlate(endplatePts, -25.4, 0.8), finPlate(endplatePts, 25.4, 0.8)]),
+      mat: 'orange2',
+      solid: true,
+      outline: true,
+      name: 'spoiler-endplates',
+    });
     // 鼻部下方滑板（PC 平板，實心件）：比鼻端多伸出 1.5 mm 的薄板，炭黑
     parts.push({
       geometry: flatPlate(
@@ -278,20 +294,25 @@ export const trailCanopyBody = makePolyBody({
       name: 'skid-plate',
     });
 
-    // 側面圖形（依概念圖的排列）：前段散熱鰭紋 → 兩道螢光橘斜線 → 白底黑字號碼牌「09」；引擎蓋另有黑字「09」
-    const slash = (x0) => sdBar(x0, 13.6, x0 - 4.2, 22.4, 1.1);
-    const s1 = slash(-1.5);
-    const s2 = slash(-6.5);
-    parts.push({
-      geometry: kit.decal((x, y, z) => (Math.abs(z) < 33 ? -1 : -Math.min(s1(x, y), s2(x, y)))),
-      mat: 'orange',
-      name: 'decal-side-slash',
-    });
+    // 側面圖形：前段散熱鰭紋 → 白底黑字號碼牌「09」；引擎蓋另有黑字「09」。
+    // iter-123（第九階段，評審「側面加一條從前輪拱往後上的橘色斜條」）：原本兩道短斜線改成一條長楔形斜條——
+    // 從前輪拱後緣（x 24.5、y 15）往後上掃到後輪拱前上方（x −27、y 22–27），前細 1.6 mm、後粗 4.7 mm；下緣再一道 0.7 mm 黑細線
+    /** @type {(x: number) => number} 斜條下緣 */
+    const slashLow = (x) => 15.0 + 0.15 * (24.5 - x);
+    /** @type {(x: number) => number} 斜條上緣 */
+    const slashHigh = (x) => 16.6 + 0.21 * (24.5 - x);
+    /** @type {KeepFn} */
+    const slashKeep = (x, y, z) => (Math.abs(z) < 33 ? -1 : Math.min(24.5 - x, x + 27, y - slashLow(x), slashHigh(x) - y));
+    /** @type {KeepFn} */
+    const pinKeep = (x, y, z) => (Math.abs(z) < 33 ? -1 : Math.min(24 - x, x + 27, slashLow(x) - 0.55 - y, y - (slashLow(x) - 1.25)));
+    parts.push({ geometry: kit.decal(slashKeep), mat: 'orange', name: 'decal-side-slash' });
+    parts.push({ geometry: kit.decal(pinKeep), mat: 'black', name: 'decal-side-slash-pin' });
+    // 號碼牌移到斜條下方（x −17、y 14.8）
     const plateSd = (u, v) => sdRoundRect(u, v, -4.6, 4.6, -4.2, 4.2, 1.2);
-    parts.push({ geometry: kit.decal(sideDecal(plateSd, { x0: -15.5, y0: 18, zMin: 33 })), mat: 'whiteDecal', name: 'decal-number-plate' });
+    parts.push({ geometry: kit.decal(sideDecal(plateSd, { x0: -17, y0: 14.8, zMin: 33 })), mat: 'whiteDecal', name: 'decal-number-plate' });
     parts.push({
       geometry: mergeGeos([
-        kit.decal(sideDecal(sdNumber('09', { h: 5.0, w: 3.0, gap: 0.8 }), { x0: -15.5, y0: 18, zMin: 33 }), { offset: 0.12 }),
+        kit.decal(sideDecal(sdNumber('09', { h: 5.0, w: 3.0, gap: 0.8 }), { x0: -17, y0: 14.8, zMin: 33 }), { offset: 0.12 }),
         kit.decal(topDecal(sdNumber('09', { h: 5, w: 3, gap: 0.8 }), { x0: 56, z0: 0, yMin: 18 }), { offset: 0.12 }),
       ]),
       mat: 'black',

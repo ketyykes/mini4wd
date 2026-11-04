@@ -83,7 +83,102 @@ const AERO_DATA = {
   openings: [],
   // D1 側導風孔往前移到 x −22 ~ −8（細腰後，原位置的凹腔底會太靠近後輪）
   recesses: data.openings.map((o) => ({ ...o, x: [-22, -8], depth: 2.5 })),
-  wing: { ...data.wing, span: 52 },
+  // iter-123（第九階段，評審「尾翼端板加大」）：端板高 10 → 13.5、厚 1 → 1.2、下緣 38 → 35.5（長度維持 16，俯視輪廓不變）
+  wing: { ...data.wing, span: 52, endplate: { ...data.wing.endplate, height: 13.5, thickness: 1.2, yBottom: 35.5 } },
+};
+
+/** @type {number} 賽車條紋半寬（iter-123：鼻尖 → 引擎蓋 → 尾甲板 → 尾翼中央的深藍寬條紋，寬 11 mm） */
+const STRIPE_HALF = 5.5;
+/** @type {number[]} 條紋兩側洋紅細線的 |z| 範圍（0.8 mm） */
+const STRIPE_PIN = [6.2, 7.0];
+
+/**
+ * 翼面上表面的翼型曲線（與 loft.js buildWingParts 同一組 NACA 公式，只取上表面），由前緣到後緣
+ * @type {(wing: any) => number[][]}
+ */
+const wingUpper = (wing) => {
+  const chord = Math.abs(wing.xLE - wing.xTE);
+  const aoa = (wing.aoa_deg * Math.PI) / 180;
+  const tr = wing.thickness / chord;
+  const yChordLE = wing.yLower + wing.thickness / 2;
+  const pts = [];
+  const N = 28;
+  for (let i = 0; i <= N; i++) {
+    const xi = (1 - Math.cos((Math.PI * i) / N)) / 2;
+    const yt = 5 * tr * chord * (0.2969 * Math.sqrt(xi) - 0.126 * xi - 0.3516 * xi * xi + 0.2843 * xi ** 3 - 0.1036 * xi ** 4);
+    const c = xi * chord;
+    const camber = 0.35 * Math.sin(Math.PI * xi);
+    const px = wing.xLE - c * Math.cos(aoa);
+    const py = yChordLE + c * Math.sin(aoa);
+    pts.push([px - (camber + yt) * Math.sin(aoa), py + (camber + yt) * Math.cos(aoa)]);
+  }
+  return pts;
+};
+
+/**
+ * 翼面上表面的貼紙帶：沿上表面翼型曲線、z 從 z0 到 z1 的薄帶，往外法線偏移 0.06 mm（貼紙，不進碰撞）
+ * @type {(wing: any, z0: number, z1: number) => THREE.BufferGeometry}
+ */
+const wingBand = (wing, z0, z1) => {
+  const up = wingUpper(wing);
+  const pos = [];
+  for (let i = 0; i < up.length - 1; i++) {
+    const [ax, ay] = up[i];
+    const [bx, by] = up[i + 1];
+    const len = Math.hypot(bx - ax, by - ay) || 1;
+    // 上表面由前緣往後（x 遞減），外法線 = 切線轉 90°（朝上）
+    const nx = (by - ay) / len;
+    const ny = -(bx - ax) / len;
+    const o = 0.06;
+    const a = [ax + nx * o, ay + Math.abs(ny) * o];
+    const b = [bx + nx * o, by + Math.abs(ny) * o];
+    // 繞向：法線朝上（外側）
+    pos.push(a[0], a[1], z0, b[0], b[1], z0, b[0], b[1], z1, a[0], a[1], z0, b[0], b[1], z1, a[0], a[1], z1);
+  }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  g.computeVertexNormals();
+  return g;
+};
+
+/**
+ * 鵝頸刀片立柱（iter-123，評審「鵝頸尾翼立柱細得像衣架」）：沿 loft.js 同一條鵝頸中心線、在 x–y 平面往兩側偏移成
+ * 根部 5 mm、頂端 3 mm 寬的刀片輪廓，再沿 z 擠出 1.6 mm（原本是 1 × 1.8–2.5 mm 的細桿）；封閉實體，面數也比 64 段掃掠少
+ * @type {(stays: any) => THREE.BufferGeometry}
+ */
+const buildBladeStays = (st) => {
+  const [bx, by] = st.base;
+  const [tx, ty] = st.top;
+  const ctrl = [
+    new THREE.Vector3(bx, by - 0.6, 0),
+    new THREE.Vector3(bx - 0.4, by + 7, 0),
+    new THREE.Vector3(bx - 1.4, ty - 1.0, 0),
+    new THREE.Vector3(bx - 3.0, ty + 2.6, 0),
+    new THREE.Vector3(bx - 6.5, ty + 3.6, 0),
+    new THREE.Vector3(tx + 2.2, ty + 2.8, 0),
+    new THREE.Vector3(tx + 0.4, ty + 1.2, 0),
+    new THREE.Vector3(tx, ty - 0.2, 0),
+  ];
+  const curve = new THREE.CatmullRomCurve3(ctrl, false, 'centripetal');
+  const n = 20;
+  const left = [];
+  const right = [];
+  for (let i = 0; i <= n; i++) {
+    const t = i / n;
+    const p = curve.getPointAt(t);
+    const tg = curve.getTangentAt(t);
+    const h = lerp(2.5, 1.5, t);
+    left.push(new THREE.Vector2(p.x - tg.y * h, p.y + tg.x * h));
+    right.push(new THREE.Vector2(p.x + tg.y * h, p.y - tg.x * h));
+  }
+  const shape = new THREE.Shape([...left, ...right.reverse()]);
+  const thick = 1.6;
+  const geos = [-st.z, st.z].map((zc) => {
+    const g = new THREE.ExtrudeGeometry(shape, { depth: thick, bevelEnabled: false, curveSegments: 1 });
+    g.translate(0, 0, zc - thick / 2);
+    return g;
+  });
+  return mergeGeos(geos);
 };
 
 
@@ -161,6 +256,10 @@ const makeMaterials = () => ({
   purple: decalMaterial('decal-purple', { color: 0x6a2bd9, roughness: 0.35, clearcoat: 0.6 }),
   wingGrad: namedMaterial('paint-gradient-wing', { vertexColors: true, roughness: 0.22, clearcoat: 1.0, clearcoatRoughness: 0.05 }),
   magenta: decalMaterial('decal-magenta', { color: 0xe6007e, roughness: 0.35, clearcoat: 0.6 }),
+  // iter-123：深藍賽車條紋（貼紙）、條紋上的珍珠白號碼、洋紅亮面端板
+  stripe: decalMaterial('decal-stripe-deep-blue', { color: 0x14215e, roughness: 0.25, clearcoat: 0.9 }),
+  pearlDecal: decalMaterial('decal-pearl-white', { color: 0xf2f0ec, roughness: 0.3, clearcoat: 0.6 }),
+  magentaPaint: namedMaterial('paint-magenta-gloss', { color: 0xd4006f, roughness: 0.18, clearcoat: 1.0, clearcoatRoughness: 0.04, side: THREE.DoubleSide }),
   number: decalMaterial('decal-navy', { color: 0x1b2a5c, roughness: 0.5 }),
   lamp: decalMaterial('lamp-clear', { color: 0xe8f4ff, emissive: 0x9fc8ff, emissiveIntensity: 0.35, roughness: 0.05, clearcoat: 1.0 }),
   tail: decalMaterial('lamp-red', { color: 0xc4121c, emissive: 0x7a0008, emissiveIntensity: 0.4, roughness: 0.1, clearcoat: 1.0 }),
@@ -224,10 +323,11 @@ const compose = () => {
     wingGeo.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
   }
   parts.push({ geometry: wingGeo, mat: 'wingGrad', solid: true, outline: true, name: 'wing' });
-  parts.push({ geometry: w.endplates, mat: 'navy2', solid: true, outline: true, name: 'wing-endplates' });
-  // 端板細節（iter-49）：外側面兩道斜切色條（洋紅上、紫下）＋端板下緣的小翼刀
+  // iter-123：加大的端板改成洋紅亮面（評審建議漆黑，但白底＋藍＋黑是 HOMAGE_RESEARCH 第 3 節 B 的 Shining Scorpion 配色黑名單，改用本款第三色洋紅）
+  parts.push({ geometry: w.endplates, mat: 'magentaPaint', solid: true, outline: true, name: 'wing-endplates' });
+  // 端板細節（iter-49）：外側面兩道斜切色條（iter-123 端板改洋紅後，色條改成深藍上、紫下）
   {
-    const zOut = AERO_DATA.wing.span / 2 + 1.0 + 0.08;
+    const zOut = AERO_DATA.wing.span / 2 + AERO_DATA.wing.endplate.thickness + 0.08;
     const stripes = [];
     const stripes2 = [];
     for (const sg of [-1, 1]) {
@@ -240,11 +340,18 @@ const compose = () => {
       b.translate(-60.5, 44.9, sg * zOut);
       stripes2.push(b);
     }
-    parts.push({ geometry: mergeGeos(stripes), mat: 'magenta', name: 'endplate-stripe-magenta' });
+    parts.push({ geometry: mergeGeos(stripes), mat: 'stripe', name: 'endplate-stripe-blue' });
     parts.push({ geometry: mergeGeos(stripes2), mat: 'purple', name: 'endplate-stripe-purple' });
   }
-  // 鵝頸支柱的掃掠網格（loft.js sweepRect）繞向不一致、不能算封閉體積，維持殼面積近似
-  parts.push({ geometry: w.stays, mat: 'navy2', shell: true, name: 'wing-stays' });
+  // iter-123：鵝頸支柱改成本檔的刀片立柱（封閉擠出體，實心件）；loft.js 的細桿 w.stays 不再使用
+  parts.push({ geometry: buildBladeStays(AERO_DATA.wing.stays), mat: 'navy2', solid: true, outline: true, name: 'wing-stays' });
+  // 尾翼中央的深藍條紋與兩側洋紅細線（翼面上表面貼紙帶，接續車身條紋）
+  parts.push({ geometry: wingBand(AERO_DATA.wing, -STRIPE_HALF, STRIPE_HALF), mat: 'stripe', name: 'decal-wing-stripe' });
+  parts.push({
+    geometry: mergeGeos([wingBand(AERO_DATA.wing, STRIPE_PIN[0], STRIPE_PIN[1]), wingBand(AERO_DATA.wing, -STRIPE_PIN[1], -STRIPE_PIN[0])]),
+    mat: 'magenta',
+    name: 'decal-wing-stripe-pin',
+  });
   // iter-35：splitter 往前伸到 x 74.5、加厚到 1.4 mm、半寬 27，前 3/4 看得到（仍在導輪 x 78 / 規則外框內）
   // iter-49：寬大 splitter（概念圖）——半寬 27 → 33.5（比 wedge 鼻下板更寬，俯視輪廓和 wedge 拉開），前緣仍在 x 74.5；外緣離前導輪（中心 (71.5, ±42)、半徑 6.5）≥ 2.8 mm
   parts.push({ geometry: buildSplitter({ ...data.splitter, x: [56, 74.5], halfW: 33.5, thickness: 1.4, yBottom: 14.6 }), mat: 'navy', solid: true, outline: true, name: 'splitter' });
@@ -315,24 +422,23 @@ const compose = () => {
     name: 'decal-swoosh',
   });
 
-  // 雙 V 形箭頭（引擎蓋，尖端朝前）
-  /** @type {(tip: number) => (u: number, v: number) => number} */
-  const chevron = (tip) => {
-    const a = sdBar(tip, 0, tip - 6.5, 8, 1.5);
-    const b = sdBar(tip, 0, tip - 6.5, -8, 1.5);
-    return (x, z) => Math.min(a(x, z), b(x, z));
-  };
-  const v1 = chevron(50.5);
-  const v2 = chevron(46.5);
-  parts.push({ geometry: kit.decal((x, y, z) => (y < 20 ? -1 : -v1(x, z))), mat: 'magenta', name: 'decal-chevron-1' });
-  parts.push({ geometry: kit.decal((x, y, z) => (y < 20 ? -1 : -v2(x, z))), mat: 'purple', name: 'decal-chevron-2' });
+  // iter-123（第九階段，評審「加一條從鼻尖貫穿到尾翼的深藍寬賽車條紋」）：中線寬 11 mm 深藍條紋＋兩側 0.8 mm 洋紅細線，
+  // 鼻尖 → 引擎蓋 → （深藍煙燻座艙罩接續）→ 尾甲板 → 尾翼中央。原本引擎蓋的雙 V 形箭頭和條紋重疊，拿掉
+  /** @type {KeepFn} */
+  const stripeKeep = (x, y, z) => Math.min(STRIPE_HALF - Math.abs(z), -kit.underCanopy(x, z) - 0.6, y - 15.5);
+  /** @type {KeepFn} */
+  const pinKeep = (x, y, z) => Math.min(Math.abs(z) - STRIPE_PIN[0], STRIPE_PIN[1] - Math.abs(z), -kit.underCanopy(x, z) - 0.6, y - 15.5);
+  parts.push({ geometry: kit.decal(stripeKeep), mat: 'stripe', name: 'decal-racing-stripe' });
+  parts.push({ geometry: kit.decal(pinKeep), mat: 'magenta', name: 'decal-racing-stripe-pin' });
 
-  // 號碼 88：鼻部、兩側
+  // 號碼 88：鼻部（iter-123 落在深藍條紋上，改珍珠白字）、兩側（深藏青）
   parts.push({
-    geometry: mergeGeos([
-      kit.decal(topDecal(sdNumber('88', { h: 5.4, w: 3.1, gap: 0.8 }), { x0: 56.8, yMin: 18 })),
-      kit.decal(sideDecal(sdNumber('88', { h: 6.8, w: 3.9, gap: 1.0 }), { x0: 12.5, y0: 16.9, zMin: 26 })),
-    ]),
+    geometry: kit.decal(topDecal(sdNumber('88', { h: 5.4, w: 3.1, gap: 0.8 }), { x0: 56.8, yMin: 18 }), { offset: 0.12 }),
+    mat: 'pearlDecal',
+    name: 'decal-number-top',
+  });
+  parts.push({
+    geometry: kit.decal(sideDecal(sdNumber('88', { h: 6.8, w: 3.9, gap: 1.0 }), { x0: 12.5, y0: 16.9, zMin: 26 })),
     mat: 'number',
     name: 'decal-number',
   });

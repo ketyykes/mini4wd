@@ -3,7 +3,7 @@
 // 設計：shared/design/body-pc-box/DESIGN.md。剖面為本檔站位表（推估，依外框限制與底盤高度掃描）。
 // 塗裝全為自創：螢光粉＋白條紋、號碼「17」；不含任何廠商名稱、商標。
 import * as THREE from 'three';
-import { makePolyBody, buildDriver } from './polyBody.js';
+import { makePolyBody, buildDriver, flatPlate } from './polyBody.js';
 import { namedMaterial, decalMaterial, buildRegion, sdNumber, sdRoundRect, sideDecal, topDecal, mergeGeos } from './loft.js';
 
 /** @typedef {import('./loft.js').KeepFn} KeepFn */
@@ -29,13 +29,17 @@ const box = (yRoof, halfW, yLow) =>
 const STATIONS = [
   // iter-47b 兩段式車頭：短鼻斜面（x 64 → 54）、低平引擎蓋（y ≈ 23–24.6，x 54 → 36）、
   // 擋風玻璃斜面（x 36 → 24 升到車頂 28.5）、平頂。前齒輪箱（y ≤ 21.4、x ≤ 45）上方仍留 ≥ 2 mm
-  { x: 64, pts: box(17, 24, 14.5) },
-  { x: 60, pts: box(20.2, 32, 14) },
-  { x: 54, pts: box(22.8, 38, 13) },
+  // iter-123（第九階段，評審「透明箱形輪廓像零件盒」）：前齒輪箱前方（x ≥ 49）的鼻段整段壓低約 4 mm 成楔形
+  //（鼻端 17 → 13.3、x 60 20.2 → 16.4、x 54 22.8 → 19.6），x 49 加一站讓楔面一路斜升到引擎蓋；
+  // 平頂前段也往前下傾（x 24 28.5 → 27.2、x 0 → 28.0），側視從鼻端到車尾是一條前低後高的斜線
+  { x: 64, pts: box(13.3, 23, 11.5) },
+  { x: 60, pts: box(16.4, 31, 11.8) },
+  { x: 54, pts: box(19.6, 37.5, 12.5) },
+  { x: 49, pts: box(22.2, 38.6, 12) },
   { x: 44, pts: box(24.2, 39, 11) },
   { x: 36, pts: box(24.6, 39, 11) },
-  { x: 24, pts: box(28.5, 39, 10) },
-  { x: 0, pts: box(28.5, 39, 9) },
+  { x: 24, pts: box(27.2, 39, 10) },
+  { x: 0, pts: box(28.0, 39, 9) },
   { x: -25, pts: box(28.5, 39, 9.5) },
   { x: -40, pts: box(28.5, 39, 11) },
   // iter-47 斷尾加長到 x −58：尾段下緣抬到後輪胎頂之上，車頂後緣往下內傾（28.4 → 25.4），
@@ -75,6 +79,9 @@ const cabinHalfW = (x) => {
 
 /** @type {(x: number, y: number, z: number) => number} 座艙底開口（負值 = 挖掉）：座艙罩下緣往內 0.8 mm，且只在平頂（y ≥ 22） */
 const cabinHoleSd = (x, y, z) => (y < 22 ? 10 : Math.max(Math.abs(z) - (cabinHalfW(x) - 0.8), CABIN[CABIN.length - 1].x + 1.5 - x, x - (CABIN[0].x - 1.5)));
+
+/** @type {(x: number) => number} 粉紅 / 透明的斜分割線（iter-123）：前低後高，鼻端 y 12.5、x 0 y 19.5、車尾 x −58 y 25.9 */
+const splitY = (x) => 19.5 - 0.11 * x;
 
 /** @type {() => Record<string, THREE.Material>} */
 const materials = () => ({
@@ -125,8 +132,10 @@ export const pcBoxBody = makePolyBody({
   // 座艙罩取代那片平頂：真空成形 PC 殼只有一層，座艙底下的平頂在幾何上挖掉（留 0.8 mm 和座艙罩下緣重疊）
   openings: [{ id: '座艙底開口', view: 'top', shape: 'fn', sd: cabinHoleSd }],
   zones: () => [
-    // 內噴粉紅下裙（前低後高）＋白色中線寬條紋，其餘透明
-    { mat: 'pink', keep: (x, y) => 15.5 + 0.03 * x - y },
+    // iter-123：粉紅下裙改成前下往後上的斜分割（splitY：鼻端 y 12.5 → 車尾 y 25.9），後段側面整片內噴粉紅、前段留透明；
+    // 分割線上方一道 1.4 mm 白色細線（內噴）。白色中線寬條紋與兩側粉紅細條紋照舊
+    { mat: 'pink', keep: (x, y) => splitY(x) - y },
+    { mat: 'white', keep: (x, y) => Math.min(y - splitY(x), splitY(x) + 1.4 - y) },
     { mat: 'white', keep: (x, y, z) => Math.min(3.2 - Math.abs(z), y - 26) },
     { mat: 'pink', keep: (x, y, z) => Math.min(Math.abs(z) - 5, 7 - Math.abs(z), y - 26) },
     { mat: 'clear', keep: () => 1 },
@@ -176,31 +185,51 @@ export const pcBoxBody = makePolyBody({
     parts.push({ geometry: band, mat: 'pink', name: 'tail-band' });
 
     // 輪拱弧線（iter-47b）：沿輪拱外緣的粉紅內噴弧帶（半徑 18.2–19.4，只在側面）
-    const archLine = (x, y, z) => {
+    // iter-123：後輪拱落在粉紅斜分割裡，弧帶改白色（前輪拱在透明區，維持粉紅）
+    /** @type {(ax: number) => KeepFn} */
+    const archLine = (ax) => (x, y, z) => {
       if (Math.abs(z) < 30 || y < 12) {
         return -1;
       }
-      let d = -1;
-      for (const ax of [40, -40]) {
-        const r = Math.hypot(x - ax, y - 13);
-        d = Math.max(d, Math.min(r - 18.2, 19.4 - r));
-      }
-      return d;
+      const r = Math.hypot(x - ax, y - 13);
+      return Math.min(r - 18.2, 19.4 - r);
     };
-    parts.push({ geometry: kit.decal(archLine), mat: 'pinkDecal', name: 'decal-arch-lines' });
+    parts.push({ geometry: kit.decal(archLine(40)), mat: 'pinkDecal', name: 'decal-arch-lines' });
+    parts.push({ geometry: kit.decal(archLine(-40)), mat: 'whiteDecal', name: 'decal-arch-lines-rear' });
+
+    // 鼻下黑色分流唇（iter-123，PC 平板實心件，內噴黑）：楔形鼻端下方往前多伸 2.5 mm，前緣兩角後掠；
+    // 板頂 y 11.5 貼齊鼻端下緣，前導輪（x 71.5、|z| 42、半徑 6.5）外側仍留 ≥ 10 mm
+    parts.push({
+      geometry: flatPlate(
+        [
+          [66.5, -15],
+          [66.5, 15],
+          [64.5, 21],
+          [57, 23],
+          [57, -23],
+          [64.5, -21],
+        ],
+        10.8,
+        0.7,
+      ),
+      mat: 'frame',
+      solid: true,
+      outline: true,
+      name: 'chin-splitter',
+    });
     // 擋風玻璃下緣折線（白色細線，x ≈ 36）
     parts.push({ geometry: kit.decal((x, y, z) => Math.min(0.45 - Math.abs(x - 35.6), 30 - Math.abs(z))), mat: 'whiteDecal', name: 'decal-windshield-line' });
 
     // 號碼 17：側面白底黑字、車頂黑字
     const plate = (u, v) => sdRoundRect(u, v, -5, 5, -3.2, 3.2, 1);
     parts.push({
-      geometry: kit.decal(sideDecal(plate, { x0: -8, y0: 17.5, zMin: 30 })),
+      geometry: kit.decal(sideDecal(plate, { x0: -8, y0: 16.6, zMin: 30 })),
       mat: 'whiteDecal',
       name: 'decal-number-plate',
     });
     parts.push({
       geometry: mergeGeos([
-        kit.decal(sideDecal(sdNumber('17', { h: 4.6, w: 2.8, gap: 0.8 }), { x0: -8, y0: 17.5, zMin: 30 }), { offset: 0.12 }),
+        kit.decal(sideDecal(sdNumber('17', { h: 4.6, w: 2.8, gap: 0.8 }), { x0: -8, y0: 16.6, zMin: 30 }), { offset: 0.12 }),
         kit.decal(topDecal(sdNumber('17', { h: 5.4, w: 3.1, gap: 0.8 }), { x0: 45, z0: 11, yMin: 22 }), { offset: 0.12 }),
       ]),
       mat: 'black',
