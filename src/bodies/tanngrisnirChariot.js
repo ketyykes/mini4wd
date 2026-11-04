@@ -9,7 +9,7 @@
 // 塗裝全為自創：橡木棕（霧面）＋鍛鐵黑灰（緞面）＋青銅鉚釘與折線紋（金屬）＋少量暗紅；羊頭灰白、羊角象牙色。
 // 不畫人、不放鎚、不用盧恩字母或任何被挪用的符號，不含文字與商標。
 import * as THREE from 'three';
-import { makePolyBody, sweepEllipse } from './polyBody.js';
+import { makePolyBody, sweepEllipse, finPlate } from './polyBody.js';
 import { namedMaterial, decalMaterial, mergeGeos, lerp, buildRegion, featureSd, sdRoundRect } from './loft.js';
 import { monoCurve, buildStations } from './gazelleLeap.js';
 import { buildProfileLiner } from './khepriScarab.js';
@@ -114,7 +114,9 @@ const materials = () => ({
   bronze: namedMaterial('trim-bronze-brass', { color: 0x9c6b3c, metalness: 0.8, roughness: 0.34, clearcoat: 0.2 }),
   // 山羊：灰白頭頸（霧面）、象牙色羊角（微光澤）、灰色鬍鬚、琥珀色羊眼
   goat: namedMaterial('paint-goat-greywhite', { color: 0xd6d2c8, roughness: 0.62, clearcoat: 0.05 }),
-  horn: namedMaterial('paint-horn-ivory', { color: 0xe6d9bb, roughness: 0.46, clearcoat: 0.3 }),
+  // iter-120b：羊角由象牙白改成深灰褐（白色長條被讀成獠牙 / 叉子；山羊角是帶節環的灰褐角質）
+  horn: namedMaterial('paint-horn-greybrown', { color: 0x6e5d48, roughness: 0.5, clearcoat: 0.25 }),
+  beard: namedMaterial('paint-goat-beard-grey', { color: 0x9d988e, roughness: 0.72 }),
   // iter-120：羊眼改成琥珀色自發光（炫砲手法 5），lamp- 前綴 → Blender 保留發光
   eye: namedMaterial('lamp-goat-eye-amber', { color: 0xffb340, emissive: 0xff8a00, emissiveIntensity: 0.6, roughness: 0.15, clearcoat: 1.0 }),
   inner: namedMaterial('shell-inner-dark', { color: 0x1c1712, roughness: 0.85, side: THREE.BackSide }),
@@ -138,78 +140,88 @@ const materials = () => ({
 const GOAT_Z = 28.5;
 
 /**
- * 山羊角斷面（iter-120 低面數：去掉環節橫稜，6 邊斷面）：根粗尖細
+ * 山羊角斷面（iter-120b）：根粗尖細＋沿角 6 道節環（山羊角的橫稜；24 段掃掠、每道環 4 段看得出起伏），6 邊斷面
  * @type {(t: number) => number[]}
  */
 const hornRad = (t) => {
-  const r = lerp(1.7, 0.7, t ** 0.9);
-  return [r * 1.1, r * 0.9];
+  const ridge = 1 + 0.14 * Math.cos(2 * Math.PI * 6 * t);
+  const r = lerp(1.75, 0.6, t ** 0.9) * ridge;
+  return [r * 1.05, r * 0.95];
 };
 
 /**
- * 山羊角中心線（iter-120）：從額頭往後上方長出，沿前擋泥板頂往後掃、尖端往下收回擋泥板面（貼著車身的導流角，頂約 37），
- * 不再往上翹（原本頂 47.5）；兩支角一支往外張、一支往內收
+ * 山羊角中心線（iter-120b，主 agent 看圖：原本沿擋泥板的兩對長直角讀成叉子 / 獠牙）：從頭頂往上長出、往後彎成一道彎刀弧，
+ * 尖端往下收向擋泥板（頂約 39，仍貼近車身）；兩支角一支往外張、一支往內收
  * @type {(sg: number, zBase: number, spread: number) => number[][]} spread：往外張的方向（+1 = 遠離羊頭中心）
  */
 const hornPath = (sg, zBase, spread) => {
   const z = (dz) => sg * (zBase + spread * dz);
   return [
-    [55.5, 33.4, z(0)],
-    [52.5, 35.2, z(0.3)],
-    [48, 35.8, z(0.8)],
-    [42.5, 35.2, z(1.3)],
-    [37, 33.6, z(1.7)],
-    [33, 32.2, z(2)],
+    [63.2, 33.2, z(0)],
+    [61.4, 36.2, z(0.25)],
+    [58.4, 38.2, z(0.6)],
+    [54.6, 38.4, z(1)],
+    [51.4, 37, z(1.35)],
+    [49.6, 34.8, z(1.6)],
   ];
 };
 
 /**
- * 一頭山羊（iter-120 重做）：頸從前擋泥板頂長出、頭往前下伸成衝角鼻（吻尖 x 約 71、y 約 23，像低頭拉車往前衝），
- * 兩耳往後貼、兩支角沿擋泥板往後掃；琥珀發光眼。原本的山羊鬍（往下垂的大片）拿掉，衝角鼻下緣保持乾淨
- * @type {(sg: number) => { head: THREE.BufferGeometry, horns: THREE.BufferGeometry, eyes: THREE.BufferGeometry }}
+ * 一頭山羊（iter-120b 重做頭部量體）：短頸從前擋泥板頂長出 → 明顯的頭骨（額頭）→ 往前下收的吻部 → 鼻頭，下巴一撮短鬍鬚，
+ * 兩耳往後側貼、兩支節環彎角從頭頂往後掃；琥珀發光眼。整顆頭往前下伸（低頭拉車往前衝），仍貼在擋泥板上當衝角鼻
+ * @type {(sg: number) => { head: THREE.BufferGeometry, horns: THREE.BufferGeometry, eyes: THREE.BufferGeometry, beard: THREE.BufferGeometry }}
  */
 const buildGoat = (sg) => {
   const zc = sg * GOAT_Z;
-  // 頸＋頭一條掃掠：根部埋進擋泥板頂（x 44 / y 31），往前下收成羊吻
-  const head = sweepEllipse(
+  /** @type {(r: number[], c: number[], rot: number) => THREE.BufferGeometry} 橢球（16 × 10 段） */
+  const ellipsoid = (r, c, rot) => {
+    const g = new THREE.SphereGeometry(1, 16, 10);
+    g.scale(r[0], r[1], r[2]);
+    g.rotateZ(rot);
+    g.translate(c[0], c[1], c[2] ?? zc);
+    return g;
+  };
+  // 短頸：根部埋進擋泥板頂
+  const neck = sweepEllipse(
     [
-      [44.5, 32.4, zc],
-      [49.5, 33.2, zc],
-      [55, 32.2, zc],
-      [61, 29.8, zc],
-      [67, 27, zc],
-      [72.5, 24.2, zc],
-      [77, 22.2, zc],
+      [45, 31.6, zc],
+      [51, 32.4, zc],
+      [57, 32, zc],
     ],
-    24,
-    (t) => [lerp(4.2, 2.6, t), lerp(3.2, 1.9, t)],
-    6,
+    8,
+    (t) => [lerp(3.4, 3.2, t), lerp(3.0, 3.3, t)],
+    8,
   );
-  const nose = new THREE.SphereGeometry(1, 12, 8);
-  nose.scale(2.1, 1.9, 2.6);
-  nose.translate(77.4, 22.1, zc);
-  // 兩耳：往後貼平的扁葉片（被風壓向後）
+  // 頭骨（額頭）：頭部最大的量體，寬 7.6、高 7.2
+  const skull = ellipsoid([5.2, 3.6, 3.8], [62.4, 30.6], -0.3);
+  // 吻部：往前下收窄
+  const muzzle = ellipsoid([5, 2.4, 2.6], [68.8, 26.6], -0.5);
+  // 鼻頭
+  const nose = ellipsoid([1.9, 1.7, 2.1], [73.4, 23.7], -0.5);
+  // 兩耳：往後側貼的扁葉片（被風壓向後）
   /** @type {THREE.BufferGeometry[]} */
   const ears = [];
   for (const side of [1, -1]) {
-    const ear = new THREE.SphereGeometry(1, 12, 8);
-    ear.scale(2.6, 0.7, 1.1);
-    ear.rotateZ(0.25);
-    ear.translate(52, 34.2, zc + side * 2.6);
+    const ear = ellipsoid([2.4, 0.65, 1.2], [59.2, 32.4, zc + side * 3.9], 0.3);
     ears.push(ear);
   }
   const horns = [
-    sweepEllipse(hornPath(sg, GOAT_Z + 1.5, 1), 24, hornRad, 6),
-    sweepEllipse(hornPath(sg, GOAT_Z - 1.5, -1), 24, hornRad, 6),
+    sweepEllipse(hornPath(sg, GOAT_Z + 1.4, 1), 24, hornRad, 6),
+    sweepEllipse(hornPath(sg, GOAT_Z - 1.4, -1), 24, hornRad, 6),
   ];
-  const eyes = [1, -1].map((side) => {
-    const e = new THREE.SphereGeometry(0.8, 12, 8);
-    e.scale(1.5, 0.7, 1);
-    e.rotateZ(-0.35);
-    e.translate(61.6, 30.6, zc + side * 2.7);
-    return e;
-  });
-  return { head: mergeGeos([head, nose, ...ears]), horns: mergeGeos(horns), eyes: mergeGeos(eyes) };
+  // 短山羊鬍：下巴往下、略往後的尖楔（厚 1.6，側視 4.5 mm 長）
+  const beard = finPlate(
+    [
+      [69.6, 25.2],
+      [66.2, 25.6],
+      [66.4, 21.4],
+      [68.2, 23.2],
+    ],
+    zc,
+    1.6,
+  );
+  const eyes = [1, -1].map((side) => ellipsoid([1.2, 0.6, 0.6], [64.6, 31.0, zc + side * 3.25], -0.35));
+  return { head: mergeGeos([neck, skull, muzzle, nose, ...ears]), horns: mergeGeos(horns), eyes: mergeGeos(eyes), beard };
 };
 
 /**
@@ -378,6 +390,7 @@ export const tanngrisnirChariotBody = makePolyBody({
     parts.push({ geometry: mergeGeos(goats.map((g) => g.head)), mat: 'goat', solid: true, outline: true, name: 'goat-heads' });
     parts.push({ geometry: mergeGeos(goats.map((g) => g.horns)), mat: 'horn', solid: true, outline: true, name: 'goat-horns' });
     parts.push({ geometry: mergeGeos(goats.map((g) => g.eyes)), mat: 'eye', solid: true, name: 'goat-eyes' });
+    parts.push({ geometry: mergeGeos(goats.map((g) => g.beard)), mat: 'beard', solid: true, outline: true, name: 'goat-beards' });
     // 頸圈（挽具）：每頭山羊頸部一圈青銅頸環（iter-120 跟著羊頭移到擋泥板上，6 × 16 段）
     /** @type {THREE.BufferGeometry[]} */
     const collars = [];

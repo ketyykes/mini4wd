@@ -152,6 +152,8 @@ const materials = () => ({
   // 蛇口內：深焦油紅（霧面）
   mouth: namedMaterial('paint-mouth-darkred', { color: 0x4a1610, roughness: 0.7, clearcoat: 0 }),
   bronze: namedMaterial('trim-bronze-brass', { color: 0xb08d57, metalness: 0.8, roughness: 0.32, clearcoat: 0.2 }),
+  // iter-120b 擋風罩：深色煙燻 PC（V5 有色座艙；名稱 pc-smoke → Blender 煙燻 PC）
+  smoke: namedMaterial('pc-smoke-umber', { color: 0x1c130d, roughness: 0.05, clearcoat: 1.0, transparent: true, opacity: 0.85 }),
   // iter-120 蛇眼：自發光琥珀（炫砲手法 5）
   eye: namedMaterial('lamp-serpent-amber', { color: 0xffb02e, emissive: 0xff8a00, emissiveIntensity: 0.75, roughness: 0.15, clearcoat: 1.0 }),
   inner: namedMaterial('shell-inner-dark', { color: 0x1d1612, roughness: 0.85, side: THREE.BackSide }),
@@ -255,22 +257,23 @@ const buildSerpentHead = () => {
     return g;
   };
   // 頭骨：蓋住船首尖端（x 64–76），頂面低平、往前下斜
-  const cranium = ellipsoid([6.4, 2.9, 5.4], [70, 19.4], -0.1);
-  // 吻部：往前收尖的衝角（前緣 x ≈ 82.4）
-  const snout = ellipsoid([5.8, 1.8, 3.4], [76.8, 18.6], -0.12);
+  // iter-120b（主 agent 看圖：蛇頭太小）：頭骨與吻部加大約 20%（寬 10.8 → 12.8、高約 6.5 → 8），仍是往前下伸的衝角
+  const cranium = ellipsoid([7.4, 3.6, 6.4], [69, 19.9], -0.1);
+  // 吻部：往前收尖的衝角（前緣 x ≈ 83）
+  const snout = ellipsoid([6.4, 2.3, 4.2], [76.6, 18.7], -0.12);
   // 下顎：往下微張
-  const jaw = ellipsoid([5, 1.0, 3.0], [75.6, 16.7], 0.04);
+  const jaw = ellipsoid([5.6, 1.1, 3.6], [75.4, 16.7], 0.04);
   // 口內：上下顎之間的深色楔
-  const mouth = ellipsoid([4.6, 0.75, 2.7], [76.4, 17.5], -0.03);
+  const mouth = ellipsoid([5, 0.85, 3.2], [76.2, 17.6], -0.03);
   /** @type {THREE.BufferGeometry[]} */
   const brows = [];
   /** @type {THREE.BufferGeometry[]} */
   const eyes = [];
   for (const sg of [-1, 1]) {
     // 眉稜：眼睛上方往後上掃的長稜（衝刺時「瞇眼」的表情，兼作鼻錐上的導流稜）
-    brows.push(ellipsoid([4.2, 0.8, 1.1], [67.6, 21.6, sg * 3.6], 0.12));
+    brows.push(ellipsoid([4.8, 0.9, 1.3], [66.8, 22.6, sg * 4.2], 0.12));
     // 杏眼：沿頭長方向拉長、往後上斜
-    eyes.push(ellipsoid([1.5, 0.6, 0.6], [71.4, 20.6, sg * 4.25], 0.18));
+    eyes.push(ellipsoid([1.8, 0.75, 0.75], [71.2, 21.2, sg * 5.1], 0.18));
   }
   return { head: mergeGeos([cranium, snout, jaw, ...brows]), mouth, eyes: mergeGeos(eyes) };
 };
@@ -439,6 +442,48 @@ export const serpentLongshipBody = makePolyBody({
       outline: true,
       name: 'stern-curl',
     });
+    // iter-120b 頂面起伏（主 agent 看圖：頂面是一整片平甲板、座艙只是凹洞）：
+    // 1) 蛇脊：赭紅低矮中央脊線，從蛇頭後方沿甲板中線往後升到座艙前（蛇身從鼻錐延伸上甲板，V4 中央隆起的概念，圓脊不是 V 形）
+    // 2) 擋風罩：座艙口前段一個深色煙燻的低矮擋風罩（V5 小而有色的座艙，長 18、寬 19、高出甲板約 4.7 mm），座艙口後段仍開放
+    // 3) 座艙後方焦油色低矮整流背（頭枕整流罩，往後收進甲板）
+    {
+      /** @type {(x: number) => number} 甲板中線頂高 */
+      const deckTop = (x) => P.sheer(x) - 1.2 + 2.2 * tipScale(x);
+      parts.push({
+        geometry: sweepPlanar(
+          [
+            [60, deckTop(60) - 0.8],
+            [48, deckTop(48) + 0.4],
+            [36, deckTop(36) + 0.9],
+            [24, deckTop(24) + 1.3],
+            [17, deckTop(17) + 1.5],
+          ],
+          0,
+          24,
+          (t) => [lerp(1.4, 2.4, t), lerp(1.1, 1.6, t)],
+          8,
+        ),
+        mat: 'ochre',
+        solid: true,
+        outline: true,
+        name: 'serpent-spine-ridge',
+      });
+      /**
+       * 上半橢球＋平底封口（封閉網格；只做甲板以上那一半，不在船殼內多算一整顆橢球的質量）
+       * @type {(r: number[], c: number[]) => THREE.BufferGeometry}
+       */
+      const dome = (r, c) => {
+        const top = new THREE.SphereGeometry(1, 16, 6, 0, 2 * Math.PI, 0, Math.PI / 2).toNonIndexed();
+        const cap = new THREE.CircleGeometry(1, 16);
+        cap.rotateX(Math.PI / 2);
+        const g = mergeGeos([top, cap.toNonIndexed()]);
+        g.scale(r[0], r[1], r[2]);
+        g.translate(c[0], c[1], c[2] ?? 0);
+        return g;
+      };
+      parts.push({ geometry: dome([9, 5.4, 9.5], [13, deckTop(13) - 1.1]), mat: 'smoke', solid: true, outline: true, name: 'cockpit-windshield' });
+      parts.push({ geometry: dome([11, 3.4, 6.5], [-25, deckTop(-25) - 0.9]), mat: 'tar', solid: true, outline: true, name: 'cockpit-fairing' });
+    }
     // 船舷圓盾：每側 5 面
     /** @type {THREE.BufferGeometry[]} */
     const discs = [];
