@@ -3767,3 +3767,19 @@
 - firebird：側面覆羽改成往後上斜排、前大後小的羽列；尾羽加寬並上翹，孔雀眼放大。
 - 合併後 body-check：11 款 26 mm 合法；俯視最大 0.844（yaga × tortoise-dome），其餘都 ≤ 0.842。
 - Blender 3 視角出圖；評審資料夾 `shared/reviews/iter-121/`，iter-121 與 iter-122 共 11 款一起做逐款 A/B。
+- iter-121 / 122 計分：主線 `0e7bde5` 之後含 D 第二版，score.mjs 02:59–03:16 **20/20**（P16_collision_patches 80.5 s，P17_phase7_laps 185.9 s，load avg 6–8）。
+- 逐款 A/B（`shared/reviews/iter-121/REVIEW.md`，7.5 / 6.5 / 7.5 / 7 / 7 / 7 / 7，平均 7.07，對照 6.93）：
+  - 保留 heimdall、mushussu、gundestrup。
+  - revert 8 款（03:17）：cerberus（毛邊、空框進氣口）、sleipnir（黑方塊底襯）、kitsune（碎紙尾）、quetzal（卡通蛇頭）、trojan（馬與木讀不出、白斜裙）、minotaur（持平：沙漏腰、細角）、yaga（瓦片波浪）、firebird（持平：豆子覆羽）。
+  - iter-121 版本另存 `/tmp/mini4wd-p9/i121-*.js`。
+  - 目前神話組已保留 8 / 16 款：khepri、serpent、tanngrisnir、gullinbursti、kunpeng、heimdall、mushussu、gundestrup。
+
+## iter-123（開始 2026-11-05 02:32）：既有 19 款第一批（規格 `/tmp/mini4wd-p9/batch-existing.md`）
+- G（比賽型）：pc-box、trail-canopy、aero-wing（03:00 commit，03:17 合併）。aero-wing 的端板沒照評審建議漆黑，因為白＋藍＋黑是 Shining Scorpion 黑名單配色，改用洋紅。
+- H（LG1）：owl-hush、dartfrog-hop、marlin-sail。
+- I（LG2）：zeppelin-xtail、halo-orbit、griffin-vane。
+
+## iter-124（開始 2026-11-05 03:20）：8 款從 iter-121 版只修評審點名的問題
+- J：cerberus、sleipnir、kitsune、quetzal（各 1 項）。
+- K：trojan、minotaur、yaga-hut、firebird。
+- 保留標準不變：比的是基準版。
