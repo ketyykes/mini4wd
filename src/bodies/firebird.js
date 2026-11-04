@@ -84,6 +84,8 @@ const materials = () => ({
   black2: namedMaterial('paint-khokhloma-black', { color: 0x0e0b0a, roughness: 0.26, clearcoat: 0.9, clearcoatRoughness: 0.08, side: THREE.DoubleSide }),
   // 朱紅：霧面（roughness > 0.5 → Blender 緞面）
   cinnabar: namedMaterial('paint-cinnabar-red', { color: 0xb3261e, roughness: 0.56, clearcoat: 0.1 }),
+  // 火焰橘（iter-118：翼面 / 尾羽的紅 → 橘 → 金漸層中段；亮面漆）
+  orange: namedMaterial('paint-flame-orange', { color: 0xe8661a, roughness: 0.42, clearcoat: 0.5, clearcoatRoughness: 0.15 }),
   // 金：真金屬（名稱含 -brass → Blender metallic）
   gold: namedMaterial('trim-gold-brass', { color: 0xd1a23e, metalness: 0.8, roughness: 0.3, clearcoat: 0.3 }),
   // 琥珀色座艙罩（火光透過鳥背）
@@ -138,12 +140,32 @@ const plumePath = (k) => {
 /** @type {(s: number) => number[]} 尾羽斷面半徑 [橫向, 垂直]：直立的細長羽片（厚 1.3、高 1.8 → 3.4），根部稍粗 */
 const plumeRadius = (s) => [lerp(0.75, 0.6, s), lerp(1.0, 1.7, s) + 0.25 * Math.sin(Math.PI * s)];
 
-/** @type {[number, number, string][]} 尾羽分段上色：[s0, s1, 材質鍵]（黑漆羽根 → 朱紅羽身 → 金色羽梢） */
+/** @type {[number, number, string][]} 尾羽分段上色：[s0, s1, 材質鍵]（iter-118 火焰漸層：朱紅羽根 → 火焰橘羽身 → 金色羽梢，不再用黑漆） */
 const PLUME_SEGMENTS = [
-  [0, 0.22, 'black2'],
-  [0.22, 0.7, 'cinnabar'],
-  [0.7, 1, 'gold'],
+  [0, 0.3, 'cinnabar'],
+  [0.3, 0.66, 'orange'],
+  [0.66, 1, 'gold'],
 ];
+
+/**
+ * 翼面火焰漸層（iter-118）：從翅緣往內依序 金 → 橘 → 朱紅，各帶內緣是往後甩的火舌（鋸齒），再往內才是黑漆鳥身；
+ * 頭部（x > 46）漸縮回黑漆。回傳「距翅緣的距離 − 該帶門檻」（負值 = 在該帶內）。只作用在翅緣以上的頂面。
+ * @type {(band: number) => (x: number, y: number, z: number) => number}
+ */
+const flameBand = (band) => (x, y, z) => {
+  if (y < P.yS(x) - 0.4) {
+    return 1;
+  }
+  const w = P.hw(x) - Math.abs(z);
+  // 門檻 [金, 橘, 朱紅]（mm）
+  const base = [3, 7.5, 14][band];
+  // 火舌：每 11 mm 一舌、圓滑的火焰尖往內舔（相位隨帶錯開，三層火舌交錯）
+  const ph = 0.5 + 0.5 * Math.sin((2 * Math.PI * (x + 3.7 * band)) / 11);
+  const tongue = 4.2 * ph ** 1.8;
+  // 頭部收回：x 46 → 54 門檻縮到 0
+  const fade = Math.max(0, Math.min(1, (54 - x) / 8));
+  return w - (base + tongue) * fade;
+};
 
 /**
  * 側視橢圓立板（羽端圓斑的各層）：中心 (cx, cy)、半軸 a × b、長軸轉 rot（弧度）、沿 z 厚 thick
@@ -289,6 +311,15 @@ export const firebirdBody = makePolyBody({
     { mat: 'gold', keep: (x) => x - X_BEAK },
     // 朱紅裙帶（側裙最下 2.4 mm）
     { mat: 'cinnabar', keep: (x, y) => yRedBand(x) - y },
+    // 側裙下半火焰橘（iter-118）：上緣是起伏的火舌，頭部（x > 50）維持黑漆
+    {
+      mat: 'orange',
+      keep: (x, y) => Math.min(50 - x, yRedBand(x) + 0.5 * (P.yS(x) - yRedBand(x)) + 1.4 * Math.sin((2 * Math.PI * x) / 9) - y),
+    },
+    // 翼面火焰漸層（iter-118）：翅緣金 → 橘 → 朱紅火舌
+    { mat: 'gold', keep: (x, y, z) => -flameBand(0)(x, y, z) },
+    { mat: 'orange', keep: (x, y, z) => -flameBand(1)(x, y, z) },
+    { mat: 'cinnabar', keep: (x, y, z) => -flameBand(2)(x, y, z) },
     // 黑漆
     { mat: 'black', keep: () => 1 },
   ],
