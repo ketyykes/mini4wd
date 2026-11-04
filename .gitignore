@@ -8,3 +8,82 @@ exports/
 
 # subagent 的暫時 worktree（Agent isolation）
 .claude/
+
+# ===== 常見的大檔案（2026-11-04 補）=====
+# 注意：png／jpg 是截圖與參考圖，要正常提交，所以不在這裡忽略。
+# 真的需要提交下列類型時，用 `git add -f <檔案>`。
+
+# 3D 模型與場景（app 匯出的 GLB、Blender 場景檔）
+*.glb
+*.gltf
+*.fbx
+*.obj
+*.stl
+*.ply
+*.usd
+*.usda
+*.usdc
+*.usdz
+*.abc
+*.blend
+*.blend[0-9]*
+
+# 高動態範圍圖、算圖中間檔、原始設計檔
+*.exr
+*.hdr
+*.psd
+*.kra
+*.xcf
+
+# 影片與錄影（Playwright、螢幕錄影）
+*.mp4
+*.mov
+*.m4v
+*.webm
+*.avi
+*.mkv
+
+# 壓縮檔、git bundle、映像檔
+*.zip
+*.7z
+*.rar
+*.tar
+*.tar.gz
+*.tgz
+*.gz
+*.bz2
+*.xz
+*.bundle
+*.dmg
+*.iso
+
+# 數值資料傾印（模擬結果、掃描資料）
+*.npy
+*.npz
+*.h5
+*.hdf5
+*.pkl
+*.parquet
+*.sqlite
+*.db
+
+# 效能分析與當機傾印
+*.heapsnapshot
+*.cpuprofile
+*.trace
+*.dmp
+core
+core.[0-9]*
+
+# 測試與建置產物、快取
+coverage/
+.nyc_output/
+test-results/
+playwright-report/
+blob-report/
+playwright/.cache/
+.cache/
+.vitest-cache/
+.vite/
+dist/
+*.tsbuildinfo
