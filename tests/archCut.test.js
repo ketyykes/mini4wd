@@ -1,5 +1,5 @@
 // B15（iter-100）：切輪拱改裝（config.bodyArchCut）
-import { test, expect, beforeAll } from 'vitest';
+import { describe, test, expect, beforeAll } from 'vitest';
 import * as THREE from 'three';
 import { assemble, loadConfig } from '../src/assembly.js';
 import { validateAssembly } from '../src/regulation.js';
@@ -16,9 +16,13 @@ beforeAll(async () => {
 const cfg = (over) => ({ ...loadConfig('default'), ...over });
 const neutral = new Proxy({}, { get: () => new THREE.MeshStandardMaterial() });
 
-test('P18_arch_cut 19 款車殼 × 31 mm 輪：切輪拱後輪胎間隙 ≥ 1.5 mm、沒有車殼輪胎干涉；不切時原本不合法的仍被擋下', () => {
-  let fixed = 0;
-  for (const body of listBodies()) {
+// 第八階段（iter-112）：車殼由 19 款增加到 25 款以上，原本單一測試逐款切輪拱會超過 120 秒逾時（工作量隨款數線性增加，不是負載）。
+// 依規定不延長逾時，改成每款一個測試（斷言完全相同），最後一個測試檢查「既有 19 款中原本被擋的剛好 9 款」；神話款另外計數
+/** @type {{ legacy: number, myth: number, checked: number }} 原本被 BODY_TIRE_CLEARANCE 擋下的款數 */
+const archCutTally = { legacy: 0, myth: 0, checked: 0 };
+
+describe('P18_arch_cut 全部車殼 × 31 mm 輪：切輪拱後輪胎間隙 ≥ 1.5 mm、沒有車殼輪胎干涉；不切時原本不合法的仍被擋下', () => {
+  test.each(listBodies().map((b) => [b.id, b]))('P18_arch_cut %s', (_id, body) => {
     const plain = assemble(cfg({ body: body.id, wheels: 'wheel-31-large' }));
     const cut = assemble(cfg({ body: body.id, wheels: 'wheel-31-large', bodyArchCut: true }));
     const plainCodes = validateAssembly(plain).violations.map((v) => v.code);
@@ -29,12 +33,21 @@ test('P18_arch_cut 19 款車殼 × 31 mm 輪：切輪拱後輪胎間隙 ≥ 1.5 
     // 切輪拱只解決輪胎干涉，其他規則結果不變
     expect(cutCodes, body.id).toEqual(plainCodes.filter((c) => c !== 'BODY_TIRE_CLEARANCE'));
     if (plainCodes.includes('BODY_TIRE_CLEARANCE')) {
-      fixed++;
+      if (body.style === 'myth') {
+        archCutTally.myth++;
+      } else {
+        archCutTally.legacy++;
+      }
       expect(validateAssembly(plain).violations.find((v) => v.code === 'BODY_TIRE_CLEARANCE').message).toContain('切輪拱');
     }
-  }
-  console.log(`[P18 arch cut] 31 mm 輪原本被擋 ${fixed} 款，切輪拱後全部通過`);
-  expect(fixed).toBe(9);
+    archCutTally.checked++;
+  });
+
+  test('P18_arch_cut 款數：既有 19 款中 31 mm 輪原本被擋的剛好 9 款', () => {
+    console.log(`[P18 arch cut] 31 mm 輪原本被擋：既有 ${archCutTally.legacy} 款、神話款 ${archCutTally.myth} 款，切輪拱後全部通過（檢查 ${archCutTally.checked} 款）`);
+    expect(archCutTally.checked).toBe(listBodies().length);
+    expect(archCutTally.legacy).toBe(9);
+  });
 });
 
 test('P14_arch_cut 切掉的質量：只會減少、薄殼質量 = 剩下面積 × 壁厚 × 密度、重心與質量一致、正面面積不增；切口外的殼面不動', () => {
