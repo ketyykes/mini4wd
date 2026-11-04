@@ -30,6 +30,8 @@ import { mushussuGateBody } from './mushussuGate.js';
 import { gundestrupStagBody } from './gundestrupStag.js';
 import { tanngrisnirChariotBody } from './tanngrisnirChariot.js';
 import { heimdallHornBody } from './heimdallHorn.js';
+import { firebirdBody } from './firebird.js';
+import { yagaHutBody } from './yagaHut.js';
 
 /** @typedef {import('./types').BodyDef} BodyDef */
 /** @typedef {import('./types').BodyMassProps} BodyMassProps */
@@ -40,7 +42,7 @@ import { heimdallHornBody } from './heimdallHorn.js';
 // 第六階段（iter-67 起）：比賽型 fastback-cabin / trail-canopy（iter-68 加 hinge-deck / lowline-flat）、致敬 LG2 griffin-vane / zeppelin-xtail / hydroplane-sponson、LG1 mantis-scythe（分組欄位 homageSeries / raceType / form）
 /** @type {BodyDef[]} */
 // 第八階段（iter-112 起）：神話組（style 'myth'、mythSeries / mythTheme，體系清單 mythSeries.js）
-const bodies = [...homageBodiesA, ...homageBodiesB, skeletonBody, aeroWingBody, pcBoxBody, fastbackCabinBody, trailCanopyBody, hingeDeckBody, lowlineFlatBody, griffinVaneBody, zeppelinXtailBody, mantisScytheBody, hydroplaneSponsonBody, cicadaVeilBody, prismFacetBody, trojanHorseBody, cerberusTriheadBody, serpentLongshipBody, gullinburstiBoarBody, kunpengBody, quetzalSerpentBody, khepriScarabBody, kitsuneNinetailBody, minotaurMazeBody, sleipnirStrideBody, mushussuGateBody, gundestrupStagBody, tanngrisnirChariotBody, heimdallHornBody];
+const bodies = [...homageBodiesA, ...homageBodiesB, skeletonBody, aeroWingBody, pcBoxBody, fastbackCabinBody, trailCanopyBody, hingeDeckBody, lowlineFlatBody, griffinVaneBody, zeppelinXtailBody, mantisScytheBody, hydroplaneSponsonBody, cicadaVeilBody, prismFacetBody, trojanHorseBody, cerberusTriheadBody, serpentLongshipBody, gullinburstiBoarBody, kunpengBody, quetzalSerpentBody, khepriScarabBody, kitsuneNinetailBody, minotaurMazeBody, sleipnirStrideBody, mushussuGateBody, gundestrupStagBody, tanngrisnirChariotBody, heimdallHornBody, firebirdBody, yagaHutBody];
 
 /** @type {() => BodyDef[]} */
 export const listBodies = () => bodies.slice();
