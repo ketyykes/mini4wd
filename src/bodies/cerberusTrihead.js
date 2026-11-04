@@ -1,7 +1,7 @@
 // 三頭犬（body-cerberus-trihead，第八階段神話組・希臘）：低趴、肩部寬厚的全罩，車頭橫向並排三個低矮往前伸的犬吻
 // （俯視三瓣鼻、中間略長、三吻之間深槽；實體件，根部從引擎蓋下長出）、中後段暗紅煙燻座艙罩、
 // 車尾一條往上彎再往後的蛇形尾鰭（實體件，扁平斷面，尾端一個小蛇頭）。
-// 設計：shared/design/body-cerberus-trihead/DESIGN.md（羅浮宮 E 701 卡厄瑞水罐、偽阿波羅多洛斯《書庫》2.122 的「三個犬頭、蛇尾」）。
+// 設計：shared/design/body-cerberus-trihead/DESIGN.md（MYTH_RESEARCH G3–G5、G12：羅浮宮 E 701 卡厄瑞水罐、《書庫》2.122 的「三個犬頭、蛇尾、背上蛇頭」、黑繪技法）。
 // 塗裝：黑繪陶風格——赭紅陶土（霧面）＋光亮黑釉、刻線（露出陶土色的細線）、白 / 深紅加彩、頸部項圈與回紋飾帶；全為自創，不含任何文字或商標。
 import * as THREE from 'three';
 import { makePolyBody, sweepEllipse, finPlate } from './polyBody.js';
