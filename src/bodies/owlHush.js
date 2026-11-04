@@ -95,15 +95,46 @@ const STATIONS = (() => {
   });
 })();
 
+/**
+ * iter-123（第九階段，評審：「鼻端眼燈拉成往後的細長形」）：眼窩由圓形（半徑 4.4）改成往後外斜拉長的細長膠囊
+ * （俯視：前端 (63, |z| 12.2) → 後端 (51.5, |z| 17.6)、半寬 2.3），像瞇起的鷹眼；回傳值 < 0 = 在眼窩內
+ * @type {(x: number, y: number, z: number) => number}
+ */
+const eyeSd = (x, y, z) => {
+  const ax = 63;
+  const az = 12.2;
+  const bx = 51.5;
+  const bz = 17.6;
+  const px = x - ax;
+  const pz = Math.abs(z) - az;
+  const dx = bx - ax;
+  const dz = bz - az;
+  const t = Math.min(1, Math.max(0, (px * dx + pz * dz) / (dx * dx + dz * dz)));
+  // 前端圓頭 2.5、往後收到 1.5（細長收尖）
+  const r = lerp(2.5, 1.5, t);
+  return Math.hypot(px - t * dx, pz - t * dz) - r;
+};
+
+/** @type {(x: number, y: number, z: number) => number} 眼窩外側（遠離中線、往車尾）半邊：眉骨只做在這半邊（> 0） */
+const eyeOuterSide = (x, y, z) => {
+  const dx = 51.5 - 63;
+  const dz = 17.6 - 12.2;
+  // 眼軸的法線（朝外前方）：(dz, -dx) 正規化後取負 → 朝外側
+  return -((x - 63) * dz - (Math.abs(z) - 12.2) * dx) / Math.hypot(dx, dz) + 0.6;
+};
+
 /** @type {(x: number) => number} 燕麥米（下）／可可棕（上）分色線：臉盤下緣起、往後上掃（V13） */
 const splitY = (x) => 17 + 0.075 * (60 - x);
 
 /** @type {() => Record<string, THREE.Material>} */
 const materials = () => ({
-  cocoa: namedMaterial('paint-cocoa-brown', { color: 0x5a3a26, roughness: 0.22, metalness: 0.2, clearcoat: 1.0, clearcoatRoughness: 0.06 }),
-  cocoa2: namedMaterial('paint-cocoa-brown', { color: 0x5a3a26, roughness: 0.22, metalness: 0.2, clearcoat: 1.0, side: THREE.DoubleSide }),
+  // iter-123（第九階段）：可可棕改成帶金屬珠光的亮面漆（metalness 0.2 → 0.45、亮面清漆），和霧面燕麥米、深棕尾段拉開材質對比
+  cocoa: namedMaterial('paint-cocoa-brown', { color: 0x65412a, roughness: 0.2, metalness: 0.45, clearcoat: 1.0, clearcoatRoughness: 0.04 }),
+  cocoa2: namedMaterial('paint-cocoa-brown', { color: 0x65412a, roughness: 0.2, metalness: 0.45, clearcoat: 1.0, side: THREE.DoubleSide }),
   oat: namedMaterial('paint-oatmeal', { color: 0xe2d2b0, roughness: 0.3, clearcoat: 0.8, clearcoatRoughness: 0.08 }),
   oat2: namedMaterial('paint-oatmeal', { color: 0xe2d2b0, roughness: 0.3, clearcoat: 0.8, side: THREE.DoubleSide }),
+  // iter-123：深色羽尖端板（近黑的深可可，亮面）
+  plate2: namedMaterial('paint-espresso-endplate', { color: 0x1c120b, roughness: 0.22, clearcoat: 1.0, side: THREE.DoubleSide }),
   amber2: namedMaterial('paint-amber', { color: 0xf0a020, roughness: 0.25, clearcoat: 0.8, side: THREE.DoubleSide }),
   inner: namedMaterial('shell-inner-dark', { color: 0x221a14, roughness: 0.85, side: THREE.BackSide }),
   edge: namedMaterial('shell-edge-cocoa', { color: 0x4a3020, roughness: 0.5, side: THREE.DoubleSide }),
@@ -112,7 +143,7 @@ const materials = () => ({
   glass: namedMaterial('pc-smoke-tint', { color: 0x2a1a0c, roughness: 0.05, specularIntensity: 0.6, transparent: true, opacity: 0.78, envMapIntensity: 0.55, depthWrite: false }),
   driver: namedMaterial('cockpit-driver', { color: 0x3a3430, roughness: 0.45, clearcoat: 0.4 }),
   helmet: namedMaterial('cockpit-helmet-amber', { color: 0xf0a020, roughness: 0.3, clearcoat: 0.8 }),
-  eye: namedMaterial('lamp-amber', { color: 0xffb020, emissive: 0xff8a00, emissiveIntensity: 0.9, roughness: 0.1, clearcoat: 1.0 }),
+  eye: namedMaterial('lamp-amber', { color: 0xffb020, emissive: 0xff8a00, emissiveIntensity: 1.1, roughness: 0.1, clearcoat: 1.0 }),
   oatDecal: decalMaterial('decal-oatmeal', { color: 0xeadbb8, roughness: 0.35 }),
   amberDecal: decalMaterial('decal-amber', { color: 0xf0a020, roughness: 0.3, clearcoat: 0.6 }),
   dark: decalMaterial('decal-black', { color: 0x14100c, roughness: 0.5 }),
@@ -255,7 +286,7 @@ export const owlHushBody = makePolyBody({
     })(),
   },
   // iter-55：眼窩（俯視圓形、深 1.3 mm），槽底放琥珀燈片，上緣加凸出的眉骨
-  recesses: [{ id: '眼窩 ×2', view: 'top', shape: 'fn', sd: (x, y, z) => Math.hypot(x - 61, Math.abs(z) - 14) - 4.4, depth: 1.3 }],
+  recesses: [{ id: '眼窩 ×2', view: 'top', shape: 'fn', sd: eyeSd, depth: 1.3 }],
   innerSkipRecess: true,
   sideZMin: 28,
   zones: () => [
@@ -263,6 +294,9 @@ export const owlHushBody = makePolyBody({
     { mat: 'oat', keep: (x, y) => splitY(x) - y },
     // 燕麥米：臉盤（鼻端中央 U 形面）
     { mat: 'oat', keep: (x, y, z) => Math.min(x - 56 - 0.012 * z * z, 24 - Math.abs(z)) },
+    // iter-123（第九階段塗裝：三色分割）：快背後段＋後輪擋泥板頂的深可可「收攏尾羽」，前緣是尖端朝前的箭形（中線 x −14、|z| 30 退到 x −32），
+    // 大面積棕色切成珍珠可可（前）／深可可（後）兩段，配燕麥米下半＝三色
+    { mat: 'brow', keep: (x, y, z) => -14 - x - 0.6 * Math.abs(z) },
     { mat: 'cocoa', keep: () => 1 },
   ],
   mats: { inner: 'inner', edge: 'edge', cap: 'oat2', recess: 'cockpit', recessWall: 'brow2', cockpit: 'cockpit', glass: 'glass', mount: 'mount' },
@@ -290,7 +324,7 @@ export const owlHushBody = makePolyBody({
         kit.decal((x, y, z) => (Math.abs(z) < 24 && x > 50 ? -1 : Math.min(y - splitY(x) - 0.2, splitY(x) + 1.1 - y))),
         kit.decal((x, y, z) => {
           const d = x - 56 - 0.012 * z * z;
-          return Math.abs(z) > 24 || y < splitY(x) ? -1 : Math.min(d + 1.2, -d - 0.1);
+          return Math.abs(z) > 24 || y < splitY(x) || eyeSd(x, y, z) < 0.8 ? -1 : Math.min(d + 1.2, -d - 0.1);
         }),
       ]),
       mat: 'amberDecal',
@@ -300,13 +334,11 @@ export const owlHushBody = makePolyBody({
     const drv = buildDriver(10, kit.innerYAt(10) + kit.t, 1.25);
     parts.push({ geometry: drv.body, mat: 'driver', solid: true, name: 'cockpit-driver' });
     parts.push({ geometry: drv.helmet, mat: 'helmet', solid: true, name: 'cockpit-helmet' });
-    // 一對琥珀色圓「眼」燈（V14，iter-55 改成凹入的燈）：眼窩槽底的琥珀燈片＋眼窩上半圈凸出 0.6 mm 的深棕眉骨（外側高、內側低，眼神銳利）
-    const eyeSd = (x, y, z) => Math.hypot(x - 61, Math.abs(z) - 14) - 4.4;
+    // 一對琥珀色「眼」燈（V14，iter-55 改成凹入的燈；iter-123 拉成往後外斜的細長眼）：眼窩槽底的琥珀燈片＋眼窩外側凸出 0.6 mm 的深棕眉稜
     const lamp = buildRegion(kit.surf, [...kit.holes, (x, y, z) => -eyeSd(x, y, z)], { offset: -1.3 + 0.08 });
     parts.push({ geometry: lamp.geometry, mat: 'eye', name: 'lamp-eyes' });
-    /** @type {(x: number, y: number, z: number) => number} 眉骨範圍：眼窩上半（往車尾方向），斜線外側高、內側低 */
-    const browSide = (x, y, z) => x - 61 + 0.55 * (Math.abs(z) - 14) + 1.2;
-    const browReg = buildRegion(kit.surf, [...kit.holes, eyeSd, (x, y, z) => 1.8 - eyeSd(x, y, z), browSide], { offset: 0.6 });
+    // iter-123：眉骨改成沿細長眼窩外側的一道細稜（寬 1.4 mm），跟著眼角往後拉
+    const browReg = buildRegion(kit.surf, [...kit.holes, eyeSd, (x, y, z) => 1.4 - eyeSd(x, y, z), eyeOuterSide], { offset: 0.6 });
     parts.push({ geometry: browReg.geometry, mat: 'brow', name: 'eye-brow' });
     parts.push({ geometry: buildRim(browReg, 0, 0.6), mat: 'brow2', name: 'eye-brow-wall' });
     // 鳥喙：臉盤中央往下的琥珀色小三角刃（埋入鼻端）
@@ -353,33 +385,76 @@ export const owlHushBody = makePolyBody({
       solid: true,
       name: 'arch-liners',
     });
-    // 低位寬翼（V6 過彎型＝寬翼、V7 翼頂不高於座艙頂、V9 單段翼；iter-55 改成有弧度的翼型曲面）：
-    // 後緣是每側 6 片往外後方斜切的羽片（齒尖後掠），翼面帶 1.2 mm 弧度、5° 攻角、往翼尖上反 1.8 mm；
-    // 前 62% 可可棕、後段羽尖琥珀；沒有端板，翼頂約 39（低於座艙頂 43.5）→ 和比賽型 aero-wing 的鵝頸平板高位翼相反
-    const span = 46;
+    // 低位寬翼（V6 過彎型＝寬翼、V7 翼頂不高於座艙頂）——iter-123（第九階段，評審：「尾翼羽片排成一列像梳子」）：
+    // 原本一片寬翼＋後緣 12 齒梳齒，改成 3 片後掠層疊羽片（像收攏的貓頭鷹初級飛羽）：
+    // - 每片都是全展向的後掠箭形翼型片（中線最前、往翼尖後掠收尖），由下到上越來越短、越來越前，像瓦片一樣疊壓（片間無縫，不是分段 flap）；
+    // - 下片最長（半展 46.5、後緣外角後掠到 x −67，琥珀）、中片（半展 38.5，燕麥米）、上片最短（半展 30，珍珠可可）；
+    // - 最長羽片翼尖接一對深色下彎羽尖端板（往下垂的羽尖形，不是直立方板）。
+    // 翼頂約 39.5（仍低於座艙頂 43.5）；分段數降到每片 40 × 6（舊梳齒翼 288 × 14，實體面數大減）
     const yWing = 35.2;
-    const nFeather = 6;
-    const wing = {
-      nU: 2 * nFeather * 24,
-      span,
-      le: (u) => -47 - 3 * u * u,
-      te: (u) => {
-        const ph = (Math.abs(u) * nFeather) % 1;
-        return -57.5 - 2.5 * u * u - 5.5 * ph ** 1.3;
-      },
-      y: (u, v) => yWing + 1.8 * u * u + 1.2 * Math.sin(Math.PI * v) + v * 10 * Math.tan((5 * Math.PI) / 180),
-      thick: (u) => 1.9 * (1 - u ** 8),
-    };
-    parts.push({ geometry: liftSurface({ ...wing, v0: 0, v1: 0.62, nV: 8 }), mat: 'cocoa2', outline: true, solid: true, name: 'feather-wing' });
-    parts.push({ geometry: liftSurface({ ...wing, v0: 0.62, v1: 1, nV: 6 }), mat: 'amber2', outline: true, solid: true, name: 'feather-wing-tips' });
-    // 兩支短支柱：翼型斷面的刀形支柱（根部厚 2.6 mm，往翼面收到 70%），根部埋入殼面、頂端埋入翼面
+    /**
+     * 羽片參數：半展 span、疊高 dy、中線前緣 x0、前緣後掠量 sweep（翼尖處）、後緣額外後掠量 sweepTe、中線弦長 chord
+     * @type {{ span: number, dy: number, x0: number, sweep: number, sweepTe: number, chord: number, mat: string, name: string }[]}
+     */
+    const FEATHERS = [
+      { span: 46.5, dy: 0, x0: -48.5, sweep: 11, sweepTe: 6, chord: 13.5, mat: 'amber2', name: 'feather-wing-low' },
+      { span: 38.5, dy: 1.05, x0: -47.5, sweep: 9, sweepTe: 5, chord: 12, mat: 'oat2', name: 'feather-wing-mid' },
+      { span: 30, dy: 2.1, x0: -46.5, sweep: 7, sweepTe: 3, chord: 9.5, mat: 'cocoa2', name: 'feather-wing-top' },
+    ];
+    /** @type {(f: { sweep: number, x0: number }, u: number) => number} 羽片前緣 x：中線最前、往翼尖以 |u|^1.6 後掠 */
+    const featherLe = (f, u) => f.x0 - f.sweep * Math.abs(u) ** 1.6;
+    for (const f of FEATHERS) {
+      parts.push({
+        geometry: liftSurface({
+          v0: 0,
+          v1: 1,
+          nU: 40,
+          nV: 6,
+          span: f.span,
+          le: (u) => featherLe(f, u),
+          // 後緣：弦長保持到外側 80% 才收到翼尖 1 mm，後緣再額外往後掠 → 每片都是往後外伸的寬羽、羽尖圓收
+          te: (u) => featherLe(f, u) - (1 + (f.chord - 1) * (1 - Math.abs(u) ** 6)) - f.sweepTe * u * u,
+          y: (u, v) => yWing + f.dy + 0.9 * u * u + 0.5 * Math.sin(Math.PI * v) + v * f.chord * Math.tan((4 * Math.PI) / 180),
+          thick: (u) => 1.3 * (1 - u ** 8),
+        }),
+        mat: f.mat,
+        outline: true,
+        solid: true,
+        name: f.name,
+      });
+    }
+    // 深色下彎羽尖端板：最長羽片翼尖內側 |z| 43.5，羽尖形（前緣圓、後下方收尖），上緣埋進羽片、往下垂 5.5 mm、往外傾 6°
+    const plates = [];
+    for (const sg of [-1, 1]) {
+      const zc = sg * 43.5;
+      const u = 43.5 / 46.5;
+      const xLe = featherLe(FEATHERS[0], u);
+      const yT = yWing + 0.9 * u * u + 0.7;
+      plates.push(
+        finPlate(
+          [
+            [xLe + 1.2, yT],
+            [xLe - 2.6, yT + 0.6],
+            [xLe - 4.4, yT - 2.2],
+            [xLe - 5.8, yT - 6.2],
+            [xLe - 2.2, yT - 4.2],
+            [xLe + 0.6, yT - 2.4],
+          ],
+          zc,
+          1.3,
+          sg * 6,
+        ),
+      );
+    }
+    parts.push({ geometry: mergeGeos(plates), mat: 'plate2', outline: true, solid: true, name: 'feather-endplates' });
+    // 兩支短支柱：翼型斷面的刀形支柱（根部厚 2.6 mm，往翼面收到 70%），根部埋入殼面、頂端埋入下片羽片
     const stays = [];
     for (const sg of [-1, 1]) {
       const zc = sg * 15;
-      const yb = kit.surf.topY(-52, zc) - 1.5;
-      stays.push(airfoilFin([-43.5, -58, yb], [-48.5, -57, yWing + 0.9], 2.6, zc, 0, 16, 6, { taper: [1, 0.7] }));
+      const yb = kit.surf.topY(-53, zc) - 1.5;
+      stays.push(airfoilFin([-45.5, -59, yb], [-51.5, -58.5, yWing + 0.9], 2.6, zc, 0, 12, 4, { taper: [1, 0.7] }));
     }
-    parts.push({ geometry: mergeGeos(stays), mat: 'cocoa2', outline: true, solid: true, name: 'wing-stays' });
+    parts.push({ geometry: mergeGeos(stays), mat: 'brow2', outline: true, solid: true, name: 'wing-stays' });
     // 側面大人字羽紋（V12 / V13）：燕麥米側裙上 3 道尖端朝前的可可棕 V 形，由前往後漸大，像收攏的翼羽
     const sideChev = [];
     for (const [xa, ya, len, w] of [

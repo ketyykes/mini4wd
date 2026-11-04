@@ -3,7 +3,7 @@
 // 設計：shared/design/body-dartfrog-hop/DESIGN.md（致敬語彙、和劇中車 / 市售車殼的差異）。剖面為本檔站位產生器（推估）。
 // 塗裝全為自創：檸檬黃＋黑＋土耳其藍、大小不一的黑圓斑、號碼「13」；不含任何廠商 / 作品名稱、商標或角色圖像。
 import * as THREE from 'three';
-import { makePolyBody, sweepEllipse } from './polyBody.js';
+import { makePolyBody, sweepEllipse, flatPlate } from './polyBody.js';
 import { namedMaterial, decalMaterial, sdNumber, sdBar, sdConvexPolygon, sideDecal, mergeGeos, lerp, smoothstep } from './loft.js';
 import { monoCurve, buildStations, sdCircle, smoothMax, fenderFloor, buildArchLiner, smoothNormals, noseRoll } from './gazelleLeap.js';
 
@@ -137,7 +137,8 @@ const materials = () => ({
   black: namedMaterial('paint-gloss-black', { color: 0x121316, roughness: 0.28, clearcoat: 0.9 }),
   black2: namedMaterial('paint-gloss-black', { color: 0x121316, roughness: 0.28, clearcoat: 0.9, side: THREE.DoubleSide }),
   // 蹼翼膜面（iter-59）：深土耳其藍緞面（原本淺藍綠 1 mm 薄片讀成半透明；黑色在灰色攝影棚背景前也讀不出來）
-  webSkin: namedMaterial('paint-deep-turquoise-web', { color: 0x07807d, roughness: 0.4, clearcoat: 0.5, clearcoatRoughness: 0.2, side: THREE.DoubleSide }),
+  // iter-123（第九階段材質）：蹼膜改成深土耳其藍金屬珠光漆（metalness 0.5、亮面清漆），和亮黃車身、亮黑前唇拉開材質層次
+  webSkin: namedMaterial('paint-deep-turquoise-web', { color: 0x07807d, roughness: 0.25, metalness: 0.5, clearcoat: 1.0, clearcoatRoughness: 0.05, side: THREE.DoubleSide }),
   turq: namedMaterial('paint-turquoise', { color: 0x12b3b0, roughness: 0.22, clearcoat: 1.0 }),
   turq2: namedMaterial('paint-turquoise', { color: 0x12b3b0, roughness: 0.22, clearcoat: 1.0, side: THREE.DoubleSide }),
   // 眼泡：深煙燻透明圓頂（不透明度高，看起來是有色的「眼」，V5 的變形）
@@ -161,10 +162,13 @@ const materials = () => ({
  * 蹼翼：翼根在車尾中線（x −45、殼面上 1 mm），放射肋往後外張開，翼面往後上仰
  * iter-59 放大：4 → 6 根肋、肋展 ±27 → ±40、肋長約 26 → 33 mm、仰角 23° → 34°（後方與側面都看得到整片蹼）
  */
-const FAN = { hubX: -45, tilt: 0.6, ribs: [-40, -24, -8, 8, 24, 40], tipX: -79 };
+// iter-123（第九階段，評審：「背扇太大、往上展開像裝飾」→「背扇縮小 20% 並改成後掠角」）：
+// 肋展 ±40 → ±36、肋長約 34 → 27 mm（扇面積約 −28%），仰角 34°（0.6 rad）→ 15°（0.26 rad），扇緣弧度 0.12 → 0.03（外側肋幾乎和中央肋一樣往後伸 → 俯視是往後掠的扇）；
+// 扇頂由約 58.5 降到約 44，從側面看是貼著車尾往後伸的低扇，不再是立起的屏風
+const FAN = { hubX: -45, tilt: 0.26, ribs: [-36, -21.6, -7.2, 7.2, 21.6, 36], tipX: -72 };
 
-/** @type {(z: number) => number} 肋尖 x（外側肋較短，扇緣呈弧形） */
-const fanTipX = (z) => FAN.tipX + 0.12 * Math.abs(z);
+/** @type {(z: number) => number} 肋尖 x（外側肋略短，扇緣微弧） */
+const fanTipX = (z) => FAN.tipX + 0.03 * Math.abs(z);
 
 /**
  * 扇形蹼翼的翼面（俯視多邊形：肋尖之間是往內凹的弧，像張開的蹼），以翼根為支點往後上仰
@@ -184,7 +188,7 @@ const buildWebMembrane = (hubY) => {
   shape.lineTo(FAN.hubX + 1, 3);
   shape.lineTo(FAN.hubX + 1, -3);
   // shape 的 (x, y) = 俯視 (x, z)；擠出方向 = 厚度（iter-59：1.0 → 0.8 ＋ 兩面各 0.3 mm 圓倒角，總厚約 1.4 mm 的實心膜面；iter-62：0.8 → 0.45，總厚約 1.05 mm，抵銷黑色座艙罩與收尖肋尖增加的質量，整車維持 ≤ 135 g）
-  const g = new THREE.ExtrudeGeometry(shape, { depth: 0.45, bevelEnabled: true, bevelThickness: 0.3, bevelSize: 0.3, bevelSegments: 2, curveSegments: 20 });
+  const g = new THREE.ExtrudeGeometry(shape, { depth: 0.45, bevelEnabled: true, bevelThickness: 0.3, bevelSize: 0.3, bevelSegments: 2, curveSegments: 12 });
   // (x, y, z) → (x, z, y)：擠出方向轉成 +y
   g.rotateX(-Math.PI / 2);
   g.translate(0, hubY + 0.9, 0);
@@ -217,8 +221,9 @@ const buildWebRibs = (hubY) => {
     const tipX = fanTipX(z) - 4.2;
     /** @type {(t: number) => number[]} */
     const at = (t) => rot(lerp(FAN.hubX + 1, tipX, t), hubY + 1.4, lerp(0, z * 1.04, t));
-    ribs.push(sweepEllipse([0, 0.27, 0.54, 0.82].map(at), 24, (t) => [lerp(2.1, 1.15, t), lerp(2.1, 1.15, t)], 16));
-    tips.push(sweepEllipse([0.8, 0.87, 0.94, 1].map(at), 12, (t) => [lerp(1.4, 0.12, t ** 0.8), lerp(1.4, 0.12, t ** 0.8)], 16));
+    // iter-123：肋跟著背扇縮小 20%（徑 4.2 → 3.4 mm）、分段 24 × 16 → 16 × 12（實體面數）
+    ribs.push(sweepEllipse([0, 0.27, 0.54, 0.82].map(at), 16, (t) => [lerp(1.7, 0.95, t), lerp(1.7, 0.95, t)], 12));
+    tips.push(sweepEllipse([0.8, 0.87, 0.94, 1].map(at), 8, (t) => [lerp(1.15, 0.12, t ** 0.8), lerp(1.15, 0.12, t ** 0.8)], 12));
   }
   return { ribs: mergeGeos(ribs), tips: mergeGeos(tips) };
 };
@@ -323,8 +328,9 @@ export const dartfrogHopBody = makePolyBody({
     parts.push({ geometry: buildArchLiner({ x: 40, y: 13, radius: 17.5 }, 29.5, 35.5, 0.35, Math.PI - 0.35), mat: 'liner', shell: true, name: 'arch-liner' });
     // 扇形蹼翼：黃色翼根座 ＋ 深土耳其藍翼面 ＋ 檸檬黃放射肋 ＋ 土耳其藍肋尖
     const hubY = topAt(FAN.hubX, 0) + 3;
-    const hub = new THREE.SphereGeometry(1, 20, 10);
-    hub.scale(7.6, 4.4, 5.6);
+    const hub = new THREE.SphereGeometry(1, 16, 10);
+    // iter-123：翼根座跟著背扇縮小 20%（7.6 × 4.4 × 5.6 → 6.4 × 3.8 × 4.6）
+    hub.scale(6.4, 3.8, 4.6);
     hub.translate(FAN.hubX - 0.5, hubY - 2.2, 0);
     parts.push({ geometry: hub, mat: 'yellow', solid: true, outline: true, name: 'web-hub' });
     // iter-59：翼面改成加厚的深土耳其藍實心膜，肋尖加土耳其藍圓珠
@@ -404,6 +410,17 @@ export const dartfrogHopBody = makePolyBody({
     // iter-55：拿掉鼻端的三角燈片（看起來像獠牙），改成前擋泥板頂面一對往後拉長的橢圓燈
     const lampSd = (px, pz) => Math.hypot((px - 52) / 4.2, (pz - 27) / 2.2) - 1;
     parts.push({ geometry: kit.decal((x, y, z) => -lampSd(x, Math.abs(z)), { offset: 0.1 }), mat: 'lamp', name: 'lamp-head' });
+    // iter-123（第九階段，評審：「車頭圓鈍」→「車頭下緣加黑色前唇擾流」）：寬鼻下緣一片亮黑前唇（實心 1.2 mm 板，y 12.4–13.6），
+    // 俯視是往前凸的寬弧（中央伸出鼻尖約 3.5 mm、兩端往後收到前輪拱前方），像蛙的下唇；左右兩端各一道往上翹的小導流角（鱗片分流片）
+    // 後緣 x 59.5（31 mm 輪胎前緣 x 55.5，留 ≥ 3 mm；原本可裝 31 mm 輪不能變不合法）
+    /** @type {number[][]} 前唇俯視多邊形 (x, z)：中央 x 69.5，往兩側沿弧收到 |z| 29、x 61.5 */
+    const lipPts = [];
+    for (let i = 0; i <= 12; i++) {
+      const zz = lerp(-29, 29, i / 12);
+      lipPts.push([69.5 - 5.5 * (zz / 29) ** 2 - 2.5 * (zz / 29) ** 4, zz]);
+    }
+    lipPts.push([59.5, 29], [59.5, -29]);
+    parts.push({ geometry: flatPlate(lipPts, 12.4, 1.2), mat: 'black2', solid: true, outline: true, name: 'front-lip-splitter' });
     // 鼻部「嘴線」：寬鼻正面一條黑色細橫線
     parts.push({
       geometry: kit.decal((x, y, z) => Math.min(x - 50, 0.9 - Math.abs(y - (18.2 - 0.12 * (66 - x))))),
