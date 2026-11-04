@@ -1,13 +1,13 @@
 // 九尾狐（body-kitsune-ninetail，第八階段神話組・日本）：取材日本民間傳說的九尾妖狐（玉藻前傳說；九尾狐源自中國典籍），
 // 不是稻荷神使——不用稻荷的白＋朱紅、不放鳥居、寶珠與鑰匙。
 // 造型：尖長的狐吻楔形車頭（鼻尖黑漆）、前軸後方一對立起的三角狐耳（實體件，耳內黑漆）、車身中段煙燻座艙罩、
-// 車尾 9 條細長狐尾尾翼（根部錯開排在後甲板上、往後外上方展開、尖端微翹；靛藍尾根 → 銀白尾身 → 金色尾尖）。
+// 車尾 9 條蓬鬆狐尾尾翼（iter-118：粗蓬中空、毛流分面、圓潤毛筆尖；根部錯開排在後甲板上、往後外上方展開；靛藍尾根 → 霧面銀灰毛身 → 白色尾尖）。
 // 設計：shared/design/body-kitsune-ninetail/DESIGN.md（典故與文物對應 MYTH_RESEARCH 日本節 J1、J2、J5、J6、J12、J13；
 // 黑名單：《火影忍者》九喇嘛、寶可夢九尾〔J14〕、The Fox Jr.、WGP 銀狐隊、旭日放射紋〔J15〕）。剖面為本檔站位產生器（推估）。
 // 塗裝全為自創：珍珠銀白（上半車身，亮面）、靛藍（下半車身與尾根，霧面）、黑漆（鼻尖、耳內、座艙框，緞面）、
 // 金色蒔繪細線（青海波、眼線、腰線）；不含任何廠商 / 作品名稱、商標、文字或人臉。
 import * as THREE from 'three';
-import { makePolyBody, sweepEllipse } from './polyBody.js';
+import { makePolyBody } from './polyBody.js';
 import { namedMaterial, decalMaterial, sideDecal, mergeGeos, lerp } from './loft.js';
 import { monoCurve, buildStations, smoothNormals } from './gazelleLeap.js';
 import { buildProfileLiner } from './khepriScarab.js';
@@ -85,7 +85,10 @@ const materials = () => ({
   // 黑漆：緞面（漆器感）
   urushi: namedMaterial('paint-urushi-black', { color: 0x141416, roughness: 0.55, clearcoat: 0.2 }),
   // 真金屬金（尾尖；名稱含 -brass → Blender metallic）
-  gold: namedMaterial('trim-gold-brass', { color: 0xc9a54a, metalness: 0.8, roughness: 0.3, clearcoat: 0.3 }),
+  // 狐尾毛身：霧面銀灰（iter-118；霧面讀成毛、不是亮面羽毛）
+  fur: namedMaterial('paint-fox-fur-silvergrey', { color: 0xa7acb6, roughness: 0.72, clearcoat: 0.05 }),
+  // 狐尾白尖：霧面雪白（iter-118；取代金色尾尖，不用金毛）
+  furTip: namedMaterial('paint-fox-fur-snowwhite', { color: 0xf6f6f2, roughness: 0.68, clearcoat: 0.05 }),
   glass: namedMaterial('pc-smoke-tint', { color: 0x262c38, roughness: 0.05, specularIntensity: 0.6, transparent: true, opacity: 0.45, envMapIntensity: 0.5, depthWrite: false, side: THREE.DoubleSide }),
   inner: namedMaterial('shell-inner-dark', { color: 0x1a1b1f, roughness: 0.85, side: THREE.BackSide }),
   edge: namedMaterial('shell-edge-indigo', { color: 0x1b2650, roughness: 0.6, side: THREE.DoubleSide }),
@@ -249,21 +252,127 @@ const tailPath = (k) => {
   return pts;
 };
 
-/** @type {(s: number) => number[]} 狐尾斷面半徑 [橫向, 垂直]：根部 1.4、中段鼓到約 2.4（毛筆形）、尖端收到 0.3；垂直半徑 = 0.58 × 橫向 + 0.15（略扁的蓬鬆圓尾） */
+/**
+ * 狐尾斷面基準半徑 [橫向, 垂直]（iter-118：改成粗蓬的狐尾）：根部 1.4 細頸 → s 0.62 鼓到 2.7 × 2.5（斷面約 5.4 × 5.0 mm，毛束稜再外凸約 8%）
+ * → 尾端以橢圓弧圓潤收成毛筆尖（0.35）；垂直略扁（蓬鬆圓尾）
+ * @type {(s: number) => number[]}
+ */
 const tailRadius = (s) => {
-  const rz = lerp(1.4, 0.3, s ** 3) + 1.2 * Math.sin(Math.PI * s) ** 1.2;
-  return [rz, 0.58 * rz + 0.15];
+  let rz;
+  if (s <= 0.62) {
+    const u = Math.min(1, Math.max(0, (s - 0.2) / 0.42));
+    rz = lerp(1.4, 2.7, u * u * (3 - 2 * u));
+  } else {
+    // 尾端：圓潤收成毛筆尖（不是針尖），最後 0.35 mm 半徑
+    const v = (s - 0.62) / 0.38;
+    rz = Math.max(0.35, 2.7 * Math.sqrt(Math.max(0, 1 - v * v)) ** 0.85);
+  }
+  return [rz, 0.93 * rz];
 };
 
-/** @type {[number, number, string][]} 狐尾分段上色：[s0, s1, 材質鍵]（靛藍尾根 → 銀白尾身 → 金色尾尖） */
+/**
+ * 毛流分面倍率：斷面上 7 道往尾尖螺旋的毛束稜（餘弦起伏，稜高約 ±8%，圓潤不尖銳），
+ * 再加沿長度 5 層「一撮疊一撮」的毛層（每層前端鼓、後端收，像層層覆蓋的毛簇）；尾尖 10% 漸收成光滑尖端
+ * @type {(s: number, a: number) => number}
+ */
+const furScale = (s, a) => {
+  const ph = (7 * a) / (2 * Math.PI) + 1.6 * s;
+  const tri = Math.cos(2 * Math.PI * ph);
+  const layer = ((s * 5.5) % 1 + 1) % 1;
+  const fade = Math.min(1, (1 - s) / 0.1);
+  return 1 + fade * (0.08 * tri + 0.06 * (0.5 - layer));
+};
+
+/**
+ * 沿中心線掃掠帶毛流分面的狐尾段（s0 → s1 為整條尾巴的長度參數），兩端封口（封閉網格，可算體積）
+ * @type {(pts: number[][], n: number, s0: number, s1: number, seg: number) => THREE.BufferGeometry}
+ */
+const sweepFur = (pts, n, s0, s1, seg) => {
+  const curve = new THREE.CatmullRomCurve3(
+    pts.map(([x, y, z]) => new THREE.Vector3(x, y, z)),
+    false,
+    'centripetal',
+  );
+  const frames = curve.computeFrenetFrames(n, false);
+  const up = new THREE.Vector3(0, 1, 0);
+  /** @type {THREE.Vector3[][]} */
+  const rings = [];
+  /** @type {THREE.Vector3[][]} 內壁（中空射出件，壁厚 TAIL_WALL；細到放不下內腔的地方收成中心點） */
+  const inner = [];
+  for (let i = 0; i <= n; i++) {
+    const t = i / n;
+    const s = lerp(s0, s1, t);
+    const c = curve.getPointAt(t);
+    const tg = frames.tangents[i];
+    const side = new THREE.Vector3().crossVectors(tg, up).normalize();
+    const vert = new THREE.Vector3().crossVectors(side, tg).normalize();
+    const [rz, ry] = tailRadius(s);
+    const ring = [];
+    for (let k = 0; k < seg; k++) {
+      const a = (2 * Math.PI * k) / seg;
+      const m = furScale(s, a);
+      ring.push(c.clone().addScaledVector(side, Math.cos(a) * rz * m).addScaledVector(vert, Math.sin(a) * ry * m));
+    }
+    rings.push(ring);
+    const iz = Math.max(0, rz - TAIL_WALL);
+    const iy = Math.max(0, ry - TAIL_WALL);
+    const iring = [];
+    for (let k = 0; k < seg; k++) {
+      const a = (2 * Math.PI * k) / seg;
+      iring.push(c.clone().addScaledVector(side, Math.cos(a) * iz).addScaledVector(vert, Math.sin(a) * iy));
+    }
+    inner.push(iring);
+  }
+  /** @type {number[]} */
+  const pos = [];
+  /** @type {(...v: THREE.Vector3[]) => void} */
+  const tri = (...v) => {
+    for (const p of v) {
+      pos.push(p.x, p.y, p.z);
+    }
+  };
+  for (let i = 0; i < n; i++) {
+    for (let k = 0; k < seg; k++) {
+      const k1 = (k + 1) % seg;
+      // 外壁
+      tri(rings[i][k], rings[i + 1][k], rings[i + 1][k1], rings[i][k], rings[i + 1][k1], rings[i][k1]);
+      // 內壁（反向繞，體積扣掉內腔）
+      tri(inner[i][k], inner[i + 1][k1], inner[i + 1][k], inner[i][k], inner[i][k1], inner[i + 1][k1]);
+    }
+  }
+  // 端蓋＝外環到內環的環形片（繞向同 polyBody.sweepEllipse：起點蓋朝後、終點蓋朝前）
+  for (const [i, flip] of /** @type {[number, boolean][]} */ ([
+    [0, false],
+    [n, true],
+  ])) {
+    for (let k = 0; k < seg; k++) {
+      const k1 = (k + 1) % seg;
+      const [a, b, ai, bi] = [rings[i][k], rings[i][k1], inner[i][k], inner[i][k1]];
+      if (flip) {
+        tri(ai, b, a, ai, bi, b);
+      } else {
+        tri(ai, a, b, ai, b, bi);
+      }
+    }
+  }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  g.computeVertexNormals();
+  return g;
+};
+
+/** @type {number} 狐尾壁厚（mm）：中空射出件（左右兩半黏合，推估），壁厚 1.2 符合薄片 ≥ 1.2 mm */
+const TAIL_WALL = 1.2;
+
+/** @type {[number, number, string][]} 狐尾分段上色：[s0, s1, 材質鍵]（靛藍尾根 → 霧面銀灰毛身 → 白色尾尖；iter-118 拿掉金色尾尖） */
 const TAIL_SEGMENTS = [
-  [0, 0.3, 'indigo'],
-  [0.3, 0.86, 'silver'],
-  [0.86, 1, 'gold'],
+  [0.15, 0.3, 'indigo'],
+  [0.3, 0.84, 'fur'],
+  [0.84, 1, 'furTip'],
 ];
 
 /**
- * 九條狐尾，依材質分組合併
+ * 九條狐尾，依材質分組合併（平滑法線，毛束稜讀成蓬鬆的毛流而不是結晶稜角）
  * @type {() => Record<string, THREE.BufferGeometry>}
  */
 const buildTails = () => {
@@ -276,7 +385,7 @@ const buildTails = () => {
       const i0 = Math.round(s0 * n);
       const i1 = Math.round(s1 * n);
       const pts = path.slice(i0, i1 + 1);
-      const g = sweepEllipse(pts, Math.max(6, (i1 - i0) * 2), (t) => tailRadius(lerp(s0, s1, t)), 14);
+      const g = sweepFur(pts, Math.max(8, (i1 - i0) * 3), s0, s1, 28);
       (byMat[mat] ??= []).push(smoothNormals(g));
     }
   }
@@ -418,7 +527,7 @@ export const kitsuneNinetailBody = makePolyBody({
     }
     // 尾根座：黑漆扁橢球，把九條尾根和後甲板接成一體
     const boss = new THREE.SphereGeometry(1, 32, 16);
-    boss.scale(6, 2, 11.5);
+    boss.scale(5, 1.7, 11);
     boss.translate(-45, P.yTop(-45) - 0.5, 0);
     parts.push({ geometry: boss, mat: 'urushi', solid: true, outline: true, name: 'tail-root-boss' });
 
@@ -493,7 +602,7 @@ export const kitsuneNinetailBody = makePolyBody({
     geometry: '本檔站位產生器 P（推估）：長 145.5（車尾 −70 ~ 鼻尖 75.5，batch2 規格「長約 140–150」）、殼頂 34.3、座艙頂 44.6、耳尖約 49.8（batch2「高約 45–52（耳尖）」）；寬 ±40（座艙前的胸；座艙後細腰 ±27、後軸臀 ±37）',
     wheelArches: '前後 R17.5（31 mm 輪胎半徑 15.5 + 2 mm），可裝 26 / 31 mm 輪',
     ears: '狐耳：ABS 實心耳板（底寬 10 × 高 19、擠出 1.6 mm＋0.5 mm 圓角倒邊，總厚 2.6 mm；iter-114 由四面體改）＋耳內 0.55 mm 黑漆片（推估），質量 = 封閉體積 × 1.05 g/cm³',
-    tails: '九條狐尾：ABS 實心掃掠件（長 26–29 mm、最寬約 4.8 mm、厚約 3.1 mm，推估），根部錯開 2.4 mm 排在後甲板＋黑漆尾根座，展開成半開摺扇：尾尖 x −63 ~ −69.5、最外 |z| 34（車寬 ±36.7 以內）、尾尖高約 46–48（不碰後導輪：後導輪頂 y 20.5）',
+    tails: '九條狐尾（iter-118）：ABS 中空掃掠件（壁厚 1.2、外露長約 22–25 mm、最粗斷面約 5.4 × 5.0 mm＋毛束稜 ±8%、白色毛筆尖，推估），根部錯開 2.4 mm 排在後甲板＋黑漆尾根座，展開成半開摺扇：尾尖 x −63 ~ −69.5、最外 |z| 34（車寬 ±36.7 以內）、尾尖高約 46–48（不碰後導輪：後導輪頂 y 20.5）',
     palette: '配色依 batch2 主 agent 決定（銀白＋靛藍＋黑漆＋少量金蒔繪，不用稻荷朱白、不用金毛 / 橘色主體、不用紅眼）；黑漆 #1B1B1B、金 #C9A54A 取 MYTH_RESEARCH 6-2（推估），其餘色碼自訂',
     mounts: '對齊 chassis-midship 的車殼安裝點（SPEC 1.14）',
   },
