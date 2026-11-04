@@ -1,9 +1,9 @@
-// 加拉爾號角（body-gjallarhorn，第八階段神話組・北歐）：守護彩虹橋的海姆達爾在諸神黃昏吹響的號角 Gjallarhorn。
+// 海姆達爾的號角（body-heimdall-horn，第八階段神話組・北歐）：守護彩虹橋的海姆達爾在諸神黃昏吹響的號角 Gjallarhorn。
 // 整台車是一支平放、微彎的號角：車頭是細的圓斷面吹口（往上翹，金色吹口套）、往後漸粗，側視是一道往上揚的緩弧；
 // 車尾是往外張開的喇叭口（bell-flare 尾翼：扁橢圓喇叭＋金色環邊，開口朝後，口內三道細彩環＝彩虹橋的三色）。
 // 號角身上 6 道金色箍環、兩段 Urnes 風格交織雙股紋（青銅貼紙，自繪曲線）；座艙罩在中段（煙燻）。
 // 號角兩側是低平的深色擋泥側裙（前後輪罩，兩輪之間收腰），蓋住輪胎；前段號角在兩個輪罩之間懸空，俯視是一支獨立的管子。
-// 設計：shared/design/body-gjallarhorn/DESIGN.md（典故：《散文埃達》Gylfaginning；語彙：維京時代飲用角的金屬配件、Urnes 交織紋 MYTH_RESEARCH N8）。
+// 設計：shared/design/body-heimdall-horn/DESIGN.md（典故：《散文埃達》Gylfaginning；語彙：維京時代飲用角的金屬配件、Urnes 交織紋 MYTH_RESEARCH N8）。
 // 塗裝全為自創：牛角漸層（吹口深褐近黑 → 車尾奶油象牙，分段在箍環處交接）＋金箍環＋青銅交織紋；不用盧恩字母、不含文字與商標。
 import * as THREE from 'three';
 import { makePolyBody, sweepEllipse } from './polyBody.js';
@@ -313,13 +313,13 @@ const buildMouthpiece = () => {
   return { tube, cup };
 };
 
-export const gjallarhornBody = makePolyBody({
-  id: 'body-gjallarhorn',
-  name: '加拉爾號角',
+export const heimdallHornBody = makePolyBody({
+  id: 'body-heimdall-horn',
+  name: '海姆達爾的號角',
   style: 'myth',
   phase: 8,
   mythSeries: 'norse',
-  mythTheme: 'gjallarhorn',
+  mythTheme: 'heimdall-horn',
   form: 'horn-bell',
   roof: 'canopy',
   wing: 'bell-flare',
