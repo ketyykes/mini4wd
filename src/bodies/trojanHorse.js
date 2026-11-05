@@ -152,32 +152,6 @@ export function buildBellySkirt({ x0, x1, zIn, zOut, yTop, yBot = 10.5, t = 1.2,
   return mergeGeos(geos);
 }
 
-/**
- * 斜腹板：前後輪拱之間每側一片往外下斜的實心板——上緣埋進殼側壁（|z| zIn、y yTop），下緣到底盤側框外緣上方（|z| zOut、y yBot），
- * 斷面是平行四邊形（水平寬 tz，板法向厚約 1.2 mm），沿 x 擠出 x0 → x1；把殼側壁下方、底盤側框以上外露的側框 / 電池艙整片蓋住，
- * 比「直立外板＋水平棚板」省一半質量，側視也像車殼的下斜裙邊
- * @type {(o: { x0: number, x1: number, zIn: number, zOut: number, yTop: number, yBot?: number, tz?: number }) => THREE.BufferGeometry}
- */
-export function buildSlantSkirt({ x0, x1, zIn, zOut, yTop, yBot = 10.5, tz = 1.8 }) {
-  /** @type {THREE.BufferGeometry[]} */
-  const geos = [];
-  for (const sg of [-1, 1]) {
-    // 斷面 (u = z, v = y)
-    const pts = [
-      [sg * zIn, yTop],
-      [sg * zOut, yBot],
-      [sg * (zOut - tz), yBot],
-      [sg * (zIn - tz), yTop],
-    ].map(([u, v]) => new THREE.Vector2(u, v));
-    const g = new THREE.ExtrudeGeometry(new THREE.Shape(pts), { depth: x1 - x0, bevelEnabled: false });
-    // 擠出方向 → 世界 x：rotateY(−90°) 後 (u, v, w) → (−w, v, u)，再平移到 x1
-    g.rotateY(-Math.PI / 2);
-    g.translate(x1, 0, 0);
-    geos.push(g);
-  }
-  return mergeGeos(geos);
-}
-
 /** @type {() => Record<string, THREE.Material>} */
 const materials = () => ({
   // 木作：霧面（roughness 0.62–0.72、幾乎無清漆）
