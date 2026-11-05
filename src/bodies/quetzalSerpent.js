@@ -1,10 +1,10 @@
 // 羽蛇（body-quetzal-serpent，神話組・阿茲特克 / 馬雅）：特奧蒂瓦坎羽蛇神殿的階梯金字塔與綠咬鵑羽。
 // 不做蛇頭、眼、牙與蛇信，主題用四種元素表現：
-// (1) 階梯金字塔 → 車身：頂面由車尾往鼻尖一階一階下降的平台（階面貼金），側視是一道階梯楔形；側面是 talud-tablero 的立板＋內收斜坡兩階；
+// (1) 階梯金字塔 → 車身：頂面由車尾往鼻尖一階一階下降的平台（鼻端與座艙後兩道階面貼金），側視是一道階梯楔形；側面是 talud-tablero 的立板＋內收斜坡兩階；
 //     尾翼的翼端板是階梯金字塔的側影，上下兩片翼面各站在一階上；
-// (2) 層疊的羽 → 翼片：尾翼的兩層翼面、車身兩側各 3 片往後掠的金色短翼片；
-// (3) 紋樣與配色：立板上連續帶狀的階梯回紋（xicalcoliuhqui，不做四向旋轉單元）、頂面的馬賽克小片；綠咬鵑金屬綠＋綠松石＋海菊蛤紅＋金；
-// (4) 黑曜石：鼻端最前一階與前輪擋泥板後緣往後伸的一對鰭刀是亮面黑曜石色。
+// (2) 層疊的羽 → 翼片：尾翼的兩層翼面、車身兩側各 3 片往後掠的短翼片（和車身同色）；
+// (3) 紋樣與配色：立板上連續帶狀的階梯回紋（xicalcoliuhqui，不做四向旋轉單元）、頂面的綠松石馬賽克小片；深翡翠金屬綠（主色）＋綠松石＋海菊蛤紅＋金；
+// (4) 黑曜石鰭刀（全車唯一的刃）：每側一片從車身側面接到前輪擋泥板後緣、再往後收尖的黑曜石色薄刃；鼻端一對亮金色細縫頭燈。
 // 細頸（前輪外露，上方有擋泥板）、中段黑曜石色座艙罩。
 // 設計：shared/design/body-quetzal-serpent/DESIGN.md（典故與文物對應 MYTH_RESEARCH 第 8 節 A1、A2、A6、A7；黑名單 8-3）。剖面為本檔站位產生器（推估）。
 // 不做鷹＋蛇＋仙人掌組合、不用國旗色排列、不做骷髏 / 人祭圖像、不畫神像人臉；不含任何文字。
@@ -193,17 +193,18 @@ const fretSd = (u, v) => {
 
 /** @type {() => Record<string, THREE.Material>} */
 const materials = () => ({
-  // 頂面：綠咬鵑羽的金屬綠亮面漆；立板：綠松石馬賽克的霧面（roughness > 0.5）；斜坡：海菊蛤紅霧面——亮面金屬漆對石材霧面
-  green: namedMaterial('paint-quetzal-green-metallic', { color: 0x168a5a, roughness: 0.28, metalness: 0.45, clearcoat: 0.9, clearcoatRoughness: 0.08 }),
-  green2: namedMaterial('paint-quetzal-green-metallic', { color: 0x168a5a, roughness: 0.28, metalness: 0.45, clearcoat: 0.9, clearcoatRoughness: 0.08, side: THREE.DoubleSide }),
+  // 頂面：深翡翠的金屬綠亮面漆（深色殼）；立板：綠松石馬賽克的霧面（roughness > 0.5）；斜坡：海菊蛤紅霧面——亮面金屬漆對石材霧面
+  green: namedMaterial('paint-quetzal-green-metallic', { color: 0x0d4f37, roughness: 0.28, metalness: 0.45, clearcoat: 0.9, clearcoatRoughness: 0.08 }),
+  green2: namedMaterial('paint-quetzal-green-metallic', { color: 0x0d4f37, roughness: 0.28, metalness: 0.45, clearcoat: 0.9, clearcoatRoughness: 0.08, side: THREE.DoubleSide }),
   turq: namedMaterial('paint-turquoise-mosaic', { color: 0x2bb3a3, roughness: 0.62, clearcoat: 0.1 }),
   red: namedMaterial('paint-spondylus-red', { color: 0xc2452d, roughness: 0.6, clearcoat: 0.1 }),
   red2: namedMaterial('paint-spondylus-red', { color: 0xc2452d, roughness: 0.6, clearcoat: 0.1, side: THREE.DoubleSide }),
-  // 真金屬：尾翼翼端板與側翼片（Blender 依 -brass 結尾換成金屬）
+  // 真金屬：尾翼翼端板（Blender 依 -brass 結尾換成金屬）
   gold: namedMaterial('trim-gold-brass', { color: 0xd9b24a, roughness: 0.3, metalness: 0.8, clearcoat: 0.3, side: THREE.DoubleSide }),
-  // 黑曜石：亮面黑（鼻端一階、鰭刀）
-  obsidian: namedMaterial('paint-obsidian-gloss', { color: 0x1c1c22, roughness: 0.12, clearcoat: 1.0, clearcoatRoughness: 0.03 }),
-  obsidian2: namedMaterial('paint-obsidian-gloss', { color: 0x1c1c22, roughness: 0.12, clearcoat: 1.0, clearcoatRoughness: 0.03, side: THREE.DoubleSide }),
+  // 黑曜石鰭刀：黑色亮面漆（不要鏡面：roughness 太低在算圖裡會像黑玻璃）
+  obsidian: namedMaterial('paint-obsidian-black', { color: 0x1c1c22, roughness: 0.34, clearcoat: 0.6, clearcoatRoughness: 0.2, side: THREE.DoubleSide }),
+  // 細縫頭燈：亮金色，低強度自發光（深色殼上的亮色頭燈）
+  lamp: namedMaterial('lamp-slit-gold', { color: 0xffcf4a, emissive: 0xffc640, emissiveIntensity: 0.55, roughness: 0.2, clearcoat: 0.8 }),
   inner: namedMaterial('shell-inner-dark', { color: 0x15201c, roughness: 0.85, side: THREE.BackSide }),
   edge: namedMaterial('shell-edge-jade', { color: 0x17603c, roughness: 0.6, side: THREE.DoubleSide }),
   cockpit: namedMaterial('cockpit-dark', { color: 0x121416, roughness: 0.6 }),
@@ -343,13 +344,21 @@ const buildWingPlane = (p) =>
     1.6,
   );
 
-/** @type {number[][]} 黑曜石鰭刀側視外形 (x, y)：接在前輪擋泥板後緣（x 30–33），往後收成一個尖（x 6），厚 1.4 */
-const BLADE = [
-  [33, 29],
-  [22, 30.2],
-  [6, 27.2],
-  [20, 26.6],
-  [30.5, 25.6],
+/** @type {number} 黑曜石鰭刀底面高（厚 1.4；在座艙平台稜線 27.8 之下、26 mm 前輪胎頂之上） */
+const BLADE_Y = 26.2;
+/**
+ * @type {number[][]} 黑曜石鰭刀俯視外形 (x, z)（右側，左側鏡射）：根部埋進座艙平台前段的立板（|z| 15.5），
+ * 斜向外接到前輪擋泥板後緣（x 33、|z| 27–35.5，壓在擋泥板後端下方），再沿車側往後收成一個尖（x 4）
+ */
+const BLADE_PLAN = [
+  [26, 15.5],
+  [33, 27],
+  [33, 35.5],
+  [20, 34],
+  [4, 31],
+  [16, 28.5],
+  [22, 22],
+  [20, 15.5],
 ];
 
 export const quetzalSerpentBody = makePolyBody({
@@ -362,7 +371,7 @@ export const quetzalSerpentBody = makePolyBody({
   form: 'step-pyramid',
   roof: 'canopy',
   wing: 'terrace-wing',
-  theme: '特奧蒂瓦坎羽蛇神殿的階梯金字塔，不做蛇頭：頂面由車尾往鼻尖一階一階下降的平台（階面貼金）、側面是立板＋斜坡兩階，立板上一道連續的階梯回紋；尾翼是階梯金字塔側影的金色翼端板＋上下兩層翼面，車身兩側各 3 片後掠的金色短翼片；綠咬鵑金屬綠配綠松石、海菊蛤紅與金，鼻端一階與擋泥板後緣的一對鰭刀是黑曜石色；細頸露出前輪、黑曜石色座艙罩',
+  theme: '特奧蒂瓦坎羽蛇神殿的階梯金字塔，不做蛇頭：頂面由車尾往鼻尖一階一階下降的平台（鼻端與座艙後兩道階面貼金）、側面是立板＋斜坡兩階，立板上一道連續的階梯回紋；尾翼是階梯金字塔側影的金色翼端板＋上下兩層翼面，車身兩側各 3 片後掠的短翼片；深翡翠金屬綠配綠松石、海菊蛤紅與金，從車身接到擋泥板後緣的一對黑曜石鰭刀、鼻端一對亮金色細縫頭燈；細頸露出前輪、黑曜石色座艙罩',
   material: 'ABS',
   density_g_cm3: 1.05,
   wallThickness_mm: 0.8,
@@ -390,8 +399,6 @@ export const quetzalSerpentBody = makePolyBody({
   },
   sideZMin: 20,
   zones: () => [
-    // 黑曜石：鼻端最前一階
-    { mat: 'obsidian', keep: (x) => x - (TERRACES[3][0] + RISER) },
     // 金屬綠：頂面（稜線以上）
     { mat: 'green', keep: (x, y) => y - (ridgeY(x) + 0.02) },
     // 綠松石：立板（稜線到立板下緣）
@@ -399,7 +406,7 @@ export const quetzalSerpentBody = makePolyBody({
     // 海菊蛤紅：內收階以下的斜坡
     { mat: 'red', keep: () => 1 },
   ],
-  capFrontBands: [{ mat: 'obsidian' }],
+  capFrontBands: [{ mat: 'green' }],
   mats: { inner: 'inner', edge: 'edge', cap: 'red', cockpit: 'cockpit', glass: 'glass', mount: 'mount' },
   materials,
   extras: (kit) => {
@@ -419,11 +426,10 @@ export const quetzalSerpentBody = makePolyBody({
     // 前輪擋泥板＋接到細頸的斜撐
     parts.push({ geometry: mergeGeos([buildFender(1), buildFender(-1)]), mat: 'green2', solid: true, outline: true, name: 'front-fenders' });
     parts.push({ geometry: mergeGeos([buildFenderStay(1), buildFenderStay(-1)]), mat: 'green2', solid: true, outline: true, name: 'front-fender-stays' });
-    // 黑曜石鰭刀：擋泥板後緣往後伸的一對直立薄刃（在擋泥板寬度中央）
-    const bladeZ = (FENDER.z0 + FENDER.z1) / 2;
+    // 黑曜石鰭刀：每側一片水平薄刃（厚 1.4），根部埋進車身立板、前端接在擋泥板後緣下方，往後收尖
     parts.push({
-      geometry: mergeGeos([finPlate(BLADE, bladeZ, 1.4), finPlate(BLADE, -bladeZ, 1.4)]),
-      mat: 'obsidian2',
+      geometry: mergeGeos([1, -1].map((sg) => flatPlate(BLADE_PLAN.map(([x, z]) => [x, sg * z]), BLADE_Y, 1.4))),
+      mat: 'obsidian',
       solid: true,
       outline: true,
       name: 'obsidian-fin-blades',
@@ -460,26 +466,32 @@ export const quetzalSerpentBody = makePolyBody({
         sideVanes.push(flatPlate(pts.map(([x, z]) => [x, sg * z]), y, 1.2));
       }
     }
-    parts.push({ geometry: mergeGeos(sideVanes), mat: 'gold', solid: true, outline: true, name: 'side-vanes' });
+    parts.push({ geometry: mergeGeos(sideVanes), mat: 'green2', solid: true, outline: true, name: 'side-vanes' });
 
-    /** @type {number} 貼紙只貼到黑曜石鼻端之前 */
-    const xDecalMax = TERRACES[3][0] - 0.4;
-    // 階面貼金：每一道階面（含車尾那一階）橫貫頂面的金帶，讓平台一階一階讀得出來
+    /** @type {number} 頂面貼紙的前緣（鼻尖前留 1.5 mm） */
+    const xDecalMax = X_NOSE - 1.5;
+    // 階面貼金：只貼兩道——鼻端那一階與座艙後那一階，其餘階面維持車身色，頂面的綠才連得起來
     parts.push({
       geometry: kit.decal((x, y, z) => {
         if (y < ridgeY(x) + 0.3 || kit.underCanopy(x, z) > -0.6) {
           return -1;
         }
-        const edges = [...TERRACES.slice(0, -1).map(([x0]) => x0 + RISER / 2), TAIL_STEP.x - RISER / 2];
+        const edges = [TERRACES[0][0], TERRACES[3][0]].map((x0) => x0 + RISER / 2);
         return Math.max(...edges.map((xe) => RISER / 2 + 0.35 - Math.abs(x - xe)));
       }),
       mat: 'dGold',
       name: 'decal-riser-gold',
     });
-    // 馬賽克小片（頂面，避開座艙與階面）：大片、稀疏——綠松石 16%、金 10%
+    // 細縫頭燈：鼻端平台上沿兩側邊緣內 6.4 mm 的一對細長光條（x 68.5 → 77，寬 1.6），跟著鼻端收窄；鼻端平台不貼馬賽克小片，只留頭燈
+    parts.push({
+      geometry: kit.decal((x, y, z) => (x < 68.5 || x > 77 || y < ridgeY(x) + 0.3 ? -1 : 0.8 - Math.abs(Math.abs(z) - (halfW(x) - 6.4))), { offset: 0.14 }),
+      mat: 'lamp',
+      name: 'lamp-nose-slits',
+    });
+    // 馬賽克小片（頂面，避開座艙）：大片、稀疏的綠松石小片，約佔 16%
     /** @type {(lo: number, hi: number) => import('./loft.js').KeepFn} */
     const tiles = (lo, hi) => (x, y, z) => {
-      if (y < ridgeY(x) + 0.4 || x > xDecalMax || kit.underCanopy(x, z) > -0.8) {
+      if (y < ridgeY(x) + 0.4 || x > TERRACES[3][0] || kit.underCanopy(x, z) > -0.8) {
         return -1;
       }
       // 小片排成往前尖的箭形列（x 依 |z| 錯開 = 往後掃）、密度由鼻段往車尾遞減（速度感）
@@ -487,7 +499,6 @@ export const quetzalSerpentBody = makePolyBody({
       return mosaic(x + 0.55 * Math.abs(z), z, lo * f, hi * f);
     };
     parts.push({ geometry: kit.decal(tiles(0, 0.16)), mat: 'dTurqLight', name: 'decal-mosaic-turquoise' });
-    parts.push({ geometry: kit.decal(tiles(0.16, 0.26)), mat: 'dGold', name: 'decal-mosaic-gold' });
 
     // 往後掃的 livery：頂面兩側沿稜線內側的海菊蛤紅寬條（1.8）＋螺貝白細條（0.7），從鼻段一路掃到車尾
     /** @type {(x: number) => number} 紅條中心距稜線的內縮量（鼻段 2.2、車身段 4.2） */
@@ -529,7 +540,7 @@ export const quetzalSerpentBody = makePolyBody({
     density_g_cm3: 'SPEC 1.14：ABS 約 1.05 g/cm³（推估）',
     wallThickness_mm: '推估：射出 ABS 殼 0.8 mm（同其他款）',
     geometry: '本檔站位產生器 P＋topY / ridgeY / tableroY（推估）：外框長 149.7（車尾翼端板 x −70.7 → 鼻尖 x 79.0，≤ 153）；頂面平台由後到前 34 → 31 → 28 → 25.4 → 22.8（車尾另降一階到 31），階面長 1.6；座艙罩頂 38.5、尾翼頂 46（全車最高）；細頸半寬 14.5（26 mm 前輪內側面 25.25 之內）；後輪拱 R15.5（26 mm 輪半徑 13 + 2.5，只支援 26 mm 輪）',
-    wing: '尾翼翼端板（|z| 20、厚 1.6，三階的階梯側影，頂 46）、兩層翼面（厚 1.6，頂面 42 / 46）、側翼片每側 3 片（厚 1.2）、黑曜石鰭刀（厚 1.4，接在擋泥板後緣）、前輪擋泥板與斜撐、腹側裙板：ABS 實心件（推估），質量 = 封閉體積 × 1.05 g/cm³；根部埋進殼面或相接的零件',
+    wing: '尾翼翼端板（|z| 20、厚 1.6，三階的階梯側影，頂 46）、兩層翼面（厚 1.6，頂面 42 / 46）、側翼片每側 3 片（厚 1.2）、黑曜石鰭刀（水平薄板厚 1.4，底面 y 26.2，根部埋進立板、前端接擋泥板後緣）、前輪擋泥板與斜撐、腹側裙板：ABS 實心件（推估），質量 = 封閉體積 × 1.05 g/cm³；根部埋進殼面或相接的零件',
     myth: '階梯金字塔（六層 talud-tablero）、藍底彩繪、黑曜石嵌片：MYTH_RESEARCH A2（特奧蒂瓦坎羽蛇神殿）；綠咬鵑羽：A1；綠松石 / 海菊蛤紅 / 螺貝白：A6（大英博物館雙頭蛇）；階梯回紋：A7',
     mounts: '對齊 chassis-midship 的車殼安裝點（SPEC 1.14）',
   },
