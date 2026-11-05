@@ -1,9 +1,9 @@
-// 米諾陶洛斯（body-minotaur-maze，神話組・希臘）——F2 擋泥板肌肉型「低頭衝撞的蠻牛」。
-// 側視：鼻尖壓到 15.6 mm 的黑色牛鼻，往後一路斜升到前輪上方的「牛肩」擋泥板量體（最高 37.6，比中央脊線還高），
+// 米諾陶洛斯（body-minotaur-maze，神話組・希臘）——F2 擋泥板肌肉型，姿態是「低頭衝撞的蠻牛」；車上沒有牛的臉、眼、鼻孔、鼻環。
+// 側視：鼻尖壓到 15.6 mm 的黑色鼻錐，往後一路斜升到前輪上方的「牛肩」擋泥板量體（最高 37.6，比中央脊線還高），
 // 中段大幅收腰（半寬 46 → 29，肩線降到 24 以下），後輪再鼓起一對較低的「牛臀」擋泥板，車尾往下收——量體集中在四個角，像低頭蓄力往前衝的公牛。
 // 斷面：中央隆起的圓脊（不是 V 形）＋兩側凹谷＋擋泥板頂；肩線是唯一銳利稜線，下面往內收 3.5–4 mm 成第二層（壁畫藍下裙＋黑色下緣），側視有上下兩層量體。
-// 神話元素：牛頭 = 黑色鼻錐（亮黑眼、逗號形鼻孔、金鼻環）；牛角 = 從牛肩擋泥板長出、貼著擋泥板往前衝、在鼻尖兩側往上挑的金色粗長新月角（前翼 / 分流片，圓斷面）；
-// 迷宮回紋 = 從鼻尖沿中央脊往後掃到車尾的黑底奶油白雙回紋賽車條，中線一條金色阿里阿德涅之線走進座艙；座艙是脊線後段的方形開放座艙（迷宮中心）。
+// 神話元素：鼻錐是黑繪陶的亮黑素面；新月角 = 從牛肩擋泥板長出、貼著擋泥板往前衝、在鼻尖兩側往上挑的金色粗長新月角（前翼 / 分流片，圓斷面）；
+// 迷宮回紋 = 從鼻尖沿中央脊往後掃到車尾的黑底奶油白雙回紋賽車條，中線一條微微發光的金色阿里阿德涅之線走進座艙；座艙是脊線後段的方形開放座艙（迷宮中心，井壁和賽車條同為黑色）。
 // 設計：shared/design/body-minotaur-maze/DESIGN.md（MYTH_RESEARCH G6、G9、G10、G13）。剖面為本檔站位產生器（推估）；塗裝全為自創，不含任何文字、號碼或商標。
 import * as THREE from 'three';
 import { makePolyBody, sweepEllipse } from './polyBody.js';
@@ -19,7 +19,7 @@ const XS = [-70, -64, -56, -48, -40, -30, -20, -8, 4, 16, 26, 36, 44, 52, 60, 66
 const P = {
   // 中央脊線：車尾 19 → 後輪 30.4 → 座艙段 34–35.4 → 牛肩前方 36.4（x 26，最高）→ 往前斜降成低頭的牛額 → 鼻尖 15.6
   yC: monoCurve(XS, [19, 22.4, 27, 29.4, 30.4, 31.8, 33.2, 34.4, 35.4, 36.2, 36.4, 35.6, 33.6, 30.4, 26.4, 23, 19.8, 17.4, 15.6]),
-  // 半寬（俯視）：牛臀 37.6、腰 29、牛肩 46.0（外框 ≤ 48）、牛頭往鼻吻收到 13.5
+  // 半寬（俯視）：牛臀 37.6、腰 29、牛肩 46.0（外框 ≤ 48）、鼻錐往鼻尖收到 13.5
   hw: monoCurve(XS, [10, 19, 31, 37, 37.6, 34, 29.6, 29, 31.6, 42, 46, 46, 46, 44, 36, 27.5, 21, 16, 13.5]),
   // 下緣：中段 10.8（底盤側框頂 9.4 之上）、車尾與鼻吻抬高
   yLow: monoCurve(XS, [16.2, 15.4, 13.6, 12.2, 11.4, 11, 10.8, 10.8, 10.8, 11, 11.4, 12, 12.6, 13.4, 14.2, 14.8, 15.2, 15.4, 15.4]),
@@ -88,7 +88,7 @@ const sideZAt = (x, y) => {
   return y > pts[5][1] ? pts[5][0] : pts[pts.length - 1][0];
 };
 
-// 牛頭、鼻吻段每 0.5 mm 一站，其餘每 2 mm
+// 鼻錐段每 0.5 mm 一站，其餘每 2 mm
 const STATIONS = [...buildStations(-70, 50, 2, profile).slice(0, -1), ...buildStations(50, 77.5, 0.5, profile)];
 
 /** @type {{ x: number, y: number, radius: number }[]} 前後輪拱圓（26 mm 輪胎半徑 13 + 2.2 mm） */
@@ -99,12 +99,8 @@ const ARCHES = [
 /** @type {(x: number, y: number) => number} 側視到最近輪拱圓周的距離（正值 = 在輪拱切口外） */
 const archRingDist = (x, y) => Math.min(...ARCHES.map((a) => Math.hypot(x - a.x, y - a.y) - a.radius));
 
-/** @type {number} 牛頭起點（x 大於此值是黑色牛頭） */
+/** @type {number} 黑色鼻錐起點（x 大於此值漆黑） */
 const X_HEAD = 55;
-/** @type {{ x: number, zOff: number, r: number, rise: number }} 牛眼：x、離側壁的內縮量、球半徑、突出殼面高度 */
-const EYE = { x: 62.5, zOff: 3.4, r: 2.6, rise: 1.1 };
-/** @type {{ x: number, y: number }} 金鼻環中心（鼻吻正面） */
-const NOSE_RING = { x: 77.9, y: 13.6 };
 /** @type {number} 下裙下緣黑色帶上緣高度 */
 const ROCKER_Y = 13.0;
 /** @type {number} 脊線黑底賽車條半寬 */
@@ -172,20 +168,19 @@ const materials = () => ({
   ochre: namedMaterial('paint-fresco-ochre-red', { color: 0xa5452c, roughness: 0.64, clearcoat: 0.05 }),
   blue: namedMaterial('paint-fresco-blue', { color: 0x2e5b85, roughness: 0.62, clearcoat: 0.05 }),
   cream: namedMaterial('paint-fresco-cream', { color: 0xebdfc1, roughness: 0.62, clearcoat: 0.05 }),
-  // 牛頭與甲板框邊：亮面黑（少數亮面部位）
+  // 鼻錐、賽車條底色、座艙井壁：亮面黑（少數亮面部位）
   black: namedMaterial('paint-bull-black', { color: 0x1d1b1a, roughness: 0.3, clearcoat: 0.8, clearcoatRoughness: 0.12 }),
   // 牛角：金色（真金屬：名稱含 -brass）
   gold: namedMaterial('trim-gold-brass', { color: 0xc9a23a, roughness: 0.3, metalness: 0.8, clearcoat: 0.2 }),
-  // 牛眼：亮面黑
-  eye: namedMaterial('paint-bull-eye-black', { color: 0x0e0d0c, roughness: 0.2, clearcoat: 1.0, clearcoatRoughness: 0.05 }),
   inner: namedMaterial('shell-inner-dark', { color: 0x1a1716, roughness: 0.85, side: THREE.BackSide }),
   edge: namedMaterial('shell-edge-black', { color: 0x1d1b1a, roughness: 0.6, side: THREE.DoubleSide }),
   liner: namedMaterial('shell-wheelwell-umber', { color: 0x3a2a22, roughness: 0.8, side: THREE.DoubleSide }),
-  well: namedMaterial('paint-fresco-cream', { color: 0xebdfc1, roughness: 0.62, clearcoat: 0.05, side: THREE.DoubleSide }),
+  well: namedMaterial('paint-bull-black', { color: 0x1d1b1a, roughness: 0.3, clearcoat: 0.8, clearcoatRoughness: 0.12, side: THREE.DoubleSide }),
   dCream: decalMaterial('decal-fresco-cream', { color: 0xefe4c8, roughness: 0.6 }),
   dBlack: decalMaterial('decal-slip-black', { color: 0x1b1918, roughness: 0.5 }),
-  dOchre: decalMaterial('decal-fresco-ochre', { color: 0x9c3b26, roughness: 0.6 }),
   dGold: decalMaterial('decal-gold-thread', { color: 0xd4ae45, roughness: 0.3, metalness: 0.75 }),
+  // 阿里阿德涅之線：金色微弱自發光（強度壓低，Blender 不過曝）
+  dThread: decalMaterial('decal-ariadne-glow', { color: 0xf2c24e, emissive: 0xffb428, emissiveIntensity: 0.45, roughness: 0.3 }),
   mount: namedMaterial('abs-mount-black', { color: 0x222326, roughness: 0.6 }),
 });
 
@@ -259,7 +254,7 @@ const CONFIG = {
   form: 'bull-slab',
   roof: 'open-cockpit',
   wing: 'none',
-  theme: 'F2 擋泥板肌肉型「低頭衝撞的蠻牛」：低黑牛鼻往後斜升到前輪上方高聳的牛肩擋泥板、中段大幅收腰、後輪牛臀擋泥板；肩線下內收的壁畫藍下裙；金色粗長新月牛角貼著牛肩往前衝、在鼻尖兩側上挑（前翼 / 分流片）；黑底奶油白雙回紋賽車條從鼻尖沿中央脊掃到車尾，金色阿里阿德涅之線走進脊線後段的迷宮中心座艙',
+  theme: 'F2 擋泥板肌肉型「低頭衝撞的蠻牛」：低矮的黑色鼻錐往後斜升到前輪上方高聳的牛肩擋泥板、中段大幅收腰、後輪牛臀擋泥板；肩線下內收的壁畫藍下裙；金色粗長新月牛角貼著牛肩往前衝、在鼻尖兩側上挑（前翼 / 分流片）；黑底奶油白雙回紋賽車條從鼻尖沿中央脊掃到車尾，發光的金色阿里阿德涅之線走進脊線後段的迷宮中心座艙；沒有牛臉、牛眼、鼻環',
   material: 'ABS',
   density_g_cm3: 1.05,
   wallThickness_mm: 0.8,
@@ -279,7 +274,7 @@ const CONFIG = {
   ],
   sideZMin: 28,
   zones: () => [
-    // 黑色牛頭（額頭、頰面、牛鼻）
+    // 黑色鼻錐
     { mat: 'black', keep: (x) => x - X_HEAD },
     // 下裙下緣黑色帶
     { mat: 'black', keep: (x, y) => ROCKER_Y - y },
@@ -348,46 +343,6 @@ const CONFIG = {
       }
       parts.push({ geometry: mergeGeos(horns), mat: 'gold', solid: true, outline: true, name: 'bull-horns' });
     }
-    // 牛眼：牛頭兩側肩圓角上的亮黑圓頂＋奶油白眼白環
-    {
-      /** @type {THREE.BufferGeometry[]} */
-      const eyes = [];
-      /** @type {number[][]} 兩眼在殼面上的點 */
-      const eyePts = [];
-      for (const sg of [-1, 1]) {
-        const z = sg * (P.hw(EYE.x) - EYE.zOff);
-        const y = top(EYE.x, z);
-        const h = 0.05;
-        const gx = (top(EYE.x + h, z) - top(EYE.x - h, z)) / (2 * h);
-        const gz = (top(EYE.x, z + h) - top(EYE.x, z - h)) / (2 * h);
-        const n = new THREE.Vector3(-gx, 1, -gz).normalize();
-        const c = new THREE.Vector3(EYE.x, y, z).addScaledVector(n, EYE.rise - EYE.r);
-        const e = new THREE.SphereGeometry(EYE.r, 16, 10);
-        e.scale(1.25, 1, 1);
-        e.translate(c.x, c.y, c.z);
-        eyes.push(e);
-        eyePts.push([EYE.x, y, z]);
-      }
-      parts.push({ geometry: mergeGeos(eyes), mat: 'eye', solid: true, name: 'bull-eyes' });
-      const ringR = Math.sqrt(EYE.r * EYE.r - (EYE.r - EYE.rise) * (EYE.r - EYE.rise)) + 0.1;
-      /** @type {(x: number, y: number, z: number) => number} 到最近眼睛的距離 */
-      const eyeDist = (x, y, z) => {
-        const p = eyePts[z < 0 ? 0 : 1];
-        return Math.hypot((x - p[0]) / 1.25, y - p[1], z - p[2]);
-      };
-      parts.push({
-        geometry: kit.decal((x, y, z) => Math.min(eyeDist(x, y, z) - ringR, ringR + 0.9 - eyeDist(x, y, z))),
-        mat: 'dCream',
-        name: 'decal-eye-rings',
-      });
-    }
-    // 金鼻環：鼻吻正面、環面朝前（上緣埋進鼻吻）
-    {
-      const ring = new THREE.TorusGeometry(2.4, 0.65, 8, 24);
-      ring.rotateY(Math.PI / 2);
-      ring.translate(NOSE_RING.x, NOSE_RING.y, 0);
-      parts.push({ geometry: ring, mat: 'gold', solid: true, outline: true, name: 'bull-nose-ring' });
-    }
 
     // 輪拱內襯、環形擋板
     parts.push({ geometry: mergeGeos(ARCHES.map((a) => buildLiner(kit, a))), mat: 'liner', shell: true, name: 'arch-liners' });
@@ -414,10 +369,10 @@ const CONFIG = {
       mat: 'dCream',
       name: 'decal-meander-stripes',
     });
-    // 阿里阿德涅之線（金色 0.8 mm）：中線從鼻尖走到座艙前緣
+    // 阿里阿德涅之線（發光金線 1.1 mm）：中線從鼻尖走到座艙前緣
     parts.push({
-      geometry: kit.decal((x, y, z) => (x > COCKPIT.x1 + 0.4 && x < 75 ? 0.4 - Math.abs(z) : -1), { offset: 0.12 }),
-      mat: 'dGold',
+      geometry: kit.decal((x, y, z) => (x > COCKPIT.x1 + 0.4 && x < 75 ? 0.55 - Math.abs(z) : -1), { offset: 0.12 }),
+      mat: 'dThread',
       name: 'decal-ariadne-thread',
     });
     // 座艙口一圈奶油白框（0.9 mm）
@@ -429,7 +384,7 @@ const CONFIG = {
       mat: 'dCream',
       name: 'decal-cockpit-rim',
     });
-    // 肩線金細線：沿肩線稜下方 0.9 mm，從牛頭往後掃到車尾（被輪拱切開處留 1 mm）——把上下兩層量體分開
+    // 肩線金細線：沿肩線稜下方 0.9 mm，從鼻錐往後掃到車尾（被輪拱切開處留 1 mm）——把上下兩層量體分開
     parts.push({
       geometry: kit.decal((x, y, z) => {
         if (Math.abs(z) < P.hw(x) - 3 || x > 66 || x < -64) {
@@ -451,23 +406,6 @@ const CONFIG = {
       mat: 'dCream',
       name: 'decal-meander-band',
     });
-    // 鼻孔：鼻吻頂前端一對往外斜的逗號形鼻孔（赭紅）
-    parts.push({
-      geometry: kit.decal((x, y, z) => {
-        if (x < 70 || y < P.yC(x) - 1.6) {
-          return -1;
-        }
-        const u = x - 74.6;
-        const v = Math.abs(z) - 5.0;
-        const c = Math.cos(0.6);
-        const sn = Math.sin(0.6);
-        const a = u * c + v * sn;
-        const b2 = -u * sn + v * c;
-        return 1 - Math.hypot(a / 1.2, b2 / 2.4);
-      }),
-      mat: 'dOchre',
-      name: 'decal-nostrils',
-    });
     return parts;
   },
   src: {
@@ -476,10 +414,10 @@ const CONFIG = {
     geometry: '本檔站位產生器 P（推估）：殼 x −70 → 77.5、牛角尖 x 約 81（外框長 151.0 ≤ 153，SPEC 1.14a）；脊線 19（車尾）→ 36.4（x 26）→ 15.6（鼻尖）；擋泥板頂：牛肩 37.6（x 37）、牛臀 33.4（x −41）；牛角尖頂 39.9（全車最高）；半寬：牛臀 37.6、腰 29、牛肩 46.0（外框半寬 ≤ 48.0）、鼻吻 13.5',
     wheelArches: '前後 R15.2（26 mm 輪胎半徑 13 + 2.2 mm），前 cutZFrom 33、後 30；31 mm 大輪需切輪拱。輪拱內襯從側壁內面往內 4.5 mm，輪胎內側另有 buildArchWell 環形擋板（|z| 22.9）',
     labyrinth: '迷宮 / 回紋：克諾索斯銀幣背面的直線迷宮（MYTH_RESEARCH G9）與「回紋是線性形式的迷宮」（G10）——畫成沿中央脊的雙回紋賽車條與兩輪之間的下裙回紋帶（線寬 0.75 mm，格距自訂）',
-    thread: '阿里阿德涅之線（G6）：金色 0.8 mm 細線沿中線從鼻尖走進座艙',
-    cockpit: '迷宮中心方形開放座艙 14 × 12.4 mm、井壁深約 4 mm（0.8 mm 實心壁），沒有底板',
+    thread: '阿里阿德涅之線（G6）：金色 1.1 mm 細線沿中線從鼻尖走進座艙，自發光強度 0.45（推估）',
+    cockpit: '迷宮中心方形開放座艙 14 × 12.4 mm、井壁深約 4 mm（0.8 mm 實心壁，亮面黑），沒有底板',
     horns: '牛角為實心 ABS 掃掠件（根部 φ7.2 → 角尖 φ1.7，圓斷面），質量 = 封閉體積 × 1.05 g/cm³（推估）',
-    head: '黑色牛頭借克諾索斯石雕牛頭角杯的黑色石材（Minoan art 條目）；牛眼、鼻孔、鼻環造型自創',
+    nose: '黑色鼻錐借克諾索斯石雕牛頭角杯的黑色石材（Minoan art 條目），素面，不做眼、鼻孔、鼻環',
     mounts: '對齊 chassis-midship 的車殼安裝點（SPEC 1.14）',
   },
 };
