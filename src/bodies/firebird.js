@@ -130,7 +130,7 @@ const stemZ = (x) => 1.5 * Math.sin((2 * Math.PI * (x - 22)) / 13);
 
 /** @type {() => Record<string, THREE.Material>} */
 const materials = () => ({
-  // Khokhloma 黑漆：鼻上的草葉形長條與側裙下緣帶
+  // Khokhloma 黑漆：鼻上的草葉形長條、側裙下緣帶、車尾、扇形尾翼的羽軸
   black: namedMaterial('paint-khokhloma-black', { color: 0x0e0b0a, roughness: 0.26, clearcoat: 0.9, clearcoatRoughness: 0.08 }),
   // 漸層三色（亮漆）：鼻段深紅 → 中段朱紅 → 尾段火焰橘；以紅橙為主、黑只當圖形色，避開 Black Saber 的黑＋紅灰＋深金座艙
   crimson: namedMaterial('paint-firebird-crimson', { color: 0x8a1512, roughness: 0.28, clearcoat: 0.9, clearcoatRoughness: 0.08 }),
@@ -191,7 +191,7 @@ const bladeHalfW = (t, w) => {
 };
 
 /**
- * 7 片扇形尾翼（平板實體件，依段上色後按材質分組）。rootY 為翼根高度
+ * 7 片扇形尾翼（平板實體件，依段上色，每片中線一條黑漆羽軸；按材質分組）。rootY 為翼根高度
  * @type {(rootY: number) => Record<string, THREE.BufferGeometry[]>}
  */
 const buildFan = (rootY) => {
@@ -225,6 +225,17 @@ const buildFan = (rootY) => {
         geo.applyMatrix4(basis);
         (byMat[mat] ??= []).push(geo);
       }
+      // 黑漆羽軸：翼片上表面中線的細長凸條（翼根寬 0.9 → 翼梢前收到 0.3，高 0.15 mm；不和翼片重疊，質量不重複計）
+      const shaft = new THREE.Shape([
+        new THREE.Vector2(0.05 * len, 0.45),
+        new THREE.Vector2(0.9 * len, 0.15),
+        new THREE.Vector2(0.9 * len, -0.15),
+        new THREE.Vector2(0.05 * len, -0.45),
+      ]);
+      const shaftGeo = new THREE.ExtrudeGeometry(shaft, { depth: 0.15, bevelEnabled: false });
+      shaftGeo.translate(0, 0, FAN_THICK);
+      shaftGeo.applyMatrix4(basis);
+      (byMat.black ??= []).push(shaftGeo);
     }
   }
   return byMat;
@@ -513,7 +524,7 @@ export const firebirdBody = makePolyBody({
     wallThickness_mm: '推估：射出 ABS 殼 0.8 mm（同其他車殼）；座艙罩同厚度以殼面積計入質量',
     geometry: '本檔站位產生器 P（推估）：殼面 x −58 ~ 75（鼻尖），扇形尾翼翼梢約 x −75；殼頂 31.6–32.6、座艙罩頂 38、扇形尾翼頂約 45.5（V7：尾翼比座艙頂高 ≤ 10）；前輪上方半寬 39.2（側裙外張 1.0）',
     wheelArches: '前後 R17.5（31 mm 輪胎半徑 15.5 + 2 mm），可裝 26 / 31 mm 輪；前輪罩後半切開露出輪胎（x 22 起，前緣俯視後掠：內側 x 44、外緣約 x 36，|z| ≥ 23.6）；後輪有輪拱內襯，前輪有胎內側環形擋板',
-    fan: '扇形尾翼：7 片 ABS 平板（厚 1.1 mm，推估），偏航 0° / ±11° / ±22° / ±33°、長 50 / 48 / 44 / 38 mm、最大半寬 4.6 → 3.6 mm、外緣下垂 0° / 10° / 20° / 30°，同一翼根（x −27 背脊）放射，翼梢高 44.4 → 39；每片分三段上色（深紅、火焰橘、金）；翼根座為金色扁橢球；質量 = 封閉體積 × 1.05 g/cm³',
+    fan: '扇形尾翼：7 片 ABS 平板（厚 1.1 mm，推估），偏航 0° / ±11° / ±22° / ±33°、長 50 / 48 / 44 / 38 mm、最大半寬 4.6 → 3.6 mm、外緣下垂 0° / 10° / 20° / 30°，同一翼根（x −27 背脊）放射，翼梢高 44.4 → 39；每片分三段上色（深紅、火焰橘、金），上表面中線一條黑漆羽軸凸條（寬 0.9 → 0.3、高 0.15 mm）；翼根座為金色扁橢球；質量 = 封閉體積 × 1.05 g/cm³',
     canopy: '座艙罩（金蘋果）：不透明金色半橢球殼 30 × 21 mm、高 8 mm，16 × 6 段，以殼面積 × 0.8 mm 計入質量（推估）',
     palette: 'Khokhloma 漆器的黑＋朱紅＋金與捲莖、漿果母題（研究來源見 DESIGN.md S3）；金蘋果與發亮的尾羽取自 Afanasyev 故事（S2）；色碼自訂（推估）',
     mounts: '對齊 chassis-midship 的車殼安裝點（SPEC 1.14）',
