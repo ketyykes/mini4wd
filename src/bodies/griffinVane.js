@@ -212,7 +212,7 @@ export const griffinVaneBody = makePolyBody({
   form: 'high-cowl',
   roof: 'closed',
   wing: 'fender-winglets',
-  theme: '高姿態全罩＋四個高聳大輪拱、鷹勾鼻與頸羽脊、珍珠白面罩座艙、後擋泥板頂左右各一組四片羽片小翼（無中央尾翼）',
+  theme: '高姿態全罩＋四個高聳大輪拱、鷹勾鼻與頸羽脊、珍珠白面罩座艙、後擋泥板頂左右各一組五片羽片小翼（無中央尾翼）',
   material: 'ABS',
   density_g_cm3: 1.05,
   wallThickness_mm: 0.8,
@@ -433,8 +433,8 @@ export const griffinVaneBody = makePolyBody({
   src: {
     density_g_cm3: 'SPEC 1.14：ABS 約 1.05 g/cm³（推估）',
     wallThickness_mm: '推估：射出 ABS 殼 0.8 mm（同其他致敬款）',
-    geometry: '本檔站位產生器 P（推估）：長約 141、面罩頂 40、羽片尖約 44.5（HOMAGE_RESEARCH 6-5-2 P1）；前後輪拱 R17.5（31 mm 輪胎半徑 15.5 + 2 mm）＋內襯',
-    winglets: '羽片小翼為實心 ABS 件（每側 4 片、厚 0.9 mm），質量 = 封閉體積 × 1.05 g/cm³（推估）',
+    geometry: '本檔站位產生器 P（推估，依 HOMAGE_RESEARCH 6-5-2 P1）：殼長 151（x −72 → 79）、含鷹勾喙（x 80.9）的外框長約 152.9、面罩頂 40、羽片尖約 53.6（羽片尖半寬 46.3，≤ 48）；前後輪拱 R17.5（31 mm 輪胎半徑 15.5 + 2 mm）＋內襯',
+    winglets: '羽片小翼為實心 ABS 件（每側 5 片、厚 0.8 mm），質量 = 封閉體積 × 1.05 g/cm³（推估）',
     mounts: '對齊 chassis-midship 的車殼安裝點（SPEC 1.14）',
   },
 });

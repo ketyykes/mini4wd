@@ -167,7 +167,7 @@ export const zeppelinXtailBody = makePolyBody({
   form: 'bullet',
   roof: 'clear',
   wing: 'x-tail',
-  theme: '圓斷面雪茄形全罩（最粗處在前 1/3、半球形圓鼻、圓錐尾）、頂部長窄透明觀景窗帶、車尾 X 形四片穩定舵',
+  theme: '圓胖橢圓斷面的雪茄形全罩（頂線前低後高、鼻部收成扁平的楔形尖鼻、圓錐尾）、頂部長窄透明觀景窗帶、車尾 X 形四片穩定舵',
   material: 'ABS',
   density_g_cm3: 1.05,
   wallThickness_mm: 0.8,
@@ -318,7 +318,7 @@ export const zeppelinXtailBody = makePolyBody({
   src: {
     density_g_cm3: 'SPEC 1.14：ABS 約 1.05 g/cm³（推估）',
     wallThickness_mm: '推估：射出 ABS 殼 0.8 mm（同其他致敬款）；觀景窗片同厚度，以殼面積計入質量',
-    geometry: '本檔站位產生器 P（推估）：長約 154（iter-67 修正卡橋：車尾 −75 → −72、繫留錐縮短；物理碰撞方塊長度 = 車殼外框長）、殼頂約 44.5（iter-69 由扁橢圓改成圓胖斷面：最寬 94 → 78、殼頂 38 → 44.5、鼻部改尖拱）、上舵尖約 42（HOMAGE_RESEARCH 6-5-2 P3）；前後輪拱 R17.5（31 mm 輪胎半徑 15.5 + 2 mm）',
+    geometry: '本檔站位產生器 P（推估）：外框長 152.9（車尾 x −72 → 鼻尖繫留錐尖 80.9，在 ≤ 153 的卡橋上限內；物理碰撞方塊長度 = 車殼外框長）、殼頂約 44.3（圓胖橢圓斷面：最寬 78，鼻部以尖拱收成扁平楔形）、上舵尖約 45.5（X 舵配置依 HOMAGE_RESEARCH 6-5-2 P3）；前後輪拱 R17.5（31 mm 輪胎半徑 15.5 + 2 mm）',
     rudders: 'X 形尾舵為實心 ABS 件（厚 1.6 mm 翼型），質量 = 封閉體積 × 1.05 g/cm³（推估）',
     mounts: '對齊 chassis-midship 的車殼安裝點（SPEC 1.14）',
   },

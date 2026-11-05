@@ -127,7 +127,7 @@ test('P17_sponge_hard_stop 海綿保留可壓縮空間，壓到底後由真實�
   expect(missing).toBeLessThan(-0.001);
 });
 
-test('P16_track_mesh_oriented 牆與路面網格封閉、繞向一致、法向朝外（三角網格 ORIENTED 旗標的前提，iter-96）', () => {
+test('P16_track_mesh_oriented 牆與路面網格封閉、繞向一致、法向朝外（三角網格 ORIENTED 旗標的前提）', () => {
   const track = buildCircuit();
   for (const m of [...track.wallMeshes, ...(track.roadMeshes ?? [])]) {
     const v = m.vertices, idx = m.indices;

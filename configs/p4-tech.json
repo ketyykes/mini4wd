@@ -1,5 +1,5 @@
 {
-  "_readme": "示範（第四階段）：FRP 前後導輪板＋13 mm 錐形導輪＋前穩定柱、輕量鏤空輪框、中空輪軸、鍍金端子、高衝刺型馬達＋3.7:1、2500 mAh NiMH，車殼 gazelle-leap",
+  "_readme": "示範：FRP 前後導輪板＋13 mm 錐形導輪＋前穩定柱、輕量鏤空輪框、中空輪軸、鍍金端子、高衝刺型馬達＋3.7:1、2500 mAh NiMH，車殼 gazelle-leap",
   "chassis": "chassis-midship",
   "motor": "motor-hyper",
   "gear": "gear-3.7",

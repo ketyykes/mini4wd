@@ -156,7 +156,7 @@ export const haloOrbitBody = makePolyBody({
   form: 'pebble',
   roof: 'canopy',
   wing: 'halo-ring',
-  theme: '卵石形中高車身＋後輪側裙、環繞一圈的煙燻玻璃帶、車尾直立的封閉光環翼',
+  theme: '卵石形中高車身＋後輪側裙與亮黑收腰、環繞一圈的煙燻玻璃帶、鼻下前分流板、車尾後傾 30° 的薄翼斷面封閉光環翼（兼作尾翼）',
   material: 'ABS',
   density_g_cm3: 1.05,
   wallThickness_mm: 0.8,
@@ -330,8 +330,8 @@ export const haloOrbitBody = makePolyBody({
   src: {
     density_g_cm3: 'SPEC 1.14：ABS 約 1.05 g/cm³（推估）',
     wallThickness_mm: '推估：射出 ABS 殼 0.8 mm（同其他致敬款）',
-    geometry: '本檔站位產生器 P（推估）：長約 144、車頂 36（HOMAGE_RESEARCH 4-1）；前輪拱 R16（26 mm 輪胎半徑 13 + 3 mm）；後輪由側裙蓋住，只能裝 26 mm 輪',
-    ring: '光環翼為實心 ABS 件（中心線橢圓半寬 21 × 半高 11.5、斷面 7.2 × 2.3 mm），質量 = 封閉體積 × 1.05 g/cm³（推估）',
+    geometry: '本檔站位產生器 P（推估，依 HOMAGE_RESEARCH 4-1）：殼長 144（x −68 → 76）、含前分流板（鼻尖 x 81）的外框長 149、車頂約 40.3（中線 36.2＋座艙圓頂鼓起）、光環頂約 47.3；前輪拱 R16（26 mm 輪胎半徑 13 + 3 mm）；後輪由側裙蓋住，只能裝 26 mm 輪',
+    ring: '光環翼為中空的兩半合模 ABS 件（中心線橢圓半寬 21.5 × 半高 10、薄翼斷面 10.4 × 2.6 mm，以環底為支點後傾 30°），質量 = 殼面積 × 壁厚 × 1.05 g/cm³（推估）；翼根整流座同為中空件；環上小衛星與鼻下前分流板（1.2 mm 板）為實心件，質量 = 封閉體積 × 1.05 g/cm³',
     mounts: '對齊 chassis-midship 的車殼安裝點（SPEC 1.14）',
   },
 });

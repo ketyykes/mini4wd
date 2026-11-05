@@ -1,5 +1,5 @@
 {
-  "_readme": "全域規格（比賽規則、空氣、賽道、模擬參數）。第二階段起零件數值（馬達、電池、齒輪、輪胎、軸承、導輪、底盤、車殼）移到 src/parts/ 與 src/bodies/，整車數值由 src/assembly.js 從零件推導，這裡不再重複。*_src 註明來源：『SPEC x.y』表示 SPEC.md 第 1 部分對應小節；『推估』附依據。",
+  "_readme": "全域規格（比賽規則、空氣、賽道、模擬參數）。零件數值（馬達、電池、齒輪、輪胎、軸承、導輪、底盤、車殼）放在 src/parts/ 與 src/bodies/，整車數值由 src/assembly.js 從零件推導，這裡不重複。*_src 註明來源：『SPEC x.y』表示 SPEC.md 第 1 部分對應小節；『推估』附依據。",
   "rules": {
     "maxLength_mm": 165,
     "maxLength_mm_src": "SPEC 1.1 [REG]：車長 < 165 mm",
@@ -60,7 +60,7 @@
     "curveRadiusMidLane_mm_src": "SPEC 1.10 / 1.12：彎道中心半徑 0.38 / 0.51 / 0.63 m（推估）",
     "laneChangerStart_mm": 450.0,
     "laneChangerLength_mm": 800.0,
-    "laneChangerLength_mm_src": "推估：iter-00 簡化為地面斜向導牆換道段（內、中線道往外移一線道）；外側線道走 80 mm 高立體橋（SPEC 1.10），iter-00 只做外觀",
+    "laneChangerLength_mm_src": "推估：地面層以斜向導牆換道（內、中線道往外移一線道）；外側線道走 80 mm 高立體橋（SPEC 1.10）。換道段範圍由 src/track.js buildCircuit 取整條第二直線（兩端各留 1 cm），程式不讀這個欄位",
     "bridgeHeight_mm": 80.0,
     "bridgeHeight_mm_src": "SPEC 1.10：橋面約 80 mm（推估）",
     "wallFriction": 0.3,
@@ -73,13 +73,13 @@
     "suspensionStaticDeflection_mm_src": "推估：MA 為一體式剛性底盤（SPEC 1.9），用很硬的等效彈簧（靜態壓縮 0.3 mm）代表輪胎變形",
     "suspensionDampingRatio": 0.7,
     "numSolverIterations": 8,
-    "numSolverIterations_src": "Rapier 求解迭代數；iter-01 測過 16 對 P06 穿透沒有改善（1 ms 時反而 1.17 mm），維持 8",
-    "dt_s_src": "iter-01：由 1 ms 改 0.25 ms。P06 診斷（tmp/diag06，見 ITERATION_LOG iter-01）：彎道中導輪對牆有反覆碰撞（chatter），峰值穿透隨步長縮小而下降但有離散；1 ms 約 0.94–1.17 mm、0.5 ms 約 0.48–0.81 mm、0.25 ms 約 0.47–0.81 mm（看其他參數）；增加求解迭代（8→16）、調高 contact_natural_frequency 都沒有穩定改善",
+    "numSolverIterations_src": "Rapier 求解迭代數；測過 16 對 P06 穿透沒有改善（1 ms 時反而 1.17 mm），取 8",
+    "dt_s_src": "取 0.25 ms。P06 診斷（tmp/diag06，見 ITERATION_LOG iter-01）：彎道中導輪對牆有反覆碰撞（chatter），峰值穿透隨步長縮小而下降但有離散；1 ms 約 0.94–1.17 mm、0.5 ms 約 0.48–0.81 mm、0.25 ms 約 0.47–0.81 mm（看其他參數）；增加求解迭代（8→16）、調高 contact_natural_frequency 都沒有穩定改善",
     "normalizedAllowedLinearError": 0.0002,
-    "normalizedAllowedLinearError_src": "Rapier 允許不修正的穿透（×lengthUnit 0.1 m）：預設 0.005 → 0.5 mm，等於一半的 P06 上限；iter-01 改 0.0002 → 0.02 mm",
+    "normalizedAllowedLinearError_src": "Rapier 允許不修正的穿透（×lengthUnit 0.1 m）：預設 0.005 → 0.5 mm，等於一半的 P06 上限，所以取 0.0002 → 0.02 mm",
     "wallContactMode": "impulse",
     "wallProjectionSlop_mm": 0.05,
-    "wallContactMode_src": "iter-93：impulse模式由同一6+n自由度系統求導輪／穩定頭法向、雙切向累積庫侖摩擦與滑板預測止擋；其Rapier碰撞體保留接觸診斷、停用原生衝量。初次接觸用原分層恢復係數，持續接觸不加正速度偏壓；水平靜止接觸另做車體／滑板／制振器整組位置穩定化，保留速度、內部行程及重力位能，不向上投影錐面／牆頂。slop沿用0.05 mm。impulse+position為相容別名；position保留舊位置診斷，none只用Rapier。幾何近似、與地板／輪胎分步及全域逐步能量限制見SPEC iter-93",
+    "wallContactMode_src": "impulse模式由同一6+n自由度系統求導輪／穩定頭法向、雙切向累積庫侖摩擦與滑板預測止擋；其Rapier碰撞體保留接觸診斷、停用原生衝量。初次接觸用分層恢復係數，持續接觸不加正速度偏壓；水平靜止接觸另做車體／滑板／制振器整組位置穩定化，保留速度、內部行程及重力位能，不向上投影錐面／牆頂。slop為0.05 mm。impulse+position為相容別名；position保留位置投影診斷，none只用Rapier。幾何近似、與地板／輪胎分步及全域逐步能量限制見SPEC iter-93",
     "wallProjectionFraction": 1.0
   },
   "bearingsGeometry": {

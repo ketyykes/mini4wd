@@ -171,7 +171,7 @@ test('P14_battery_scaling 電池長度平方影響橫向慣性，質量／重心
   for (const k of Object.keys(a.inertiaTensor_kgm2)) expect(lifted.inertiaTensor_kgm2[k] - a.inertiaTensor_kgm2[k]).toBeCloseTo(dWheel[k] * 1e-9, 13);
 });
 
-test('P14_component_tensors 底盤慣性來自 3D 模型網格分布、保桿切除扣掉自身慣性，零件張量與解析式一致（iter-96，B3）', () => {
+test('P14_component_tensors 底盤慣性來自 3D 模型網格分布、保桿切除扣掉自身慣性，零件張量與解析式一致（B3）', () => {
   const base = { ...loadConfig('default'), body: null, frontStay: 'stay-front-standard', rearStay: 'stay-rear-standard' };
   const asm = assemble(base);
   const ch = asm.partsBySlot.chassis;

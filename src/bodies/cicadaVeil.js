@@ -389,9 +389,9 @@ export const cicadaVeilBody = makePolyBody({
   src: {
     density_g_cm3: 'SPEC 1.14：ABS 約 1.05 g/cm³（推估）',
     wallThickness_mm: '推估：射出 ABS 殼 0.8 mm（同其他致敬款）；透明脈翅同厚度，以殼面積計入質量',
-    geometry: '本檔站位產生器 P（推估，依 HOMAGE_RESEARCH 6-5-2 P6：長約 128、屋脊約 41）；屋脊 → 屋簷為直線（hard 1）＝ Λ 字帳篷斷面',
+    geometry: '本檔站位產生器 P（推估，依 HOMAGE_RESEARCH 6-5-2 P6）：殼長 119（x −59 → 60）、含脈翅翅尖（x −73）與下顎前唇（x 63.5）的外框長 136.5、屋脊最高 41；屋脊 → 屋簷為直線（hard 1）＝ Λ 字帳篷斷面',
     wheelArches: '前後 R17.5（31 mm 輪胎半徑 15.5 + 2 mm）；屋簷在後輪上方抬到 31.8（輪頂 28.5＋間隙＋壁厚）',
-    wings: '脈翅為單層透明曲面（帳篷斜面上方 0.35 mm），超出車尾殼面 14 mm、後緣分叉成兩個翅尖（iter-125）；翅脈細管只是外觀，不計質量；複眼燈視為 ABS 實心件（推估）',
+    wings: '脈翅為單層透明曲面（帳篷斜面上方 0.4 mm），超出車尾殼面 14 mm、後緣分叉成兩個翅尖；翅脈細管只是外觀，不計質量；複眼燈與下顎前唇視為 ABS 實心件（推估）',
     mounts: '對齊 chassis-midship 的車殼安裝點（SPEC 1.14）',
   },
 });

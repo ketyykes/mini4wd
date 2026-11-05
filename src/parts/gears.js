@@ -7,7 +7,7 @@
  */
 const GEAR_PART_MASSES_G = { pinion: 0.07, counter: 0.5, spur: 0.5 };
 /** @type {string} */
-const GEAR_PART_MASSES_SRC = '推估（第四階段，轉動慣量用）：小齒輪 0.07 g/顆（[TOYZ] 玩家實測）、中間齒輪 0.5 g（mass_g 說明的「中間齒輪與軸 0.6 g/組」扣齒輪軸 0.1 g）、輪軸齒輪 0.5 g/顆（[NAO]）；慣量以節圓半徑的實心圓盤計（上限）';
+const GEAR_PART_MASSES_SRC = '推估（轉動慣量用）：小齒輪 0.07 g/顆（[TOYZ] 玩家實測）、中間齒輪 0.5 g（mass_g 說明的「中間齒輪與軸 0.6 g/組」扣齒輪軸 0.1 g）、輪軸齒輪 0.5 g/顆（[NAO]）；慣量以節圓半徑的實心圓盤計（上限）';
 
 /** 單軸底盤齒輪組（B14）：小齒輪 ×1、中間齒輪 ×1、輪軸齒輪 ×1、冠狀齒輪 ×2、傳動軸 ×1（g；轉動慣量用） */
 const SS_GEAR_PART_MASSES_G = { pinion: 0.07, counter: 0.5, spur: 0.5, crown: 0.4, propShaft: 1.5 };
@@ -137,7 +137,7 @@ export const gearParts = [
     compat: { chassisLayouts: ['single-shaft'] },
     src: {
       inertiaMasses_g: SS_GEAR_SRC,
-      ratio: 'SPEC 1.5 [CS]：4.2:1 為 AR、Super II 標配；VS / FM / Zero / Type 系列可用，都是單軸（後置 / 前置馬達）底盤 → 不適用中置雙軸底盤（GEAR_CHASSIS）。B14：GEAR 表 VZ 欄 4.2:1（カウンター G9 紅＋スパー G11 淡茶），單售 15236（原本引用的 15516 是 FM-A 專用，一覽不含 VZ，[VZ 2.3]）',
+      ratio: 'SPEC 1.5 [CS]：4.2:1 為 AR、Super II 標配；VS / FM / Zero / Type 系列可用，都是單軸（後置 / 前置馬達）底盤 → 不適用中置雙軸底盤（GEAR_CHASSIS）。B14：GEAR 表 VZ 欄 4.2:1（カウンター G9 紅＋スパー G11 淡茶），單售 15236（15516 是 FM-A 專用，一覽不含 VZ，[VZ 2.3]）',
       pitchRadius: '推估：中心距 13.1 mm 不變，6.8/2.6 × 8.073/5.027 ≈ 4.2',
       efficiency: SS_EFF_SRC,
       mass_g: SS_MASS_SRC,

@@ -59,7 +59,7 @@ for (let theta = 16; theta <= 36; theta += 0.25) {
 console.log(`最佳：θ=${best.theta}° φ=${best.phi}° d=${best.d} mm（fov 20）s=${best.s.toFixed(4)} rms=${best.rms.toFixed(2)} px`);
 best.res.forEach(([du, dv], i) => console.log(`  ${PTS[i][0]} 殘差 (${du.toFixed(1)}, ${dv.toFixed(1)})`));
 const cur = fit(23, 0, 410);
-console.log(`iter-11 相機（θ=23 φ=0 d=410）rms=${cur.rms.toFixed(2)} px`);
+console.log(`對照相機（θ=23 φ=0 d=410）rms=${cur.rms.toFixed(2)} px`);
 cur.res.forEach(([du, dv], i) => console.log(`  ${PTS[i][0]} 殘差 (${du.toFixed(1)}, ${dv.toFixed(1)})`));
 // 換算：web/main.js 的 sidehigh（同 θ/φ/d、fov 11.2°）截圖像素 r → 參考照像素：ref = S·r − O
 {

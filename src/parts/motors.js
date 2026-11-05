@@ -8,10 +8,10 @@
 const ARMATURE_130 = { mass_g: 5.0, diameter_mm: 12.5 };
 /** @type {string} */
 const ARMATURE_130_SRC =
-  '推估（第四階段，查無官方或玩家實測的 130 馬達轉子慣量，PARTS_RESEARCH 第四階段 R 節末「未查證」）：外殼扁面 15.1 mm 扣鐵殼 2 × 0.45 mm → 內徑約 14.2 mm，轉子鐵芯外徑取 12.5 mm（留氣隙）；' +
+  '推估（查無官方或玩家實測的 130 馬達轉子慣量，PARTS_RESEARCH 第四階段 R 節末「未查證」）：外殼扁面 15.1 mm 扣鐵殼 2 × 0.45 mm → 內徑約 14.2 mm，轉子鐵芯外徑取 12.5 mm（留氣隙）；' +
   '轉子質量 = 整顆 17.5 g 扣鐵殼約 4 g、2 片肥粒鐵磁鐵約 4 g、端蓋＋電刷約 2 g、軸 0.6 g、餘量 1.9 g → 取 5 g（矽鋼片＋漆包線＋整流子）；視為均質實心圓柱 I = ½·m·r² ≈ 98 g·mm²（0.98 g·cm²，與同級小型碳刷馬達常見的 0.5–1.5 g·cm² 同量級）';
 
-const ELECTRICAL_MODEL_SRC = 'iter-91：依無載／堵轉端點及既有庫侖摩擦比例c，聯立k_t=k_e=k、R及電刷壓降Ub。k=τs/(Is−cI0)、R=kω0/(Is−I0)、Ub=Vr−IsR；R／Ub是模型推估，非線圈／電刷分離實測。下列原始端點及其歷史估算來源不變；詳見SPEC iter-91及PARTS_RESEARCH。';
+const ELECTRICAL_MODEL_SRC = '依無載／堵轉端點及庫侖摩擦比例c，聯立k_t=k_e=k、R及電刷壓降Ub。k=τs/(Is−cI0)、R=kω0/(Is−I0)、Ub=Vr−IsR；R／Ub是模型推估，非線圈／電刷分離實測。端點數值的來源見同一零件的其他欄位；詳見SPEC iter-91及PARTS_RESEARCH。';
 
 /** @type {import('./types').PartBase[]} */
 export const motorParts = [
@@ -38,7 +38,7 @@ export const motorParts = [
       stallTorque_atRated_Nm: 'SPEC 1.4：堵轉 3.53 mN·m（36 g·cm）',
       stallCurrent_atRated_A: 'SPEC 1.4：堵轉 2.10 A',
       noLoadCurrent_A: 'SPEC 1.4：無載 0.15 A',
-      coastMotorDrag: '第一階段決策 D1：斷電滑行計入馬達內部摩擦（反拖）',
+      coastMotorDrag: '決策 D1：斷電滑行計入馬達內部摩擦（反拖）',
       frictionCoulombFraction: '推估：馬達內部摩擦 = 庫侖（電刷、軸套）＋黏滯（鐵損、風損）各半；3 V 無載時合計 = k_t·I0',
       mass_g: 'PARTS_RESEARCH [NAO] 玩家實測「馬達＋小齒輪 17.8 g」扣 2 顆小齒輪，取 17.5 g',
       body_mm: '推估：130 型馬達外殼常見尺寸 20.1 × 15.1 × 25 mm',
@@ -121,10 +121,10 @@ export const motorParts = [
       electricalModel: ELECTRICAL_MODEL_SRC,
       grade: 'Mach-Dash PRO（15433）等級：官方建議負載下 2.4–3.0 V、1.3–1.8 mN·m、20,000–24,500 rpm、2.6–3.5 A（https://tamiya.com/japan/products/15433/index.html ，SPEC 1.4）',
       noLoadRpm_atRated:
-        '第四階段修正（iter-54）：第三階段 M 節只用官方兩端點解出 ω0 ≈ 49,700 rpm，但玩家實測 3.0 V 穩壓無載 30,442 → 31,492 rpm（PARTS_RESEARCH [TOYZ2]）、另兩顆 28,900／30,000 rpm（[AMEBA]），模型高估約 60%（PARTS_RESEARCH 第四階段 O 節、X-2）。' +
-        '改以實測 ω0 = 31,000 rpm @3 V 為約束（[TOYZ2] 磨合前後平均），再對官方兩端點（2.4 V／3.0 V）做相對誤差最小平方解 R（k = (V − I0·R)/ω0）→ R = 0.327 Ω、k = 0.899×10⁻³ N·m/A；回代轉速誤差 −2.0%／−1.9%，電流誤差 −35%（官方電流與實測轉速在 k_t = k_e 的線性模型下互相矛盾，取轉速＝實測可交叉驗證的那一邊；Hyper-Dash PRO 同樣有官方電流不一致的現象，見 O 節）',
-      stallTorque_atRated_Nm: '推估（iter-54 重解）：τ_stall = k·(V/R − I0) ≈ 8.02 mN·m @3 V（舊值 3.45 mN·m 是 49,700 rpm 那組解）',
-      stallCurrent_atRated_A: '推估（iter-54 重解）：I_stall = V/R ≈ 9.17 A',
+        '玩家實測 3.0 V 穩壓無載 30,442 → 31,492 rpm（PARTS_RESEARCH [TOYZ2]）、另兩顆 28,900／30,000 rpm（[AMEBA]）；只用官方兩端點解出的 ω0 ≈ 49,700 rpm（PARTS_RESEARCH 第三階段 M 節）比實測高約 60%（PARTS_RESEARCH 第四階段 O 節、X-2）。' +
+        '所以以實測 ω0 = 31,000 rpm @3 V 為約束（[TOYZ2] 磨合前後平均），再對官方兩端點（2.4 V／3.0 V）做相對誤差最小平方解 R（k = (V − I0·R)/ω0）→ R = 0.327 Ω、k = 0.899×10⁻³ N·m/A；回代轉速誤差 −2.0%／−1.9%，電流誤差 −35%（官方電流與實測轉速在 k_t = k_e 的線性模型下互相矛盾，取轉速＝實測可交叉驗證的那一邊；Hyper-Dash PRO 同樣有官方電流不一致的現象，見 O 節）',
+      stallTorque_atRated_Nm: '推估：τ_stall = k·(V/R − I0) ≈ 8.02 mN·m @3 V',
+      stallCurrent_atRated_A: '推估：I_stall = V/R ≈ 9.17 A',
       noLoadCurrent_A: '推估：0.25 A（同其他 PRO 馬達）',
       mass_g: '推估：同一 130 尺寸外殼；[TEA] Mach-Dash PRO 17.8 g（部落格整理，未寫是否含小齒輪），與 17.5 g 一致',
       body_mm: '同 motor-standard（130 尺寸外殼）',

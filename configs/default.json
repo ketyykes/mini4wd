@@ -1,5 +1,5 @@
 {
-  "_readme": "預設組裝（SPEC 1.12）。每個 slot 填零件 id；也可以填 { \"base\": \"<id>\", ...覆寫欄位 }。導輪分前 / 後兩個 slot（frontRollers / rearRollers，iter-56）；舊欄位 rollers 仍可用，視為前後同款。",
+  "_readme": "預設組裝（SPEC 1.12）。每個 slot 填零件 id；也可以填 { \"base\": \"<id>\", ...覆寫欄位 }。導輪分前 / 後兩個 slot（frontRollers / rearRollers）；也可以只填 rollers，視為前後同款。",
   "chassis": "chassis-midship",
   "motor": "motor-standard",
   "gear": "gear-3.5",

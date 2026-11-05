@@ -521,10 +521,10 @@ describe('P17 新零件的物理效果（只透過組裝設定替換）', () => 
       // 8×8×14 的 Σ|v_y| 在落下高度 60–140 mm 掃描中可滑動 / 鎖死 3 勝 4 負（平手，單一高度的結果只是剛好有利或不利），
       // 彈起（0.374–0.378 vs 0.501–0.511 mm）與滯空（6.5–6.8 vs 11.3–12.5 ms）7 個高度都穩定 → 這款不比 Σ|v_y|（理由見 ITERATION_LOG iter-83）
       ['側制振器 8×8×14', { massDamper: 'damper-square-8x8x14', body: null }, { sumVy: false }],
-      ['側制振器 8×8×32（iter-80）', { massDamper: 'damper-square-8x8x32', body: null }],
-      ['樽型細制振器 3 g（iter-80）', { rearStay: 'stay-rear-frp', massDamper: 'damper-slim', body: null }],
-      ['樽型細制振器 1.5 g（iter-80）', { rearStay: 'stay-rear-frp', massDamper: 'damper-slim-short', body: null }],
-      ['AR 側制振器（碗形＋圓筒，iter-80）', { massDamper: 'damper-ar-side', body: null }],
+      ['側制振器 8×8×32', { massDamper: 'damper-square-8x8x32', body: null }],
+      ['樽型細制振器 3 g', { rearStay: 'stay-rear-frp', massDamper: 'damper-slim', body: null }],
+      ['樽型細制振器 1.5 g', { rearStay: 'stay-rear-frp', massDamper: 'damper-slim-short', body: null }],
+      ['AR 側制振器（碗形＋圓筒）', { massDamper: 'damper-ar-side', body: null }],
       ['球頭連桿制振器（擺動）', { rearStay: 'stay-rear-frp', massDamper: 'damper-balllink-square', body: null }],
     ])) {
       const free = assemble(cfg(over));
@@ -1206,7 +1206,7 @@ describe('P17 第四階段零件的物理效果（只透過組裝設定替換）
     expect(assemble(cfg({ wheels: 'wheel-31-arched' })).P.crr).toBeLessThan(base.P.crr);
   }, 120000);
 
-  test('P17_new_motors 原子型 / 高衝刺型 / 極速型（iter-54 依玩家實測修正）的特性與方向', () => {
+  test('P17_new_motors 原子型 / 高衝刺型 / 極速型（依玩家實測）的特性與方向', () => {
     const th = (id) => theoreticalTopSpeed({ assembly: assemble(cfg({ motor: id })), soc: 1 });
     const rpm = (id) => (assemble(cfg({ motor: id })).P.omega0Rated * 60) / (2 * Math.PI);
     const ids = ['motor-standard', 'motor-atomic', 'motor-torque', 'motor-high-rev', 'motor-hyper', 'motor-sprint'];
@@ -2126,7 +2126,7 @@ function slideWallImpact(asm, psiDeg, V) {
   return { peakF, peakAll, E0, Emax, Eend: E, uMax, springMax, dampingWork: sim.sliderState(car)?.dampingWork ?? 0, pen0 };
 }
 
-describe('P17 / P18 / P11 第五階段前寬滑動保桿（iter-61）', () => {
+describe('P17 / P18 / P11 前寬滑動保桿', () => {
   test('P17_slide_bumper 滑動保桿：撞牆時車身峰值側向力比固定 FRP 前導輪板小、撞擊前後（動能＋彈簧位能）不增加；平地直線極速與同質量 FRP 板相同；主賽道一圈不穿牆、不翻車、跑完', () => {
     const frpAsm = assemble(cfg({ frontStay: 'stay-front-frp', body: null }));
     const soft = assemble(cfg({ frontStay: 'stay-front-slide-soft', body: null }));
@@ -2365,7 +2365,7 @@ function rearSlideWallImpact(asm, psiDeg, V, vSide) {
   return { peakF, peakAll, E0, Emax, Eend: E, uMax, frontUMax, dampingWork, firstRoller, otherWall, frontTouched };
 }
 
-describe('P17 / P18 第五階段後寬滑動保桿（iter-64）', () => {
+describe('P17 / P18 後寬滑動保桿', () => {
   test('P17_slide_bumper_rear 後滑動保桿：車尾撞牆時車身峰值側向力比固定 FRP 後導輪板小、（動能＋彈簧位能）不增加；平地極速與同質量 FRP 後板相同；前後都裝滑動保桿時主賽道一圈不穿牆、不翻車、跑完', () => {
     const frpRear = assemble(cfg({ rearStay: 'stay-rear-frp', body: null }));
     const soft = assemble(cfg({ rearStay: 'stay-rear-slide-soft', body: null }));
@@ -2579,7 +2579,7 @@ function upSlopeRun(asm, v0) {
   return { vTop, steps, work, minUp };
 }
 
-describe('iter-95 B8：橡膠煞車與 AR 斜面煞車架', () => {
+describe('B8：橡膠煞車與 AR 斜面煞車架', () => {
   test('P18_b8_brakes 規則與相容性：裝不上或離地不足的組合被擋下，合法組合通過', () => {
     const cases = [
       // FRP 後板比標準後保桿低 1.5 mm → 橡膠端面只離地 0.4 mm

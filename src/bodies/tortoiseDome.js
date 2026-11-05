@@ -429,8 +429,8 @@ export const tortoiseDomeBody = makePolyBody({
   },
   src: {
     density_g_cm3: 'SPEC 1.14：ABS 約 1.05 g/cm³（推估）',
-    wallThickness_mm: '推估：射出 ABS 殼 0.8 mm（同第三階段各款）',
-    geometry: '本檔 T 表與 STATIONS（推估，依 HOMAGE_RESEARCH 4-1：長約 128、最高點約 52，外框與輪胎間隙用 body-check 掃描）',
+    wallThickness_mm: '推估：射出 ABS 殼 0.8 mm（同其他致敬款）',
+    geometry: '本檔 T 表與 STATIONS（推估，依 HOMAGE_RESEARCH 4-1）：殼長 134（x −66 → 68）、含鼻下喙刃（x 73）的外框長約 139.2、最高點約 52；外框與輪胎間隙用 body-check 掃描',
     wheelArches: '四輪 R17.6：31 mm 大徑輪半徑 15.5＋2.1 mm 間隙（殼內面內縮後仍 ≥ 1 mm）（GOAL：至少 2 款新致敬款可裝 31 mm）',
     mounts: '對齊 chassis-midship 的車殼安裝點（SPEC 1.14）',
     tips: '古銅喙刃視為 ABS 電鍍件、車尾面板與輪拱內襯為 ABS 實心件（推估），質量 = 封閉體積 × ABS 1.05 g/cm³',

@@ -550,11 +550,11 @@ export const mantisScytheBody = makePolyBody({
   src: {
     density_g_cm3: 'SPEC 1.14：ABS 約 1.05 g/cm³（推估）',
     wallThickness_mm: '推估：射出 ABS 殼 0.8 mm（同其他致敬款）',
-    geometry: '本檔站位產生器 P（推估，依 HOMAGE_RESEARCH 6-5-2 P2：長約 146、車身約 30、擋風片約 35）；前胸脊為斷面三角（hard 1）、腹部為圓頂剖面',
+    geometry: '本檔站位產生器 P（推估，依 HOMAGE_RESEARCH 6-5-2 P2）：殼長 145（x −70 → 75）、含收翅尖的外框長 148.5、車身頂 31.1、擋風片頂約 32.8、收翅尖約 44；前胸脊為斷面三角（hard 1）、腹部為圓頂剖面',
     wheelArches: '前後 R15.2：只對應 26 mm 輪（半徑 13＋2.2 mm）；31 mm 輪不支援（低車身）',
     cockpit: '開放座艙槽深 5.5 mm（推估）；擋風片煙燻 PC 0.5 mm＋炭灰框 0.9 mm；駕駛人剪影 1.2 倍',
-    wings: '收翅、複眼燈、同心環、腰部炭灰側板（厚 0.9 mm）視為 ABS 實心件（推估），質量 = 封閉體積 × 1.05 g/cm³；鐮刀片為殼面隆起 1.6 mm（以殼面面積 × 壁厚計）',
-    waistPanels: 'iter-69：側板外面 |z| 28.4（底盤電池艙頂蓋外緣 |z| 26.5 由 carLayout / model.js 推算，內面留 1 mm）、下緣 y 10.6（loft.js CHASSIS_SIDE_RAIL 禁入區 y ≤ 9.9 之上）',
+    wings: '收翅、複眼燈、同心環、腰部炭灰側板（厚 0.9 mm）視為 ABS 實心件（推估），質量 = 封閉體積 × 1.05 g/cm³；鐮刀片為殼面隆起 3.2 mm（以殼面面積 × 壁厚計）',
+    waistPanels: '側板外面 |z| 28.4（底盤電池艙頂蓋外緣 |z| 26.5 由 carLayout / model.js 推算，內面留 1 mm）、下緣 y 10.6（loft.js CHASSIS_SIDE_RAIL 禁入區 y ≤ 9.9 之上）',
     mounts: '對齊 chassis-midship 的車殼安裝點（SPEC 1.14）',
   },
 });

@@ -262,7 +262,7 @@ export const owlHushBody = makePolyBody({
   form: 'teardrop',
   roof: 'canopy',
   wing: 'serrated-wing',
-  theme: '寬 U 形臉盤鼻＋淚滴快背、大型深煙燻泡泡座艙、後緣鋸齒的低位寬翼；冷靜的夜間策略家',
+  theme: '寬 U 形臉盤鼻＋淚滴快背、大型深煙燻泡泡座艙、2 片後掠層疊羽片（圓頭羽尖）的低位寬翼；冷靜的夜間策略家',
   material: 'ABS',
   density_g_cm3: 1.05,
   wallThickness_mm: 0.8,
@@ -487,10 +487,10 @@ export const owlHushBody = makePolyBody({
   },
   src: {
     density_g_cm3: 'SPEC 1.14：ABS 約 1.05 g/cm³（推估）',
-    wallThickness_mm: '推估：射出 ABS 殼 0.8 mm（同第三階段各款）',
-    geometry: '本檔 T 表與 STATIONS（推估，依 HOMAGE_RESEARCH 4-1：長約 136、座艙頂約 44；外框與輪胎間隙用 body-check 掃描）',
+    wallThickness_mm: '推估：射出 ABS 殼 0.8 mm（同其他致敬款）',
+    geometry: '本檔 T 表與 STATIONS（推估，依 HOMAGE_RESEARCH 4-1）：殼長 134（x −64 → 70）、含羽片翼尖與鳥喙的外框長約 144.5、座艙頂約 43.5；外框與輪胎間隙用 body-check 掃描',
     wheelArches: '前後 R15.2：只對應 26 mm 輪（半徑 13＋2.2 mm）；31 mm 輪不支援',
-    wing: '2 片層疊羽片（厚 1.3 mm 翼型片）、羽軸稜（1.2 mm 窄條）、支柱、耳羽、鳥喙視為 ABS 實心件（推估），質量 = 封閉體積 × ABS 1.05 g/cm³；翼頂（約 39.5）低於座艙頂（約 43.5）',
+    wing: '2 片層疊羽片（厚 1.3 mm 翼型片）、羽軸稜（1.2 mm 窄條）、支柱、耳羽、鳥喙視為 ABS 實心件（推估），質量 = 封閉體積 × ABS 1.05 g/cm³；翼頂（約 39.1）低於座艙頂（約 43.5）',
     mounts: '對齊 chassis-midship 的車殼安裝點（SPEC 1.14）',
   },
 });

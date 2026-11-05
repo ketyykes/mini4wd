@@ -467,9 +467,9 @@ export const gazelleLeapBody = makePolyBody({
   src: {
     density_g_cm3: 'SPEC 1.14：ABS 約 1.05 g/cm³（推估）',
     wallThickness_mm: '推估：射出 ABS 殼 0.8 mm（同其他致敬款）',
-    geometry: '本檔站位產生器 P（推估）：長約 120（HOMAGE_RESEARCH 4-1），擋泥板稜線輪上 38、腰部 27（iter-55「長腿」比例）；輪拱 R17.5（31 mm 輪胎半徑 15.5 + 2 mm）＋內襯',
+    geometry: '本檔站位產生器 P（推估）：長約 122（x −58 → 64；HOMAGE_RESEARCH 4-1 的短車身），擋泥板稜線輪上 38、腰部 27（「長腿」比例）；輪拱 R17.5（31 mm 輪胎半徑 15.5 + 2 mm）＋內襯',
     cockpit: '開放座艙槽深 5 mm（推估：讓 1.25 倍駕駛人剪影的頭盔露出殼面約一半）；擋風片煙燻 PC 0.5 mm＋黑框 0.9 mm',
-    horns: '角鰭為實心 ABS 件（掃掠橢圓斷面，根部 6.8 × 8.2 mm，iter-55 加粗），質量 = 封閉體積 × 1.05 g/cm³；頂 57、尖端內收至 |z| 18.5（根部 |z| 31），推估',
+    horns: '角鰭為實心 ABS 件（掃掠橢圓斷面，根部 6.8 × 8.2 mm），質量 = 封閉體積 × 1.05 g/cm³；頂 57、尖端內收至 |z| 18.5（根部 |z| 31），推估',
     mounts: '對齊 chassis-midship 的車殼安裝點（SPEC 1.14）',
   },
 });
