@@ -1,12 +1,12 @@
-// 九尾狐（body-kitsune-ninetail，神話組・日本）：取材日本民間傳說的九尾妖狐（玉藻前傳說；九尾狐源自中國典籍），
-// 不是稻荷神使——不用稻荷的白＋朱紅、不放鳥居、寶珠與鑰匙。
-// 造型：尖長的狐吻楔形車頭（鼻尖黑漆）、前軸後方一對往後貼的三角狐耳（實體件，耳內黑漆）、車身中段煙燻座艙罩、
-// 車尾 9 條狐尾尾翼（上下兩層：下層 5 條、上層 4 條往後展開；銀白 → 淡朱 → 朱紅漸層尖端，毛流用貼紙；
-// 每條是有厚度、圓斷面、尾尖收細的實心毛束）。
-// 設計：shared/design/body-kitsune-ninetail/DESIGN.md（典故與文物對應 MYTH_RESEARCH 日本節 J1、J2、J5、J6、J12、J13；
+// 九尾狐（body-kitsune-ninetail，神話組・日本）：九尾狐主題只用元素表現，車上沒有狐的頭、臉、眼、耳。
+// 九尾 → 車尾九片扇形尾翼（上下兩層：下層 5 片、上層 4 片，從金色扇軸往後展開；每片是有中脊的薄刃片，白身、朱紅焰尖）；
+// 稻荷的朱與白 → 珍珠白車身＋從鼻側往後斜升的朱紅色塊＋黑漆底緣；寶珠 → 前罩上的火焰寶珠徽記（金珠微微發光、朱紅火舌往後拖）；
+// 兩輪之間留一塊金蒔繪青海波。
+// 造型：壓低的尖楔車頭（F1 刀鋒型）、俯視深胸細腰窄臀、中段煙燻座艙罩、車尾扇翼。
+// 設計：shared/design/body-kitsune-ninetail/DESIGN.md（典故與文物對應 MYTH_RESEARCH 日本節 J1、J3、J12、J13；
 // 黑名單：《火影忍者》九喇嘛、寶可夢九尾〔J14〕、The Fox Jr.、WGP 銀狐隊、旭日放射紋〔J15〕）。剖面為本檔站位產生器（推估）。
-// 塗裝全為自創：珍珠銀白（上半車身，亮面）、黑漆（往後斜升的下半車身、鼻尖、耳內、座艙框，緞面；不用靛藍）、
-// 朱紅（分色線上的賽車條、尾尖漸層）、金色蒔繪細線（青海波、眼線、腰線）；不含任何廠商 / 作品名稱、商標、文字或人臉。
+// 不放鳥居與神社建築；不做從單點放射的紅白條紋（扇片整片白，只有焰尖朱紅，九個焰尖連成一道弧）；
+// 塗裝全為自創，不含任何廠商 / 作品名稱、商標、文字或人臉。
 import * as THREE from 'three';
 import { makePolyBody } from './polyBody.js';
 import { namedMaterial, decalMaterial, sideDecal, mergeGeos, lerp, smoothstep } from './loft.js';
@@ -21,11 +21,11 @@ const XS = [-70, -66, -60, -50, -40, -25, -10, 5, 20, 30, 40, 50, 58, 64, 69, 73
 const XS_HW = [-70, -66, -60, -50, -40, -30, -18, -5, 8, 20, 30, 40, 50, 58, 64, 69, 73, 75.5];
 /** @type {Record<string, (x: number) => number>} */
 const P = {
-  // 俯視半寬（肩稜線）：狐狸的「深胸—細腰—窄臀」——座艙前的胸最寬 38.5（x 20）、座艙後段收成細腰 26.5（x −18）、
-  // 後軸上方的臀 36、往後收成窄尾（車尾半寬 15，九尾從上方往外展開）、往前收成尖長狐吻（鼻尖半寬 2.5）；
+  // 俯視半寬（肩稜線）：「深胸—細腰—窄臀」——座艙前的胸最寬 38.5（x 20）、座艙後段收成細腰 26.5（x −18）、
+  // 後軸上方的臀 36、往後收成窄尾（車尾半寬 15，扇翼從上方往外展開）、往前收成尖長的楔形鼻（鼻尖半寬 2.5）；
   // 胸與臀不做更寬（正面面積、和 trojan 的俯視 IoU）
   hw: monoCurve(XS_HW, [15, 18.5, 24, 30, 36, 33, 26.5, 29, 36, 38.5, 33, 33, 26, 21, 15.5, 10, 5.5, 2.5]),
-  // 中線殼頂：座艙段 33.0 的低平背，狐吻從前軸前方開始往前下斜成尖楔（鼻尖 14.8；前軸上方維持 ≥ 31.6，31 mm 輪的輪拱不破頂）
+  // 中線殼頂：座艙段 33.0 的低平背，車鼻從前軸前方開始往前下斜成尖楔（鼻尖 14.8；前軸上方維持 ≥ 31.6，31 mm 輪的輪拱不破頂）
   yTop: monoCurve(XS, [29.6, 31, 31.8, 32.3, 32.6, 32.8, 33, 33, 32.9, 32.4, 31.6, 29, 25, 21.8, 19, 16.6, 14.8]),
   // 肩稜線高度（頂面與側面交界）
   yS: monoCurve(XS, [26.4, 27.4, 28, 28.4, 28.6, 28.8, 28.8, 28.8, 28.8, 28.4, 27.6, 25.6, 21.6, 18.8, 16.4, 14.6, 13.4]),
@@ -54,7 +54,7 @@ const profile = (x) => {
   ];
 };
 
-/** @type {{ x: number, pts: number[][] }[]} 車尾與狐吻每 0.75 mm 一站，中段每 2 mm */
+/** @type {{ x: number, pts: number[][] }[]} 車尾與車鼻每 0.75 mm 一站，中段每 2 mm */
 const STATIONS = [...buildStations(-70, -60, 0.75, profile).slice(0, -1), ...buildStations(-60, 62, 2, profile).slice(0, -1), ...buildStations(62, 75.5, 0.75, profile)];
 
 /** @type {{ x: number, y: number, radius: number, cutZFrom: number }[]} 前後輪拱（R17.5：31 mm 輪胎半徑 15.5 + 2 mm） */
@@ -73,118 +73,39 @@ const canopyHalfW = (x) => {
 };
 
 /**
- * 斜向分色線（V12 從鼻尖往後掃）：黑漆下半車身在車頭只到肩稜線下 7 mm，往後一路斜升，
- * 到車尾越過肩稜線 2 mm（後甲板兩側也是黑漆，只留中央一道白背脊接到尾翼）——側視是一道往後上揚的楔形分割
+ * 斜向分色線（V12 從鼻尖往後掃）：朱紅色塊在車頭只到肩稜線下 7 mm（鼻尖整個留白），往後一路斜升，
+ * 到車尾越過肩稜線 2 mm（後甲板兩側也是朱紅，只留中央一道白背脊接到扇軸）——側視是一道往後上揚的楔形分割
  * @type {(x: number) => number}
  */
 const ySplit = (x) => P.yS(x) - 7 + 9 * smoothstep(55, -62, x);
 
-/** @type {number} 黑漆鼻尖的起點 x */
-const X_NOSE = 72.4;
-
-/** @type {number} 尾尖漸層的色階數（最後一階是朱紅尾尖） */
-const TAIL_FADE_STEPS = 7;
-
 /**
- * 尾尖漸層材質：7 階、每階色差很小的漸層（銀白 #E4E6EA → 淡朱 #EC8A66 → 朱紅 #D8401F，sRGB 內插），沿長每段一階；
- * 只分三段的硬邊色塊會像色鉛筆筆芯。
- * @type {() => Record<string, THREE.Material>}
+ * 黑漆底緣的高度（側裙最下面一圈黑漆，像朱漆柱腳的黑色根部）：前軸之後 2.4 mm，往鼻尖收到 0
+ * @type {(x: number) => number}
  */
-const tailFadeMaterials = () => {
-  const silver = new THREE.Color(0xe4e6ea);
-  const pale = new THREE.Color(0xec8a66);
-  const shu = new THREE.Color(0xd8401f);
-  /** @type {Record<string, THREE.Material>} */
-  const out = {};
-  for (let i = 1; i <= TAIL_FADE_STEPS; i++) {
-    const t = i / TAIL_FADE_STEPS;
-    const c = new THREE.Color();
-    if (t <= 0.5) {
-      c.lerpColors(silver, pale, t / 0.5);
-    } else {
-      c.lerpColors(pale, shu, (t - 0.5) / 0.5);
-    }
-    out[`fade${i}`] = namedMaterial(`paint-pearl-tail-fade-${i}`, {
-      color: c.getHex(),
-      metalness: lerp(0.3, 0, t),
-      roughness: 0.32,
-      clearcoat: 0.9,
-      clearcoatRoughness: 0.1,
-    });
-  }
-  return out;
-};
+const baseBand = (x) => 2.4 * smoothstep(72, 56, x);
 
 /** @type {() => Record<string, THREE.Material>} */
 const materials = () => ({
-  // 珍珠銀白：上半車身（少數亮面部位）
-  silver: namedMaterial('paint-pearl-silver-white', { color: 0xe4e6ea, metalness: 0.3, roughness: 0.32, clearcoat: 0.9, clearcoatRoughness: 0.1 }),
-  // 黑漆：緞面（漆器感）；也是下半車身的主色（不用靛藍：避開「白＋藍」的 WGP 隊伍配色風險）
+  // 珍珠白：車身主色與扇片（亮面）
+  white: namedMaterial('paint-pearl-white', { color: 0xf4f2ec, metalness: 0.2, roughness: 0.3, clearcoat: 0.9, clearcoatRoughness: 0.1 }),
+  // 黑漆：緞面（漆器感），底緣、扇軸座、座艙框
   urushi: namedMaterial('paint-urushi-black', { color: 0x141416, roughness: 0.55, clearcoat: 0.2 }),
-  // 朱紅（尾尖漸層末端、分色線上賽車條的顏色），亮面漆
+  // 朱紅（斜向色塊、扇片焰尖），亮面漆
   vermilion: namedMaterial('paint-vermilion-shu', { color: 0xd8401f, roughness: 0.3, clearcoat: 0.8, clearcoatRoughness: 0.1 }),
-  // 尾尖漸層 7 階（銀白 → 淡朱 → 朱紅；名稱含 pearl，和銀白尾身同一個 Blender 材質類別，色階之間不跳光澤）
-  ...tailFadeMaterials(),
-  // 真金屬金（尾尖；名稱含 -brass → Blender metallic）
+  // 真金屬金（扇軸；名稱含 -brass → Blender metallic）
   gold: namedMaterial('trim-gold-brass', { color: 0xc9a54a, metalness: 0.8, roughness: 0.3, clearcoat: 0.3 }),
   glass: namedMaterial('pc-smoke-tint', { color: 0x262c38, roughness: 0.05, specularIntensity: 0.6, transparent: true, opacity: 0.45, envMapIntensity: 0.5, depthWrite: false, side: THREE.DoubleSide }),
   inner: namedMaterial('shell-inner-dark', { color: 0x1a1b1f, roughness: 0.85, side: THREE.BackSide }),
   edge: namedMaterial('shell-edge-black', { color: 0x18181b, roughness: 0.6, side: THREE.DoubleSide }),
   mount: namedMaterial('abs-mount-black', { color: 0x222326, roughness: 0.6 }),
   liner: namedMaterial('shell-wheelwell-black', { color: 0x1a1a1e, roughness: 0.7, side: THREE.DoubleSide }),
-  // 狐眼燈片：淡冰白（不用紅眼）
-  eye: namedMaterial('lamp-ice', { color: 0xf2f6ff, emissive: 0xcfe0ff, emissiveIntensity: 0.4, roughness: 0.08, clearcoat: 1.0 }),
+  // 寶珠：琥珀金，微弱自發光（強度壓低，Blender 不過曝）
+  jewel: namedMaterial('lamp-jewel-amber', { color: 0xffc860, emissive: 0xffa030, emissiveIntensity: 0.35, roughness: 0.15, clearcoat: 1.0 }),
   dGold: decalMaterial('decal-gold-makie', { color: 0xd4b052, metalness: 0.75, roughness: 0.32 }),
   dUrushi: decalMaterial('decal-urushi-black', { color: 0x141416, roughness: 0.5, clearcoat: 0.2 }),
   dShu: decalMaterial('decal-vermilion-shu', { color: 0xd8401f, roughness: 0.35, clearcoat: 0.6 }),
-  dFur: decalMaterial('decal-fur-silver', { color: 0xdfe2e8, metalness: 0.25, roughness: 0.35 }),
 });
-
-/**
- * 把局部座標（u 橫向、v 往上、w 往前）的耳朵幾何擺到車上：往後仰 26°、往外張 11.5°，耳根中心 (31, 29.6, ±11)
- * @type {(g: THREE.BufferGeometry, sg: number) => THREE.BufferGeometry}
- */
-const placeEar = (g, sg) => {
-  // 局部 w（往前）→ 世界 +x；局部 u → 世界 −z
-  g.rotateY(Math.PI / 2);
-  // 往後仰 26°（耳尖往 −x；耳朵順風往後貼，頂高 ≤ 49）
-  g.rotateZ(0.45);
-  // 往外張（耳尖往 sg·z）
-  g.rotateX(sg * 0.2);
-  g.translate(31, 29.6, sg * 11);
-  return g;
-};
-
-/**
- * 狐耳（單側）：有厚度的射出件——三角耳板（底寬 10、高 19，兩側微外凸、耳尖小圓角）擠出 1.6 mm、
- * 四周 0.5 mm 圓角倒邊（總厚 2.6 mm），不做邊緣銳利如刀的四面體（會像無厚度的薄片）；
- * 耳根埋進前罩約 2.5 mm（和殼面接成一體）。耳內另貼一片 0.55 mm 黑漆三角片（略凸出耳面 0.35 mm）
- * @type {(sg: number) => { ear: THREE.BufferGeometry, inner: THREE.BufferGeometry }}
- */
-const buildEar = (sg) => {
-  /** @type {THREE.Shape} 耳板外形（局部 u 橫向、v 往上） */
-  const shape = new THREE.Shape();
-  shape.moveTo(-5, 0);
-  shape.lineTo(5, 0);
-  shape.quadraticCurveTo(3.6, 10.5, 0.7, 18.6);
-  shape.quadraticCurveTo(0, 19.4, -0.7, 18.6);
-  shape.quadraticCurveTo(-3.6, 10.5, -5, 0);
-  /** @type {number} 擠出深度（不含倒邊） */
-  const depth = 1.6;
-  /** @type {number} 倒邊（圓角）尺寸 */
-  const bev = 0.5;
-  const ear = new THREE.ExtrudeGeometry(shape, { depth, bevelEnabled: true, bevelThickness: bev, bevelSize: bev, bevelSegments: 3, curveSegments: 10 });
-  // 耳面（前面）在局部 w = 0，耳板往後佔 w −2.6 → 0
-  ear.translate(0, 0, -(depth + bev));
-  const innerShape = new THREE.Shape();
-  innerShape.moveTo(-3.1, 3.4);
-  innerShape.lineTo(3.1, 3.4);
-  innerShape.quadraticCurveTo(2.2, 10, 0, 15.2);
-  innerShape.quadraticCurveTo(-2.2, 10, -3.1, 3.4);
-  const inner = new THREE.ExtrudeGeometry(innerShape, { depth: 0.55, bevelEnabled: false, curveSegments: 8 });
-  inner.translate(0, 0, -0.2);
-  return { ear: placeEar(ear, sg), inner: placeEar(inner, sg) };
-};
 
 /**
  * 輪拱內側擋板（避免 Blender 展示圖前輪拱內出現黑白條紋）：
@@ -250,202 +171,160 @@ export const chassisBlockedNearArch = (x, y) => {
 };
 
 /**
- * 雙層狐尾尾翼（九條尾巴不擠在車尾一處；蓬鬆中空的尾巴面數太高，不用）。
- * 兩層九條狐尾，中心線是二次 Bézier（先往後、尾段往外甩，像被風往後吹開）：
- * - 下層 5 條：貼著後甲板、往後微升 3°，中央最長；
- * - 上層 4 條：從尾根座往後上揚 13°，錯開半格、張得比下層開——後視兩層錯開，側視是一道往後上揚的雙層尾翼。
- * 每條尾巴是低分段的實心毛束（扁平尾片又薄又有稜角，會像一堆紅白碎紙或火舌）——
- * 斷面是 12 段的扁橢圓（寬 w、厚 t），沿長 14 段：根部 55% 粗、約 55% 處最蓬、尾尖收細成尖；
- * 中心比尾片底面高 0.35 t，下半截埋進尾根座 / 後甲板，只露出圓鼓的上半截。前 7 段銀白尾身，後 7 段每段一階漸層（銀白 → 淡朱 → 朱紅尾尖）。
- * @type {{ y: number, tilt: number, xr: number, tips: number[][], wMax: number, tMax: number }[]} tips = 尾尖 [x, z]（含左右）；wMax / tMax = 最蓬處半寬 / 半厚
+ * 九片扇翼的兩層設定（九尾 → 九片扇形尾翼）。俯視是一把打開的扇：每片從扇軸往後放射，上層 4 片錯開半格蓋住下層 5 片的間隙；
+ * 側視是上下兩層往後上揚的薄翼（下層貼著後甲板，上層翹得高）。
+ * xr / y = 扇軸位置；pitch = 往後上揚角（度）；curl = 片尖再往上翹的高度；wMax = 最寬處半寬；
+ * blades = 每片的張角（度，正值往 +z）與長度
+ * @type {{ xr: number, y: number, pitch: number, curl: number, wMax: number, blades: { yaw: number, len: number }[] }[]}
  */
-const TAIL_LAYERS = [
+const FAN_TIERS = [
   {
-    // 下層：根 x −40、底面 y 33.3（埋在尾根座裡），往後 3° 微升；最蓬處寬 5.6、厚 3.6
-    y: 33.3,
-    tilt: 3,
-    xr: -40,
-    wMax: 2.8,
-    tMax: 1.8,
-    tips: [
-      [-74.4, 0],
-      [-72.6, 16],
-      [-72.6, -16],
-      [-65.5, 37],
-      [-65.5, -37],
+    xr: -29,
+    y: 33.9,
+    pitch: 4.5,
+    curl: 2.6,
+    wMax: 6.2,
+    blades: [
+      { yaw: 0, len: 43 },
+      { yaw: 33, len: 42 },
+      { yaw: -33, len: 42 },
+      { yaw: 66, len: 36 },
+      { yaw: -66, len: 36 },
     ],
   },
   {
-    // 上層：根 x −38、底面 y 34.2，往後 13° 上揚（尾尖約 y 42.5，比座艙頂高 0–2 mm：V7 貼近車身的尾翼）；最蓬處寬 5.0、厚 3.2
-    y: 34.2,
-    tilt: 13,
-    xr: -38,
-    wMax: 2.5,
-    tMax: 1.6,
-    tips: [
-      [-72, 8],
-      [-72, -8],
-      [-67, 26],
-      [-67, -26],
+    xr: -27,
+    y: 35.2,
+    pitch: 10,
+    curl: 3,
+    wMax: 5.6,
+    blades: [
+      { yaw: 16, len: 41 },
+      { yaw: -16, len: 41 },
+      { yaw: 49, len: 37 },
+      { yaw: -49, len: 37 },
     ],
   },
 ];
 
-/** @type {number} 尾束沿長段數（前 7 段銀白尾身，後 7 段每段一階漸層） */
-const TAIL_LEN_SEGS = 14;
-
-/** @type {number} 尾束斷面段數（平滑法向、共用頂點，不做 flat shading） */
-const TAIL_RING_SEGS = 12;
-
-/** @type {(i: number) => string} 第 i 段（0 起算）的材質鍵 */
-const tailSegMat = (i) => {
-  const k = i - (TAIL_LEN_SEGS - TAIL_FADE_STEPS) + 1;
-  if (k <= 0) {
-    return 'silver';
-  }
-  return `fade${k}`;
-};
-
-/** @type {(s: number) => number} 毛束粗細比例（0–1）：根部 0.55 → 約 55% 處最蓬 → 尾尖收成 0 */
-const tuftScale = (s) => {
-  if (s < 0.55) {
-    return lerp(0.55, 1, smoothstep(0, 0.55, s));
-  }
-  return Math.cos((Math.PI / 2) * ((s - 0.55) / 0.45)) ** 0.8;
-};
+/** @type {number} 扇片根部離扇軸中心的距離（根部埋在扇軸座裡，九片不會在軸心互相穿插） */
+const FAN_ROOT_R = 3;
 
 /**
- * 單條毛束（兩端封口的實心網格）：中心線 root → ctrl → tip 的二次 Bézier（在 xz 平面），
- * 斷面 12 段扁橢圓：側向半寬 wMax·k(s)、上下半厚 tMax·k(s)，中心高 0.35·tMax（相對尾片底面 y = 0）。
- * 先整條建好、算一次平滑法向，再依段切成各材質的子網格並沿用整條的法向——色階交界不會出現法向折線。
- * @type {(root: number[], tip: number[], wMax: number, tMax: number) => Record<string, THREE.BufferGeometry>}
+ * 扇片沿長的斷面表：[沿長比例, 半寬比例, 中脊上高, 中脊下高]。斷面是菱形（左緣、上中脊、右緣、下中脊），
+ * 根窄、六成處最寬、尖端收成一點；中脊讓薄片有一道受光的稜線，看起來是刃片而不是紙片
+ * @type {number[][]}
  */
-const tailTuft = (root, tip, wMax, tMax) => {
-  // 控制點：先往後（x 取 60%）、z 只走 25%，尾段才往外甩
-  const ctrl = [lerp(root[0], tip[0], 0.6), lerp(root[1], tip[1], 0.25)];
-  /** @type {(s: number) => number[]} */
-  const at = (s) => [
-    (1 - s) ** 2 * root[0] + 2 * s * (1 - s) * ctrl[0] + s * s * tip[0],
-    (1 - s) ** 2 * root[1] + 2 * s * (1 - s) * ctrl[1] + s * s * tip[1],
-  ];
-  /** @type {(s: number) => number[]} 單位切線 */
-  const tan = (s) => {
-    const dx = 2 * (1 - s) * (ctrl[0] - root[0]) + 2 * s * (tip[0] - ctrl[0]);
-    const dz = 2 * (1 - s) * (ctrl[1] - root[1]) + 2 * s * (tip[1] - ctrl[1]);
-    const l = Math.hypot(dx, dz);
-    return [dx / l, dz / l];
-  };
-  const seg = TAIL_RING_SEGS;
-  const nLen = TAIL_LEN_SEGS;
-  const yc = 0.35 * tMax;
+const BLADE_SECTIONS = [
+  [0, 0.3, 0.9, 0.5],
+  [0.3, 0.7, 1.2, 0.6],
+  [0.58, 1, 1.2, 0.6],
+  [0.7, 0.9, 1, 0.55],
+  [0.87, 0.5, 0.6, 0.35],
+  [1, 0.03, 0.12, 0.1],
+];
+/** @type {number} 朱紅焰尖從第幾個斷面開始 */
+const BLADE_TIP_FROM = 2;
+
+/**
+ * 由一串斷面環（每環點數相同）建封閉網格：相鄰環之間補四邊形、頭尾各補一個扇形封口，
+ * 再依帶號體積統一繞向（法線朝外，質量用封閉體積計算）。頂點不共用 → 平面著色，稜線清楚
+ * @type {(rings: number[][][]) => THREE.BufferGeometry}
+ */
+export const closedLoft = (rings) => {
+  const m = rings[0].length;
   /** @type {number[]} */
   const pos = [];
-  for (let i = 0; i <= nLen; i++) {
-    const s = i / nLen;
-    const [x, z] = at(s);
-    const [tx, tz] = tan(s);
-    const k = Math.max(0.03, tuftScale(s));
-    for (let j = 0; j < seg; j++) {
-      const th = (j / seg) * Math.PI * 2;
-      const lat = Math.cos(th) * wMax * k;
-      pos.push(x - tz * lat, yc + Math.sin(th) * tMax * k, z + tx * lat);
+  for (let i = 0; i < rings.length - 1; i++) {
+    for (let k = 0; k < m; k++) {
+      const a = rings[i][k];
+      const b = rings[i][(k + 1) % m];
+      const c = rings[i + 1][(k + 1) % m];
+      const d = rings[i + 1][k];
+      pos.push(...a, ...d, ...c, ...a, ...c, ...b);
     }
   }
-  // 兩端封口的中心點
-  const [x0, z0] = at(0);
-  const [x1, z1] = at(1);
-  const c0 = pos.length / 3;
-  pos.push(x0, yc, z0);
-  const c1 = c0 + 1;
-  pos.push(x1, yc, z1);
-  /** @type {number[][]} 每段的三角形索引（全域頂點編號） */
-  const segIdx = [];
-  for (let i = 0; i < nLen; i++) {
-    /** @type {number[]} */
-    const idx = [];
-    for (let j = 0; j < seg; j++) {
-      const a = i * seg + j;
-      const b = i * seg + ((j + 1) % seg);
-      const c = a + seg;
-      const d = b + seg;
-      idx.push(a, c, b, b, c, d);
-    }
-    if (i === 0) {
-      for (let j = 0; j < seg; j++) {
-        idx.push(c0, j, (j + 1) % seg);
+  for (const [ring, flip] of /** @type {[number[][], boolean][]} */ ([
+    [rings[0], false],
+    [rings[rings.length - 1], true],
+  ])) {
+    const cx = [0, 1, 2].map((j) => ring.reduce((acc, p) => acc + p[j], 0) / m);
+    for (let k = 0; k < m; k++) {
+      const a = ring[k];
+      const b = ring[(k + 1) % m];
+      if (flip) {
+        pos.push(...cx, ...b, ...a);
+      } else {
+        pos.push(...cx, ...a, ...b);
       }
     }
-    if (i === nLen - 1) {
-      for (let j = 0; j < seg; j++) {
-        idx.push(c1, nLen * seg + ((j + 1) % seg), nLen * seg + j);
-      }
-    }
-    segIdx.push(idx);
   }
-  const full = new THREE.BufferGeometry();
-  full.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
-  full.setIndex(segIdx.flat());
-  full.computeVertexNormals();
-  const nrm = full.getAttribute('normal');
-  /** @type {Record<string, number[][]>} 材質鍵 → 該材質的段索引陣列 */
-  const groups = {};
-  segIdx.forEach((idx, i) => {
-    (groups[tailSegMat(i)] ??= []).push(idx);
-  });
-  /** @type {Record<string, THREE.BufferGeometry>} */
-  const out = {};
-  for (const [mat, lists] of Object.entries(groups)) {
-    /** @type {Map<number, number>} 全域頂點 → 子網格頂點 */
-    const remap = new Map();
-    /** @type {number[]} */
-    const p = [];
-    /** @type {number[]} */
-    const n = [];
-    /** @type {number[]} */
-    const id = [];
-    for (const v of lists.flat()) {
-      if (!remap.has(v)) {
-        remap.set(v, p.length / 3);
-        p.push(pos[3 * v], pos[3 * v + 1], pos[3 * v + 2]);
-        n.push(nrm.getX(v), nrm.getY(v), nrm.getZ(v));
-      }
-      id.push(/** @type {number} */ (remap.get(v)));
-    }
-    const g = new THREE.BufferGeometry();
-    g.setAttribute('position', new THREE.Float32BufferAttribute(p, 3));
-    g.setAttribute('normal', new THREE.Float32BufferAttribute(n, 3));
-    g.setIndex(id);
-    out[mat] = g;
+  let vol = 0;
+  for (let i = 0; i < pos.length; i += 9) {
+    vol +=
+      pos[i] * (pos[i + 4] * pos[i + 8] - pos[i + 5] * pos[i + 7]) -
+      pos[i + 1] * (pos[i + 3] * pos[i + 8] - pos[i + 5] * pos[i + 6]) +
+      pos[i + 2] * (pos[i + 3] * pos[i + 7] - pos[i + 4] * pos[i + 6]);
   }
-  return out;
+  if (vol < 0) {
+    for (let i = 0; i < pos.length; i += 9) {
+      for (let j = 0; j < 3; j++) {
+        const tmp = pos[i + 3 + j];
+        pos[i + 3 + j] = pos[i + 6 + j];
+        pos[i + 6 + j] = tmp;
+      }
+    }
+  }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  g.computeVertexNormals();
+  return g;
 };
 
 /**
- * 兩層九條狐尾，依材質分組合併（每條毛束以根部為支點往後上揚 tilt 度）
- * @type {() => Record<string, THREE.BufferGeometry>}
+ * 單片扇片（局部座標：根在原點、往 −x 伸出、y 往上）：白色片身＋朱紅焰尖兩個封閉網格。
+ * 片身沿長微微往上彎（curl·比例²），像被風往後上吹起
+ * @type {(len: number, wMax: number, curl: number) => { body: THREE.BufferGeometry, tip: THREE.BufferGeometry }}
  */
-const buildTails = () => {
-  /** @type {Record<string, THREE.BufferGeometry[]>} */
-  const byMat = {};
-  for (const layer of TAIL_LAYERS) {
-    for (const tip of layer.tips) {
-      // 根部：沿中線排開（z 取尾尖的 12%），埋進尾根座
-      const root = [layer.xr, 0.12 * tip[1]];
-      for (const [mat, g] of Object.entries(tailTuft(root, tip, layer.wMax, layer.tMax))) {
-        // 以根部為支點往後上揚（rotateZ 負角：x 越往後 y 越高）
-        g.translate(-layer.xr, 0, 0);
-        g.rotateZ((-layer.tilt * Math.PI) / 180);
-        g.translate(layer.xr, layer.y, 0);
-        (byMat[mat] ??= []).push(g);
+const fanBlade = (len, wMax, curl) => {
+  /** @type {number[][][]} */
+  const rings = BLADE_SECTIONS.map(([q, wq, up, down]) => {
+    const x = -(FAN_ROOT_R + q * len);
+    const yc = curl * q * q;
+    const h = wq * wMax;
+    return [
+      [x, yc, -h],
+      [x, yc + up, 0],
+      [x, yc, h],
+      [x, yc - down, 0],
+    ];
+  });
+  return { body: closedLoft(rings.slice(0, BLADE_TIP_FROM + 1)), tip: closedLoft(rings.slice(BLADE_TIP_FROM)) };
+};
+
+/**
+ * 兩層九片扇翼，依顏色合併（每片先繞扇軸往後上揚 pitch，再往外張 yaw）
+ * @type {() => { body: THREE.BufferGeometry, tip: THREE.BufferGeometry }}
+ */
+const buildFan = () => {
+  /** @type {THREE.BufferGeometry[]} */
+  const bodies = [];
+  /** @type {THREE.BufferGeometry[]} */
+  const tips = [];
+  for (const tier of FAN_TIERS) {
+    for (const blade of tier.blades) {
+      const parts = fanBlade(blade.len, tier.wMax, tier.curl);
+      for (const g of [parts.body, parts.tip]) {
+        // rotateZ 負角：x 越往後 y 越高
+        g.rotateZ((-tier.pitch * Math.PI) / 180);
+        g.rotateY((blade.yaw * Math.PI) / 180);
+        g.translate(tier.xr, tier.y, 0);
       }
+      bodies.push(parts.body);
+      tips.push(parts.tip);
     }
   }
-  /** @type {Record<string, THREE.BufferGeometry>} */
-  const out = {};
-  for (const [mat, geos] of Object.entries(byMat)) {
-    out[mat] = mergeGeos(geos);
-  }
-  return out;
+  return { body: mergeGeos(bodies), tip: mergeGeos(tips) };
 };
 
 /**
@@ -476,34 +355,30 @@ const seigaiha = (R, v0) => (u, v) => {
 };
 
 /**
- * 狐眼（俯視杏仁形，斜放在狐吻兩側的上面）：兩圓交集的透鏡，內角在前內側、外角往後外上挑
- * @type {(grow: number) => (x: number, y: number, z: number) => number} 正值 = 在眼內（grow 往外擴）
+ * 火焰寶珠徽記（俯視，畫在前罩中線上）：金色寶珠包在朱紅火團裡，三道火舌往後拖（中央最長），像被迎面風往後吹。
+ * 火舌是由粗到尖的錐形線段，中央那道的起點就是包住寶珠的火團
+ * @type {{ jewel: (x: number, z: number) => number, flame: (x: number, z: number) => number }} 正值 = 在圖形內
  */
-const eyeKeep = (grow) => {
-  const inner = [61, 10.2];
-  const outer = [53, 16.8];
-  const cx = (inner[0] + outer[0]) / 2;
-  const cz = (inner[1] + outer[1]) / 2;
-  const ax = outer[0] - inner[0];
-  const az = outer[1] - inner[1];
-  const half = Math.hypot(ax, az) / 2;
-  const ux = ax / (2 * half);
-  const uz = az / (2 * half);
-  const b = 1.7;
-  const rv = (half * half + b * b) / (2 * b);
-  const dv = rv - b;
-  return (x, y, z) => {
-    if (y < 20) {
-      return -1;
+const JEWEL_EMBLEM = (() => {
+  /** @type {number[][]} 火舌：[起點 x, 起點 |z|, 終點 x, 終點 |z|, 起點半徑] */
+  const tongues = [
+    [46, 0, 23.5, 0, 5.4],
+    [45, 3, 28, 9.5, 3.2],
+  ];
+  /** @type {(x: number, z: number) => number} */
+  const flame = (x, z) => {
+    const az = Math.abs(z);
+    let best = -Infinity;
+    for (const [x0, z0, x1, z1, r0] of tongues) {
+      const dx = x1 - x0;
+      const dz = z1 - z0;
+      const t = Math.max(0, Math.min(1, ((x - x0) * dx + (az - z0) * dz) / (dx * dx + dz * dz)));
+      best = Math.max(best, r0 * (1 - t) - Math.hypot(x - (x0 + t * dx), az - (z0 + t * dz)));
     }
-    const px = x - cx;
-    const pz = Math.abs(z) - cz;
-    const along = px * ux + pz * uz;
-    const across = -px * uz + pz * ux;
-    const d = Math.max(Math.hypot(along, across - dv), Math.hypot(along, across + dv)) - rv;
-    return grow - d;
+    return best;
   };
-};
+  return { jewel: (x, z) => 3.3 - Math.hypot(x - 46, z), flame };
+})();
 
 export const kitsuneNinetailBody = makePolyBody({
   id: 'body-kitsune-ninetail',
@@ -515,7 +390,7 @@ export const kitsuneNinetailBody = makePolyBody({
   form: 'fox-wedge',
   roof: 'canopy',
   wing: 'nine-tails',
-  theme: '壓低的尖長狐吻楔形車頭＋前軸後方一對往後貼的三角狐耳、中段煙燻座艙罩、車尾上下兩層往後展開的九條實心毛束狐尾尾翼（銀白 → 淡朱 → 朱紅漸層尖端）；珍珠白＋黑漆斜向分割＋朱紅賽車條＋金蒔繪的夜行妖狐',
+  theme: '九尾用元素表現：壓低的尖楔車頭、中段煙燻座艙罩、車尾上下兩層從金色扇軸往後展開的九片扇形尾翼（白色刃片、朱紅焰尖）；珍珠白＋往後斜升的朱紅色塊＋黑漆底緣，前罩一枚拖著火舌的火焰寶珠，兩輪之間金蒔繪青海波',
   material: 'ABS',
   density_g_cm3: 1.05,
   wallThickness_mm: 0.8,
@@ -541,14 +416,16 @@ export const kitsuneNinetailBody = makePolyBody({
   },
   sideZMin: 30,
   zones: () => [
-    // 黑漆鼻尖
-    { mat: 'urushi', keep: (x) => x - X_NOSE },
-    // 黑漆下半車身（斜向往後上揚的分色線）
-    { mat: 'urushi', keep: (x, y) => ySplit(x) - y },
-    // 珍珠銀白上半車身
-    { mat: 'silver', keep: () => 1 },
+    // 黑漆底緣
+    { mat: 'urushi', keep: (x, y) => P.yLow(x) + baseBand(x) - y },
+    // 朱紅色塊（斜向往後上揚的分色線以下）
+    { mat: 'vermilion', keep: (x, y) => ySplit(x) - y },
+    // 珍珠白
+    { mat: 'white', keep: () => 1 },
   ],
-  mats: { inner: 'inner', edge: 'edge', cap: 'urushi', glass: 'glass', cockpit: 'urushi', mount: 'mount' },
+  // 鼻尖封口留白（鼻尖不另外上色）；車尾封口在朱紅色塊裡
+  capFrontBands: [{ mat: 'white' }],
+  mats: { inner: 'inner', edge: 'edge', cap: 'vermilion', glass: 'glass', cockpit: 'urushi', mount: 'mount' },
   materials,
   extras: (kit) => {
     /** @type {BodyPart[]} */
@@ -567,111 +444,57 @@ export const kitsuneNinetailBody = makePolyBody({
       shell: true,
       name: 'arch-wells',
     });
-    // 狐耳（實體件）＋耳內黑漆
-    const ears = [-1, 1].map((sg) => buildEar(sg));
-    parts.push({ geometry: mergeGeos(ears.map((e) => e.ear)), mat: 'silver', solid: true, outline: true, name: 'fox-ears' });
-    parts.push({ geometry: mergeGeos(ears.map((e) => e.inner)), mat: 'urushi', solid: true, outline: true, name: 'fox-ears-inner' });
-    // 九條狐尾（上下兩層的實心紡錘毛束，實體件，依段上色）
-    const tails = buildTails();
-    for (const [mat, g] of Object.entries(tails)) {
-      parts.push({ geometry: g, mat, solid: true, outline: true, name: `nine-tails-${mat}` });
-    }
-    // 尾根座：黑漆扁橢球，把九條尾根和後甲板接成一體
-    // 分段 16×10（面數預算）；拉長蓋住兩層尾根
+    // 九片扇翼（實體件）：白色片身＋朱紅焰尖
+    const fan = buildFan();
+    parts.push({ geometry: fan.body, mat: 'white', solid: true, outline: true, name: 'fan-blades' });
+    parts.push({ geometry: fan.tip, mat: 'vermilion', solid: true, outline: true, name: 'fan-blade-tips' });
+    // 扇軸座：黑漆扁橢球，把九片扇根和後甲板接成一體（分段 16×10）
     const boss = new THREE.SphereGeometry(1, 16, 10);
-    boss.scale(8, 2.2, 9);
-    boss.translate(-42, P.yTop(-42) + 0.2, 0);
-    parts.push({ geometry: boss, mat: 'urushi', solid: true, outline: true, name: 'tail-root-boss' });
+    boss.scale(9, 2.4, 10);
+    boss.translate(-30, P.yTop(-30) + 0.2, 0);
+    parts.push({ geometry: boss, mat: 'urushi', solid: true, outline: true, name: 'fan-pivot-boss' });
+    // 扇軸：金色扁圓釘（摺扇的「要」），壓在上層扇根上
+    const pivot = new THREE.SphereGeometry(1, 12, 8);
+    pivot.scale(3.2, 1.6, 3.2);
+    pivot.translate(-27.5, 36, 0);
+    parts.push({ geometry: pivot, mat: 'gold', solid: true, outline: true, name: 'fan-pivot' });
 
     // ---- 貼紙 ----
-    // 座艙框（黑漆，座艙罩外圍 1.4 mm）＋座艙到尾根座的黑漆背脊線
+    // 座艙框（黑漆，座艙罩外圍 1.4 mm）＋座艙到扇軸座的黑漆背脊線
     parts.push({
       geometry: kit.decal((x, y, z) => {
         const u = kit.underCanopy(x, z);
         const ring = x > -16.8 && x < 22.8 ? Math.min(u + 1.4, 0.05 - u) : -1;
-        const spine = Math.min(1.2 - Math.abs(z), -14.5 - x, x + 40);
+        const spine = Math.min(1.2 - Math.abs(z), -14.5 - x, x + 23);
         return Math.max(ring, spine);
       }),
       mat: 'dUrushi',
       name: 'decal-canopy-frame',
     });
-    // 狐眼：冰白燈片＋黑漆眼框＋往後上挑的金色眼尾線
-    parts.push({ geometry: kit.decal(eyeKeep(0), { offset: 0.1 }), mat: 'eye', name: 'lamp-fox-eyes' });
-    const eyeIn = eyeKeep(0);
-    const eyeOut = eyeKeep(0.75);
-    parts.push({ geometry: kit.decal((x, y, z) => Math.min(eyeOut(x, y, z), -eyeIn(x, y, z)), { offset: 0.1 }), mat: 'dUrushi', name: 'decal-eye-rims' });
+    // 火焰寶珠徽記（前罩中線）：朱紅火舌（挖掉寶珠的位置，兩片貼紙不重疊）＋琥珀金寶珠
     parts.push({
-      geometry: kit.decal((x, y, z) => {
-        if (y < 20) {
-          return -1;
-        }
-        // 眼尾線：外角 (53, 16.8) 往後外延伸到 (45.5, 21.5)，線寬 0.7
-        const az = Math.abs(z);
-        const t = Math.max(0, Math.min(1, ((x - 52.6) * -7.5 + (az - 17.1) * 4.7) / (7.5 * 7.5 + 4.7 * 4.7)));
-        const px = 52.6 - 7.5 * t;
-        const pz = 17.1 + 4.7 * t;
-        return 0.35 - Math.hypot(x - px, az - pz);
-      }),
-      mat: 'dGold',
-      name: 'decal-eye-flicks',
-    });
-    // 分色線上方的朱紅賽車條（寬 1.8，從狐吻往後斜升到車尾）＋其上 0.6 mm 的金蒔繪細線
-    parts.push({
-      geometry: kit.decal((x, y) => Math.min(0.9 - Math.abs(y - (ySplit(x) + 1.0)), X_NOSE - 1 - x, x + 68.5)),
+      geometry: kit.decal((x, y, z) => (y < 24 ? -1 : Math.min(JEWEL_EMBLEM.flame(x, z), -JEWEL_EMBLEM.jewel(x, z)))),
       mat: 'dShu',
-      name: 'decal-shu-stripe',
+      name: 'decal-jewel-flames',
     });
     parts.push({
-      geometry: kit.decal((x, y) => Math.min(0.3 - Math.abs(y - (ySplit(x) + 2.4)), X_NOSE - 1 - x, x + 68.5)),
+      geometry: kit.decal((x, y, z) => (y < 24 ? -1 : JEWEL_EMBLEM.jewel(x, z)), { offset: 0.1 }),
+      mat: 'jewel',
+      name: 'lamp-flame-jewel',
+    });
+    // 分色線上的金蒔繪細線（線寬 0.7，從鼻側往後斜升到車尾，把視線帶向扇翼）
+    parts.push({
+      geometry: kit.decal((x, y) => Math.min(0.35 - Math.abs(y - (ySplit(x) + 0.35)), 63 - x, x + 68.5, y - P.yLow(x) - baseBand(x))),
       mat: 'dGold',
       name: 'decal-makie-beltline',
     });
-    // 毛流（貼紙）：後甲板兩側黑漆區上的銀白細毛流線——
-    // 俯視是一束往後、往中線收攏的弧線（流向尾根），每條線寬由 0.55 往兩端收細、長短錯開
-    parts.push({
-      geometry: kit.decal((x, y, z) => {
-        if (x > -14 || x < -66 || y < ySplit(x) - 3.2 || y > ySplit(x) + 0.2) {
-          return -1;
-        }
-        // 弧線族：|z| + 0.0045 (x + 66)² = 常數（往後收向中線），每 2.2 mm 一條
-        const q = Math.abs(z) + 0.0045 * (x + 66) ** 2;
-        const k = Math.round(q / 2.2);
-        const d = Math.abs(q - 2.2 * k);
-        // 每條線的起訖點錯開（毛流長短不一）
-        const xs = -20 - 14 * (((k * 37) % 11) / 11);
-        const xe = -62 + 6 * (((k * 53) % 7) / 7);
-        const t = (x - xe) / (xs - xe);
-        if (t < 0 || t > 1) {
-          return -1;
-        }
-        return 0.55 * Math.sin(Math.PI * t) ** 0.5 - d;
-      }),
-      mat: 'dFur',
-      name: 'decal-fur-flow',
-    });
-    // 側面青海波（前後輪之間的黑漆下半車身，金蒔繪細線）
+    // 側面青海波（前後輪之間的朱紅色塊上，金蒔繪細線；下緣停在黑漆底緣上方）；sideDecal 的 u 在左側是鏡射的，分色線要用車身 x = side·u
     const wave = seigaiha(4.5, 9.8);
     for (const side of [-1, 1]) {
       parts.push({
-        geometry: kit.decal(sideDecal((u, v) => Math.max(wave(u, v), Math.abs(u) - 20.5, v - (ySplit(u) - 1.2), 11.6 - v), { x0: 0, y0: 0, zMin: 30, side })),
+        geometry: kit.decal(sideDecal((u, v) => Math.max(wave(u, v), Math.abs(u) - 20.5, v - (ySplit(side * u) - 1.2), 13.6 - v), { x0: 0, y0: 0, zMin: 30, side })),
         mat: 'dGold',
         name: `decal-seigaiha-${side}`,
-      });
-    }
-    // 後側面一道往尾根上揚的金蒔繪弧線（尾巴的「勢」）
-    for (const side of [-1, 1]) {
-      parts.push({
-        geometry: kit.decal(
-          sideDecal(
-            (u, v) => {
-              const c = P.yS(u) - 1.6 - 1.8 * Math.sin((Math.PI * (u + 64)) / 44);
-              return Math.max(Math.abs(v - c) - 0.33, -64 - u, u + 18);
-            },
-            { x0: 0, y0: 0, zMin: 30, side },
-          ),
-        ),
-        mat: 'dGold',
-        name: `decal-makie-tail-sweep-${side}`,
       });
     }
     return parts;
@@ -679,11 +502,10 @@ export const kitsuneNinetailBody = makePolyBody({
   src: {
     density_g_cm3: 'SPEC 1.14：ABS 約 1.05 g/cm³（推估）',
     wallThickness_mm: '推估：射出 ABS 殼 0.8 mm（同其他車殼）；座艙罩同厚度以殼面積計入質量',
-    geometry: '本檔站位產生器 P（推估）：殼長 145.5（車尾 −70 ~ 鼻尖 75.5）、外框長 149.8（尾尖 −74.3）；殼頂 33.0、鼻尖頂 14.8、座艙頂 41.5、耳尖 46.7（全車最高）、胸寬 ±38.5（座艙後細腰 ±26.5、後軸臀 ±36）',
+    geometry: '本檔站位產生器 P（推估）：殼長 145.5（車尾 −70 ~ 鼻尖 75.5）、外框長 150.2（扇尖 −74.7）；殼頂 33.0、鼻尖頂 14.8、座艙頂 41.5、上層扇片尖 45.9（全車最高）、胸寬 ±38.5（座艙後細腰 ±26.5、後軸臀 ±36）',
     wheelArches: '前後 R17.5（31 mm 輪胎半徑 15.5 + 2 mm），可裝 26 / 31 mm 輪',
-    ears: '狐耳：ABS 實心耳板（底寬 10 × 高 19、擠出 1.6 mm＋0.5 mm 圓角倒邊，總厚 2.6 mm）＋耳內 0.55 mm 黑漆片（推估），質量 = 封閉體積 × 1.05 g/cm³',
-    tails: '九條狐尾為上下兩層 ABS 實心紡錘形毛束（斷面 12 段扁橢圓、平滑法向、共用頂點，沿長 14 段；最蓬處寬 5.6 × 厚 3.6（下層）/ 5.0 × 3.2（上層）mm，根部 55% 粗、尾尖收尖，推估）：下層 5 條（根 x −40、往後升 3°，尾尖 x −65.5 ~ −74.3、最外 |z| 37，往外張開成扇）、上層 4 條（根 x −38、往後升 13°，尾尖約 y 42.5）；每條後 7 段是 7 階銀白 → 淡朱 → 朱紅漸層；根部埋進黑漆尾根座（16×10 段）；不碰後導輪（後導輪頂 y 20.5）；質量 = 封閉體積 × 1.05 g/cm³',
-    palette: '銀白＋黑漆斜向分割＋朱紅賽車條 / 尾尖漸層＋少量金蒔繪（不用靛藍：白＋藍接近 WGP 隊伍配色；朱紅只佔約 10%，主色是銀白，不做稻荷的白＋朱主體，不用金毛 / 橘色主體、不用紅眼）；黑漆、金的色碼參考 MYTH_RESEARCH 6-2（漆黑 #1B1B1B、金 #C9A54A，推估），黑漆實際用 #141416，其餘色碼自訂',
+    fan: '九片扇翼為上下兩層 ABS 實心薄刃片（斷面菱形：最寬處寬 12.4 / 11.2 mm、中脊處厚 1.8 mm，沿長 5 段、平面著色，推估）：下層 5 片（扇軸 x −29、往後升 4.5°、張角 0 / ±33 / ±66°、長 43 / 42 / 36 mm）、上層 4 片（扇軸 x −27、往後升 10°、張角 ±16 / ±49°、長 41 / 37 mm）；每片從最寬處往後是朱紅焰尖；根部埋進黑漆扇軸座（16×10 段），上面壓一顆金色扇軸（12×8 段）；不碰後導輪（後導輪頂 y 20.5）；質量 = 封閉體積 × 1.05 g/cm³',
+    palette: '珍珠白主色＋朱紅斜向色塊 / 焰尖＋黑漆底緣與扇軸座＋少量金蒔繪（不用靛藍：白＋藍接近 WGP 隊伍配色；不用金毛 / 橘色主體）；朱、白、漆黑、金的色碼參考 MYTH_RESEARCH 6-2（朱 #C8372D、白 #F7F5F0、漆黑 #1B1B1B、金 #C9A54A，推估），實際用 #D8401F、#F4F2EC、#141416，其餘色碼自訂',
     mounts: '對齊 chassis-midship 的車殼安裝點（SPEC 1.14）',
   },
 });
