@@ -2,8 +2,8 @@
 // 車上不做鹿：主題用「銀釜」「torc 頸環」「鹿角的分叉線」三種元素表現。
 // 造型（F3 半罩露輪）：鼻端一路下壓的銀色楔形尖鼻，前輪罩切開一個圓弧開口（釜口的弧）露出前輪，開口外圍一圈鍍金邊與鉚釘；
 // 中段深藍玻璃座艙罩外面套一圈扭絞金 torc（開口朝前、兩端圓球頭，C8）；
-// 車尾一片拋光銀大翼，兩端是鍍金的三叉翼端板（鹿角的分叉抽象成端板後緣的三道叉，C2）。
-// 塗裝：錘起銀板＋腹側氧化暗銀；鼻尖往後掃的兩道烏銀條紋、頂面兩道鉚接板縫；側面一條氧化暗底的浮雕帶，
+// 車尾一片拋光銀大翼，兩端是鍍金的四叉翼端板（鹿角的分叉抽象成端板後緣的四道叉，C2）。
+// 塗裝：錘起銀板＋腹側氧化暗銀；鼻尖往後掃、接到 torc 圓球頭的兩道鍍金條紋、頂面兩道鉚接板縫；側面一條氧化暗底的浮雕帶，
 // 上面是 La Tène 單向波卷紋與圓泡釘（C7）。
 // 設計：shared/design/body-gundestrup-stag/DESIGN.md（典故與文物對應 MYTH_RESEARCH 第 5 節 C1、C2、C7、C8；黑名單 5-3、第 10 節）。剖面為本檔站位產生器（推估）。
 // 不畫神的人臉、不做盤腿坐像、不畫動物、不用三臂 triskele、不做圓內十字、不重現 Battersea 盾的琺瑯格；不含任何文字。
@@ -24,9 +24,9 @@ const X_NOSE = 80;
 const XS = [-68, -62, -57, -52, -40, -28, -22, -14, 0, 8, 16, 22, 30, 40, 50, 56, 60, 64, 68, 72, 76, 80];
 /** @type {Record<string, (x: number) => number>} */
 const P = {
-  // 半寬（俯視）：收尖的車尾 → 罩住後輪的寬後擋泥板（45.5）→ 細腰 29.5（座艙段；坐在底盤側壁 z 35 內側上方）→ 前輪上方的肩 45（x 30）
+  // 半寬（俯視）：收尖的車尾 → 罩住後輪的寬後擋泥板（45.5）→ 細腰 27.5（座艙段；坐在底盤側壁 z 35 內側上方）→ 前輪上方的肩 45（x 30）
   // → 往前直線收成楔形尖鼻（鼻尖 3.5）。最寬 45.5（車殼外框半寬 ≤ 48.0）
-  hw: monoCurve(XS, [4, 10, 34, 45, 45.5, 44.5, 41, 32, 29.5, 31, 36.5, 44, 45, 42, 36, 30, 25.5, 21, 16.6, 12.4, 8, 3.5]),
+  hw: monoCurve(XS, [4, 10, 34, 45, 45.5, 44.5, 41, 30.5, 27.5, 29, 35.5, 44, 45, 42, 36, 30, 25.5, 21, 16.6, 12.4, 8, 3.5]),
   // 中線頂：車尾 27 → 後段 34.5 → 座艙段 34 → 前輪後上方的肩 35.2 → x 40 之後以固定斜率一路下壓到鼻尖 14.6（V3 楔形尖鼻、重心前壓）
   yTop: monoCurve(XS, [27, 31, 33, 34, 34.5, 34.5, 34.3, 34, 34, 34.3, 34.8, 35.2, 35.2, 33.6, 30.2, 27.6, 25.6, 23.4, 21.2, 19, 16.8, 14.6]),
   // 剖面最寬處的高度：鼻段跟著鼻尖往下收（22 → 14），鼻端是低而扁的楔形
@@ -168,17 +168,17 @@ const buildLiner = (arch, depth, minZ) => {
 const SCROLL_PERIOD = 13;
 /**
  * 浮雕帶的 La Tène 單向波卷紋（全部是貼紙）：一條連續的波浪莖，每個波谷與波峰裡各抱一顆實心圓泡釘（仿錘起的凸泡；
- * 不做「圓環＋圓心」，那會像眼睛）。u 往車頭、v 往上（帶中線 0）；回傳到紋樣的距離
- * @type {(u: number, v: number) => number}
+ * 不做「圓環＋圓心」，那會像眼睛）。u 往車頭、v 往上（帶中線 0）；回傳 [到波浪莖的距離, 到泡釘的距離]
+ * @type {(u: number, v: number) => number[]}
  */
 const scrollSd = (u, v) => {
-  const stem = Math.abs(v - 2.3 * Math.sin((2 * Math.PI * u) / SCROLL_PERIOD)) - 0.45;
+  const stem = Math.abs(v - 2.3 * Math.sin((2 * Math.PI * u) / SCROLL_PERIOD)) - 0.6;
   const half = SCROLL_PERIOD / 2;
   const k = Math.round((u - half / 2) / half);
   // 波峰（v > 0）下方、波谷（v < 0）上方各一顆
   const side = k % 2 === 0 ? -1 : 1;
   const r = Math.hypot(u - (half / 2 + k * half), v - side * 1.1);
-  return Math.min(stem, r - 1.15);
+  return [stem, r - 1.3];
 };
 
 /** @type {{ x0: number, x1: number, y: number, h: number }} 浮雕帶：前輪開口後緣到後輪拱之間的腰側（側視），半高 h（不含珠點邊框） */
@@ -211,7 +211,7 @@ const materials = () => ({
   // 腹側暗銀（氧化的舊銀，霧面）
   patina: namedMaterial('paint-oxidized-silver-matte', { color: 0x4a4d52, roughness: 0.62, clearcoat: 0.05 }),
   patina2: namedMaterial('paint-oxidized-silver-matte', { color: 0x4a4d52, roughness: 0.62, clearcoat: 0.05, side: THREE.DoubleSide }),
-  // 鍍金（真金屬：-brass 結尾）：torc、三叉翼端板、翼面前後緣
+  // 鍍金（真金屬：-brass 結尾）：torc、四叉翼端板、翼面前後緣
   gilt: namedMaterial('trim-gilt-brass', { color: 0xc9a43b, roughness: 0.3, metalness: 0.8, clearcoat: 0.3, side: THREE.DoubleSide }),
   // 尾翼翼面：不透明拋光銀
   wingSilver: namedMaterial('trim-silver-wing-alu', { color: 0xbcc0c5, roughness: 0.28, metalness: 0.85, clearcoat: 0.2, side: THREE.DoubleSide }),
@@ -222,8 +222,8 @@ const materials = () => ({
   // 座艙罩：深藍玻璃（銀釜人物眼睛嵌的玻璃，C1；只取材質與顏色）
   glass: namedMaterial('pc-smoke-tint', { color: 0x1d2a44, roughness: 0.05, specularIntensity: 0.6, transparent: true, opacity: 0.6, envMapIntensity: 0.5, depthWrite: false, side: THREE.DoubleSide }),
   dGold: decalMaterial('decal-gilt', { color: 0xc9a43b, roughness: 0.32, metalness: 0.7 }),
-  // 浮雕帶凹處的氧化暗部（霧面）、凸起紋樣的亮銀、烏銀條紋與板縫（藍黑，不用棕黑）
-  dRecess: decalMaterial('decal-oxidized-recess', { color: 0x2f3134, roughness: 0.75 }),
+  // 浮雕帶凹處的氧化暗部（霧面，近黑）、凸起泡釘的亮銀、烏銀板縫與速度線（藍黑，不用棕黑）
+  dRecess: decalMaterial('decal-oxidized-recess', { color: 0x14161a, roughness: 0.75 }),
   dSilver: decalMaterial('decal-relief-silver', { color: 0xd2d3d2, roughness: 0.3, metalness: 0.85 }),
   dGroove: decalMaterial('decal-niello-groove', { color: 0x1a1f29, roughness: 0.55 }),
   mount: namedMaterial('abs-mount-black', { color: 0x222326, roughness: 0.6 }),
@@ -235,7 +235,7 @@ const WING = { le: [-48, 41.6], te: [-64, 43.2], thick: 1.0, span: 38.6 };
 /** @type {{ z: number, thick: number, tilt: number }} 翼端板：板底中心 |z|、板厚、往外傾的角度（度） */
 const ENDPLATE = { z: 37, thick: 1.4, tilt: 8 };
 /**
- * 三叉翼端板的側視多邊形：板根埋進後擋泥板肩部，前緣往後上方掠，後緣分成三道往後指的叉（鹿角的分叉線；
+ * 四叉翼端板的側視多邊形：板根埋進後擋泥板肩部，前緣往後上方掠，後緣分成四道往後指的叉（鹿角的分叉線；
  * 是一片翼端板，不是立著的角）。叉尖最高 47.6（車殼頂高 ≤ 49）
  * @type {number[][]}
  */
@@ -245,11 +245,13 @@ const ENDPLATE_PTS = [
   [-45.5, 42.6],
   [-55, 46.6],
   [-67.5, 47.6],
-  [-57.5, 44],
-  [-69, 42.6],
-  [-58.5, 40.2],
-  [-67, 37.2],
-  [-56, 35.4],
+  [-58, 45.3],
+  [-69.2, 44.3],
+  [-58.6, 42],
+  [-68.6, 40.9],
+  [-58.2, 38.7],
+  [-66.5, 37.4],
+  [-56, 35.2],
   [-52, 29.6],
 ];
 /** @type {{ xc: number, a: number, b: number, open: number }} 座艙外圍的 torc：俯視橢圓中心 x、前後半長、半寬、開口半角（度，開口朝前） */
@@ -257,8 +259,19 @@ const TORC = { xc: -5, a: 19, b: 13, open: 28 };
 /** @type {number[]} 頂面兩道鉚接板縫的 x */
 const SEAM_XS = [20, -29];
 
-/** @type {(x: number) => number[]} 鼻尖往後掃的烏銀條紋：某 x 的 |z| 範圍 [內緣, 外緣]（離鼻尖越遠越寬、越往外） */
-const noseStripe = (x) => [0.12 * (X_NOSE - x) + 1, 0.24 * (X_NOSE - x) + 1.6];
+/** @type {number} torc 兩端圓球頭的位置（x、|z|）：鼻紋的終點 */
+const TORC_END = [TORC.xc + TORC.a * Math.cos((TORC.open * Math.PI) / 180), TORC.b * Math.sin((TORC.open * Math.PI) / 180)];
+/** @type {number} 鼻紋起點 x（鼻尖後 2 mm） */
+const STRIPE_X0 = X_NOSE - 2;
+/**
+ * 鼻尖往後掃的兩道鍍金條紋：從鼻尖分開、直線接到 torc 兩端的圓球頭（俯視是 V 形走向的貼紙，殼面量體不變）；
+ * 回傳某 x 的 [中心 |z|, 半寬]（離鼻尖越遠越寬）
+ * @type {(x: number) => number[]}
+ */
+const noseStripe = (x) => {
+  const t = (STRIPE_X0 - x) / (STRIPE_X0 - TORC_END[0]);
+  return [TORC_END[1] * t, lerp(0.45, 1.3, t)];
+};
 
 export const gundestrupStagBody = makePolyBody({
   id: 'body-gundestrup-stag',
@@ -270,7 +283,7 @@ export const gundestrupStagBody = makePolyBody({
   form: 'stag-arch',
   roof: 'canopy',
   wing: 'fork-endplate',
-  theme: 'Gundestrup 銀釜的元素（不做鹿）：錘起銀板的楔形尖鼻車身、前輪罩圓弧開口露出前輪（鍍金邊＋鉚釘圈）、深藍玻璃座艙罩外套一圈扭絞金 torc、車尾拋光銀大翼配鍍金三叉翼端板（鹿角的分叉線）；鼻尖往後掃的烏銀條紋、鉚接板縫、側面 La Tène 波卷紋與圓泡釘浮雕帶',
+  theme: 'Gundestrup 銀釜的元素（不做鹿）：錘起銀板的楔形尖鼻車身、前輪罩圓弧開口露出前輪（鍍金邊＋鉚釘圈）、深藍玻璃座艙罩外套一圈扭絞金 torc、車尾拋光銀大翼配鍍金四叉翼端板（鹿角的分叉線）；鼻尖接到 torc 的兩道鍍金條紋、鉚接板縫、側面 La Tène 波卷紋與圓泡釘浮雕帶',
   material: 'ABS',
   density_g_cm3: 1.05,
   wallThickness_mm: 0.8,
@@ -350,7 +363,7 @@ export const gundestrupStagBody = makePolyBody({
         name: 'rear-wing-gilt-edges',
       });
     }
-    // 三叉翼端板（實體件，鍍金）：左右各一片，上緣往外傾
+    // 四叉翼端板（實體件，鍍金）：左右各一片，上緣往外傾
     parts.push({
       geometry: mergeGeos([-1, 1].map((sg) => finPlate(ENDPLATE_PTS, sg * ENDPLATE.z, ENDPLATE.thick, -sg * ENDPLATE.tilt))),
       mat: 'gilt',
@@ -385,22 +398,22 @@ export const gundestrupStagBody = makePolyBody({
     // ---- 貼紙 ----
     /** @type {(x: number, y: number) => boolean} 頂面（最寬處往上 2.5 mm 以上） */
     const onTop = (x, y) => y > P.ySh(x) + 2.5;
-    // 鼻脊與後背的鍍金中線（torc 圈內不畫）
+    // 後背的鍍金中線（torc 圈後方到車尾）
     parts.push({
-      geometry: kit.decal((x, y, z) => (x > 79 || x < -64 || (x > -27 && x < 17) ? -1 : 0.45 - Math.abs(z))),
+      geometry: kit.decal((x, y, z) => (x < -64 || x > -27 ? -1 : 0.45 - Math.abs(z))),
       mat: 'dGold',
       name: 'decal-dorsal-line',
     });
-    // 鼻尖往後掃的兩道烏銀條紋（x 26 → 78）
+    // 鼻尖往後掃、接到 torc 圓球頭的兩道鍍金條紋
     parts.push({
       geometry: kit.decal((x, y, z) => {
-        if (x < 26 || x > 78 || !onTop(x, y)) {
+        if (x < TORC_END[0] || x > STRIPE_X0) {
           return -1;
         }
-        const [lo, hi] = noseStripe(x);
-        return Math.min(Math.abs(z) - lo, hi - Math.abs(z), (x - 26) * 0.6);
-      }),
-      mat: 'dGroove',
+        const [zc, half] = noseStripe(x);
+        return half - Math.abs(Math.abs(z) - zc);
+      }, { offset: 0.1 }),
+      mat: 'dGold',
       name: 'decal-nose-stripes',
     });
     // 頂面兩道鉚接板縫（烏銀細縫）＋縫兩側的鍍金鉚釘（每 4 mm 一顆）
@@ -427,9 +440,9 @@ export const gundestrupStagBody = makePolyBody({
       name: 'decal-seam-rivets',
     });
 
-    // 側面浮雕帶（全貼紙）——氧化暗底＋亮銀波卷紋與泡釘＋上下鍍金珠點與細邊
+    // 側面浮雕帶（全貼紙）——近黑的氧化暗底＋鍍金波卷紋＋亮銀泡釘＋上下鍍金珠點與細邊（深底配金銀，對比要夠）
     /** @type {(x: number, y: number, z: number) => boolean} */
-    const inFrieze = (x, y, z) => Math.abs(z) >= 26 && x >= FRIEZE.x0 && x <= FRIEZE.x1;
+    const inFrieze = (x, y, z) => Math.abs(z) >= 24 && x >= FRIEZE.x0 && x <= FRIEZE.x1;
     /** @type {(x: number, y: number, z: number) => boolean} */
     const inFriezeBand = (x, y, z) => inFrieze(x, y, z) && Math.abs(y - FRIEZE.y) < FRIEZE.h - 0.4;
     parts.push({
@@ -438,13 +451,18 @@ export const gundestrupStagBody = makePolyBody({
       name: 'decal-frieze-recess',
     });
     parts.push({
-      geometry: kit.decal((x, y, z) => (inFriezeBand(x, y, z) ? -scrollSd(x, y - FRIEZE.y) : -1), { offset: 0.4 }),
-      mat: 'dSilver',
+      geometry: kit.decal((x, y, z) => (inFriezeBand(x, y, z) ? -scrollSd(x, y - FRIEZE.y)[0] : -1), { offset: 0.4 }),
+      mat: 'dGold',
       name: 'decal-frieze-scroll',
     });
     parts.push({
+      geometry: kit.decal((x, y, z) => (inFriezeBand(x, y, z) ? -scrollSd(x, y - FRIEZE.y)[1] : -1), { offset: 0.45 }),
+      mat: 'dSilver',
+      name: 'decal-frieze-bosses',
+    });
+    parts.push({
       geometry: kit.decal((x, y, z) => {
-        if (Math.abs(z) < 26 || x < FRIEZE.x0 - 0.5 || x > FRIEZE.x1 + 0.5) {
+        if (Math.abs(z) < 24 || x < FRIEZE.x0 - 0.5 || x > FRIEZE.x1 + 0.5) {
           return -1;
         }
         const dv = Math.abs(y - FRIEZE.y);
@@ -488,9 +506,9 @@ export const gundestrupStagBody = makePolyBody({
   src: {
     density_g_cm3: 'SPEC 1.14：ABS 約 1.05 g/cm³（推估）',
     wallThickness_mm: '推估：射出 ABS 殼 0.8 mm（同其他款）；座艙罩同厚度，以殼面積計入質量',
-    geometry: '本檔站位產生器 P（推估）：殼長 148（車尾 x −68 → 鼻尖 80），翼端板叉尖到 x −69（外框長 149，≤ 153 不刮立體橋）；殼頂 34–35.2、座艙罩頂約 39.2、翼面頂約 43.8、翼端板叉尖 47.6；後擋泥板半寬 45.5、前肩 45（x 30）、細腰 29.5（側裙下緣 y 11 在底盤側框上緣 9.4 之上）、鼻尖 3.5；x 40 → 80 殼頂以約 0.5 的斜率下壓成楔形',
+    geometry: '本檔站位產生器 P（推估）：殼長 148（車尾 x −68 → 鼻尖 80），翼端板叉尖到 x −69（外框長 149，≤ 153 不刮立體橋）；殼頂 34–35.2、座艙罩頂約 39.2、翼面頂約 43.8、翼端板叉尖 47.6；後擋泥板半寬 45.5、前肩 45（x 30）、細腰 27.5（側裙下緣 y 11 在底盤側框上緣 9.4 之上）、鼻尖 3.5；x 40 → 80 殼頂以約 0.5 的斜率下壓成楔形',
     wheelArches: '前後 R17.5（31 mm 輪胎半徑 15.5 + 2 mm），切口從 |z| 32 起；前輪罩另開側視斜橢圓開口（中心 x 39、y 22，半軸 17 × 14，長軸前上傾 50°，|z| ≥ 26）露出輪胎；後輪內襯深 7 mm，前後都有胎內側環形擋板',
-    wing: '尾翼：弦 16、翼展 ±38.6、厚 1.0 mm 的單片翼（前緣 y 41.6、後緣 43.2）；翼端板厚 1.4 mm、板底 |z| 37、外傾 8°，後緣分三叉；ABS 實心件（推估），質量 = 封閉體積 × 1.05 g/cm³',
+    wing: '尾翼：弦 16、翼展 ±38.6、厚 1.0 mm 的單片翼（前緣 y 41.6、後緣 43.2）；翼端板厚 1.4 mm、板底 |z| 37、外傾 8°，後緣分四叉；ABS 實心件（推估），質量 = 封閉體積 × 1.05 g/cm³',
     torc: '扭絞 torc：俯視橢圓 38 × 26 mm 繞座艙罩，開口朝前 56°，斷面半徑 1.0 ± 0.22（18 個扭節）、兩端圓球 R1.9，ABS 實心件（推估）',
     myth: 'Gundestrup 銀釜：銀為主、鍍金、repoussé、嵌玻璃（MYTH_RESEARCH C1）；分叉鹿角與 torc（C2、C8）；La Tène 捲曲曲線（C7，只用單向波卷，不用三臂 triskele）',
     mounts: '對齊 chassis-midship 的車殼安裝點（SPEC 1.14）',
