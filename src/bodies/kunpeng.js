@@ -1,9 +1,9 @@
 // 鯤鵬（body-kunpeng，神話組・中國）：《莊子・逍遙遊》「北冥有魚，其名為鯤……化而為鳥，其名為鵬」。
 // 不做魚頭、鳥頭與眼睛，「化」用三種元素表現：
-// (1) 鰭 → 翼的變形：車身中段兩側一對後掠的小鰭刀（墨黑），到車尾放大成上下兩層、往後上方揚起的翼片（青灰 → 留白），三組翼片前緣都是金線；
-// (2) 水 → 風的漸變 livery：前半墨黑亮面（深水）、後半留白霧面（長風），中間是往後上方斜掃、一條比一條細的青灰條帶；
-//     前半有浪頭帶與淡金水波線（水擊三千里），後半是青灰人字羽紋；
-// (3) 配色與材質：水墨黑白＋青灰珍珠漆＋淡金線，朱砂紅只用在一枚無字印章。
+// (1) 鰭 → 翼的變形：車身中段兩側一對後掠的小鰭刀（墨黑），到車尾放大成上下兩層、往後上方揚起的翼片（青綠 → 留白），三組翼片前緣都是金線；
+// (2) 水 → 風的漸變 livery：前半墨黑亮面（深水）、後半留白霧面（長風），中間是往後上方斜掃、一條比一條細的青綠條帶；
+//     前半有浪頭帶與淡金水波線（水擊三千里），後半是青綠人字羽紋；
+// (3) 配色與材質：水墨黑白＋松花石青綠珍珠漆＋淡金線，朱砂紅只用在一枚無字印章。
 // 低扁全罩的尖楔車身，頂部一道兩端尖的長條透明窗（水天之間）；前輪 R17.5 輪拱、後輪在窄車尾外側由翼片罩住（26 / 31 mm 輪都可裝）。
 // 設計：shared/design/body-kunpeng/DESIGN.md（典故與文物對應 MYTH_RESEARCH 第 7 節 Z1–Z4；黑名單 7-3）。剖面為本檔站位產生器（推估）。
 // 不寫任何文字（含「Kunpeng」字樣）、不做晶片紋、不做紅色魚身 / 海豚形、不做龍角龍鬚。
@@ -137,7 +137,7 @@ const intakeSd = (x, y, z) => {
 
 /** @type {number} 深水墨黑區的後緣在塗裝斜向座標上的位置 */
 const LIVERY_C0 = 20;
-/** @type {number[][]} 青灰條帶 [後緣, 前緣]（相對墨黑後緣的斜向距離，往車尾為負）：一條比一條細，水化為風 */
+/** @type {number[][]} 青綠條帶 [後緣, 前緣]（相對墨黑後緣的斜向距離，往車尾為負）：一條比一條細，水化為風 */
 const LIVERY_BARS = [
   [-10, -3],
   [-18, -13],
@@ -173,9 +173,9 @@ const materials = () => ({
   // 深水：墨黑亮面珍珠漆（前半）；長風：留白霧面（後半，roughness > 0.5，Blender 以緞面漆處理）——亮面對霧面的材質對比
   ink: namedMaterial('paint-ink-black-pearl', { color: 0x15191f, roughness: 0.3, metalness: 0.3, clearcoat: 0.9, clearcoatRoughness: 0.1 }),
   ink2: namedMaterial('paint-ink-black-pearl', { color: 0x15191f, roughness: 0.3, metalness: 0.3, clearcoat: 0.9, clearcoatRoughness: 0.1, side: THREE.DoubleSide }),
-  // 青灰：珍珠金屬漆（條帶與下層翼片）
-  slate: namedMaterial('paint-slate-pearl', { color: 0x4a6170, roughness: 0.3, metalness: 0.35, clearcoat: 0.9, clearcoatRoughness: 0.1 }),
-  slate2: namedMaterial('paint-slate-pearl', { color: 0x4a6170, roughness: 0.3, metalness: 0.35, clearcoat: 0.9, clearcoatRoughness: 0.1, side: THREE.DoubleSide }),
+  // 青綠：松花石硯的綠（MYTH_RESEARCH 7-2 配色，推估色碼），珍珠金屬漆（條帶與下層翼片）
+  teal: namedMaterial('paint-songhua-green-pearl', { color: 0x4f7f6f, roughness: 0.3, metalness: 0.35, clearcoat: 0.9, clearcoatRoughness: 0.1 }),
+  teal2: namedMaterial('paint-songhua-green-pearl', { color: 0x4f7f6f, roughness: 0.3, metalness: 0.35, clearcoat: 0.9, clearcoatRoughness: 0.1, side: THREE.DoubleSide }),
   paper: namedMaterial('paint-rice-paper-white', { color: 0xece8de, roughness: 0.66, clearcoat: 0.05 }),
   paper2: namedMaterial('paint-rice-paper-white', { color: 0xece8de, roughness: 0.66, clearcoat: 0.05, side: THREE.DoubleSide }),
   // 真金屬：翼片前緣金線（Blender 依 -brass 結尾換成金屬）
@@ -187,7 +187,7 @@ const materials = () => ({
   frame: namedMaterial('paint-ink-frame', { color: 0x15171a, roughness: 0.45, clearcoat: 0.6, side: THREE.DoubleSide }),
   intake: namedMaterial('paint-intake-dark', { color: 0x0e1114, roughness: 0.7, side: THREE.DoubleSide }),
   dGold: decalMaterial('decal-pale-gold', { color: 0xd8c38a, roughness: 0.35, metalness: 0.6 }),
-  dSlate: decalMaterial('decal-slate-blue', { color: 0x4a6170, roughness: 0.4 }),
+  dTeal: decalMaterial('decal-songhua-green', { color: 0x4f7f6f, roughness: 0.4 }),
   dRed: decalMaterial('decal-cinnabar-red', { color: 0xb5322a, roughness: 0.5 }),
   dPaper: decalMaterial('decal-paper-white', { color: 0xf1ede3, roughness: 0.55 }),
   mount: namedMaterial('abs-mount-black', { color: 0x222326, roughness: 0.6 }),
@@ -390,7 +390,7 @@ export const kunpengBody = makePolyBody({
   form: 'wave-wedge',
   roof: 'clear',
   wing: 'fin-vanes',
-  theme: '《莊子・逍遙遊》鯤化為鵬，不做魚頭與鳥頭：低扁的尖楔車身前半墨黑亮面（深水）、後半留白霧面（長風），中間是往後上方斜掃、一條比一條細的青灰條帶；車身中段一對後掠小鰭刀，到車尾放大成上下兩層往後上方揚起的翼片，前緣都是金線；前半浪頭帶與淡金水波線、後半青灰人字羽紋，頂部一道水天之間的長條透明窗',
+  theme: '《莊子・逍遙遊》鯤化為鵬，不做魚頭與鳥頭：低扁的尖楔車身前半墨黑亮面（深水）、後半留白霧面（長風），中間是往後上方斜掃、一條比一條細的青綠條帶；車身中段一對後掠小鰭刀，到車尾放大成上下兩層往後上方揚起的翼片，前緣都是金線；前半浪頭帶與淡金水波線、後半青綠人字羽紋，頂部一道水天之間的長條透明窗',
   material: 'ABS',
   density_g_cm3: 1.05,
   wallThickness_mm: 0.8,
@@ -406,9 +406,9 @@ export const kunpengBody = makePolyBody({
   zones: () => [
     // 墨黑（深水）：後緣帶一點浪頭起伏
     { mat: 'ink', keep: (x, y, z) => sweepCoord(x, y, z) + 1.3 * Math.sin(0.8 * (y + 0.5 * Math.abs(z))) },
-    // 青灰條帶：往車尾一條比一條細
+    // 青綠條帶：往車尾一條比一條細
     {
-      mat: 'slate',
+      mat: 'teal',
       keep: (x, y, z) => {
         const d = sweepCoord(x, y, z);
         return Math.max(...LIVERY_BARS.map(([d0, d1]) => Math.min(d - d0, d1 - d)));
@@ -438,11 +438,11 @@ export const kunpengBody = makePolyBody({
       name: 'arch-liners',
     });
 
-    // 鰭 → 翼：鰭刀（墨黑）→ 下層翼片（青灰）→ 上層翼片（留白＋墨黑翼尖），顏色跟著塗裝由深到淺；前緣金線各組共用，讀成同一個形狀的三個階段
+    // 鰭 → 翼：鰭刀（墨黑）→ 下層翼片（青綠）→ 上層翼片（留白＋墨黑翼尖），顏色跟著塗裝由深到淺；前緣金線各組共用，讀成同一個形狀的三個階段
     /** @type {[Blade, string, string][]} */
     const blades = [
       [FIN, 'ink2', 'fin-blades'],
-      [VANE_LOW, 'slate2', 'wing-vanes-lower'],
+      [VANE_LOW, 'teal2', 'wing-vanes-lower'],
       [VANE_UP, 'paper2', 'wing-vanes-upper'],
       [VANE_TIP, 'ink2', 'wing-vanes-upper-tips'],
     ];
@@ -453,7 +453,7 @@ export const kunpengBody = makePolyBody({
     const rails = blades.map(([blade]) => buildEdgeRail(blade));
     parts.push({ geometry: mergeGeos([...rails, ...rails.map(mirrorZ)]), mat: 'gold', solid: true, outline: true, name: 'blade-edge-rails' });
 
-    // 水波 livery（墨黑區）：從鼻尖沿肩部往後掃的一道米白浪頭帶（上緣是起伏的浪頭，往鼻尖收細），上下各一道淡金細浪線（只到前輪前方，兩端收尖）；
+    // 水波 livery（墨黑區）：從鼻尖沿肩部往後掃的一道米白浪頭帶（上緣是起伏的浪頭，往鼻尖收細）、頂面再一道較細的浪，之間與上下共三道淡金細浪線（只到前輪前方，前端收尖）；
     // 位置用斷面周向座標算（側線為 0，沿側面往上、再沿頂面往中線遞增；斷面接近方形，近似弧長），頂面上的浪幅才不會被放大
     /** @type {(x: number, y: number, z: number) => number} 相對浪頭帶中線的周向距離（mm，往頂面為正） */
     const waveV = (x, y, z) => {
@@ -469,7 +469,10 @@ export const kunpengBody = makePolyBody({
         }
         const v = waveV(x, y, z);
         const half = 1.3 * Math.min(1, Math.max(0.3, (76 - x) / 14));
-        return Math.min(half + 0.8 * Math.sin(x / 2.6) - v, v + half);
+        // 第二道浪（往中線 13 mm、較細，只到前輪上方，前端收尖）
+        const half2 = 0.65 * Math.min(1, Math.max(0, (54 - x) / 8));
+        const inner = half2 > 0.1 ? Math.min(half2 + 0.5 * Math.sin(x / 2.6 + 1.6) - (v - 13), v - 13 + half2) : -1;
+        return Math.max(Math.min(half + 0.8 * Math.sin(x / 2.6) - v, v + half), inner);
       }),
       mat: 'dPaper',
       name: 'decal-wave-band',
@@ -481,12 +484,12 @@ export const kunpengBody = makePolyBody({
           return -1;
         }
         const v = waveV(x, y, z);
-        return half - Math.min(Math.abs(v - 3.4 - 0.6 * Math.sin(x / 2.6 + 1.2)), Math.abs(v + 3.0 - 0.6 * Math.sin(x / 2.6 + 2.4)));
+        return half - Math.min(Math.abs(v - 3.4 - 0.6 * Math.sin(x / 2.6 + 1.2)), Math.abs(v + 3.0 - 0.6 * Math.sin(x / 2.6 + 2.4)), Math.abs(v - 9 - 0.6 * Math.sin(x / 2.6 + 0.6)));
       }),
       mat: 'dGold',
       name: 'decal-wave-lines',
     });
-    // 羽紋（留白區）：條帶之後到車尾，一排排尖端朝車尾的青灰人字線
+    // 羽紋（留白區）：條帶之後到車尾，一排排尖端朝車尾的青綠人字線
     parts.push({
       geometry: kit.decal((x, y, z) => {
         if (Math.abs(z) < 5 || sweepCoord(x, y, z) > -33 || x < -66 || y < sec(x).ySh - 1) {
@@ -494,7 +497,7 @@ export const kunpengBody = makePolyBody({
         }
         return -chevrons(x, y, Math.abs(z));
       }),
-      mat: 'dSlate',
+      mat: 'dTeal',
       name: 'decal-wind-chevrons',
     });
     // 朱砂無字印章：車尾側面一枚圓角方印（紅底、米白內框與一道雲紋，不含任何文字）
