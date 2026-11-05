@@ -2,12 +2,12 @@
 // 車上不做山羊本體，只取「戰車」「羊角螺旋」「雷」三個元素做成賽車零件與塗裝：
 // 車身是低平的刀形車身（F1 刀鋒滑翔型）——前輪上方是隆起的擋泥板（輪上 32.3）、兩輪之間收腰（27.6）、後段收成窄車斗讓後輪整顆外露，
 // 前擋泥板之間伸出一支細長的轅桿鼻（鼻尖 x 72、頂高 18.4、半寬 13.5），引擎蓋從鼻尖一路升到座艙後 34.6；
-// 戰車 → 雙轅：兩根鍛銀轅桿從車斗座艙兩側沿引擎蓋往前收攏到鼻尖，兩桿之間是鍛鐵黑的凹槽與一道雷光藍細線；
+// 戰車 → 雙轅：兩根鍛銀轅桿從車斗座艙兩側沿引擎蓋往前收攏到鼻面上的軛，兩桿之間是鍛鐵黑的凹槽與一道雷光藍細線；
 //          （座艙後方接兩道鍛銀條到車尾，雙轅貫穿整台車）
-//          軛：鼻尖上橫跨雙轅的青銅雙拱前翼（左右各一道套頸的拱）；車斗：只留 24 × 18 mm 小開口的橡木低座艙；
+//          軛：鼻面上一片貼平的青銅硬邊前翼（前緣左右各一道套頸的折角拱），轅桿前端接在它的後緣；車斗：只留 24 × 18 mm 小開口的橡木低座艙；
 //          輪：窄車斗兩側外露的後輪就是戰車的大輪，側面兩輪之間再放一面 10 輻戰車輪徽記（號碼牌位置）。
-// 羊角螺旋 → 尾翼端板：車尾一片後緣鋸齒的貼身平板翼，兩端各一面帶節環的青銅螺旋端板（直徑 18 mm、捲 1.5 圈，horn-volute 尾翼）。
-// 雷 → 鋸齒切割塗裝：側面上半暗紅、下半鍛鐵黑，分界是一排往後倒的鋸齒，沿鋸齒一道鍛銀邊；輪拱內緣一道雷光藍發光縫。
+// 羊角螺旋 → 尾翼端板：車尾一片後緣鋸齒的貼身暗紅平板翼（翼面一道鍛銀鋸齒條紋），兩端各一面帶節環的青銅螺旋端板（直徑 18 mm、捲 1.5 圈，horn-volute 尾翼）。
+// 雷 → 鋸齒切割塗裝：側面上半暗紅、下半鍛鐵黑，分界是一排往後倒的鋸齒，沿鋸齒一道鍛銀邊；尾翼翼面是同一套紅底銀鋸齒；輪拱內緣一道雷光藍發光縫。
 // 設計：shared/design/body-tanngrisnir-chariot/DESIGN.md（典故 MYTH_RESEARCH N12、N16；車斗語彙 N3 Oseberg 四輪木車；黑名單 H6 不放雷神之鎚、不用盧恩）。
 // 塗裝全為自創：暗紅亮面漆＋鍛鐵黑灰（緞面）＋鍛銀與青銅（金屬）＋橡木座艙（霧面）＋少量雷光藍；
 // 不畫人、不放鎚、不用盧恩字母或任何被挪用的符號（鋸齒是單一道鋸齒邊，不是雙折線閃電），不含文字與商標。
@@ -110,12 +110,12 @@ const clamp01 = (t) => Math.max(0, Math.min(1, t));
 const materials = () => ({
   // 主色：暗紅亮面漆（paint- 且 roughness ≤ 0.5 → Blender 亮面漆）
   red: namedMaterial('paint-oxblood-red', { color: 0x8a1f1b, roughness: 0.32, clearcoat: 0.8, clearcoatRoughness: 0.15 }),
-  // 鍛鐵：緞面黑灰（側面下半、雙轅之間的凹槽、座艙口、尾翼平板與支柱）
+  // 鍛鐵：緞面黑灰（側面下半、雙轅之間的凹槽、座艙口、尾翼支柱）
   iron: namedMaterial('paint-forged-iron', { color: 0x34363b, roughness: 0.55, clearcoat: 0.12, clearcoatRoughness: 0.5 }),
   // 橡木車斗（霧面）：座艙地板與內壁
   deck: namedMaterial('paint-oak-deck', { color: 0x6a4529, roughness: 0.72, side: THREE.DoubleSide }),
   oakDark2: namedMaterial('paint-oak-dark', { color: 0x553621, roughness: 0.7, clearcoat: 0.05, side: THREE.DoubleSide }),
-  // 真金屬：鍛銀轅桿（名稱含 steel → Blender metallic）、青銅軛與螺旋端板（含 -brass）
+  // 真金屬：鍛銀轅桿與翼面條紋（名稱含 steel → Blender metallic）、青銅軛與螺旋端板（含 -brass）
   steel: namedMaterial('trim-forged-silver-steel', { color: 0xc9cdd3, metalness: 0.85, roughness: 0.25, clearcoat: 0.3 }),
   bronze: namedMaterial('trim-bronze-brass', { color: 0xb07a3e, metalness: 0.8, roughness: 0.3, clearcoat: 0.2 }),
   inner: namedMaterial('shell-inner-dark', { color: 0x1c1712, roughness: 0.85, side: THREE.BackSide }),
@@ -135,8 +135,8 @@ const materials = () => ({
 
 /** @type {number} 轅桿後端 x（座艙後緣旁） */
 const POLE_X0 = -31;
-/** @type {number} 轅桿前端 x（鼻尖後 1 mm） */
-const POLE_X1 = 71;
+/** @type {number} 轅桿前端 x（接在軛的後緣） */
+const POLE_X1 = 62.4;
 
 /**
  * 轅桿中心線 |z|：座艙兩側平行（11.6，在座艙口鐵圈外），座艙前緣之後往前收攏到鼻尖 4.4
@@ -144,8 +144,27 @@ const POLE_X1 = 71;
  */
 const poleZ = (x) => (x < SEAT.x1 ? 11.6 : lerp(11.6, 4.4, clamp01((x - SEAT.x1) / (POLE_X1 - SEAT.x1)) ** 0.9));
 
-/** @type {number} 軛的 x（鼻尖後 6 mm） */
-const YOKE_X = 66;
+/**
+ * 軛形前翼的俯視輪廓 (x, z)：一片貼在鼻面上的硬邊薄板——後緣是淺折線、前緣是左右各一道往前突的折角拱（套頸的雙拱），
+ * 中央凹口讓到兩根轅桿之間，兩端收成尖角；全部是直線段，不超出鼻面（鼻半寬 18 → 14）
+ * @type {number[][]}
+ */
+const YOKE_OUTLINE = [
+  [62.2, -14.5],
+  [61.2, -7.5],
+  [62, 0],
+  [61.2, 7.5],
+  [62.2, 14.5],
+  [64.4, 14.5],
+  [68.8, 9.6],
+  [68.8, 5.4],
+  [64.8, 0],
+  [68.8, -5.4],
+  [68.8, -9.6],
+  [64.4, -14.5],
+];
+/** @type {number} 軛的中心 x */
+const YOKE_X = 65;
 
 // ---------------------------------------------------------------------------
 // 螺旋端板（羊角螺旋）
@@ -235,7 +254,7 @@ export const tanngrisnirChariotBody = makePolyBody({
   form: 'twin-pole',
   roof: 'open-cockpit',
   wing: 'horn-volute',
-  theme: '索爾的山羊戰車（雙轅刀形）：暗紅低平刀形車身，前擋泥板隆起、中段收腰、後段是後輪外露的窄車斗，前擋泥板之間伸出細長轅桿鼻；兩根鍛銀轅桿從橡木車斗座艙兩側沿引擎蓋收攏到鼻尖、鼻尖上橫跨一支青銅雙拱軛形前翼，車尾後緣鋸齒的貼身鍛鐵平板翼兩端是帶節環的青銅羊角螺旋端板；側面暗紅 / 鍛鐵黑以一排後倒鋸齒加鍛銀邊切開，中央一面 10 輻戰車輪徽記，輪拱與轅間凹槽有雷光藍發光縫',
+  theme: '索爾的山羊戰車（雙轅刀形）：暗紅低平刀形車身，前擋泥板隆起、中段收腰、後段是後輪外露的窄車斗，前擋泥板之間伸出細長轅桿鼻；兩根鍛銀轅桿從橡木車斗座艙兩側沿引擎蓋收攏到鼻面上一片貼平的青銅硬邊軛形前翼，車尾後緣鋸齒的貼身暗紅平板翼（翼面一道鍛銀鋸齒條紋）兩端是帶節環的青銅羊角螺旋端板；側面暗紅 / 鍛鐵黑以一排後倒鋸齒加鍛銀邊切開，中央一面 10 輻戰車輪徽記，輪拱與轅間凹槽有雷光藍發光縫',
   material: 'ABS',
   density_g_cm3: 1.05,
   wallThickness_mm: 0.8,
@@ -276,7 +295,7 @@ export const tanngrisnirChariotBody = makePolyBody({
     });
     // 雙轅：兩根鍛銀扁桿（斷面 2.6 × 1.6 mm，半埋在殼面上）從座艙兩側沿引擎蓋往前收攏到鼻尖
     /** @type {number[]} */
-    const poleXs = [POLE_X0, -22, -13, -5, 6, 18, 30, 42, 52, 60, 66, POLE_X1];
+    const poleXs = [POLE_X0, -22, -13, -5, 6, 18, 30, 42, 50, 57, POLE_X1];
     const poles = [-1, 1].map((sg) =>
       sweepEllipse(
         poleXs.map((x) => [x, kit.surf.topY(x, poleZ(x)) + 0.3, sg * poleZ(x)]),
@@ -286,20 +305,14 @@ export const tanngrisnirChariotBody = makePolyBody({
       ),
     );
     parts.push({ geometry: mergeGeos(poles), mat: 'steel', solid: true, outline: true, name: 'twin-poles' });
-    // 軛形前翼：橫跨雙轅的青銅雙拱橫桿（扁斷面：弦長 4、厚 1.8 mm），中段壓在兩根轅桿上，左右各一道套頸的拱，翼尖微微上翹
-    const yokeY = kit.surf.topY(YOKE_X, poleZ(YOKE_X)) + 1.4;
-    /** @type {number[][]} 軛的半邊中心線 (|z|, 相對高度) */
-    const yokeHalf = [
-      [0, 0.2],
-      [4.8, 0],
-      [9.6, 1.8],
-      [14.6, -0.9],
-      [19.5, 0.4],
-    ];
-    /** @type {number[][]} */
-    const yokePts = [...yokeHalf.slice(1).reverse().map(([z, dy]) => [YOKE_X, yokeY + dy, -z]), ...yokeHalf.map(([z, dy]) => [YOKE_X, yokeY + dy, z])];
-    parts.push({ geometry: sweepEllipse(yokePts, 24, () => [2.0, 0.9], 6), mat: 'bronze', solid: true, outline: true, name: 'yoke-front-wing' });
-    // 尾翼：貼身鍛鐵平板翼（厚 1.2 mm，翼面 y 37.6–38.8；前緣後掠、後緣左右各三支往後倒的鋸齒）
+    // 軛形前翼：貼在鼻面上的青銅硬邊薄板（厚 1.6 mm，埋進殼面 0.7 mm），順著鼻面的坡度傾斜
+    const yokeRear = kit.surf.topY(62, 6);
+    const yokeFront = kit.surf.topY(68.5, 6);
+    const yoke = flatPlate(YOKE_OUTLINE.map(([x, z]) => [x - YOKE_X, z]), 0, 1.6);
+    yoke.rotateZ(Math.atan2(yokeFront - yokeRear, 6.5));
+    yoke.translate(YOKE_X, lerp(yokeRear, yokeFront, (YOKE_X - 62) / 6.5) - 0.7, 0);
+    parts.push({ geometry: yoke, mat: 'bronze', solid: true, outline: true, name: 'yoke-front-wing' });
+    // 尾翼：貼身暗紅平板翼（厚 1.2 mm，翼面 y 37.6–38.8；前緣後掠、後緣左右各三支往後倒的鋸齒），翼面上一道鍛銀鋸齒條紋
     // ＋兩端的青銅羊角螺旋端板（厚 1.6 mm，掛在翼端，在外露後輪的後上方）
     const zTip = VOLUTE.z - 0.8;
     /** @type {number[][]} 後緣鋸齒（右半，由翼端往中線）：(x, |z| / 翼端 |z|) */
@@ -323,11 +336,28 @@ export const tanngrisnirChariotBody = makePolyBody({
         37.6,
         1.2,
       ),
-      mat: 'iron',
+      mat: 'red',
       solid: true,
       outline: true,
       name: 'rear-wing-plate',
     });
+    // 翼面鋸齒條紋：橫跨翼展的一道鍛銀薄片（寬 2.2、厚 0.3 mm，貼在翼面上），前後緣都是每 7 mm 一齒、齒尖往後外倒的鋸齒
+    /** @type {(x0: number, w: number) => THREE.BufferGeometry} x0：條紋前緣 x、w：條紋寬 */
+    const sawStripe = (x0, w) => {
+      const pitch = (zTip - 0.6) / 4;
+      /** @type {number[][]} 鋸齒線（由 −z 翼端到 +z 翼端） */
+      const line = [];
+      for (let k = -4; k <= 4; k++) {
+        const z = k * pitch;
+        line.push([x0, z]);
+        if (k < 4) {
+          // 齒尖在靠翼端的那一側：左半往 −z、右半往 +z 倒
+          line.push([x0 - 2, k < 0 ? z + 0.2 * pitch : z + 0.8 * pitch]);
+        }
+      }
+      return flatPlate([...line, ...[...line].reverse().map(([x, z]) => [x - w, z])], 38.8, 0.3);
+    };
+    parts.push({ geometry: sawStripe(-57.4, 2.2), mat: 'steel', solid: true, name: 'rear-wing-saw-stripe' });
     // 尾翼支柱：車斗尾端左右各一片後傾薄板（厚 1.4 mm），從蓋板撐到翼面下
     parts.push({
       geometry: mergeGeos(
@@ -428,9 +458,9 @@ export const tanngrisnirChariotBody = makePolyBody({
     wallThickness_mm: '推估：射出 ABS 殼 0.8 mm（同其他車殼）',
     geometry: '本檔站位產生器 P（推估）：車殼 x −63.5 ~ 72；引擎蓋中線從鼻尖 18.4 升到座艙後 34.6、車尾 31.8；擋泥板邊沿輪上 32.3（31 mm 輪拱頂 30.5 之上）、兩輪之間 27.6；半寬前擋泥板 38（蓋住 31 mm 輪胎外側面 34.75）、兩輪之間 33.5、後段窄車斗 23（後輪外露）、車尾 22、轅桿鼻 18 → 13.5',
     cockpit: '座艙開口 x −30 ~ −6、|z| ≤ 9（深 4 mm，推估）；車頭是沒有開口的連續斜面引擎蓋',
-    poles: '雙轅為實心 ABS 扁桿（斷面 2.6 × 1.6 mm，24 × 6 段），x −31 ~ 71，|z| 從座艙兩側 11.6 收攏到鼻尖 4.4，中心線在殼面上 0.3 mm（半埋），座艙後緣到車尾接兩道 2 mm 鍛銀貼紙條；質量 = 封閉體積 × 1.05 g/cm³（推估）',
-    yoke: '軛形前翼為實心 ABS 扁桿（弦長 4、厚 1.8 mm，24 × 6 段），x 66、翼展 ±19.5，中段壓在轅桿上，兩側各一道高 1.8 mm 的拱；不超出鼻尖、不在鼻子下方（推估）',
-    wing: '尾翼平板為實心 ABS（厚 1.2 mm，x −67 ~ −53、翼展 ±29、翼面 y 37.6–38.8，後緣左右各三支鋸齒）；螺旋端板為實心 ABS 片（厚 1.6 mm，中心 x −59.5 / y 31.6、外半徑 9、每圈內縮 4.4、捲 1.5 圈、帶寬 3.0 → 1.4 mm、11 道節環），|z| 29–30.6，離 31 mm 後輪胎面約 2.4 mm；支柱 2 片厚 1.4 mm、|z| 12（推估）',
+    poles: '雙轅為實心 ABS 扁桿（斷面 2.6 × 1.6 mm，24 × 6 段），x −31 ~ 62.4（前端接在軛的後緣），|z| 從座艙兩側 11.6 收攏到 4.4，中心線在殼面上 0.3 mm（半埋），座艙後緣到車尾接兩道 2 mm 鍛銀貼紙條；質量 = 封閉體積 × 1.05 g/cm³（推估）',
+    yoke: '軛形前翼為實心 ABS 硬邊薄板（厚 1.6 mm、埋進鼻面 0.7 mm，x 61.2 ~ 68.8、|z| ≤ 14.5，直線段輪廓、前緣左右各一道折角拱），貼著鼻面坡度；不超出鼻面與鼻尖、不在鼻子下方（推估）',
+    wing: '尾翼平板為實心 ABS（厚 1.2 mm，x −67 ~ −53、翼展 ±29、翼面 y 37.6–38.8，後緣左右各三支鋸齒），暗紅色，翼面上一道 0.3 mm 厚的鍛銀鋸齒條紋（寬 2.2 mm、齒距約 7 mm，單一道）；螺旋端板為實心 ABS 片（厚 1.6 mm，中心 x −59.5 / y 31.6、外半徑 9、每圈內縮 4.4、捲 1.5 圈、帶寬 3.0 → 1.4 mm、11 道節環），|z| 29–30.6，離 31 mm 後輪胎面約 2.4 mm；支柱 2 片厚 1.4 mm、|z| 12（推估）',
     livery: '側面紅 / 鐵分界 y 17（車頭）→ 23（車尾），鋸齒間距 11 mm、齒高 2.4 mm，鍛銀邊 0.9 mm；單一道鋸齒邊，不是雙折線閃電（MYTH_RESEARCH H9）；戰車輪徽記半徑 5.2、10 輻；雷光藍發光縫 0.8–0.9 mm；皆為自繪（推估）',
     wheelArches: '前後 R17.5（31 mm 輪胎半徑 15.5 + 2 mm），可裝 26 / 31 mm 輪；內襯從 |z| 33 到殼內面，輪胎內側另有 buildArchWell 環形擋板（|z| 22.9）',
     mounts: '對齊 chassis-midship 的車殼安裝點（SPEC 1.14）',
