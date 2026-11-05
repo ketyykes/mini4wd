@@ -109,10 +109,9 @@ const clamp01 = (t) => Math.max(0, Math.min(1, t));
 const materials = () => ({
   // 主色：暗紅亮面漆（paint- 且 roughness ≤ 0.5 → Blender 亮面漆）
   red: namedMaterial('paint-oxblood-red', { color: 0x8a1f1b, roughness: 0.32, clearcoat: 0.8, clearcoatRoughness: 0.15 }),
-  // 鍛鐵：緞面黑灰（側面下半、雙轅之間的凹槽、座艙口；iron2 是雙面版，給尾翼平板用）
+  // 鍛鐵：緞面黑灰（側面下半、雙轅之間的凹槽、座艙口、尾翼平板與支柱）
   iron: namedMaterial('paint-forged-iron', { color: 0x34363b, roughness: 0.55, clearcoat: 0.12, clearcoatRoughness: 0.5 }),
   // 橡木車斗（霧面）：座艙地板與內壁
-  iron2: namedMaterial('paint-forged-iron', { color: 0x34363b, roughness: 0.55, clearcoat: 0.12, clearcoatRoughness: 0.5, side: THREE.DoubleSide }),
   deck: namedMaterial('paint-oak-deck', { color: 0x6a4529, roughness: 0.72, side: THREE.DoubleSide }),
   oakDark2: namedMaterial('paint-oak-dark', { color: 0x553621, roughness: 0.7, clearcoat: 0.05, side: THREE.DoubleSide }),
   // 真金屬：鍛銀轅桿（名稱含 steel → Blender metallic）、青銅軛與螺旋端板（含 -brass）
@@ -318,12 +317,12 @@ export const tanngrisnirChariotBody = makePolyBody({
           [-56, zTip],
           ...teeth.map(([x, f]) => [x, f * zTip]),
           [-62.5, 0],
-          ...teeth.reverse().map(([x, f]) => [x, -f * zTip]),
+          ...[...teeth].reverse().map(([x, f]) => [x, -f * zTip]),
         ],
         37.6,
         1.2,
       ),
-      mat: 'iron2',
+      mat: 'iron',
       solid: true,
       outline: true,
       name: 'rear-wing-plate',
@@ -344,7 +343,7 @@ export const tanngrisnirChariotBody = makePolyBody({
           ),
         ),
       ),
-      mat: 'iron2',
+      mat: 'iron',
       solid: true,
       outline: true,
       name: 'rear-wing-struts',

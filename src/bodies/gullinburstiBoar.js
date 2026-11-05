@@ -283,7 +283,7 @@ export const gullinburstiBoarBody = makePolyBody({
     { mat: 'iron', keep: (x, y, z) => (onSide(x, z) && x < SKIRT_X1 ? skirtY(x) - y : -1) },
     { mat: 'goldPaint', keep: () => 1 },
   ],
-  mats: { inner: 'inner', edge: 'edge', cap: 'iron', mount: 'mount' },
+  mats: { inner: 'inner', edge: 'edge', cap: 'goldPaint', mount: 'mount' },
   materials,
   extras: (kit) => {
     /** @type {BodyPart[]} */
