@@ -328,7 +328,7 @@ describe('P17 新零件的物理效果（只透過組裝設定替換）', () => 
     const alu = corner({ rollers: 'roller-19' });
     const rubber = corner({ rollers: 'roller-19-rubber' });
     const plastic = corner({ rollers: 'roller-19-plastic-ring' });
-    // 對照：同一顆導輪（質量、尺寸相同）只把 μ 換成鋁導輪的 0.05 → 證明差異來自牆面摩擦，不是質量
+    // 對照：同一顆導輪（質量、尺寸相同）只把 μ 換成 0.05（零件資料的值是橡膠環 0.00535、塑膠環 0.0031，0.05 比兩者大一個數量級）→ 證明差異來自牆面摩擦，不是質量
     const rubberMu05 = corner({ rollers: { base: 'roller-19-rubber', wallFriction: 0.05 } });
     const plasticMu05 = corner({ rollers: { base: 'roller-19-plastic-ring', wallFriction: 0.05 } });
     console.log(`[P17] 4 s 前進距離 / 彎道平均速度：塑膠環 ${f3(plastic.dist)} m / ${f3(plastic.arcV)}、鋁 19 ${f3(alu.dist)} / ${f3(alu.arcV)}、橡膠環 ${f3(rubber.dist)} / ${f3(rubber.arcV)}；對照 μ=0.05：橡膠環款 ${f3(rubberMu05.dist)} / ${f3(rubberMu05.arcV)}、塑膠環款 ${f3(plasticMu05.dist)} / ${f3(plasticMu05.arcV)}`);
@@ -363,7 +363,7 @@ describe('P17 新零件的物理效果（只透過組裝設定替換）', () => 
     expect(w({ rollers: 'roller-17-alu' })).toBeGreaterThan(w({}));
     expect(w({ rollers: 'roller-17-alu' })).toBeLessThan(w({ rollers: 'roller-19' }));
 
-    // 另外兩款塑膠環導輪（同 μ 0.03）：17 mm 塑膠環外框同 17 mm 全鋁；19 mm 碟形塑膠環與 19 mm 塑膠環同直徑同 μ、較輕 → 過彎不比鋁 19 mm 慢
+    // 另外兩款塑膠環導輪（μ 同為 0.0031）：17 mm 塑膠環外框同 17 mm 全鋁；19 mm 碟形塑膠環與 19 mm 塑膠環同直徑同 μ、較輕；μ 與鋁 19 mm（0.002675）只差約 0.0004、每顆輕 0.5 g → 過彎不比鋁 19 mm 慢
     expect(w({ rollers: 'roller-17-plastic-ring' })).toBe(w({ rollers: 'roller-17-alu' }));
     const dish = corner({ rollers: 'roller-19-plastic-ring-dish' });
     console.log(`[P17] 19 mm 碟形塑膠環：4 s 前進 ${f3(dish.dist)} m、彎道均速 ${f3(dish.arcV)} m/s`);
@@ -616,7 +616,7 @@ describe('P17 新零件的物理效果（只透過組裝設定替換）', () => 
     expect(jW(sponge)).toBeLessThan(jW(large));
     expect(v03(sponge)).toBeGreaterThan(v03(large));
     expect(th(sponge)).toBeLessThan(th(large));
-    // 雙層導輪（15418 上層橡膠環）：物理引擎碰撞體下層 μ 0.05、上層 0.10（取每一片自己的資料，不是整顆同一值）
+    // 雙層導輪（15418 上層橡膠環）：物理引擎碰撞體下層 μ 0.0029、上層 0.0058（取每一片自己的資料，不是整顆同一值）
     const rub = A({ frontRollers: 'roller-13-12-alu-double-rubber' });
     const env = sim.createWorld(buildStraight(4));
     const car = sim.createCar(env, { assembly: rub });

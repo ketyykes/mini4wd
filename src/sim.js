@@ -1,5 +1,5 @@
-// Rapier 物理模擬：賽道（地板＋側牆方塊）、車體剛體（車體方塊＋導輪圓柱）、
-// DynamicRayCastVehicleController 四輪，動力鏈由 powertrain.js 每步計算後以 engine force 施加
+// Rapier 物理模擬：賽道（地板方塊＋側牆、換道器路面的三角網格）、車體剛體（車體方塊組＋導輪球）、
+// 自寫射線輪四輪（不用 Rapier 內建的 DynamicRayCastVehicleController），動力鏈由 powertrain.js 每步計算，依各輪法向力分配後以 addForceAtPoint 施加
 import RAPIER from '@dimforge/rapier3d-compat';
 import { spec } from './spec.js';
 import { Battery, longitudinalForce } from './powertrain.js';
@@ -1214,7 +1214,8 @@ function projectRollersOutOfWalls(env, car) {
 
 /**
  * 導輪與牆的接觸點（世界座標）：接觸法向 n（由牆指向車道）、接觸點 p、沿法向的穿透深度 pen
- * 由導輪的「縱斷面輪廓」推導（導輪軸視為鉛直）：
+ * 由導輪的「縱斷面輪廓」推導；導輪軸用車體實際的上方向（側傾／俯仰時跟著傾斜，裝導輪角度調整板時再往車頭方向傾 thrust_deg），
+ * 下列三種情況以導輪軸鉛直時說明：
  *   輪廓 = 上段圓柱（半徑 R、高 h_c）＋下段截錐（半徑 R → R_b、高 h_k）；一般導輪 h_k = 0（整顆圓柱）。
  *   牆是「鉛直牆面＋水平牆頂」，牆頂高 Y_w = 路面高 + 牆高。
  *   (1) 牆頂高於圓柱段底緣：圓柱段碰牆面，法向水平
@@ -1599,7 +1600,7 @@ function writeSliderVelocity(car, { s, rs }, q) {
  * 廣義速度 q' = (V, Ω, u')：V、Ω = 車體質心速度與角速度，u' = 滑動速度；滑動板質心速度 = V + Ω×r + u'·side（r = 滑動板質心 − 車體質心），角速度 = Ω。
  * 動能 T = ½·m_c·V² + ½·Ωᵀ(I_c + I_s)Ω + ½·m_s·|V + Ω×r + u'·side|² = ½·q'ᵀ·M·q'（M 為 7×7 質量矩陣）。
  * 接觸點 p 沿方向 d 的速度 = j·q'，j = (d, (p − c_c)×d, 滑動板上的點才有 d·side)；單位衝量的廣義速度變化 = M⁻¹·jᵀ，有效反質量 K = j·M⁻¹·jᵀ。
- * 法向／止擋active-set同解，再與二維圓盤庫侖摩擦交替至接觸速度殘差≤10^-9 m/s（最多64輪）：
+ * 法向／止擋active-set同解，再與二維圓盤庫侖摩擦交替至接觸速度殘差≤10^-9 m/s（最多4096輪）：
  * 牆對前導輪的衝量沿 side 的分量只改變滑動速度 u'（之後由彈簧 / 行程止擋傳到車體），垂直分量經 joint 直接作用在整體。
  * 止擋為預測行程單邊約束；初次接觸才給恢復係數目標。最後把q寫回全部剛體，保持共同角速度與理想滑動速度。
  * 推廣到 n 塊滑動板（前、後各一）：q' = (V, Ω, u'₀, …, u'ₙ₋₁)，每塊滑動板各一個滑動欄；接觸點只在自己那塊滑動板的欄有 d·side，

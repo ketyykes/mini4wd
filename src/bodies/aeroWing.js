@@ -1,6 +1,6 @@
 // 流線大尾翼款（body-aero-wing）：連續曲面水滴形車身 + 鵝頸支柱高位大尾翼 + 前下擾流板，珍珠白 / 深藏青
 // 設計：shared/design/body-aero-wing/DESIGN.md；尺寸資料：data/body-aero-wing.json（複製自 shared/design/body-aero-wing/sections.json）
-// 塗裝全為自創：號碼「88」、洋紅→紫漸層弧線、雙 V 形箭頭；不含任何廠商名稱、商標或真實車名。
+// 塗裝全為自創：號碼「88」、洋紅→紫漸層弧線；不含任何廠商名稱、商標或真實車名。
 import * as THREE from 'three';
 import data from './data/body-aero-wing.json';
 import { getPart } from '../parts/index.js';
@@ -22,10 +22,6 @@ const bump = (x, az) =>
   // 引擎蓋中央同步抬高 3 mm，葉子板與引擎蓋之間過渡平順（葉子板不會像兩個耳朵）
   3.0 * (1 - smoothstep(10, 26, az)) * Math.exp(-(((x - 44) / 13) ** 2));
 
-/**
- * 本款放樣資料：D1 側導風孔改成有深度的凹腔（黑色腔體＋唇邊），其餘沿用設計資料
- * @type {any}
- */
 /**
  * 站位表（推估）：細腰「可樂瓶」平面（兩輪之間半寬收到 28.5）、尾段收窄到 18，俯視輪廓和其他款明顯不同（P20）。
  * 腰部半寬 28.5 仍在電池（|z| ≤ 26.4）外側。

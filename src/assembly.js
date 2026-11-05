@@ -935,10 +935,6 @@ function optionalLayout(p, comp, rollers) {
         const spacerMass = Math.PI * (2 ** 2 - 1.1 ** 2) * s.rearSpacer * 2.7 / 1000;
         damperBrackets.push({ label: `${label}墊管`, mass_g: spacerMass, pos: { x: s.x, y: s.baseY + s.rearSpacer / 2, z: s.z } });
         solids.push({ group: 'damper', slot: 'massDamper', label: `${label}墊管`, mountingHardware: true, solid: { kind: 'cyl', axis: 'y', c: { x: s.x, y: s.baseY + s.rearSpacer / 2, z: s.z }, r: 2, halfLen: s.rearSpacer / 2 } });
-      } else if (d.bracket) {
-        const b = d.bracket;
-        const side = Math.sign(s.z) || 1;
-        damperBrackets.push({ label: `${label}托架`, mass_g: b.mass_g, pos: { x: s.x, y: s.y + h / 2, z: s.z - side * (d.width_mm / 2 + b.thickness_mm / 2) } });
       }
     });
   }

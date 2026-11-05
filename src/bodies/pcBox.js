@@ -22,7 +22,8 @@ const box = (yRoof, halfW, yLow) =>
   ].map(([z, y], i) => [z, i < 7 ? Math.max(y, yLow + 0.25 * (7 - i)) : y]);
 
 /**
- * 站位表：短鼻斜面＋低引擎蓋＋擋風玻璃斜面（兩段式車頂），平頂 y 28.5 從 x 24 到 x −48，車頂後緣往下內傾到 x −58 斷尾。
+ * 站位表：楔形短鼻＋低引擎蓋＋擋風玻璃斜面（兩段式車頭），平頂從 x 24 的 27.2 往後微升到 28.5（x −25 起），
+ * 車頂後緣從 x −49 起往上翹成鴨尾（28.4 → 30.8），到 x −58 斷尾。
  * 輪拱 R17.6（可裝 31 mm 大徑輪）。
  * @type {{ x: number, pts: number[][] }[]}
  */
@@ -149,7 +150,7 @@ export const pcBoxBody = makePolyBody({
   materials,
   extras: (kit) => {
     const parts = [];
-    // 座艙段分區：內噴黑框（下緣、平頂邊、A / B / C 柱）、煙燻車窗（側窗、前擋、後窗）、平頂透明＋白色中線
+    // 座艙段分區：內噴黑框（下緣、平頂邊、A / B / C 柱）、煙燻車窗（側窗、前擋、後窗）、平頂透明＋兩條粉紅賽車條（|z| 3.2–9.2，接續車身的賽車條）
     const cs = kit.canopy;
     /** @type {KeepFn} */
     const frame = (x, y, z, s) => {
@@ -209,7 +210,7 @@ export const pcBoxBody = makePolyBody({
     // 擋風玻璃下緣折線（白色細線，x ≈ 36）
     parts.push({ geometry: kit.decal((x, y, z) => Math.min(0.45 - Math.abs(x - 35.6), 30 - Math.abs(z))), mat: 'whiteDecal', name: 'decal-windshield-line' });
 
-    // 號碼 17：側面白底黑字、車頂黑字
+    // 號碼 17：側面白底黑字（引擎蓋上另有白字，見下）
     const plate = (u, v) => sdRoundRect(u, v, -5, 5, -3.2, 3.2, 1);
     parts.push({
       geometry: kit.decal(sideDecal(plate, { x0: -8, y0: 16.6, zMin: 30 })),

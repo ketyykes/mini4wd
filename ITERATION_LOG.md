@@ -111,3 +111,40 @@
 
 ## 結論
 保留。行為沒有變：第一批完整計分 20/20；說明字串那批 19/20，唯一沒過的 P16 是高負載逾時，單獨重跑通過。
+
+# 修正：死碼、過時註解、兩處造型錯誤（2026-11-05 21:5x–23:3x，使用者要求）
+
+## 計畫
+- 處理整理過程中發現、當時沒改的問題：`yagaHut.js` 的死碼、和程式碼不符的註解、沒有程式在讀的數值、兩款車殼的造型錯誤。
+- 預期：除了刻意修正的兩款車殼，其他行為不變。
+
+## 改動
+- **死碼**
+  - `src/bodies/yagaHut.js`：刪掉沒被呼叫的 `buildRearWing`、`buildExhaust`、`buildSmoke`、`buildFenderLeg`、`buildHenLegs`，以及只有它們在用的 `CHIMNEY_X`、`CHIMNEY_TOP`、`WING_ELEMENTS`、`wingSection`、`LEGS`、材質 `gable`／`feather`、匯入 `finPlate`，共 259 行。
+  - `src/bodies/trojanHorse.js`：刪掉沒有零件使用的材質 `slip`、`slipMatte`、`bronze`、`bronze2`。
+  - `src/parts/options.js`：兩個側制振器（`damper-side-square-32`、`damper-ar-side`）的 `bracket` 欄位。側裝一律走 `sideDamperAdapter`，`src/assembly.js`、`src/model.js` 讀 `bracket` 的分支執行不到，一起刪掉。
+  - `config/spec.json`：`laneChangerStart_mm`、`laneChangerLength_mm` 和它的 `_src`。換道段由 `src/track.js` 的 `buildCircuit` 決定，沒有程式讀這兩個欄位。
+- **造型錯誤**
+  - `body-trojan-horse`：5 個舷窗只貼出 1 個。舷窗高度原本照「斜側條往上 3.4 mm」算，重塑後腰部的擋泥板頂降到 26.8 mm，其餘 4 個落在殼面之上。改成跟著橡木肩帶（腰線稜到擋泥板肩點的中線）走，`portY` 和剖面共用 `beltY`。
+  - `body-mushussu-gate`：主翼前緣金線的旋轉角度公式寫反，只轉了約 9.5°，金線前後向躺在翼面上、後端凸出到 x −77.06。改成 `sg × atan2(half, 4)`，金線對到後掠前緣。車殼全長 151.06 → 150.00 mm。
+- **過時註解**：21 個檔案（`src/model.js`、`src/sim.js`、`tests/parts.test.js`、17 個車殼檔、`render/showcase.py`），把和程式碼不符的數值與描述改成現況。`theme`／`src` 說明字串跟著更新 4 處。
+
+## 驗證
+- 行為快照（35 款車殼的網格、質量性質、碰撞格、預設組裝；12 組設定的組裝結果），改前改後比對：
+  - `body-yaga-hut` 完全相同。
+  - `body-trojan-horse`：只有網格不同，三角面 236539 → 239801（多出舷窗貼紙）；質量、外框、碰撞格、組裝不變。
+  - `body-mushussu-gate`：網格、外框（後緣 −77.058 → −76.000）、質量性質、碰撞格、組裝不同；仍合法，車殼質量 15.48 g、整車 131.2 g 不變。
+  - 其餘 32 款：網格、質量、碰撞、組裝都相同。
+- 12 組設定的組裝結果逐欄位比對（和改動前的 commit 並排執行）：不同的只有被移除的 `laneChanger` 欄位 36 處、`bracket` 欄位 9 處、`src.bracket` 說明字串 3 處。
+- 只改註解的 17 個 JS 檔與 `showcase.py`：語法樹和改前相同。
+- 兩款車殼修正前後各截一組圖對照（側視、俯視），確認舷窗與金線的位置。
+- 完整計分（22:25–23:13，同機另一個專案的 Playwright 整段都在跑，負載 5–14）：**18/20**。
+  - P17：3 項逾時（`P17_phase7_laps` 300 s、`P17_drop_matrix damper-slim-short` 120 s、`P17_race_perturbations default` 600 s）。
+  - P19：`tests/web.test.js` 的啟動步驟 240 s 逾時，12 項測試全部被跳過。
+  - 持鎖單獨重跑（23:13–23:19）全部通過：`tests/web.test.js` 12/12（162 s）、`P17_phase7_laps`（135 s）、另外兩項 P17（57 s）。沒有延長逾時。
+  - 同一次計分的 `P16_collision_patches` 109.4 s、`P18_pairwise` 263.8 s。
+- Blender：重出 `body-trojan-horse`、`body-mushussu-gate` 的 5 視角（64 samples），重排 `lineup_myth.png`、`lineup_myth_greek.png`、`lineup_myth_others.png`、`before_after_myth_p10.png`。
+
+## 結論
+保留。除了刻意修正的兩款車殼，行為沒有變。完整計分 18/20 的兩項都是高負載逾時，單獨重跑通過。
+兩款車殼的外觀有變，**還沒重新做 A/B 評審**，留到第十階段接續時一起評。

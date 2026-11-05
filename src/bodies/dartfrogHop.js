@@ -13,7 +13,7 @@ import { monoCurve, buildStations, sdCircle, smoothMax, fenderFloor, buildArchLi
 const XS = [-58, -50, -40, -30, -18, -4, 10, 24, 34, 40, 48, 56, 62, 66];
 /** @type {Record<string, (x: number) => number>} */
 const P = {
-  // 中線頂：前低後高的蹲伏楔形（鼻 15 → 尾 33）
+  // 中線頂：前低後高的蹲伏楔形（鼻 15 → 後輪上方 33.5，尾端收到 27）
   yC: monoCurve(XS, [27, 32.5, 33.5, 33.2, 32, 30, 28, 25.5, 23.5, 22.5, 21, 19, 17, 15]),
   // 擋泥板稜線：後腿肌肉（40）明顯高於前輪拱（32）
   yF: monoCurve(XS, [29.5, 38.5, 40, 38.5, 33.5, 30, 29, 30, 31.8, 32.2, 31, 26, 21, 17]),
@@ -406,7 +406,7 @@ export const dartfrogHopBody = makePolyBody({
     const lampSd = (px, pz) => Math.hypot((px - 52) / 4.2, (pz - 27) / 2.2) - 1;
     parts.push({ geometry: kit.decal((x, y, z) => -lampSd(x, Math.abs(z)), { offset: 0.1 }), mat: 'lamp', name: 'lamp-head' });
     // 黑色前唇擾流（替圓鈍的車頭下緣收邊）：寬鼻下緣一片亮黑前唇（實心 1.2 mm 板，y 12.4–13.6），
-    // 俯視是往前凸的寬弧（中央伸出鼻尖約 3.5 mm、兩端往後收到前輪拱前方），像蛙的下唇；左右兩端各一道往上翹的小導流角（鱗片分流片）
+    // 俯視是往前凸的寬弧（中央伸出鼻尖約 3.5 mm、兩端往後收到前輪拱前方），像蛙的下唇（整片是一塊平板）
     // 後緣 x 59.5（31 mm 輪胎前緣 x 55.5，留 ≥ 3 mm；31 mm 輪要維持可裝）
     /** @type {number[][]} 前唇俯視多邊形 (x, z)：中央 x 69.5，往兩側沿弧收到 |z| 29、x 61.5 */
     const lipPts = [];

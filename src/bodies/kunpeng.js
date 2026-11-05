@@ -423,7 +423,7 @@ export const kunpengBody = makePolyBody({
       name: 'arch-liners',
     });
 
-    // 鵬翼：覆羽板（墨黑）＋5 片飛羽（青灰、霧灰交替，往翼尖一片疊一片）＋金色羽軸細肋；翼根埋進殼面，上反 7°
+    // 鵬翼：覆羽板（墨黑）＋5 片飛羽（霧灰、留白交替，往翼尖一片疊一片）＋金色羽軸細肋；翼根埋進殼面，上反 7°
     // 覆羽板厚 2.0 mm、飛羽厚 1.6 mm，上下緣都倒 0.5 / 0.45 mm 圓角（射出件的倒角邊，避免尾翼像平板疊片）
     const covertR = bevelPlate(WING.covert, WING.y, 2.0, 0.5);
     const featherR = WING.primaries.map((p, i) => bevelPlate(featherPoly(p), WING.y + 1.1 - 0.15 * i, 1.6, 0.45));

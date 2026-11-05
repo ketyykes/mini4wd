@@ -78,14 +78,12 @@ export const massDamperParts = [
     seatDeflection_mm: 0.3,
     seatDampingRatio: 0.5,
     slideFriction_Nspm: 0.02,
-    /** 固定在底盤側面的 FRP 側板（每側 1 片）：只計質量（鎖死在底盤，不滑動） */
-    bracket: { material: 'frp', thickness_mm: 1.5, mass_g: 0.6313125 },
     compat: { requires: ['side-damper-mount'] },
     src: {
       mass_g: 'PARTS_RESEARCH 第五階段 AD 節 [T15490] 官方：黃銅 6×6×32 mm、1 顆 8.3 g',
       dims: 'AD 節 [T15490] 官方 6×6×32 mm',
       stroke_mm: '推估（AD 節）：同 damper-side-square 2 mm',
-      bracket: '推估安裝方案：外掛式水平 FRP 側板，由 chassisGeom.js sideDamperAdapter 依底盤的 sideDamperMount 計算——MA 為 19×10.85×1.5 mm（x ±9.5、z 36.4～47.25），ρ=1.85 → 約 0.572 g／片，不用墊管；組裝質量用這個計算值，bracket.mass_g 0.6313125（35×6.5×1.5 mm 板，ρ=1.85）不參與計算。不是官方板形／重量',
+      bracket: '推估安裝方案：外掛式水平 FRP 側板，由 chassisGeom.js sideDamperAdapter 依底盤的 sideDamperMount 計算——MA 為 19×10.85×1.5 mm（x ±9.5、z 36.4～47.25），ρ=1.85 → 約 0.572 g／片，不用墊管。不是官方板形／重量',
       seat: '座墊剛性、阻尼、滑動摩擦同 damper-side-square（推估）',
       rule: '[REG6] Sec.3：旋轉 / 制振器位置不限；腳註禁止在「前輪中心→前輪後緣」「後輪中心→後輪前緣」的輪胎外側裝零件（SIDE_PART_TIRE_ZONE，官方條文）；32 mm 長、中心 x = 0 → x ∈ [−16, 16]，不進入禁區',
       taiwan: 'TAIWAN_SOURCES TW20（四驅博士學校／露天，15490）',
@@ -249,15 +247,13 @@ export const massDamperParts = [
     seatDeflection_mm: 0.3,
     seatDampingRatio: 0.5,
     slideFriction_Nspm: 0.02,
-    /** FRP 側板（每側 1 片）：只計質量（鎖死在底盤，不滑動） */
-    bracket: { material: 'frp', thickness_mm: 1.5, mass_g: 0.6313125 },
     compat: { requires: ['side-damper-mount'] },
     src: {
       mass_g: 'PARTS_RESEARCH 第七階段 AL 節 [T15459] 官方：「ボウル型が1個3.4g、円筒（シリンダー）型が1個4.2g」；每側碗形＋圓筒疊成一組 = 7.6 g 為推估配置（AL 節），兩顆視為同一個滑動質量（實物「分割式」可分開滑動，簡化）',
       material: '推估：官方頁未寫材質；TAIWAN_SOURCES TW28 賣場標題稱「砲彈金球」，取黃銅 8.5 g/cm³',
       dims: '推估：官方頁沒有尺寸。直徑由兩張官方商品照（[T15459] 15459_1.jpg、[T95288] 95288_1.jpg）以同框標準件當比例尺量得——M2 彈簧墊圈外徑 4.4 mm、M2 螺帽、長螺絲（兩張照片都量得 25／20 mm＋頭）；制振器俯視直徑兩張照片分別 11.5–11.8、11.1–11.8 mm → 取 φ11.5（±0.5）。高度再由官方重量與黃銅 8.5 g/cm³ 反算：圓筒 4.2 g = 494 mm³，φ11.5 扣中心孔 φ2.2 與螺帽沉頭孔（ザグリ，推估 φ4.8 × 1.6）→ 約 5.2 mm；碗形 3.4 g = 400 mm³，半球 R5.75 加 0.5 mm 裙邊 → 約 6.2 mm；疊成一組 11.4 mm（3D 以 φ11.5 × 11.4 圓柱包住碗形＋圓筒，體積偏大、干涉判定偏保守）',
       stroke_mm: '推估（AS 節第 14 順位）：沿穩定柱滑動 2 mm',
-      bracket: '推估：共用外掛式 FRP 側板（同 damper-side-square-32：MA 為 19×10.85×1.5 mm、約 0.572 g／片，VZ 為 19×20.05×1.5 mm、約 1.057 g／片，都不用墊管；bracket.mass_g 0.6313125 不參與計算）；非官方板形／重量。穩定柱質量歸硬體總估值',
+      bracket: '推估：共用外掛式 FRP 側板（同 damper-side-square-32：MA 為 19×10.85×1.5 mm、約 0.572 g／片，VZ 為 19×20.05×1.5 mm、約 1.057 g／片，都不用墊管）；非官方板形／重量。穩定柱質量歸硬體總估值',
       seat: '座墊剛性、阻尼、滑動摩擦同 damper-side-square（推估）',
       compat: '[T15459] 官方適用表：スーパーXX、AR、FM-A、VZ、MA、ME → 含 MA，所以本專案 MA 底盤可裝（裝在側制振器座，與其他側制振器互斥）；不做成不相容零件（那會與官方適用表矛盾）',
       rule: '[REG7] Sec.3：制振器位置不限；中心 x = 0、φ11.5 → 不進入 SIDE_PART_TIRE_ZONE（官方條文）；外緣 z = ±49.75，車寬由 WIDTH 檢查',

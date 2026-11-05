@@ -15,7 +15,7 @@ import { buildArchWell, chassisBlockedNearArch } from './kitsuneNinetail.js';
 
 /** @typedef {import('./loft.js').BodyPart} BodyPart */
 
-/** 船身站位節點（x 由後到前；前後軸 x = ±40；船尾尖 −66、船首尖 73，船首 / 船尾柱另外以實體件往上捲） */
+/** 船身站位節點（x 由後到前；前後軸 x = ±40；船尾尖 −66、船首尖 73；船首的蛇頭鼻錐與船尾往上捲的鴨尾另外以實體件製作） */
 const XS = [-66, -62, -56, -48, -40, -28, -14, 0, 14, 28, 40, 48, 56, 63, 69, 73];
 /** @type {Record<string, (x: number) => number>} */
 const P = {

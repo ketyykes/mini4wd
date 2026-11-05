@@ -299,7 +299,7 @@ function spongeCellTexture() {
 /** 建立材質集合 */
 function makeMaterials() {
   return {
-    // 黑塑膠與橡膠胎粗糙度區分——底盤 ABS 半光（roughness 0.4＋薄清漆，邊緣有亮線），
+    // 黑塑膠與橡膠胎粗糙度區分——底盤 ABS 半光（roughness 0.45＋薄清漆，邊緣有亮線），
     // 深色內層件平光（0.75），輪胎橡膠全霧（0.96，見 tire）
     // 底盤用深槍灰（ref_ma-chassis 為深灰成型件，純黑時肋條與倒角在棚拍光下看不出來）
     chassis: new THREE.MeshPhysicalMaterial({ name: 'abs-chassis-gunmetal', color: 0x4a4e55, roughness: 0.45, metalness: 0.05, clearcoat: 0.3, clearcoatRoughness: 0.35 }),
@@ -566,7 +566,7 @@ function buildWheel(mats, side) {
   }
   if (spec.tire.rimStyle === 'oneway') {
     // 單向輪框——輪框與中央內轂是兩件（內轂裝在輪軸上，輪框可以相對內轂往前空轉）：
-    // 內轂比一般輪轂大（φ7.4，內含單向離合），外圈一道暗色分隔縫，轂面 8 道棘輪狀凸肋（示意內部棘爪；實際棘爪在內部看不到）
+    // 內轂比一般輪轂大（φ7.2，內含單向離合），外圈一道暗色分隔縫，轂面 8 道棘輪狀凸肋（示意內部棘爪；實際棘爪在內部看不到）
     // 內轂與輪框不同色才看得出兩件（內轂材質見 onewayHub）；分隔縫 1.0 mm、棘輪肋放大，太細或太小會看不出來（外觀示意，不影響質量 / 物理）
     const clutchHub = new THREE.Mesh(new THREE.CylinderGeometry(3.6, 3.6, 1.9, 32), mats.onewayHub);
     clutchHub.rotation.x = Math.PI / 2;
@@ -1283,8 +1283,8 @@ const buildStayPlates = (mats) => {
 
 /**
  * 擺動式制振器（球頭連桿 [T15478]）：位置取自組裝結果（asm.optional.dampers 的 seat / pos / swing.pivot，與質量、干涉、物理同一份）。
- * 支點底座（FRP 小板，鎖在後導輪板尾端）＋兩支球頭螺柱（鋼球 φ3）→ 擺臂（1.5 mm FRP 小板，前端兩個黑色樹脂球頭杯包住鋼球）→
- * 黃銅方塊 6×6×32（橫放，兩支螺絲由擺臂上方鎖進方塊）；方塊正下方的黑色止擋墊靠在後保桿頂面（座墊）
+ * 支點底座（FRP 小板，鎖在後導輪板尾端）＋兩支球頭螺柱（鋼球 φ3.2）→ 擺臂（1.5 mm FRP 小板，前端兩個黑色樹脂球頭杯包住鋼球，末端往上折成 L 形鎖片）→
+ * 黃銅方塊 6×6×32（橫放；鎖片貼在方塊朝支點那一面，兩支螺絲從鎖片外側水平鎖入方塊）；方塊正下方的黑色止擋墊靠在後保桿頂面（座墊）
  * @type {(mats: ReturnType<typeof makeMaterials>, d: any) => THREE.Group}
  */
 const buildSwingDamper = (mats, d) => {
@@ -1439,16 +1439,6 @@ const buildOptionalParts = (mats) => {
         spacer.name = 'side-damper-mount-spacer';
         grp.add(spacer);
       }
-    } else if (part.bracket) {
-      const t = part.bracket.thickness_mm;
-      const side = Math.sign(d.seat.z) || 1;
-      const plateH = h + part.stroke_mm + 1.0;
-      // 方塊與圓柱制振器（AR 側制振器）的托架都畫出來；板長 = 方塊長或圓柱直徑 + 3 mm
-      const plateLen = part.shape === 'box' ? part.length_mm + 3 : part.diameter_mm + 3;
-      const halfW = part.shape === 'box' ? part.width_mm / 2 : part.diameter_mm / 2;
-      const plate = new THREE.Mesh(new THREE.BoxGeometry(plateLen, plateH, t), [mats.frpEdge, mats.frpEdge, mats.frpEdge, mats.frpEdge, mats.frpPlate, mats.frpPlate]);
-      plate.position.set(d.seat.x, d.seat.y + plateH / 2, d.seat.z - side * (halfW + t / 2));
-      grp.add(plate);
     }
     // 長螺絲：板底的螺絲頭 → 穿過制振器 → 行程上端的墊片＋防鬆螺帽＋露出的螺絲尾（每個螺絲孔一支）
     const screwXs = part.shape === 'box' ? [-part.length_mm / 4, part.length_mm / 4] : [0];
@@ -2093,9 +2083,9 @@ function buildChassis(mats) {
   }
 
   // ---- 前後保桿：MA 立體保桿（依 ref_ma-chassis / front34 / rear34）----
-  // 中央橋接板＋兩支斜伸到導輪座的臂；臂與橋接板外緣有立起的邊框（厚度），臂下方有三角斜撐連回底盤，
-  // 兩臂之間有 X 形補強，導輪座為圓柱凸台
-  // 保桿是底盤一體的結構，外形固定用底盤的導輪座位置（換 FRP / 碳纖導輪板時保桿不變，導輪改裝在板上）
+  // 一體成形的寬保桿板（俯視帶曲線外形，兩端包住導輪座，板上有減重孔）＝上蓋＋下層鏤空肋格；
+  // 中央橋接板前緣有立起的厚邊，導輪臂下方有三角斜撐與補強片連回底盤，導輪座為圓柱凸台
+  // 保桿是底盤一體的結構，外形固定用底盤的導輪座位置（不跟著 FRP / 碳纖導輪板的導輪位置移動；換板的那一端兩側導輪臂切除，導輪改裝在板上）
   const ch = asmCur.partsBySlot.chassis;
   const rx = ch.bumperRollerX_mm ?? comp.rollerX;
   const rz = ch.bumperRollerZ_mm ?? c.frontRollerZ_mm;
@@ -2116,7 +2106,7 @@ function buildChassis(mats) {
     const bridge = bg.bridge;
     // 橋接板是「上蓋＋下方鏤空肋層」（MA 保桿底面是三角形肋格，頂面為平整上蓋）：
     // 下層 1.4 mm 開三角形／長圓口袋，上層 1.0 mm 上蓋封住 → 底面看是鏤空骨架、不會透出背景；
-    // 上蓋外緣加立起的邊框樑、中央 2 顆十字螺絲（與後方上層導輪架同等的細節）
+    // 上蓋中央 2 顆十字螺絲（與後方上層導輪架同等的細節）
     const ribLayer = extrudeXZ(bridge, bg.ribDepth, mats.chassis, bg.bridgePockets);
     ribLayer.position.y = bumperY;
     g.add(ribLayer);
@@ -2191,7 +2181,7 @@ function buildChassis(mats) {
         g.add(nut);
       }
     }
-    // 兩臂之間不做 X 形補強：斜放的細桿看起來像多出來的零件，上蓋已有安裝孔與邊框樑
+    // 兩臂之間不做 X 形補強：斜放的細桿看起來像多出來的零件，上蓋（一體寬保桿板）已有減重孔與螺絲、下層有肋格
   }
   // 後上層導輪架：塑膠標準件（沒有板件）才畫立體導輪架；FRP / 碳纖導輪板另外建模（buildStayPlates）
   const rearStay = asmCur.partsBySlot.rearStay;

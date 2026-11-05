@@ -540,13 +540,14 @@ export const mushussuGateBody = makePolyBody({
       const flap = plate([[-68.5, 0], [-71.5, half - 0.6], [-75.5, half - 0.6], [-72.5, 0], [-75.5, -(half - 0.6)], [-71.5, -(half - 0.6)]], WING.yFlap, 1.2);
       parts.push({ geometry: main, mat: 'yellow', solid: true, outline: true, name: 'wing-main' });
       parts.push({ geometry: flap, mat: 'lapis2', solid: true, outline: true, name: 'wing-flap' });
-      // 主翼前緣金線
+      // 主翼前緣金線：每側一條，沿後掠前緣從中線 (x −63, z 0) 到翼端 (x −67, z ±half)
       /** @type {THREE.BufferGeometry[]} */
       const gilt = [];
       for (const sg of [-1, 1]) {
         const len = Math.hypot(4, half);
         const b = new THREE.BoxGeometry(len, 0.5, 0.7);
-        b.rotateY(-sg * Math.atan2(half, 4) + sg * Math.PI / 2);
+        // 方塊的長邊原本沿 x；繞 y 轉 θ 後朝 (cos θ, −sin θ)，要對齊前緣方向 (4, −sg·half)
+        b.rotateY(sg * Math.atan2(half, 4));
         b.translate(-65, WING.yMain + thick + 0.2, sg * half / 2);
         gilt.push(b);
       }

@@ -1,8 +1,8 @@
 // 特洛伊木馬（body-trojan-horse，神話組・希臘）——F2 擋泥板肌肉型「往前奔馳的木馬」。
-// 側視：馬頸是從座艙往前上方斜升的引擎蓋脊（頸脊頂 40.6 在 x 50，鼻尖在 x 79），過了頭頂再往下收成馬頭與口鼻；
-// 後輪是高聳的「後腿肌肉」擋泥板（頂 38.6，比背脊高 → 兩塊後腿量體夾著下凹的臀脊），中段大幅收腰（半寬 29.5），前輪擋泥板包住 31 mm 輪；
+// 側視：馬頸是從座艙往前上方斜升的引擎蓋脊（頸脊頂 40 在 x 50，鼻尖在 x 79），過了頭頂再往下收成馬頭與口鼻；
+// 後輪是高聳的「後腿肌肉」擋泥板（頂 35.8，比背脊高 → 兩塊後腿量體夾著下凹的臀脊），中段大幅收腰（半寬 24.4），前輪擋泥板包住 31 mm 輪；
 // 鬃毛是頸脊上往後飛揚的長背鰭（3 綹，尖端往後上掃）；馬尾從兩塊後腿量體之間的臀脊長出，先往上拱再往後下方流成 3 束分開的尾毛（尾翼 / 擴散器）。
-// 頭側一對立耳、琥珀色發光眼與青銅口勒貼紙；座艙是頸根後的胡桃木士兵艙蓋；木板接縫、黑繪回紋赭紅下半車身、斜排舷窗。
+// 頭側一對立耳、琥珀色發光眼與青銅口勒貼紙；座艙是頸根後的胡桃木士兵艙蓋；木板接縫、黑繪回紋赭紅下半車身、橡木肩帶上一排圓舷窗。
 // 四個 R17.5 輪拱：31 mm 大輪不切輪拱也能裝。
 // 設計：shared/design/body-trojan-horse/DESIGN.md（MYTH_RESEARCH G1、G2）。剖面為本檔站位產生器（推估）。
 // 塗裝全為自創：淺 / 中橡木＋深胡桃木（霧面）＋黑繪陶黑與赭紅（霧面）＋青銅（金屬）；不含任何廠商 / 作品名稱、商標或文字。
@@ -25,7 +25,7 @@ const P = {
   yD: monoCurve(XS, [23, 29.4, 33.4, 35.4, 35.8, 33.4, 28.2, 26.8, 26.8, 28.4, 31.6, 33.4, 33.6, 31, 28.6, 26, 23, 20.8, 19, 17.5]),
   // 頸脊 / 座艙 / 臀脊半寬
   nw: monoCurve(XS, [5, 6, 7, 7.5, 8, 9, 10.5, 11.5, 11.5, 10.5, 9.5, 9, 9, 8.6, 9, 9.6, 9, 7.5, 6, 4.5]),
-  // 半寬：後腿 39.2（往車尾仍保持寬方的臀部，車尾 29）、腰 24.4（大幅收腰）、前輪 36.8（包住 31 mm 輪胎外緣）、x 54 以後收成馬頭鼻錐（18.5 → 6）
+  // 半寬：後腿 39.2（往車尾仍保持寬方的臀部，車尾 24）、腰 24.4（大幅收腰）、前輪 35.6（包住 31 mm 輪胎外緣）、x 54 以後收成馬頭鼻錐（18.5 → 6）
   hw: monoCurve(XS, [24, 33, 38.4, 39.2, 39.2, 34, 27, 24.4, 25, 29.6, 34.2, 35.6, 35.6, 35.4, 35.2, 18.5, 14, 11, 8.5, 6]),
   // 側裙下緣：兩輪之間 10.5（底盤側框頂 9.4 之上，包住電池艙側面）、口鼻 15
   yLow: monoCurve(XS, [21, 18.5, 15.5, 13.5, 13, 11.5, 10.5, 10.5, 10.5, 10.5, 11, 13, 13, 13.5, 14, 14.5, 15, 15, 15, 15]),
@@ -74,33 +74,30 @@ const ARCHES = [
 /** @type {(x: number, y: number) => number} 側視到最近輪拱圓周的距離（正值 = 在輪拱切口外） */
 const archRingDist = (x, y) => Math.min(...ARCHES.map((a) => Math.hypot(x - a.x, y - a.y) - a.radius));
 
-/** @type {number[]} 座艙（青銅艙蓋）前後端 x */
+/** @type {number[]} 座艙（胡桃木士兵艙蓋）前後端 x */
 const COCKPIT_X = [-8, 16];
 
+/** @type {(x: number) => number} 腰線稜高度：擋泥板頂往下 min(4.5, 0.42 × (擋泥板頂 − 下緣))；它和擋泥板頂之間是橡木肩帶 */
+const beltY = (x) => deckY(x) - Math.min(4.5, 0.42 * (deckY(x) - P.yLow(x)));
 /** @type {(x: number) => number} 赭紅側條中心高度：鼻尖 16.5 → 車尾 30（往後上掃） */
 const stripeY = (x) => lerp(16.5, 30, Math.min(1, Math.max(0, (79 - x) / 140)));
 /** @type {number} 赭紅側條半寬 */
 const STRIPE_HW = 2.8;
 
-/** @type {number[]} 舷窗 x 中心（沿側條上方斜向排列） */
+/** @type {number[]} 舷窗 x 中心（沿橡木肩帶排成一排） */
 const PORT_XS = [-19, -10.5, -2, 6.5, 15];
 /** @type {number} 舷窗半徑 */
 const PORT_R = 1.7;
-/** @type {(x: number) => number} 舷窗中心高度（側條上緣再往上 3.4 mm） */
-const portY = (x) => stripeY(x) + STRIPE_HW + 3.4;
+/** @type {(x: number) => number} 舷窗中心高度：橡木肩帶（腰線稜到擋泥板肩點 deckY − 0.5）的中線，舷窗才會落在殼面上 */
+const portY = (x) => 0.5 * (beltY(x) + deckY(x) - 0.5);
 
 /**
  * 赭紅陶土 / 淺橡木分割高度（赭紅飾帶佔下半車身 1/2，和其他木褐色車款拉開）：
- * 取「斜側條上緣」與「腰線稜下 0.6 mm」較高者——兩輪之間到前後輪拱，腰線稜以下整片是赭紅陶土＋黑繪紋帶（腰線稜上方的橡木肩帶留給斜排舷窗）；
+ * 取「斜側條上緣」與「腰線稜下 0.6 mm」較高者——兩輪之間到前後輪拱，腰線稜以下整片是赭紅陶土＋黑繪紋帶（腰線稜上方的橡木肩帶留給舷窗）；
  * 馬頭（x 54 以後）仍沿斜側條，保持木頭馬頭
  * @type {(x: number) => number}
  */
-const redTopY = (x) => {
-  const yLow = P.yLow(x);
-  const yD = deckY(x);
-  const yBelt = yD - Math.min(4.5, 0.42 * (yD - yLow));
-  return x > 54 ? stripeY(x) + STRIPE_HW : Math.max(stripeY(x) + STRIPE_HW, yBelt - 0.6);
-};
+const redTopY = (x) => (x > 54 ? stripeY(x) + STRIPE_HW : Math.max(stripeY(x) + STRIPE_HW, beltY(x) - 0.6));
 
 /** @type {(x: number, z: number) => boolean} 頸脊 / 座艙 / 背脊（中線隆起段） */
 const onCrest = (x, z) => Math.abs(z) < Math.min(P.nw(x), P.hw(x) - 7, 0.55 * P.hw(x)) + 0.5;
@@ -185,16 +182,10 @@ const materials = () => ({
   walnut: namedMaterial('paint-walnut-dark', { color: 0x5c3a21, roughness: 0.7, clearcoat: 0.04 }),
   walnut2: namedMaterial('paint-walnut-dark', { color: 0x5c3a21, roughness: 0.7, clearcoat: 0.04, side: THREE.DoubleSide }),
   // 黑繪陶的黑釉（帶光澤的釉面）
-  slip: namedMaterial('paint-slip-black', { color: 0x16110e, roughness: 0.38, clearcoat: 0.45, clearcoatRoughness: 0.2 }),
   slip2: namedMaterial('paint-slip-black', { color: 0x16110e, roughness: 0.38, clearcoat: 0.45, clearcoatRoughness: 0.2, side: THREE.DoubleSide }),
-  // 霧面黑釉（roughness > 0.5 → Blender 緞面）：亮面的黑釉斜板在算圖裡會反光成一整片白板
-  slipMatte: namedMaterial('paint-slip-black-matte', { color: 0x16110e, roughness: 0.62, clearcoat: 0.08 }),
   // 陶甕赭紅（霧面陶土）
   // 色相偏阿提卡陶土橘（0xc25a2c），和淺橡木、胡桃木的褐色拉開
   terracotta: namedMaterial('paint-terracotta-ochre', { color: 0xc25a2c, roughness: 0.66, clearcoat: 0.05 }),
-  // 青銅（真金屬：名稱含 -brass）：座艙艙蓋、尾翼
-  bronze: namedMaterial('trim-bronze-brass', { color: 0xb07a3c, roughness: 0.3, metalness: 0.8, clearcoat: 0.25 }),
-  bronze2: namedMaterial('trim-bronze-brass', { color: 0xb07a3c, roughness: 0.3, metalness: 0.8, clearcoat: 0.25, side: THREE.DoubleSide }),
   // 眼：琥珀色自發光（炫砲手法 5）
   eye: namedMaterial('lamp-eye-amber', { color: 0xffb347, emissive: 0xff8a1a, emissiveIntensity: 0.55, roughness: 0.1, clearcoat: 1.0 }),
   inner: namedMaterial('shell-inner-dark', { color: 0x1e1712, roughness: 0.85, side: THREE.BackSide }),
@@ -232,7 +223,7 @@ const CONFIG = {
   form: 'plank-wagon',
   roof: 'closed',
   wing: 'horse-tail',
-  theme: 'F2 擋泥板肌肉型的奔馳木馬：馬頸是從座艙往前上方斜升的引擎蓋脊，過了頸頂往下收成馬頭與口鼻（立耳、琥珀色發光眼、青銅口勒）、頸脊上 3 綹往後飛揚的黑釉長鬃（頸側赭紅刻線毛流）；高聳的後腿肌肉擋泥板夾著下凹的臀脊、中段大幅收腰；木色為主的配色——淺橡木木板上半車身與馬頭＋胡桃深木頸脊與士兵艙蓋＋從鼻尖往後上掃的赭紅陶土下半車身（黑繪回紋、青銅分割細線）；斜排舷窗；從臀脊往後下方甩出的 3 束馬尾毛',
+  theme: 'F2 擋泥板肌肉型的奔馳木馬：馬頸是從座艙往前上方斜升的引擎蓋脊，過了頸頂往下收成馬頭與口鼻（立耳、琥珀色發光眼、青銅口勒）、頸脊上 3 綹往後飛揚的黑釉長鬃（頸側赭紅刻線毛流）；高聳的後腿肌肉擋泥板夾著下凹的臀脊、中段大幅收腰；木色為主的配色——淺橡木木板上半車身與馬頭＋胡桃深木頸脊與士兵艙蓋＋從鼻尖往後上掃的赭紅陶土下半車身（黑繪回紋、青銅分割細線）；腰線上方橡木肩帶的一排圓舷窗；從臀脊往後下方甩出的 3 束馬尾毛',
   material: 'ABS',
   density_g_cm3: 1.05,
   wallThickness_mm: 0.8,
@@ -435,7 +426,7 @@ const CONFIG = {
       mat: 'dBronze',
       name: 'decal-split-pinstripe',
     });
-    // 斜排圓舷窗（士兵窗）：深色窗＋青銅窗框
+    // 橡木肩帶上的一排圓舷窗（士兵窗）：深色窗＋青銅窗框
     /** @type {(x: number, y: number) => number} 到最近舷窗中心的距離 */
     const portDist = (x, y) => Math.min(...PORT_XS.map((px) => Math.hypot(x - px, y - portY(px))));
     parts.push({
@@ -483,7 +474,7 @@ const CONFIG = {
     wallThickness_mm: '推估：射出 ABS 殼 0.8 mm（同其他車殼）',
     geometry: '本檔站位產生器 P（推估）：殼 x −70 → 79、馬尾毛束尖 −74.0（外框長 152.99 ≤ 153，SPEC 1.14a）；中線頂：臀脊 32.4、座艙 33 → 36、頸頂 40（x 50）→ 口鼻 21.4，鬃毛尖約 46.4（全車最高）、耳尖約 39.6、馬尾拱頂約 36.1；擋泥板頂：後腿 35.8、腰 26.8、前輪 33.6；半寬：後腿 39.2、腰 24.4、前輪 35.6（到 x 54 仍 35.2，包住輪胎外緣 34.25）、馬頭 18.5 → 6、馬尾毛束外張到 ±13.4（≤ 48.0）',
     wheelArches: '前後 R17.5（31 mm 輪胎半徑 15.5 + 2 mm，同 zeppelin / griffin），cutZFrom 21；輪拱內襯用 buildProfileLiner（沿剖面反查殼內面）',
-    windows: '舷窗：米科諾斯島浮雕陶甕木馬側面的舷窗（MYTH_RESEARCH G2）；本款 5 個 φ3.4 mm 圓窗貼紙沿側條斜排（數量與尺寸自訂）',
+    windows: '舷窗：米科諾斯島浮雕陶甕木馬側面的舷窗（MYTH_RESEARCH G2）；本款 5 個 φ3.4 mm 圓窗貼紙，沿腰線稜上方的橡木肩帶排成一排（數量與尺寸自訂）',
     headNeck: '馬頸、馬頭是殼面的一部分（中央隆起的頸脊）；鬃毛鰭（厚 1.6 mm）、耳（厚 1.8 mm）、眼、3 束馬尾毛（扁橢圓斷面，寬 3.4 → 0.9、厚 2.2 → 0.8 mm）為實心 ABS 件，質量 = 封閉體積 × 1.05 g/cm³（推估）',
     mounts: '對齊 chassis-midship 的車殼安裝點（SPEC 1.14）',
   },
