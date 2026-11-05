@@ -140,8 +140,9 @@ const materials = () => ({
   gold: namedMaterial('trim-gold-brass', { color: 0xd1a23e, metalness: 0.8, roughness: 0.3, clearcoat: 0.3 }),
   // 金蘋果座艙罩：琥珀金色的透明 PC（名稱沿用座艙罩的 pc-smoke-tint，Blender 依名稱當玻璃）
   glass: namedMaterial('pc-smoke-tint', { color: 0xd9962a, roughness: 0.05, specularIntensity: 0.6, transparent: true, opacity: 0.5, envMapIntensity: 0.5, depthWrite: false, side: THREE.DoubleSide }),
-  inner: namedMaterial('shell-inner-dark', { color: 0x161212, roughness: 0.85, side: THREE.BackSide }),
-  edge: namedMaterial('shell-edge-black', { color: 0x120e0c, roughness: 0.5, side: THREE.DoubleSide }),
+  // 殼內面與殼緣厚度面：深紅（前輪切口與輪拱邊看到的是紅色殼的內側與斷面，不是黑縫）
+  inner: namedMaterial('shell-inner-crimson', { color: 0x5a1512, roughness: 0.8, side: THREE.BackSide }),
+  edge: namedMaterial('shell-edge-crimson', { color: 0x8a1512, roughness: 0.5, side: THREE.DoubleSide }),
   mount: namedMaterial('abs-mount-black', { color: 0x222326, roughness: 0.6 }),
   liner: namedMaterial('shell-wheelwell-black', { color: 0x15110f, roughness: 0.7, side: THREE.DoubleSide }),
   dGold: decalMaterial('decal-gold-khokhloma', { color: 0xd6a640, metalness: 0.75, roughness: 0.3 }),
@@ -386,7 +387,7 @@ export const firebirdBody = makePolyBody({
     });
     // 肩線金線（沿稜線內側）
     parts.push({
-      geometry: kit.decal((x, y, z) => Math.min(0.35 - Math.abs(Math.abs(z) - (P.hw(x) - 1.2)), 69 - x, x + 56, y - P.yS(x) + 0.1)),
+      geometry: kit.decal((x, y, z) => Math.min(0.35 - Math.abs(Math.abs(z) - (P.hw(x) - 1.2)), 69 - x, x + 57.8, y - P.yS(x) + 0.1)),
       mat: 'dGold',
       name: 'decal-shoulder-edge',
     });
@@ -431,11 +432,11 @@ export const firebirdBody = makePolyBody({
       mat: 'dBerry',
       name: 'decal-blade-berries',
     });
-    // 頂面羽鱗：往後疊的扇形羽片（金色弧線 0.6 mm），座艙兩側到肩線；避開黑漆長條
+    // 頂面羽鱗：往後疊的扇形羽片（金色弧線 0.6 mm），從前輪上方一路鋪到車尾，座艙兩側到肩線；避開黑漆長條與背脊線
     parts.push({
       geometry: kit.decal((x, y, z) => {
         const az = Math.abs(z);
-        if (x < -8 || x > 47 || az < canopyHalfW(x) + 3.2 || az > P.hw(x) - 2.6 || wingTipBand(x, y, z) < 0.6 || bladeKeep(x, y, z) > -1) {
+        if (x < -57 || x > 47 || az < canopyHalfW(x) + 3.2 || az > P.hw(x) - 2.6 || wingTipBand(x, y, z) < 0.6 || bladeKeep(x, y, z) > -1) {
           return -1;
         }
         const R = 3.4;
@@ -453,6 +454,26 @@ export const firebirdBody = makePolyBody({
       }, { offset: 0.1 }),
       mat: 'dGold',
       name: 'decal-wing-scales',
+    });
+    // 車尾側壁羽鱗：後輪後方收窄的車尾側壁（輪胎內側）鋪同一種扇形羽片弧線（側視 (x, y) 格），車尾不留整片素面
+    parts.push({
+      geometry: kit.decal((x, y, z) => {
+        const az = Math.abs(z);
+        if (x > -38 || az < P.hw(x) - 0.2 || y > P.yS(x) - 0.8 || y < yRedBand(x) + 0.6 || (az > 22.8 && archRingDist(x, y) < 1.2)) {
+          return -1;
+        }
+        const R = 3;
+        const row = Math.round((y - 13) / (1.6 * R));
+        const yc = 13 + row * 1.6 * R;
+        const off = row % 2 === 0 ? 0 : R;
+        const cx = Math.round((x - off) / (2 * R)) * 2 * R + off + 0.6 * R;
+        if (x > cx) {
+          return -1;
+        }
+        return 0.3 - Math.abs(Math.hypot(x - cx, y - yc) - R);
+      }, { offset: 0.1 }),
+      mat: 'dGold',
+      name: 'decal-tail-side-scales',
     });
     // 側面飛羽：金橙羽面＋直的黑漆羽軸＋深紅斜向羽枝細紋；每片下緣 0.6 mm 黑影，讓上片疊在下片上
     /** @type {(x: number, y: number, z: number) => boolean} 側裙（肩線以下、輪拱外） */
