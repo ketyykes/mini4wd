@@ -1,8 +1,8 @@
 // 特洛伊木馬（body-trojan-horse，神話組・希臘）——F2 擋泥板肌肉型「攻城木器」：不做馬頭，木馬用木作、青銅與藏兵的元素表現。
 // 側視：前低後高的楔形——青銅包頭的攻城槌樑鼻（鼻尖頂 17.8）→ 前輪擋泥板 33 → 活板門艙蓋 34.6 → 後輪擋泥板 35.4，
 // 中段大幅收腰（半寬 24.4）；前後擋泥板都比中線高，引擎蓋與臀脊是夾在擋泥板之間的凹谷。
-// 鬃 → 鋸齒背鰭：從活板門後緣沿臀脊一路升到車尾的黑釉鋸齒鰭（5 齒，齒尖往後勾），同時是科林斯式頭盔的鬃冠；
-// 鰭尾托著一片青銅翼刃（後掠梯形、兩端小翼端板、左右各一支從後擋泥板長出的斜撐）。
+// 鬃 → 鋸齒背鰭：從活板門後緣沿臀脊一路升到車尾的鋸齒鰭（5 齒，齒尖往後勾；青銅鑲邊＋黑釉鰭心），同時是科林斯式頭盔的鬃冠；
+// 鰭尾托著一片青銅翼刃（後掠梯形、翼面一條回紋鑲嵌、兩端小翼端板、左右各一支從後擋泥板長出的斜撐）。
 // 藏兵：座艙是深胡桃木活板門，門縫一圈琥珀色火光；橡木肩帶上一排透出火光的圓舷窗（青銅窗框）；鼻側一對琥珀色斜縫頭燈。
 // 木作：淺橡木木板車身（等距接縫）、3 道青銅鉚釘箍帶橫跨車身；深胡桃木下半車身上是青銅回紋與放射尖齒紋，分割線從鼻尖往後上掃。
 // 四個 R17.5 輪拱：31 mm 大輪不切輪拱也能裝。
@@ -186,7 +186,7 @@ const materials = () => ({
   // 青銅（真金屬：名稱以 -brass 結尾，Blender 換成 metallic 1）：包頭、翼刃
   bronze: namedMaterial('trim-bronze-brass', { color: 0xb8823e, metalness: 0.8, roughness: 0.3, clearcoat: 0.3 }),
   bronze2: namedMaterial('trim-bronze-brass', { color: 0xb8823e, metalness: 0.8, roughness: 0.3, clearcoat: 0.3, side: THREE.DoubleSide }),
-  // 鋸齒鬃鰭：黑釉（帶光澤的釉面，和霧面木作做出對比）
+  // 鋸齒鬃鰭的鰭心：黑釉（帶光澤的釉面，和霧面木作做出對比）
   slip2: namedMaterial('paint-slip-black', { color: 0x16110e, roughness: 0.38, clearcoat: 0.45, clearcoatRoughness: 0.2, side: THREE.DoubleSide }),
   inner: namedMaterial('shell-inner-dark', { color: 0x1e1712, roughness: 0.85, side: THREE.BackSide }),
   edge: namedMaterial('shell-edge-walnut', { color: 0x3d2414, roughness: 0.7, side: THREE.DoubleSide }),
@@ -212,12 +212,16 @@ const segDist = (px, py, ax, ay, bx, by) => {
 
 /** @type {number[][]} 鋸齒鬃鰭的齒尖 [x, y] 與齒後缺口深度：齒尖沿一條往車尾升高的直線排列，越往後齒越大 */
 const TEETH = [
-  [-15, 36.6, 1.6],
-  [-28, 38.4, 2.4],
-  [-41, 40.1, 3.0],
-  [-54, 41.8, 3.4],
-  [-67, 43.5, 0],
+  [-15, 40, 2],
+  [-28, 42, 2.4],
+  [-41, 43.6, 2.6],
+  [-54, 45, 2.8],
+  [-67, 46, 0],
 ];
+/** @type {number} 鰭上緣青銅鑲邊的寬度：齒尖連線往下這麼多以內是青銅，再往下是黑釉鰭心 */
+const FIN_RIM = 4.4;
+/** @type {number} 鰭厚 */
+const FIN_T = 1.2;
 
 /** @type {{ y: number, thick: number, pitchDeg: number, pivot: number[], halfSpan: number }} 青銅翼刃：水平板繞 z 軸抬起後緣 */
 const WING = { y: 40.4, thick: 1.0, pitchDeg: 5, pivot: [-63, 40.4], halfSpan: 30 };
@@ -233,7 +237,7 @@ const CONFIG = {
   form: 'plank-wagon',
   roof: 'closed',
   wing: 'crest-keel-wing',
-  theme: 'F2 擋泥板肌肉型的攻城木器：青銅包頭的攻城槌樑鼻往後升成前低後高的楔形，前後擋泥板夾著凹谷狀的引擎蓋與臀脊、中段大幅收腰；鬃變成從活板門後緣一路升到車尾的黑釉鋸齒背鰭（5 齒），鰭尾托著後掠的青銅翼刃；座艙是門縫透出琥珀色火光的深胡桃木活板門，橡木肩帶上一排透光圓舷窗、鼻側一對斜縫頭燈；淺橡木木板車身＋3 道青銅鉚釘箍帶＋深胡桃木下半車身的青銅回紋',
+  theme: 'F2 擋泥板肌肉型的攻城木器：青銅包頭的攻城槌樑鼻往後升成前低後高的楔形，前後擋泥板夾著凹谷狀的引擎蓋與臀脊、中段大幅收腰；鬃變成從活板門後緣一路升到車尾的鋸齒背鰭（5 齒，青銅鑲邊＋黑釉鰭心），鰭尾托著後掠、翼面有回紋鑲嵌的青銅翼刃；座艙是門縫透出琥珀色火光的深胡桃木活板門，橡木肩帶上一排透光圓舷窗、鼻側一對斜縫頭燈；淺橡木木板車身＋3 道青銅鉚釘箍帶＋深胡桃木下半車身的青銅回紋',
   material: 'ABS',
   density_g_cm3: 1.05,
   wallThickness_mm: 0.8,
@@ -262,22 +266,28 @@ const CONFIG = {
     /** @type {(x: number, z: number) => number} 殼面高度 */
     const top = (x, z) => kit.surf.topY(x, z);
 
-    // ── 鬃 → 鋸齒背鰭：活板門後緣（x −2）沿臀脊到車尾，齒尖往後勾（缺口在齒尖前方），厚 1.3，根部埋進殼面 1 mm ──
+    // ── 鬃 → 鋸齒背鰭：活板門後緣（x −2）沿臀脊到車尾，齒尖往後勾（缺口在齒尖前方），根部埋進殼面 1 mm；
+    //    分成兩片同厚的立板：上緣一圈青銅鑲邊（含全部鋸齒），裡面是黑釉鰭心，深色中央脊上才看得出鰭的輪廓 ──
     {
-      /** @type {number[][]} 上緣（由前往後） */
-      const pts = [[-2, P.yN(-2) - 1], [-3.2, P.yN(-3.2) + 0.9]];
+      /** @type {number[][]} 鰭心上緣（齒尖連線往下 FIN_RIM），由前往後 */
+      const coreTop = TEETH.map(([tx, ty]) => [tx, ty - FIN_RIM]);
+      coreTop[coreTop.length - 1] = [-65.2, 41.4];
+      /** @type {number[][]} 鰭心外形：前端從臀脊（x −12）起，後緣比鰭的後緣內縮約 2 mm */
+      const core = [[-12, P.yN(-12) - 1], ...coreTop, [-66.6, 36.2], [-64.6, P.yN(-64.6) - 1]];
+      for (const x of [-56, -48, -40, -30, -20]) {
+        core.push([x, P.yN(x) - 1]);
+      }
+      /** @type {number[][]} 鑲邊外形：鋸齒上緣（由前往後）→ 後緣 → 沿鰭心上緣回到前端 */
+      const rim = [[-2, P.yN(-2) - 1], [-3.2, P.yN(-3.2) + 0.9]];
       for (const [tx, ty, notch] of TEETH) {
-        pts.push([tx, ty]);
+        rim.push([tx, ty]);
         if (notch > 0) {
-          pts.push([tx + 2.4, ty - notch]);
+          rim.push([tx + 2.4, ty - notch]);
         }
       }
-      // 後緣往前下收回臀脊，再沿臀脊（埋 1 mm）回到起點
-      pts.push([-68.8, 36], [-66, P.yN(-66) - 1]);
-      for (const x of [-56, -48, -40, -30, -20, -8]) {
-        pts.push([x, P.yN(x) - 1]);
-      }
-      parts.push({ geometry: finPlate(pts, 0, 1.3), mat: 'slip2', solid: true, outline: true, name: 'crest-saw-fin' });
+      rim.push([-68.8, 36], [-66, P.yN(-66) - 1], [-64.6, P.yN(-64.6) - 1], [-66.6, 36.2], ...coreTop.slice().reverse(), [-12, P.yN(-12) - 1], [-8, P.yN(-8) - 1]);
+      parts.push({ geometry: finPlate(rim, 0, FIN_T), mat: 'bronze2', solid: true, outline: true, name: 'crest-saw-fin-rim' });
+      parts.push({ geometry: finPlate(core, 0, FIN_T), mat: 'slip2', solid: true, outline: true, name: 'crest-saw-fin-core' });
     }
     // ── 青銅翼刃：後掠梯形平板（前緣中央 x −57、翼端 −62.5，後緣 −73），後緣抬高 5°，由鋸齒鰭尾托住；
     //    兩端是往後上翹的小翼端板，左右各一支從後擋泥板頂長出的後掠斜撐（根部埋進殼面 1 mm）──
@@ -297,6 +307,30 @@ const CONFIG = {
         geos.push(finPlate([[-54, top(-54, zs) - 1], [-63.5, bladeY(-63.5) + 0.3], [-67.5, bladeY(-67.5) + 0.3], [-59, top(-59, zs) - 1]], zs, 1.2));
       }
       parts.push({ geometry: mergeGeos(geos), mat: 'bronze2', solid: true, outline: true, name: 'bronze-blade-wing' });
+      // 翼面上的回紋鑲嵌：沿翼展一條深色連續回紋帶（週期 7 mm、高 4 mm、線寬 0.7 mm，和下半車身的回紋同一個單元），
+      // 用貼在翼面上 0.14 mm 厚的薄片拼成（只算裝飾，不計質量），跟翼面一起抬高後緣
+      /** @type {THREE.BufferGeometry[]} */
+      const inlay = [];
+      /** @type {(u0: number, v0: number, u1: number, v1: number) => void} 回紋線段（u 沿翼展、v 從帶下緣往前緣） */
+      const stroke = (u0, v0, u1, v1) => {
+        const g = new THREE.BoxGeometry(Math.abs(v1 - v0) + 0.7, 0.14, Math.abs(u1 - u0) + 0.7);
+        g.translate(-71.6 + (v0 + v1) / 2, y + thick + 0.09, -28 + (u0 + u1) / 2);
+        inlay.push(g);
+      };
+      stroke(0, 0, 56, 0);
+      stroke(0, 5.4, 56, 5.4);
+      for (let k = 0; k < 8; k++) {
+        const u = 7 * k;
+        stroke(u + 0.8, 0, u + 0.8, 4);
+        stroke(u + 0.8, 4, u + 5.2, 4);
+        stroke(u + 5.2, 4, u + 5.2, 1.6);
+        stroke(u + 5.2, 1.6, u + 3, 1.6);
+      }
+      const meander = mergeGeos(inlay);
+      meander.translate(-pivot[0], -pivot[1], 0);
+      meander.rotateZ((-pitchDeg * Math.PI) / 180);
+      meander.translate(pivot[0], pivot[1], 0);
+      parts.push({ geometry: meander, mat: 'dGroove', name: 'decal-wing-meander' });
     }
 
     // 輪拱內襯（前後）：沿剖面反查殼內面，擋住從輪拱看進去的殼內空腔
@@ -458,7 +492,7 @@ const CONFIG = {
     geometry: '本檔站位產生器 P（推估）：殼 x −70 → 77、翼端板後緣 −74.2；中線頂：臀脊 32.4、活板門 34.6（x 4）→ 鼻尖 17.8；擋泥板頂：後輪 35.4、腰 26.6、前輪 33；半寬：車尾 17、後輪 39.6、腰 23.6、前輪 35.6（到 x 50 仍 35.2，包住輪胎外緣 34.25）、攻城槌樑 16 → 9',
     wheelArches: '前後 R17.5（31 mm 輪胎半徑 15.5 + 2 mm，同 zeppelin / griffin），cutZFrom 21；輪拱內襯用 buildProfileLiner（沿剖面反查殼內面）',
     windows: '舷窗：米科諾斯島浮雕陶甕木馬側面的舷窗（MYTH_RESEARCH G2）；本款 5 個 φ3.4 mm 圓窗貼紙，沿腰線稜上方的橡木肩帶排成一排（數量與尺寸自訂）',
-    crestWing: '鋸齒背鰭（厚 1.3 mm，齒尖 36.6 → 43.5）、青銅翼刃（厚 1.0 mm、翼展 60、後緣抬高 5°）、翼端板與斜撐（厚 1.2 mm）為實心 ABS 件，質量 = 封閉體積 × 1.05 g/cm³（推估）',
+    crestWing: '鋸齒背鰭（厚 1.2 mm，齒尖 40 → 46，青銅鑲邊與黑釉鰭心兩片同厚）、青銅翼刃（厚 1.0 mm、翼展 60、後緣抬高 5°）、翼端板與斜撐（厚 1.2 mm）為實心 ABS 件，質量 = 封閉體積 × 1.05 g/cm³（推估）',
     mounts: '對齊 chassis-midship 的車殼安裝點（SPEC 1.14）',
   },
 };
