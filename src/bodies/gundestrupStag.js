@@ -24,14 +24,16 @@ const P = {
   // 半寬（俯視）：細尖的臀部 → 寬厚的後腿（47–48，罩住後輪）→ 細腰 30（座艙段；坐在底盤側壁 z 35 內側上方）→ 隆起的前胸 / 肩 48（x 22）→ 前輪 40 → 頸部收窄 19 → 鹿頭兩頰 22 → 鹿吻
   // iter-114：最寬 48 → 47.6（車殼外框半寬 ≤ 48.0）；鹿頭段改成單調收窄（原本頸 19 → 兩頰 22 → 18 的凹凸讓銀面反光起皺）、前輪段 40 平台改成連續收斜
   // iter-121：鹿吻收得更細長（x 60 → 80 半寬 30.5 → 8；細長的鹿吻＋低鼻，也讓俯視 IoU 和 sleipnir 拉開）
-  hw: monoCurve(XS, [4, 10, 36, 47.6, 47.6, 46.8, 43.5, 33, 30.5, 32, 38, 47.6, 46.5, 43.5, 39.5, 35, 30, 24.5, 19.6, 15.6, 12, 8]),
+  // iter-129（評審「鼻端仍是圓鈍的 GT 頭」）：x 64 → 80 收成楔形尖鼻（鼻尖半寬 8 → 3.5），鼻尖 x 仍是 80
+  hw: monoCurve(XS, [4, 10, 36, 47.6, 47.6, 46.8, 43.5, 33, 30.5, 32, 38, 47.6, 46.5, 43.5, 39.5, 35, 30, 22.5, 17, 12, 7.2, 3.5]),
   // 中線頂（背線）：臀部 29 → 臀頂 37 → 背部低處 35（座艙罩）→ 鬐甲（肩峰）42 → 頸、額往前下到鼻尖 21.5
   // iter-114：鬐甲到鼻尖改成沿車長單純外凸（斜率一路變陡，原本 x 64 後斜率變緩 → 頸部下凹、反光像揉皺的鋁箔）；背部低處 35 → 36.2（座艙兩側的鞍形凹面變淺）
   // iter-121（第九階段）：整條背線壓低（鬐甲 41.4 → 37.5、背部 36.2 → 34），鹿吻往前一路下斜到鼻尖 16.5（LG1 低尖鼻 V3）；鬐甲到鼻尖仍是斜率一路變陡的單純外凸
-  yTop: monoCurve(XS, [27, 31, 33, 34, 34.5, 34.5, 34.3, 34, 34, 34.5, 35.5, 36.5, 37.5, 37.3, 34.8, 32.6, 30.6, 28.4, 26, 23.4, 20.2, 16.5]),
+  // iter-129：鼻端往下壓（x 60 30.6 → 28.6、x 72 23.4 → 20、鼻尖 16.5 → 14.6），側視是一路往前下壓的楔形
+  yTop: monoCurve(XS, [27, 31, 33, 34, 34.5, 34.5, 34.3, 34, 34, 34.5, 35.5, 36.5, 37.5, 37.3, 34.8, 31.6, 28.6, 25.8, 22.8, 20, 17.2, 14.6]),
   // 剖面最寬處的高度
   // iter-121：鹿吻段的最寬處跟著鼻尖往下收（19 → 14.2），鼻端變成低而扁的鏟形吻
-  ySh: monoCurve(XS, [24, 24, 23, 22.5, 22, 22, 22, 21.5, 21.5, 21.5, 21.5, 22, 22.5, 22.5, 22, 21, 20, 19, 17.8, 16.6, 15.4, 14.2]),
+  ySh: monoCurve(XS, [24, 24, 23, 22.5, 22, 22, 22, 21.5, 21.5, 21.5, 21.5, 22, 22.5, 22.5, 22, 20.6, 19.2, 17.8, 16.6, 15.6, 14.8, 14]),
   // 側裙下緣：中段 11（底盤側框段由 loft.js 自動讓到 9.9），臀部抬高離開後導輪，鹿吻下緣往上收
   // iter-121：鹿吻下緣 18 → 13（低鼻；仍在底盤前保險桿之上，以 body-check 間隙驗證）
   yLow: monoCurve(XS, [22, 19, 15, 13, 12, 12, 11.5, 11, 11, 11, 11, 11.5, 12, 12, 12, 12.2, 12.4, 12.6, 12.8, 13, 13, 13]),
@@ -87,9 +89,26 @@ const ARCHES = [
   { x: -40, y: 13, radius: 17.5, cutZFrom: 32 },
 ];
 
+/** @type {{ cx: number, cy: number, a: number, b: number, tilt: number }} iter-129：前輪半罩開口（側視斜橢圓：長軸由後下往前上傾 40°） */
+const FRONT_CUT = { cx: 39, cy: 22, a: 17, b: 14, tilt: (50 * Math.PI) / 180 };
+
 /**
- * iter-128（第十階段 F3 半罩露輪）：前輪罩後半切開，切口是階梯形（和 yaga 的斜切不同）：
- * x 24 → 32 只切到 y 22（輪胎後下緣露出），x 32 → 44 一路切到 y 40（翻過肩線，俯視看得到胎面）；只切 |z| ≥ 26（輪胎內側面 22.75 之外）。
+ * 前輪半罩開口的側視距離近似（斜橢圓；負值 = 開口內）
+ * @type {(x: number, y: number) => number}
+ */
+const frontCutSide = (x, y) => {
+  const { cx, cy, a, b, tilt } = FRONT_CUT;
+  const dx = x - cx;
+  const dy = y - cy;
+  const u = dx * Math.cos(tilt) + dy * Math.sin(tilt);
+  const v = -dx * Math.sin(tilt) + dy * Math.cos(tilt);
+  return (Math.hypot(u / a, v / b) - 1) * b;
+};
+
+/**
+ * iter-128（第十階段 F3 半罩露輪）：前輪罩後半切開露輪；只切 |z| ≥ 26（輪胎內側面 22.75 之外）。
+ * iter-129（評審「黑色方形切口像建模破洞」）：iter-128 的直角階梯改成斜橢圓開口——上緣是一條從前輪拱前上方（約 x 47、y 31）
+ * 往後下方掠到輪拱後緣（約 x 24、y 12）的圓滑弧線，和輪拱圓周接成一個往後掠的半罩開口；邊緣加金色細邊。
  * 負值 = 開口內
  * @type {(x: number, y: number, z: number) => number}
  */
@@ -97,8 +116,7 @@ const frontStepCutSd = (x, y, z) => {
   if (Math.abs(z) < 26) {
     return 10;
   }
-  const step = Math.min(Math.max(x - 32, y - 22), Math.max(32 - x, y - 40));
-  return Math.max(24 - x, x - 44, 12 - y, step);
+  return Math.max(12 - y, frontCutSide(x, y));
 };
 
 /**
@@ -242,6 +260,10 @@ const materials = () => ({
   // 紅琺瑯（亮面，全車少數的高光澤非金屬部位）
   enamel: namedMaterial('paint-enamel-red', { color: 0xb0302b, roughness: 0.22, clearcoat: 1.0 }),
   inner: namedMaterial('shell-inner-dark', { color: 0x1b1c1f, roughness: 0.85, side: THREE.BackSide }),
+  // iter-129：殼內面改成銀釜內側的暗銀灰（前輪半罩開口裡看到的是銀色殼的內側，不是黑塊）
+  innerSilver: namedMaterial('shell-inner-silver', { color: 0x7d8086, roughness: 0.55, side: THREE.BackSide }),
+  // iter-129：鹿角間翼板（不透明拋光銀；名稱不含 glass / smoke）
+  wingSilver: namedMaterial('trim-silver-wing-alu', { color: 0xbcc0c5, roughness: 0.3, metalness: 0.85, clearcoat: 0.2, side: THREE.DoubleSide }),
   edge: namedMaterial('shell-edge-patina', { color: 0x3a3c40, roughness: 0.6, side: THREE.DoubleSide }),
   cockpit: namedMaterial('shell-inner-dark', { color: 0x16171a, roughness: 0.85, side: THREE.DoubleSide }),
   glass: namedMaterial('pc-smoke-tint', { color: 0x2e3238, roughness: 0.05, specularIntensity: 0.6, transparent: true, opacity: 0.45, envMapIntensity: 0.5, depthWrite: false, side: THREE.DoubleSide }),
@@ -348,7 +370,7 @@ export const gundestrupStagBody = makePolyBody({
     { mat: 'patina', keep: (x, y) => P.ySh(x) - 2 - y },
     { mat: 'silver', keep: () => 1 },
   ],
-  mats: { inner: 'inner', edge: 'edge', cap: 'patina2', cockpit: 'cockpit', glass: 'glass', mount: 'mount' },
+  mats: { inner: 'innerSilver', edge: 'edge', cap: 'patina2', cockpit: 'cockpit', glass: 'glass', mount: 'mount' },
   materials,
   extras: (kit) => {
     /** @type {BodyPart[]} */
@@ -438,19 +460,25 @@ export const gundestrupStagBody = makePolyBody({
     // iter-128：鹿角之間的銀色後翼（弦 15、翼展 ±39，前緣低後緣高；兩端插進鹿角主幹）
     {
       const w = STAG_WING;
-      /** @type {number[][]} */
-      const up = [];
-      /** @type {number[][]} */
-      const lo = [];
-      for (let i = 0; i <= 10; i++) {
-        const q = i / 10;
-        const th = w.thick * (q < 0.3 ? 0.6 + (0.4 * q) / 0.3 : 1 - (0.7 * (q - 0.3)) / 0.7);
-        const x = lerp(w.le[0], w.te[0], q);
-        const y = lerp(w.le[1], w.te[1], q);
-        up.push([x, y + 0.6 * th]);
-        lo.push([x, y - 0.4 * th]);
-      }
-      parts.push({ geometry: finPlate([...up, ...lo.reverse()], 0, 2 * w.span), mat: 'silver2', solid: true, outline: true, name: 'stag-wing' });
+      /** @type {(q0: number, q1: number) => number[][]} 弦長 q0 → q1 段的翼斷面多邊形 */
+      const section = (q0, q1) => {
+        /** @type {number[][]} */
+        const up = [];
+        /** @type {number[][]} */
+        const lo = [];
+        for (let i = 0; i <= 6; i++) {
+          const q = lerp(q0, q1, i / 6);
+          const th = w.thick * (q < 0.3 ? 0.6 + (0.4 * q) / 0.3 : 1 - (0.7 * (q - 0.3)) / 0.7);
+          const x = lerp(w.le[0], w.te[0], q);
+          const y = lerp(w.le[1], w.te[1], q);
+          up.push([x, y + 0.6 * th]);
+          lo.push([x, y - 0.4 * th]);
+        }
+        return [...up, ...lo.reverse()];
+      };
+      // iter-129（評審「半透明白色翼板像玻璃」）：翼板改成不透明拋光銀，前後緣各 1.2 mm 鍍金邊（銀釜的鍍金邊框）
+      parts.push({ geometry: finPlate(section(0.08, 0.92), 0, 2 * w.span), mat: 'wingSilver', solid: true, outline: true, name: 'stag-wing' });
+      parts.push({ geometry: mergeGeos([finPlate(section(0, 0.08), 0, 2 * w.span), finPlate(section(0.92, 1), 0, 2 * w.span)]), mat: 'gilt', solid: true, outline: true, name: 'stag-wing-gilt-edges' });
     }
 
     // 鹿吻外圍的扭絞 torc（C8）：沿 x 62 → 65 的殼面外 0.9 mm 繞過鹿吻上方，兩端在側裙下緣上方收成圓球頭；
@@ -485,7 +513,7 @@ export const gundestrupStagBody = makePolyBody({
 
     // 鹿眼：金色眼圈＋深藍玻璃眼（鹿吻側面）
     /** @type {{ x: number, y: number }} 鹿眼中心（側視） */
-    const EYE = { x: 69.5, y: 20.6 }; // iter-121：鹿吻壓低，眼睛 23.6 → 20.6
+    const EYE = { x: 69, y: 18.4 }; // iter-121：鹿吻壓低，眼睛 23.6 → 20.6；iter-129：鼻端再壓低，20.6 → 18.4
     /** @type {(x: number, y: number, z: number) => number} 到鹿眼中心的側視距離（只在側面） */
     const eyeD = (x, y, z) => (Math.abs(z) < 8 ? 10 : Math.hypot(x - EYE.x, y - EYE.y));
     parts.push({ geometry: kit.decal((x, y, z) => Math.min(eyeD(x, y, z) - 1.7, 2.45 - eyeD(x, y, z))), mat: 'dGold', name: 'decal-eye-ring' });
@@ -547,6 +575,18 @@ export const gundestrupStagBody = makePolyBody({
       }),
       mat: 'dGold',
       name: 'decal-shoulder-line',
+    });
+    // iter-129：前輪半罩開口邊緣的金色細邊（寬約 0.75 mm，沿斜橢圓開口外緣）
+    parts.push({
+      geometry: kit.decal((x, y, z) => {
+        if (Math.abs(z) < 26 || y < 12.5) {
+          return -1;
+        }
+        const d = frontCutSide(x, y);
+        return Math.min(d - 0.05, 0.8 - d);
+      }, { offset: 0.12 }),
+      mat: 'dGold',
+      name: 'decal-front-cut-gilt-rim',
     });
     parts.push({
       geometry: kit.decal((x, y, z) => {
