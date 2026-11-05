@@ -1,7 +1,7 @@
 // 伊什塔爾城門（body-mushussu-gate，神話組・美索不達米亞）：把巴比倫的伊什塔爾城門做成一台蓄勢待發的低趴四驅車（LG1 暗器生物型的姿態）——
 // 前低後高的楔形車身、前後翼子板外鼓而腰身內收、細長的低尖鼻；城門的語彙全部做成車的零件與塗裝，車上沒有任何動物的頭、臉、腳：
 // 車尾＝城門本身：兩片從後翼子板長出來的「城垛鰭刀」（翼端板，上緣是往後上挑的刀背、後緣是三階城垛缺口）當門塔，
-// 中間一片後緣帶城垛齒的黃釉主翼當門楣；座艙是車頂上一個往前的拱門形（城門拱道，煙燻金）；輪拱是黃釉拱框。
+// 中間一片後緣帶城垛齒的黃釉主翼當門楣；座艙是車頂上一個往前的拱門形（城門拱道）的煙燻琥珀透明罩；輪拱是黃釉拱框。
 // 塗裝：青金石藍釉磚（錯縫磚縫）、車頂中線從鼻尖貫穿到車尾的白瓣金心玫瑰花飾帶、側牆的大玫瑰圓徽拖著一條往後上掃的金色鱗紋色帶
 // （穆修胡修只留抽象的鱗紋）、上下黃釉磚邊框、鼻端兩側沿肩線的琥珀色細長頭燈。
 // 設計：shared/design/body-mushussu-gate/DESIGN.md（典故與文物對應 MYTH_RESEARCH 第 4 節 M1–M5）。剖面為本檔站位產生器（推估）。
@@ -26,7 +26,7 @@ const P = {
   // 俯視半寬（肩稜線）：前後輪上方外鼓的翼子板 44、腰身內收到 35（可樂瓶腰）；車尾收到 24（城垛鰭刀立在兩側）；
   // 前輪拱之後收成細長的低尖鼻（x 60 → 74 半寬 22 → 6.5）
   hw: monoCurve(XS, [24, 29, 34.5, 40.5, 44, 41, 36.8, 35, 36.8, 41, 44, 40.5, 31, 22, 13.5, 9.5, 6.5]),
-  // 中線甲板高度（不含座艙鼓包）：前低後高的楔形——最高點在後翼子板之間（x −28，33.9），往後只緩降到車尾 28.5，往前一路斜下到鼻尖 15.3（LG1 低尖鼻 V3）
+  // 中線甲板高度（座艙罩是另外的透明件）：前低後高的楔形——最高點在後翼子板之間（x −28，33.9），往後只緩降到車尾 28.5，往前一路斜下到鼻尖 15.3（LG1 低尖鼻 V3）
   yTop: monoCurve(XS, [28.5, 29.6, 31, 32.4, 33.4, 33.9, 33.6, 33, 32, 30.9, 30, 27.4, 24.6, 22.3, 19.5, 17.5, 15.3]),
   // 肩稜線（頂面與側牆交界，銳利）：輪上 29.6–30.4、腰 27.2（翼子板比腰身高，R17.5 輪拱頂 30.5 切進肩線，俯視在四個輪位留下缺口）
   yS: monoCurve(XS, [25.5, 26.6, 28, 29.6, 30.4, 29.4, 27.8, 27.2, 27.6, 29, 29.6, 26.6, 23.2, 20.6, 17.8, 16.2, 14.2]),
@@ -36,19 +36,11 @@ const P = {
 
 /** @type {number} 側牆往下的外張量（牆腳比肩線外 0.6 mm） */
 const FLARE = 0.6;
-/** @type {{ x0: number, x1: number, hw: number, rise: number }} 拱門形座艙（俯視）：後緣 x0、拱心 x1、半寬（拱頂半徑）、鼓包高度 */
-const CABIN = { x0: -24, x1: 0, hw: 7.5, rise: 3.4 };
-/**
- * 座艙鼓包：中線殼頂在座艙段（x −27 → 11）隆起成一個低矮的座艙罩，前後平滑收回甲板
- * @type {(x: number) => number}
- */
-const cabinRise = (x) => {
-  const q = (x - (CABIN.x0 - 3)) / (CABIN.x1 + CABIN.hw + 3.5 - (CABIN.x0 - 3));
-  return q <= 0 || q >= 1 ? 0 : CABIN.rise * Math.sin(Math.PI * q) ** 1.2;
-};
+/** @type {{ x0: number, x1: number, hw: number, rise: number }} 拱門形座艙（俯視）：後緣 x0、拱心 x1、半寬（拱頂半徑）、座艙罩高度 */
+const CABIN = { x0: -24, x1: 0, hw: 7.5, rise: 4.2 };
 
 /**
- * 半剖面 7 點：中線（座艙段加上鼓包）→ 微圓的頂面 → 肩稜線（銳利）→ 幾乎直立的側牆（鱗紋色帶、邊框的牆面）→ 側裙下緣
+ * 半剖面 7 點：中線 → 微圓的頂面 → 肩稜線（銳利）→ 幾乎直立的側牆（鱗紋色帶、邊框的牆面）→ 側裙下緣
  * @type {(x: number) => number[][]}
  */
 const profile = (x) => {
@@ -58,7 +50,7 @@ const profile = (x) => {
   const h = P.hw(x);
   const d = t - s;
   return [
-    [0, t + cabinRise(x)],
+    [0, t],
     [0.34 * h, t - 0.1 * d],
     [0.64 * h, t - 0.36 * d],
     [0.87 * h, t - 0.72 * d],
@@ -171,6 +163,43 @@ const sideGraphicSd = (x, y) => Math.min(Math.hypot(x - ROUNDEL.x, y - ROUNDEL.y
  */
 const cabinSd = (x, z) => (x > CABIN.x1 ? Math.hypot(x - CABIN.x1, z) - CABIN.hw : Math.max(Math.abs(z) - CABIN.hw, CABIN.x0 - x));
 
+/**
+ * 拱門形座艙罩：透明薄殼，俯視和 cabinSd 的拱門同形，橫斷面是半橢圓弧，高度從後緣升到中段 CABIN.rise 再往拱頂收回 0；
+ * 底緣沉到甲板下 0.4 mm。14 × 8 段
+ * @type {() => THREE.BufferGeometry}
+ */
+const buildCabinDome = () => {
+  const nx = 14;
+  const nt = 8;
+  const xEnd = CABIN.x1 + CABIN.hw;
+  /** @type {number[]} */
+  const pos = [];
+  /** @type {number[]} */
+  const idx = [];
+  for (let i = 0; i <= nx; i++) {
+    const q = i / nx;
+    const x = lerp(CABIN.x0, xEnd, q);
+    const w = x > CABIN.x1 ? Math.sqrt(Math.max(0, CABIN.hw ** 2 - (x - CABIN.x1) ** 2)) : CABIN.hw;
+    const h = CABIN.rise * Math.sin(Math.PI * q) ** 0.6;
+    for (let j = 0; j <= nt; j++) {
+      const a = (Math.PI * j) / nt;
+      pos.push(x, P.yTop(x) - 0.4 + h * Math.sin(a), w * Math.cos(a));
+    }
+  }
+  for (let i = 0; i < nx; i++) {
+    for (let j = 0; j < nt; j++) {
+      const a = i * (nt + 1) + j;
+      const b = a + nt + 1;
+      idx.push(a, a + 1, b, a + 1, b + 1, b);
+    }
+  }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  g.setIndex(idx);
+  g.computeVertexNormals();
+  return g;
+};
+
 /** @type {() => Record<string, THREE.Material>} */
 const materials = () => ({
   // 青金石藍釉磚（亮面釉：roughness ≤ 0.4）
@@ -193,8 +222,8 @@ const materials = () => ({
   dWhite: decalMaterial('decal-white-glaze', { color: 0xf2efe6, roughness: 0.38 }),
   dGold: decalMaterial('decal-gold', { color: 0xc8a24a, roughness: 0.32, metalness: 0.7 }),
   dNavy: decalMaterial('decal-gate-shadow-navy', { color: 0x0f2347, roughness: 0.6 }),
-  // 拱門形座艙：煙燻金（V5 有色不透明小座艙）；粗糙度取 0.45，強光下不會整片反白
-  dCabin: decalMaterial('decal-cockpit-smoked-gold', { color: 0x7d5a1c, roughness: 0.45, metalness: 0.55 }),
+  // 拱門形座艙罩：煙燻琥珀色的透明 PC（名稱用座艙罩的 pc-smoke-tint，Blender 依名稱當玻璃）
+  glass: namedMaterial('pc-smoke-tint', { color: 0xc9861f, roughness: 0.05, specularIntensity: 0.6, transparent: true, opacity: 0.5, envMapIntensity: 0.5, depthWrite: false, side: THREE.DoubleSide }),
   // 頭燈：琥珀色細長燈條（低強度自發光，不過曝）
   lamp: decalMaterial('lamp-head-amber', { color: 0xffb440, emissive: 0xff8a10, emissiveIntensity: 0.35, roughness: 0.3 }),
   mount: namedMaterial('abs-mount-black', { color: 0x222326, roughness: 0.6 }),
@@ -292,7 +321,7 @@ export const mushussuGateBody = makePolyBody({
   form: 'brick-gate',
   roof: 'closed',
   wing: 'crenel-tail',
-  theme: '前低後高、翼子板外鼓而腰身內收的楔形車披上伊什塔爾城門的釉磚：青金石藍釉磚車身、車頂中線從鼻尖貫穿到車尾的白瓣金心玫瑰花飾帶、拱門形的煙燻金座艙（亮金框）、側牆的大玫瑰圓徽拖著往後上掃的金色鱗紋色帶、上下黃釉磚邊框與瀝青黑裙帶、輪拱黃釉拱框、鼻端兩側的琥珀色細長頭燈；車尾是城門本身——兩片從後翼子板長出的城垛鰭刀（刀背金邊、後緣三階城垛缺口）夾著後緣帶城垛齒的黃釉主翼',
+  theme: '前低後高、翼子板外鼓而腰身內收的楔形車披上伊什塔爾城門的釉磚：青金石藍釉磚車身、車頂中線從鼻尖貫穿到車尾的白瓣金心玫瑰花飾帶、拱門形的煙燻琥珀透明座艙罩（亮金框，罩下深藍底與一朵玫瑰花飾）、側牆的大玫瑰圓徽拖著往後上掃的金色鱗紋色帶、上下黃釉磚邊框與瀝青黑裙帶、輪拱黃釉拱框、鼻端兩側的琥珀色細長頭燈；車尾是城門本身——兩片從後翼子板長出的城垛鰭刀（刀背金邊、後緣三階城垛缺口）夾著後緣帶城垛齒的黃釉主翼',
   material: 'ABS',
   density_g_cm3: 1.05,
   wallThickness_mm: 0.8,
@@ -451,8 +480,24 @@ export const mushussuGateBody = makePolyBody({
       name: 'decal-roof-joints',
     });
 
-    // 拱門形座艙（城門拱道，拱頂朝車頭）：煙燻金＋亮金框（寬 1.4）＋外圈黑細線
-    parts.push({ geometry: kit.decal((x, y, z) => (onTop(x, y) ? -cabinSd(x, z) : -1), { offset: 0.12 }), mat: 'dCabin', name: 'decal-cockpit-gateway' });
+    // 拱門形座艙（城門拱道，拱頂朝車頭）：煙燻琥珀透明罩；罩下的殼面是深藍底＋一朵放大的白瓣金心玫瑰花飾（透過罩看得到），外圍亮金框（寬 1.4）＋黑細線
+    parts.push({ geometry: buildCabinDome(), mat: 'glass', shell: true, renderOrder: 3, name: 'canopy-dome' });
+    parts.push({ geometry: kit.decal((x, y, z) => (onTop(x, y) ? -cabinSd(x, z) : -1), { offset: 0.12 }), mat: 'dNavy', name: 'decal-cockpit-floor' });
+    /** @type {(x: number, z: number) => { petal: number, core: number }} 座艙底的玫瑰花飾（車頂花飾的 2.6 倍，中心 x −10） */
+    const floorRosette = (x, z) => {
+      const r = rosetteSd((x + 10) / 2.6, z / 2.6);
+      return { petal: r.petal * 2.6, core: r.core * 2.6 };
+    };
+    parts.push({
+      geometry: kit.decal((x, y, z) => (onTop(x, y) ? Math.min(-cabinSd(x, z) - 0.6, -floorRosette(x, z).petal) : -1), { offset: 0.14 }),
+      mat: 'dWhite',
+      name: 'decal-cockpit-rosette-petals',
+    });
+    parts.push({
+      geometry: kit.decal((x, y, z) => (onTop(x, y) ? -floorRosette(x, z).core : -1), { offset: 0.16 }),
+      mat: 'dGold',
+      name: 'decal-cockpit-rosette-core',
+    });
     parts.push({
       geometry: kit.decal((x, y, z) => {
         if (!onTop(x, y)) {
@@ -525,10 +570,10 @@ export const mushussuGateBody = makePolyBody({
     density_g_cm3: 'SPEC 1.14：ABS 約 1.05 g/cm³（推估）',
     wallThickness_mm: '推估：射出 ABS 殼 0.8 mm（同其他款）',
     geometry:
-      '本檔站位產生器 P（推估，前低後高的楔形車殼）：殼 x −72 → 74（細長低尖鼻），鰭刀後緣 −76；肩線半寬 翼子板 44、腰 35（＋牆腳外張 0.6，外框半寬 ≤ 48.0）、鼻 22（x 60）→ 鼻端 6.5、車尾 24；甲板最高 33.9（x −28）、座艙鼓包頂約 36.6、鼻端 15.3、車尾 28.5，鰭刀刀尖 45.4（全車最高）；肩線 27.2–30.4；側裙下緣 10.5（包住電池管）、鼻端 12.8、車尾 16',
+      '本檔站位產生器 P（推估，前低後高的楔形車殼）：殼 x −72 → 74（細長低尖鼻），鰭刀後緣 −76；肩線半寬 翼子板 44、腰 35（＋牆腳外張 0.6，外框半寬 ≤ 48.0）、鼻 22（x 60）→ 鼻端 6.5、車尾 24；甲板最高 33.9（x −28）、座艙罩頂約 37.5、鼻端 15.3、車尾 28.5，鰭刀刀尖 45.4（全車最高）；肩線 27.2–30.4；側裙下緣 10.5（包住電池管）、鼻端 12.8、車尾 16',
     wheelArches: '前後 R17.5（31 mm 輪胎半徑 15.5 + 2 mm），不切輪拱可裝；輪拱內襯＋輪胎內側環形擋板（buildArchWell）',
     crenels: '車尾城門：兩片城垛鰭刀（|z| 24、厚 1.4；上緣 x −40 → −76 從後翼子板頂面上挑到 y 45.4，後緣三階城垛缺口每階深 2.4、高 4.8；刀背金邊寬 2；外側 8 瓣玫瑰花飾直徑約 6.7）＋主翼（底面 y 39.4、厚 1.4、翼展 49.4、弦 9–10.5，後掠 4–5.5 mm，後緣 15 段城垛齒深 1.5）；ABS 實心件（推估），質量 = 封閉體積 × 1.05 g/cm³',
-    livery: '側牆圓徽：半徑 4.9，花飾為車頂花飾的 1.95 倍；鱗紋色帶 x −22 → 10、半高 3.3 → 1.6、往後每 mm 上升 0.13；鱗紋為半徑 1.5 的半圓弧、列距 2.0；座艙拱門 x −24 → 7.5、半寬 7.5（殼面在座艙段隆起 3.4 mm 的鼓包）；頭燈條 x 50 → 68、寬 1.5（皆為貼紙，推估）',
+    livery: '側牆圓徽：半徑 4.9，花飾為車頂花飾的 1.95 倍；鱗紋色帶 x −22 → 10、半高 3.3 → 1.6、往後每 mm 上升 0.13；鱗紋為半徑 1.5 的半圓弧、列距 2.0；座艙拱門 x −24 → 7.5、半寬 7.5（透明罩高 4.2 mm，14 × 8 段，以殼面積 × 0.8 mm 計入質量；罩下花飾為車頂花飾的 2.6 倍）；頭燈條 x 50 → 68、寬 1.5（皆為貼紙，推估）',
     myth: '伊什塔爾城門的青金石藍釉磚、黃框、黑白金邊框與玫瑰花飾、拱門、城垛（MYTH_RESEARCH M2、M3）；穆修胡修只取鱗身的鱗紋（M1），不做頭、角、腳、尾',
     mounts: '對齊 chassis-midship 的車殼安裝點（SPEC 1.14）',
   },
