@@ -12,7 +12,7 @@ import * as THREE from 'three';
 import { makePolyBody, finPlate, sweepEllipse } from './polyBody.js';
 import { namedMaterial, decalMaterial, mergeGeos, lerp, sdRoundRect } from './loft.js';
 import { monoCurve, buildStations } from './gazelleLeap.js';
-import { buildArchWell, chassisBlockedNearArch, closedLoft } from './kitsuneNinetail.js';
+import { buildArchWell, chassisBlockedNearArch } from './kitsuneNinetail.js';
 
 /** @typedef {import('./loft.js').BodyPart} BodyPart */
 
@@ -260,6 +260,61 @@ const PROW_RAD = (t) => {
   }
   const q = (t - PROW_T) / (1 - PROW_T);
   return [lerp(1.3, 0.9, q), lerp(2.1, 1, q)];
+};
+
+/**
+ * 由一串斷面環（每環點數相同）建封閉網格：相鄰環之間補四邊形、頭尾各補一個扇形封口，
+ * 再依帶號體積統一繞向（法線朝外，質量用封閉體積計算）。頂點不共用 → 平面著色，稜線清楚
+ * @type {(rings: number[][][]) => THREE.BufferGeometry}
+ */
+const closedLoft = (rings) => {
+  const m = rings[0].length;
+  /** @type {number[]} */
+  const pos = [];
+  for (let i = 0; i < rings.length - 1; i++) {
+    for (let k = 0; k < m; k++) {
+      const a = rings[i][k];
+      const b = rings[i][(k + 1) % m];
+      const c = rings[i + 1][(k + 1) % m];
+      const d = rings[i + 1][k];
+      pos.push(...a, ...d, ...c, ...a, ...c, ...b);
+    }
+  }
+  for (const [ring, flip] of /** @type {[number[][], boolean][]} */ ([
+    [rings[0], false],
+    [rings[rings.length - 1], true],
+  ])) {
+    const cx = [0, 1, 2].map((j) => ring.reduce((acc, p) => acc + p[j], 0) / m);
+    for (let k = 0; k < m; k++) {
+      const a = ring[k];
+      const b = ring[(k + 1) % m];
+      if (flip) {
+        pos.push(...cx, ...b, ...a);
+      } else {
+        pos.push(...cx, ...a, ...b);
+      }
+    }
+  }
+  let vol = 0;
+  for (let i = 0; i < pos.length; i += 9) {
+    vol +=
+      pos[i] * (pos[i + 4] * pos[i + 8] - pos[i + 5] * pos[i + 7]) -
+      pos[i + 1] * (pos[i + 3] * pos[i + 8] - pos[i + 5] * pos[i + 6]) +
+      pos[i + 2] * (pos[i + 3] * pos[i + 7] - pos[i + 4] * pos[i + 6]);
+  }
+  if (vol < 0) {
+    for (let i = 0; i < pos.length; i += 9) {
+      for (let j = 0; j < 3; j++) {
+        const tmp = pos[i + 3 + j];
+        pos[i + 3 + j] = pos[i + 6 + j];
+        pos[i + 6 + j] = tmp;
+      }
+    }
+  }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  g.computeVertexNormals();
+  return g;
 };
 
 /**

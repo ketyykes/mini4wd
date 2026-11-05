@@ -231,7 +231,7 @@ const BLADE_TIP_FROM = 2;
  * 再依帶號體積統一繞向（法線朝外，質量用封閉體積計算）。頂點不共用 → 平面著色，稜線清楚
  * @type {(rings: number[][][]) => THREE.BufferGeometry}
  */
-export const closedLoft = (rings) => {
+const closedLoft = (rings) => {
   const m = rings[0].length;
   /** @type {number[]} */
   const pos = [];
