@@ -1,22 +1,24 @@
 // 鯤鵬（body-kunpeng，神話組・中國）：《莊子・逍遙遊》「北冥有魚，其名為鯤……化而為鳥，其名為鵬」。
-// 前半是魚（鯤）：尖楔魚吻、魚眼、口線、鰓蓋弧溝、側面魚鱗紋；後半是鳥（鵬）：魚鱗往後拉長成羽紋，
-// 車尾左右一對低而寬、往後掠的大鵬翼（覆羽板＋5 片分段飛羽，實體件），中央一片短扇尾；
-// 頂部一道兩端尖的長條透明窗（水天之間）。低扁全罩，前輪 R17.5 輪拱、後輪在窄鳥身外側由鵬翼罩住（26 / 31 mm 輪都可裝）。
-// 設計：shared/design/body-kunpeng/DESIGN.md（典故與文物對應 MYTH_RESEARCH 第 7 節 Z1–Z4、Z6；黑名單 7-3）。剖面為本檔站位產生器（推估）。
-// 塗裝為自創水墨感：墨黑 → 青灰 → 霧灰 → 留白的分段漸層、淡金細線魚鱗 / 羽紋、杏仁形魚眼＋往後拉的墨線眼線（不用同心圓）與朱砂紅無字印章；
+// 不做魚頭、鳥頭與眼睛，「化」用三種元素表現：
+// (1) 鰭 → 翼的變形：車身中段兩側一對後掠的小鰭刀（墨黑），到車尾放大成上下兩層、往後上方揚起的翼片（青綠 → 留白），三組翼片前緣都是金線；
+// (2) 水 → 風的漸變 livery：前半墨黑亮面（深水）、後半留白霧面（長風），中間是往後上方斜掃、一條比一條細的青綠條帶；
+//     前半有浪頭帶與淡金水波線（水擊三千里），後半是青綠人字羽紋；
+// (3) 配色與材質：水墨黑白＋松花石青綠珍珠漆＋淡金線，朱砂紅只用在一枚無字印章。
+// 低扁全罩的尖楔車身，頂部一道兩端尖的長條透明窗（水天之間）；前輪 R17.5 輪拱、後輪在窄車尾外側由翼片罩住（26 / 31 mm 輪都可裝）。
+// 設計：shared/design/body-kunpeng/DESIGN.md（典故與文物對應 MYTH_RESEARCH 第 7 節 Z1–Z4；黑名單 7-3）。剖面為本檔站位產生器（推估）。
 // 不寫任何文字（含「Kunpeng」字樣）、不做晶片紋、不做紅色魚身 / 海豚形、不做龍角龍鬚。
 import * as THREE from 'three';
 import { makePolyBody, sweepEllipse } from './polyBody.js';
 import { namedMaterial, decalMaterial, sdRoundRect, sideDecal, mergeGeos, buildRegion, buildRim, lerp } from './loft.js';
-import { monoCurve, buildStations, sdCircle } from './gazelleLeap.js';
+import { monoCurve, buildStations } from './gazelleLeap.js';
 
 /** @typedef {import('./loft.js').BodyPart} BodyPart */
 
 /** @type {number} 車尾 x */
 const X_TAIL = -72;
-/** @type {number} 魚頭鼻尖 x */
+/** @type {number} 鼻尖 x */
 const X_NOSE = 78;
-/** @type {number} 魚頭收尖起點 x（往前到鼻尖收成尖楔魚吻） */
+/** @type {number} 車頭收尖起點 x（往前到鼻尖收成尖楔） */
 const X_HEAD = 50;
 /** @type {number} 車尾圓收起點 x */
 const X_TAILROUND = -54;
@@ -25,27 +27,26 @@ const X_TAILROUND = -54;
 const XS = [-72, -64, -56, -46, -36, -26, -18, -8, 4, 16, 28, 40, 50, 60, 68, 74, 78];
 /** @type {Record<string, (x: number) => number>} */
 const P = {
-  // 半寬：前半魚頭最寬（37，罩住前輪、切 R17.5 輪拱），在前輪之前收窄成較尖的魚吻（俯視 IoU）；
-  // 中段（兩輪之間）是鼓起的魚腹（半寬 35–35.5，比 owl-hush / griffin-vane 的腰身寬），側面往下包到 y 10.5，擋住電池艙；
-  // 魚腹在後輪前（x −26 → −18）收回窄的鳥身（20，在後輪內側、31 mm 輪內側面 24.75 之內留 ≥ 4 mm）——後輪在窄鳥身外側由上方的鵬翼罩住，
-  // 俯視是「寬魚身、窄鳥身、寬後掠翼」（輪廓 IoU：避開 owl-hush / griffin-vane 的寬水滴形）
+  // 半寬：前段最寬（37，罩住前輪、切 R17.5 輪拱），在前輪之前收窄成尖楔鼻；
+  // 中段（兩輪之間）鼓起（半寬 35–35.5），側面往下包到 y 10.5，擋住電池艙；
+  // 在後輪前（x −26 → −18）收回窄車尾（20，在後輪內側、31 mm 輪內側面 24.75 之內留 ≥ 4 mm）——後輪在窄車尾外側由上方的翼片罩住，
+  // 俯視是「寬前身、收腰、寬後掠翼」
   hw: monoCurve(XS, [13, 17, 19.5, 20, 20, 20.5, 25, 33, 35.5, 35.5, 36.5, 37, 36, 31.5, 27, 24, 22]),
-  // 中線頂：前低後高的楔形魚身——最高點在座艙段（36.6），魚頭往鼻端一路下壓，往後緩降成鳥背；全車頂高約 36.6（低扁，壓低正面面積）
+  // 中線頂：最高點在座艙段（36.6），往鼻端一路下壓，往後緩降；殼頂低扁，壓低正面面積
   yTop: monoCurve(XS, [28, 31, 33, 34.2, 35, 35.6, 36, 36.4, 36.6, 36.4, 36, 35.4, 34.6, 33.2, 31.6, 30.4, 29.6]),
-  // 側線（魚的側線＝剖面最寬處的高度）
-  // 魚頭的側線往鼻端下壓（鼻尖離地約 16，V3）
+  // 側線（剖面最寬處的高度）：往鼻端下壓（鼻尖離地約 16，V3）
   ySh: monoCurve(XS, [27, 26.5, 26, 26, 26, 25.5, 25, 24, 23.5, 23, 23, 23, 22.6, 21.2, 19.4, 17.6, 16.4]),
-  // 側裙下緣：前半魚身與中段魚腹 10.5–13（底盤側壁頂 9.4 之上）；後半窄鳥身約 17（底盤上方，不和底盤重疊；壓低到車尾不露後齒輪）
+  // 側裙下緣：前段與中段 10.5–13（底盤側壁頂 9.4 之上）；窄車尾約 17（底盤上方，不和底盤重疊；壓低到車尾不露後齒輪）
   yLow: monoCurve(XS, [19.5, 17.5, 16.8, 16.8, 17, 16.5, 12, 10.5, 10.5, 11, 11, 11, 11.5, 12, 12.4, 12.6, 12.6]),
 };
 
 /**
- * 端部圓收係數：魚頭往鼻尖收成尖楔、車尾往尾端以四分之一橢圓縮小（1 = 不縮）
+ * 端部圓收係數：車頭往鼻尖收成尖楔、車尾往尾端以四分之一橢圓縮小（1 = 不縮）
  * @type {(x: number) => number}
  */
 const endFactor = (x) => {
   if (x > X_HEAD) {
-    // 魚頭：(1 − u^1.5)^0.9 的尖楔魚吻（鼻端收尖，不用四分之一橢圓的圓鈍魚頭）
+    // 車頭：(1 − u^1.5)^0.9 的尖楔（鼻端收尖，不用四分之一橢圓的圓鈍車頭）
     const u = Math.min(1, (x - X_HEAD) / (X_NOSE - X_HEAD));
     return Math.max(0.06, (1 - u ** 1.5) ** 0.9);
   }
@@ -66,7 +67,7 @@ const sec = (x) => {
   return { hw: P.hw(x) * f, ySh, ry: (P.yTop(x) - ySh) * f, yLow: ySh - (ySh - P.yLow(x)) * f };
 };
 
-/** @type {number} 上半斷面超橢圓指數（0.8 → 比橢圓飽滿的魚背） */
+/** @type {number} 上半斷面超橢圓指數（0.8 → 比橢圓飽滿的背面） */
 const SE = 0.8;
 /** @type {number[]} 上半斷面 6 點的角度（度） */
 const ANGLES = [90, 70, 50, 32, 16, 0];
@@ -85,7 +86,7 @@ const profile = (x) => {
   return pts;
 };
 
-/** @type {{ x: number, pts: number[][] }[]} 站位表（魚頭與車尾曲率大的段落加密） */
+/** @type {{ x: number, pts: number[][] }[]} 站位表（車頭與車尾曲率大的段落加密） */
 const STATIONS = [
   ...buildStations(X_TAIL, -54, 1, profile).slice(0, -1),
   ...buildStations(-54, 52, 2, profile).slice(0, -1),
@@ -122,46 +123,36 @@ const windowSd = (x, y, z) => (y < 32 ? 10 : lensSd(x, z));
 
 /** @type {{ x: number, y: number, radius: number }} 前輪拱（R17.5：31 mm 輪胎半徑 15.5 + 2 mm） */
 const FRONT_ARCH = { x: 40, y: 13, radius: 17.5 };
-/** @type {(x: number, y: number) => boolean} 側視點是否在前輪拱切口外擴 2 mm 之內（鰓蓋紋與金線避開輪拱邊緣） */
-const nearFrontArch = (x, y) => Math.hypot(x - FRONT_ARCH.x, y - FRONT_ARCH.y) < FRONT_ARCH.radius + 2;
 
-/** @type {{ x: number, y: number, r: number[] }} 鰓蓋弧（側視圓心 (34, 22)，半徑 14 與 10.5 兩道，只取後半弧） */
-const GILL = { x: 34, y: 22, r: [14, 10.5] };
-/** @type {(x: number, y: number, z: number) => number} 鰓蓋弧溝（負值 = 溝內） */
-const gillSd = (x, y, z) => {
-  // 輪拱外 2 mm 內不刻溝：鰓蓋弧溝的下端若伸進前輪拱切口，弧溝牆會被輪拱切斷，留下碎片面
-  if (Math.abs(z) < 24 || x > GILL.x - 2 || nearFrontArch(x, y)) {
+/** @type {{ x: number, y: number, len: number, h: number, lean: number }} 側進氣口：前輪拱後方一道往後上方斜的圓角長槽（中心、半長、半高；斜率和塗裝條帶一致） */
+const INTAKE = { x: 11.5, y: 18.2, len: 5.5, h: 1.9, lean: 0.9 };
+/** @type {(x: number, y: number, z: number) => number} 側進氣口凹槽（負值 = 槽內） */
+const intakeSd = (x, y, z) => {
+  if (Math.abs(z) < 24) {
     return 10;
   }
-  const r = Math.hypot(x - GILL.x, y - GILL.y);
-  return Math.min(...GILL.r.map((rr) => Math.abs(r - rr))) - 0.45;
+  const v = y - INTAKE.y;
+  return sdRoundRect(x - INTAKE.x + INTAKE.lean * v, v, -INTAKE.len, INTAKE.len, -INTAKE.h, INTAKE.h, 1.2);
 };
 
+/** @type {number} 深水墨黑區的後緣在塗裝斜向座標上的位置 */
+const LIVERY_C0 = 20;
+/** @type {number[][]} 青綠條帶 [後緣, 前緣]（相對墨黑後緣的斜向距離，往車尾為負）：一條比一條細，水化為風 */
+const LIVERY_BARS = [
+  [-10, -3],
+  [-18, -13],
+  [-24.5, -21.5],
+  [-30, -28.5],
+];
 /**
- * 魚鱗 / 羽紋：交錯排列的弧線（每格一道朝車尾凸出的半圓弧）；sx / sy 為格距、stretch 為沿 x 拉長比例（羽 > 鱗）
- * @type {(x: number, y: number, sx: number, sy: number, r: number, stretch: number) => number}
+ * 塗裝斜向座標（0 = 墨黑後緣，往車頭為正）：越高、越靠外側的點越往後算，
+ * 側視分界線往後上方斜、俯視是尖端朝前的箭形
+ * @type {(x: number, y: number, z: number) => number}
  */
-const scaleArcs = (x, y, sx, sy, r, stretch) => {
-  let d = Infinity;
-  const j0 = Math.floor(y / sy);
-  for (let j = j0 - 1; j <= j0 + 1; j++) {
-    const shift = (((j % 2) + 2) % 2) * (sx / 2);
-    const i0 = Math.floor((x - shift) / sx);
-    for (let i = i0 - 1; i <= i0 + 2; i++) {
-      const cx = i * sx + shift;
-      const cy = j * sy;
-      // 只取圓心後方（−x）的半弧，弧線寬 0.65 mm
-      if (x > cx) {
-        continue;
-      }
-      d = Math.min(d, Math.abs(Math.hypot((x - cx) / stretch, y - cy) - r) - 0.33 / Math.max(1, stretch * 0.75));
-    }
-  }
-  return d;
-};
+const sweepCoord = (x, y, z) => x + 1.1 * (y - 22) + 0.45 * Math.abs(z) - LIVERY_C0;
 
 /**
- * 羽紋人字：沿 x 每 6.5 mm 一列、尖端朝車尾的人字線（以殼面 y 與 |z| 的弧長近似作為橫向座標），線寬 0.65 mm
+ * 羽紋人字：沿 x 每 6.5 mm 一列、尖端朝車尾的人字線（以殼面 y 與 |z| 的弧長近似作為橫向座標），線寬 0.84 mm
  * @type {(x: number, y: number, az: number) => number}
  */
 const chevrons = (x, y, az) => {
@@ -174,35 +165,31 @@ const chevrons = (x, y, az) => {
   const shift = (((j % 2) + 2) % 2) * (period / 2);
   const ph = ((((x - shift) % period) + period) % period) - 0.95 * Math.abs(v);
   const local = ((ph % period) + period) % period;
-  return Math.min(local, period - local) - 0.33;
+  return Math.min(local, period - local) - 0.42;
 };
 
 /** @type {() => Record<string, THREE.Material>} */
 const materials = () => ({
-  // 水墨分段（霧面 / 緞面：roughness > 0.5，Blender 以緞面漆處理）
-  ink: namedMaterial('paint-ink-black-satin', { color: 0x1c1f24, roughness: 0.62, clearcoat: 0.15, clearcoatRoughness: 0.5 }),
-  ink2: namedMaterial('paint-ink-black-satin', { color: 0x1c1f24, roughness: 0.62, clearcoat: 0.15, side: THREE.DoubleSide }),
-  // 青灰：珍珠金屬漆（低粗糙度＋清漆＋少量金屬感，避免塑膠感偏平）
-  slate: namedMaterial('paint-slate-pearl', { color: 0x4a6170, roughness: 0.3, metalness: 0.35, clearcoat: 0.9, clearcoatRoughness: 0.1 }),
-  slate2: namedMaterial('paint-slate-pearl', { color: 0x4a6170, roughness: 0.3, metalness: 0.35, clearcoat: 0.9, clearcoatRoughness: 0.1, side: THREE.DoubleSide }),
-  mist: namedMaterial('paint-mist-grey', { color: 0x98a8ae, roughness: 0.62, clearcoat: 0.1 }),
-  mist2: namedMaterial('paint-mist-grey', { color: 0x98a8ae, roughness: 0.62, clearcoat: 0.1, side: THREE.DoubleSide }),
+  // 深水：墨黑亮面珍珠漆（前半）；長風：留白霧面（後半，roughness > 0.5，Blender 以緞面漆處理）——亮面對霧面的材質對比
+  ink: namedMaterial('paint-ink-black-pearl', { color: 0x15191f, roughness: 0.3, metalness: 0.3, clearcoat: 0.9, clearcoatRoughness: 0.1 }),
+  ink2: namedMaterial('paint-ink-black-pearl', { color: 0x15191f, roughness: 0.3, metalness: 0.3, clearcoat: 0.9, clearcoatRoughness: 0.1, side: THREE.DoubleSide }),
+  // 青綠：松花石硯的綠（MYTH_RESEARCH 7-2 配色，推估色碼），珍珠金屬漆（條帶與下層翼片）
+  teal: namedMaterial('paint-songhua-green-pearl', { color: 0x4f7f6f, roughness: 0.3, metalness: 0.35, clearcoat: 0.9, clearcoatRoughness: 0.1 }),
+  teal2: namedMaterial('paint-songhua-green-pearl', { color: 0x4f7f6f, roughness: 0.3, metalness: 0.35, clearcoat: 0.9, clearcoatRoughness: 0.1, side: THREE.DoubleSide }),
   paper: namedMaterial('paint-rice-paper-white', { color: 0xece8de, roughness: 0.66, clearcoat: 0.05 }),
   paper2: namedMaterial('paint-rice-paper-white', { color: 0xece8de, roughness: 0.66, clearcoat: 0.05, side: THREE.DoubleSide }),
-  // 真金屬：鵬翼羽軸（Blender 依 -brass 結尾換成金屬）
+  // 真金屬：翼片前緣金線（Blender 依 -brass 結尾換成金屬）
   gold: namedMaterial('trim-gold-brass', { color: 0xd4b56a, roughness: 0.32, metalness: 0.8, clearcoat: 0.3, side: THREE.DoubleSide }),
   inner: namedMaterial('shell-inner-dark', { color: 0x16181b, roughness: 0.85, side: THREE.BackSide }),
   edge: namedMaterial('shell-edge-ink', { color: 0x2a2e33, roughness: 0.6, side: THREE.DoubleSide }),
-  // 水天之間：淡青灰的透明窗（亮面，全車少數的高光澤部位之一）
+  // 水天之間：淡青灰的透明窗
   glass: namedMaterial('pc-smoke-tint', { color: 0x9fc2c8, roughness: 0.05, specularIntensity: 0.6, transparent: true, opacity: 0.38, envMapIntensity: 0.6, depthWrite: false, side: THREE.DoubleSide }),
   frame: namedMaterial('paint-ink-frame', { color: 0x15171a, roughness: 0.45, clearcoat: 0.6, side: THREE.DoubleSide }),
-  gill: namedMaterial('paint-slate-gill', { color: 0x2b3940, roughness: 0.7, side: THREE.DoubleSide }),
+  intake: namedMaterial('paint-intake-dark', { color: 0x0e1114, roughness: 0.7, side: THREE.DoubleSide }),
   dGold: decalMaterial('decal-pale-gold', { color: 0xd8c38a, roughness: 0.35, metalness: 0.6 }),
-  dInk: decalMaterial('decal-ink-black', { color: 0x16181b, roughness: 0.55 }),
+  dTeal: decalMaterial('decal-songhua-green', { color: 0x4f7f6f, roughness: 0.4 }),
   dRed: decalMaterial('decal-cinnabar-red', { color: 0xb5322a, roughness: 0.5 }),
   dPaper: decalMaterial('decal-paper-white', { color: 0xf1ede3, roughness: 0.55 }),
-  // 淡金米色虹膜（魚眼）
-  eye: namedMaterial('lamp-eye-pearl', { color: 0xeadfb4, emissive: 0x3a3428, emissiveIntensity: 0.3, roughness: 0.1, clearcoat: 1.0 }),
   mount: namedMaterial('abs-mount-black', { color: 0x222326, roughness: 0.6 }),
   liner: namedMaterial('shell-wheelwell-slate', { color: 0x3b4850, roughness: 0.65, side: THREE.DoubleSide }),
 });
@@ -282,7 +269,7 @@ const buildWellWall = (arch) => {
 };
 
 /**
- * 繞 x 軸以 (yPivot, zPivot) 為支點轉 deg 度（右翼上反角；正值 = 翼尖往上）
+ * 繞 x 軸以 (yPivot, zPivot) 為支點轉 deg 度（右側翼片的上反角；正值 = 翼尖往上）
  * @type {(g: THREE.BufferGeometry, yPivot: number, zPivot: number, deg: number) => THREE.BufferGeometry}
  */
 const dihedral = (g, yPivot, zPivot, deg) => {
@@ -320,44 +307,77 @@ const mirrorZ = (g) => {
   return m;
 };
 
-/** @type {{ y: number, covert: number[][], primaries: number[][] }} 鵬翼（右翼，俯視 (x, z)；左翼鏡射）：覆羽板前緣從翼根往後外掠，後半由 5 片分段飛羽組成 */
-// 鵬翼大而後掠，兼當大尾翼：覆羽板前緣從 x −14 起、翼尖在 x −53，飛羽尖在 x −64 ~ −71.5，上反角 7°
-const WING = {
-  y: 30.6,
-  covert: [
-    [-14, 17.5],
-    [-30, 33],
-    [-46, 45.2],
-    [-53.5, 46.6],
-    [-52.5, 40.5],
-    [-46.5, 29.5],
-    [-38.5, 17.5],
+/**
+ * 翼片（右側，俯視多邊形 (x, z)；左側鏡射）：底面高 y、厚 thick，以 (y, pivotZ) 為支點上反 dihedral 度；
+ * 多邊形前三點是前緣（翼根 → 翼尖）
+ * @typedef {{ y: number, thick: number, dihedral: number, pivotZ: number, poly: number[][] }} Blade
+ */
+
+/** @type {Blade} 鰭刀：車身中段側線上的一對後掠小鰭（鰭 → 翼變形的起點），翼根埋進殼面 2.5 mm */
+const FIN = {
+  y: 21.6,
+  thick: 1.6,
+  dihedral: 10,
+  pivotZ: 33,
+  poly: [
+    [16, 33],
+    [9, 39.5],
+    [-6, 45.6],
+    [-12, 45.8],
+    [-7, 39],
+    [-2, 33],
   ],
-  // 飛羽（由翼尖往翼根）：每片 [根 x, 根 z, 尖 x, 尖 z, 半寬]；後緣分成 5 段（羽尖鋸齒），往後掠、和窄鳥身之間留開口
-  primaries: [
-    [-51, 44.2, -71, 45.6, 1.9],
-    [-49.5, 39.6, -71.5, 41.4, 2.1],
-    [-48, 35.0, -70.5, 36.6, 2.1],
-    [-46.5, 30.4, -68, 31.6, 2.0],
-    [-45, 25.8, -64, 26.6, 1.9],
+};
+/** @type {Blade} 下層翼片：鰭刀放大、後移，罩在後輪上方（底面 y 30.6，高於 31 mm 後輪頂 28.5），翼尖上揚到約 y 36 */
+const VANE_LOW = {
+  y: 30.6,
+  thick: 1.8,
+  dihedral: 14,
+  pivotZ: 25,
+  poly: [
+    [-12, 17.5],
+    [-28, 33],
+    [-44, 45.4],
+    [-55, 46.8],
+    [-52, 40.5],
+    [-45, 29.5],
+    [-37, 17.5],
+  ],
+};
+/** @type {Blade} 上層翼片：再放大、再後移，翼尖揚到全車最高（約 y 46，比窗頂高 9 mm）；和下層前後、上下錯開成兩層 */
+const VANE_UP = {
+  y: 32.6,
+  thick: 1.6,
+  dihedral: 24,
+  pivotZ: 15,
+  poly: [
+    [-36, 13],
+    [-50, 28],
+    [-58, 37.8],
+    [-65.8, 32.2],
+    [-61, 25],
+    [-55, 13],
+  ],
+};
+/** @type {Blade} 上層翼片的翼尖：同一片翼面分出來的墨黑翼尖（留白的翼蘸了墨），和翼身之間是一道倒角分件線 */
+const VANE_TIP = {
+  ...VANE_UP,
+  poly: [
+    [-58, 37.8],
+    [-61, 41.5],
+    [-71.5, 44],
+    [-68.5, 36],
+    [-65.8, 32.2],
   ],
 };
 
-/**
- * 一片飛羽的俯視多邊形：羽根平切、羽尖收成往外偏的尖頭（像真羽的不對稱羽片）
- * @type {(p: number[]) => number[][]}
- */
-const featherPoly = ([x0, z0, x1, z1, w]) => {
-  const dx = x1 - x0;
-  const dz = z1 - z0;
-  const len = Math.hypot(dx, dz);
-  const ux = dx / len;
-  const uz = dz / len;
-  const nx = -uz;
-  const nz = ux;
-  /** @type {(s: number, h: number) => number[]} */
-  const at = (s, h) => [x0 + ux * s + nx * h, z0 + uz * s + nz * h];
-  return [at(0, -w), at(len * 0.7, -w), at(len * 0.92, -w * 0.45), at(len, w * 0.2), at(len * 0.8, w), at(0, w)];
+/** @type {(b: Blade) => THREE.BufferGeometry} 右側翼片：上下緣倒 0.45 mm 圓角的平板（射出件的倒角邊），再上反 */
+const buildBlade = (b) => dihedral(bevelPlate(b.poly, b.y, b.thick, 0.45), b.y, b.pivotZ, b.dihedral);
+
+/** @type {(b: Blade) => THREE.BufferGeometry} 右側翼片的前緣金線：沿前緣的一道 Ø1.1 圓肋，和翼片一起上反 */
+const buildEdgeRail = (b) => {
+  const pts = b.poly.slice(0, 3).map(([x, z]) => [x, b.y + b.thick / 2, z]);
+  return dihedral(sweepEllipse(pts, 8, () => [0.55, 0.55], 6), b.y, b.pivotZ, b.dihedral);
 };
 
 export const kunpengBody = makePolyBody({
@@ -367,43 +387,38 @@ export const kunpengBody = makePolyBody({
   phase: 8,
   mythSeries: 'chinese',
   mythTheme: 'kunpeng',
-  form: 'fish-bird',
+  form: 'wave-wedge',
   roof: 'clear',
-  wing: 'peng-wings',
-  theme: '《莊子・逍遙遊》北冥之魚化為大鵬：前低後高的楔形魚身＋尖楔魚吻與細長魚眼、後半鱗化為羽、車尾一對後掠的大鵬翼尾翼，頂部一道水天之間的長條透明窗，側面一道往後上方掃的波濤 livery，青灰珍珠漆',
+  wing: 'fin-vanes',
+  theme: '《莊子・逍遙遊》鯤化為鵬，不做魚頭與鳥頭：低扁的尖楔車身前半墨黑亮面（深水）、後半留白霧面（長風），中間是往後上方斜掃、一條比一條細的青綠條帶；車身中段一對後掠小鰭刀，到車尾放大成上下兩層往後上方揚起的翼片，前緣都是金線；前半浪頭帶與淡金水波線、後半青綠人字羽紋，頂部一道水天之間的長條透明窗',
   material: 'ABS',
   density_g_cm3: 1.05,
   wallThickness_mm: 0.8,
   stations: STATIONS,
-  // 平滑剖面，沒有銳利稜線（魚身）
+  // 平滑剖面，沒有銳利稜線
   hard: [],
-  // 只有前輪拱（後輪在窄鳥身外側，由鵬翼從上方罩住）
+  // 只有前輪拱（後輪在窄車尾外側，由翼片從上方罩住）
   wheelArches: [{ ...FRONT_ARCH, cutZFrom: 22 }],
   openings: [{ id: '水天窗', shape: 'fn', sd: windowSd }],
-  recesses: [{ id: '鰓蓋弧溝', view: 'side', shape: 'fn', sd: gillSd, depth: 0.6 }],
+  recesses: [{ id: '側進氣口', view: 'side', shape: 'fn', sd: intakeSd, depth: 0.6 }],
   sideZMin: 24,
   innerSkipRecess: true,
-  zones: () => {
-    /** @type {(x: number, y: number) => number} 相對側線的正規化高度（0 = 側線、1 = 中線頂） */
-    const q = (x, y) => {
-      const s = sec(x);
-      return (y - s.ySh) / Math.max(0.5, s.ry);
-    };
-    // 水墨分界線帶一點筆觸起伏（兩個不同週期的正弦）
-    /** @type {(x: number, a: number) => number} */
-    const brush = (x, a) => a * (Math.sin(x / 7.3) + 0.6 * Math.sin(x / 2.9 + 1.3));
-    return [
-      // 墨黑：背脊（魚頭頂往後一路到鳥背）
-      { mat: 'ink', keep: (x, y, z) => (y < sec(x).ySh ? -1 : 0.4 * sec(x).hw + brush(x, 1.6) - Math.abs(z)) },
-      // 青灰：上側面
-      { mat: 'slate', keep: (x, y) => q(x, y) - (0.42 + brush(x + 11, 0.05)) },
-      // 霧灰：側線附近
-      { mat: 'mist', keep: (x, y) => y - (sec(x).ySh - 3.2 + brush(x + 5, 0.7)) },
-      // 留白：腹側
-      { mat: 'paper', keep: () => 1 },
-    ];
-  },
-  mats: { inner: 'inner', edge: 'edge', cap: 'ink2', recess: 'gill', recessWall: 'gill', mount: 'mount' },
+  zones: () => [
+    // 墨黑（深水）：後緣帶一點浪頭起伏
+    { mat: 'ink', keep: (x, y, z) => sweepCoord(x, y, z) + 1.3 * Math.sin(0.8 * (y + 0.5 * Math.abs(z))) },
+    // 青綠條帶：往車尾一條比一條細
+    {
+      mat: 'teal',
+      keep: (x, y, z) => {
+        const d = sweepCoord(x, y, z);
+        return Math.max(...LIVERY_BARS.map(([d0, d1]) => Math.min(d - d0, d1 - d)));
+      },
+    },
+    // 留白（長風）
+    { mat: 'paper', keep: () => 1 },
+  ],
+  capFrontBands: [{ mat: 'ink' }],
+  mats: { inner: 'inner', edge: 'edge', cap: 'paper2', recess: 'intake', recessWall: 'intake', mount: 'mount' },
   materials,
   extras: (kit) => {
     /** @type {BodyPart[]} */
@@ -423,169 +438,67 @@ export const kunpengBody = makePolyBody({
       name: 'arch-liners',
     });
 
-    // 鵬翼：覆羽板（墨黑）＋5 片飛羽（霧灰、留白交替，往翼尖一片疊一片）＋金色羽軸細肋；翼根埋進殼面，上反 7°
-    // 覆羽板厚 2.0 mm、飛羽厚 1.6 mm，上下緣都倒 0.5 / 0.45 mm 圓角（射出件的倒角邊，避免尾翼像平板疊片）
-    const covertR = bevelPlate(WING.covert, WING.y, 2.0, 0.5);
-    const featherR = WING.primaries.map((p, i) => bevelPlate(featherPoly(p), WING.y + 1.1 - 0.15 * i, 1.6, 0.45));
-    const rachisR = WING.primaries.map(([x0, z0, x1, z1], i) => {
-      /** @type {number[][]} 羽軸中心線（貼在各片飛羽頂面） */
-      const pts = [];
-      for (let k = 0; k <= 6; k++) {
-        const t = k / 6;
-        pts.push([lerp(x0 + 2, x1 + 3, t), WING.y + 2.65 - 0.15 * i, lerp(z0, z1, t)]);
-      }
-      return sweepEllipse(pts, 12, (t) => [0.4, 0.3 * (1 - 0.5 * t)], 6);
-    });
-    /** @type {(g: THREE.BufferGeometry) => THREE.BufferGeometry} */
-    const tilt = (g) => dihedral(g, WING.y, 25, 7);
-    const covert = tilt(covertR);
-    const feathersA = WING.primaries.map((_, i) => tilt(featherR[i])).filter((_, i) => i % 2 === 0);
-    const feathersB = WING.primaries.map((_, i) => tilt(featherR[i])).filter((_, i) => i % 2 === 1);
-    const rachis = rachisR.map(tilt);
-    parts.push({ geometry: mergeGeos([covert, mirrorZ(covert)]), mat: 'ink2', solid: true, outline: true, name: 'peng-wing-coverts' });
-    parts.push({ geometry: mergeGeos([...feathersA, ...feathersA.map(mirrorZ)]), mat: 'mist2', solid: true, outline: true, name: 'peng-wing-primaries-a' });
-    parts.push({ geometry: mergeGeos([...feathersB, ...feathersB.map(mirrorZ)]), mat: 'paper2', solid: true, outline: true, name: 'peng-wing-primaries-b' });
-    parts.push({ geometry: mergeGeos([...rachis, ...rachis.map(mirrorZ)]), mat: 'gold', solid: true, outline: true, name: 'peng-wing-rachis' });
+    // 鰭 → 翼：鰭刀（墨黑）→ 下層翼片（青綠）→ 上層翼片（留白＋墨黑翼尖），顏色跟著塗裝由深到淺；前緣金線各組共用，讀成同一個形狀的三個階段
+    /** @type {[Blade, string, string][]} */
+    const blades = [
+      [FIN, 'ink2', 'fin-blades'],
+      [VANE_LOW, 'teal2', 'wing-vanes-lower'],
+      [VANE_UP, 'paper2', 'wing-vanes-upper'],
+      [VANE_TIP, 'ink2', 'wing-vanes-upper-tips'],
+    ];
+    for (const [blade, mat, name] of blades) {
+      const g = buildBlade(blade);
+      parts.push({ geometry: mergeGeos([g, mirrorZ(g)]), mat, solid: true, outline: true, name });
+    }
+    const rails = blades.map(([blade]) => buildEdgeRail(blade));
+    parts.push({ geometry: mergeGeos([...rails, ...rails.map(mirrorZ)]), mat: 'gold', solid: true, outline: true, name: 'blade-edge-rails' });
 
-    // 鵬尾：車尾中央一片短扇尾（三片尾羽的扇形外緣），貼在尾端殼面上
-    const yTailPlate = kit.surf.topY(-60, 0) - 0.6;
-    // 扇尾厚 1.6 mm、倒角 0.45
-    const tail = bevelPlate(
-      [
-        [-52, 9],
-        [-66, 13],
-        [-71.5, 9.5],
-        [-69, 4.5],
-        [-71.8, 0],
-        [-69, -4.5],
-        [-71.5, -9.5],
-        [-66, -13],
-        [-52, -9],
-      ],
-      yTailPlate,
-      1.6,
-      0.45,
-    );
-    parts.push({ geometry: tail, mat: 'ink2', solid: true, outline: true, name: 'peng-tail-fan' });
-
-    // 魚眼（杏仁形魚眼＋往後拉的眼線；不用同心圓，避免像軍機圓標）：
-    // 墨黑杏仁形眼線框（0.7 mm）＋淡金米色虹膜（被上下眼瞼切成杏仁形）＋偏前上方的墨黑瞳孔＋一道往後、略往上拉長的尖尾眼線（水墨畫魚眼的筆法）
-    /** @type {{ x: number, y: number }} 魚眼中心（側視） */
-    // 杏仁形拉成細長的眼縫（半長 4.4、半高 1.05；眼睛太大表情會卡通），位置配合尖楔魚吻
-    const EYE = { x: 61.5, y: 23.6 };
-    /** @type {number} 杏仁形半長（沿車長） */
-    const EYE_A = 4.4;
-    /** @type {number} 杏仁形半高 */
-    const EYE_B = 1.05;
-    /** @type {number} 構成杏仁形的兩個圓的半徑（兩圓交集 = 杏仁形，尖端在 ±EYE_A） */
-    const EYE_R = (EYE_A * EYE_A + EYE_B * EYE_B) / (2 * EYE_B);
-    /**
-     * 杏仁形距離（負值 = 眼內）；dx 往車頭為正（世界 x，左右兩側不鏡射，眼尾一律朝車尾）
-     * @type {(dx: number, dy: number) => number}
-     */
-    const sdAlmond = (dx, dy) => Math.max(Math.hypot(dx, dy + (EYE_R - EYE_B)) - EYE_R, Math.hypot(dx, dy - (EYE_R - EYE_B)) - EYE_R);
-    /** @type {number[][]} 往後拉的眼線尾中線（從眼後角往後 5.4 mm、末端往上 1.1 mm 的弧，取 12 段折線） */
-    const EYE_TAIL = Array.from({ length: 13 }, (_, i) => {
-      const t = i / 12;
-      return [-EYE_A + 0.4 - 6.6 * t, 1.5 * t * t, t];
-    });
-    /**
-     * 眼線尾距離：沿中線漸細，半寬 0.5 → 0.3（最細處線寬 0.6 mm）
-     * @type {(dx: number, dy: number) => number}
-     */
-    const sdEyeTail = (dx, dy) => {
-      let d = Infinity;
-      for (let i = 0; i < EYE_TAIL.length - 1; i++) {
-        const [ax, ay, ta] = EYE_TAIL[i];
-        const [bx, by, tb] = EYE_TAIL[i + 1];
-        const ex = bx - ax;
-        const ey = by - ay;
-        const k = Math.max(0, Math.min(1, ((dx - ax) * ex + (dy - ay) * ey) / (ex * ex + ey * ey)));
-        const w = lerp(0.5, 0.3, lerp(ta, tb, k));
-        d = Math.min(d, Math.hypot(dx - ax - k * ex, dy - ay - k * ey) - w);
-      }
-      return d;
+    // 水波 livery（墨黑區）：從鼻尖沿肩部往後掃的一道米白浪頭帶（上緣是起伏的浪頭，往鼻尖收細）、頂面再一道較細的浪，之間與上下共三道淡金細浪線（只到前輪前方，前端收尖）；
+    // 位置用斷面周向座標算（側線為 0，沿側面往上、再沿頂面往中線遞增；斷面接近方形，近似弧長），頂面上的浪幅才不會被放大
+    /** @type {(x: number, y: number, z: number) => number} 相對浪頭帶中線的周向距離（mm，往頂面為正） */
+    const waveV = (x, y, z) => {
+      const s = sec(x);
+      return s.hw - Math.abs(z) + (y - s.ySh) - 1.25 * s.ry;
     };
-    /** @type {(sd: (dx: number, dy: number) => number) => (x: number, y: number, z: number) => number} 兩側魚頭貼紙（世界 x，不鏡射） */
-    const eyeDecal = (sd) => (x, y, z) => (Math.abs(z) < 0.6 * sec(x).hw ? -1 : -sd(x - EYE.x, y - EYE.y));
-    // 虹膜（淡色，杏仁形內）
-    parts.push({ geometry: kit.decal(eyeDecal(sdAlmond)), mat: 'eye', name: 'lamp-eye' });
-    // 眼線框（杏仁形外側 0.7 mm 帶）＋眼尾
-    parts.push({
-      geometry: kit.decal(eyeDecal((dx, dy) => Math.max(Math.min(sdAlmond(dx, dy) - 0.7, sdEyeTail(dx, dy)), -sdAlmond(dx, dy)))),
-      mat: 'dInk',
-      name: 'decal-eye-liner',
-    });
-    // 瞳孔：偏前上方、上緣被上眼瞼切掉一點（不是完整的同心圓）
-    parts.push({
-      geometry: kit.decal(eyeDecal((dx, dy) => Math.max(Math.hypot(dx - 0.8, dy - 0.15) - 0.85, sdAlmond(dx, dy))), { offset: 0.12 }),
-      mat: 'dInk',
-      name: 'decal-eye-pupil',
-    });
-    // 口線：鼻端一道往後微下彎的墨線（魚口）
-    parts.push({
-      geometry: kit.decal((x, y) => (x < 68.5 ? -1 : 0.45 - Math.abs(y - (sec(x).ySh - 1.0 - 0.05 * (X_NOSE - x))))),
-      mat: 'dInk',
-      name: 'decal-mouth',
-    });
-    // 鰓蓋弧溝旁的淡金細線（沿外弧外側 1.1 mm）
+    /** @type {(x: number, y: number, z: number) => boolean} 墨黑區 */
+    const onWater = (x, y, z) => x < 76 && sweepCoord(x, y, z) > 2.5;
     parts.push({
       geometry: kit.decal((x, y, z) => {
-        if (Math.abs(z) < 24 || x > GILL.x - 2 || nearFrontArch(x, y)) {
+        if (!onWater(x, y, z)) {
           return -1;
         }
-        return 0.32 - Math.abs(Math.hypot(x - GILL.x, y - GILL.y) - (GILL.r[0] + 1.1));
-      }),
-      mat: 'dGold',
-      name: 'decal-gill-line',
-    });
-    // 魚鱗（淡金細弧，鰓蓋之後到車身中段）→ 往後拉長成羽紋（鵬）：同一套交錯弧線、格距與拉長比例沿 x 漸變分成兩段
-    parts.push({
-      geometry: kit.decal((x, y, z) => {
-        if (Math.abs(z) < 0.72 * sec(x).hw || x > GILL.x - GILL.r[0] - 1.5 || x < -14 || y < sec(x).ySh - 4) {
-          return -1;
-        }
-        return -scaleArcs(x, y, 4.4, 3.6, 2.6, 1);
-      }),
-      mat: 'dGold',
-      name: 'decal-fish-scales',
-    });
-    // 羽紋：鳥身上一排排往後尖的人字紋（鵬的覆羽），從魚鱗區後緣接續到車尾
-    parts.push({
-      geometry: kit.decal((x, y, z) => {
-        if (Math.abs(z) < 7 || x > -10 || x < -64 || y < sec(x).ySh - 1) {
-          return -1;
-        }
-        return -chevrons(x, y, Math.abs(z));
-      }),
-      mat: 'dGold',
-      name: 'decal-peng-feathers',
-    });
-    // 波濤 livery：從魚吻下緣往後上方斜掃到鵬翼翼根的一道米白寬帶（上緣是起伏的浪頭），帶上方一道淡金細浪線（V12 / V13 的配置：圖形從鼻尖往後掃）
-    /** @type {(x: number) => number} 波濤帶中線高度（鼻端在側線下 4.6 mm，往後每 10 mm 升 0.8 mm） */
-    const waveY = (x) => sec(x).ySh - 4.6 + 0.08 * (66 - x);
-    /** @type {(x: number, z: number) => boolean} 側面（魚頭到鳥身前段） */
-    const onFlank = (x, z) => x < 70 && x > -26 && Math.abs(z) > 0.8 * sec(x).hw;
-    parts.push({
-      geometry: kit.decal((x, y, z) => {
-        if (!onFlank(x, z)) {
-          return -1;
-        }
-        const yc = waveY(x);
-        return Math.min(yc + 0.9 + 0.55 * Math.sin(x / 2.4) - y, y - (yc - 0.9));
+        const v = waveV(x, y, z);
+        const half = 1.3 * Math.min(1, Math.max(0.3, (76 - x) / 14));
+        // 第二道浪（往中線 13 mm、較細，只到前輪上方，前端收尖）
+        const half2 = 0.65 * Math.min(1, Math.max(0, (54 - x) / 8));
+        const inner = half2 > 0.1 ? Math.min(half2 + 0.5 * Math.sin(x / 2.6 + 1.6) - (v - 13), v - 13 + half2) : -1;
+        return Math.max(Math.min(half + 0.8 * Math.sin(x / 2.6) - v, v + half), inner);
       }),
       mat: 'dPaper',
       name: 'decal-wave-band',
     });
     parts.push({
       geometry: kit.decal((x, y, z) => {
-        if (!onFlank(x, z) || x > 64) {
+        const half = 0.5 * Math.min(1, (60 - x) / 6);
+        if (!onWater(x, y, z) || half < 0.05) {
           return -1;
         }
-        return 0.34 - Math.abs(y - (waveY(x) + 2.5 + 0.5 * Math.sin(x / 2.4 + 1.2)));
-      }, { offset: 0.12 }),
+        const v = waveV(x, y, z);
+        return half - Math.min(Math.abs(v - 3.4 - 0.6 * Math.sin(x / 2.6 + 1.2)), Math.abs(v + 3.0 - 0.6 * Math.sin(x / 2.6 + 2.4)), Math.abs(v - 9 - 0.6 * Math.sin(x / 2.6 + 0.6)));
+      }),
       mat: 'dGold',
-      name: 'decal-wave-line',
+      name: 'decal-wave-lines',
+    });
+    // 羽紋（留白區）：條帶之後到車尾，一排排尖端朝車尾的青綠人字線
+    parts.push({
+      geometry: kit.decal((x, y, z) => {
+        if (Math.abs(z) < 5 || sweepCoord(x, y, z) > -33 || x < -66 || y < sec(x).ySh - 1) {
+          return -1;
+        }
+        return -chevrons(x, y, Math.abs(z));
+      }),
+      mat: 'dTeal',
+      name: 'decal-wind-chevrons',
     });
     // 朱砂無字印章：車尾側面一枚圓角方印（紅底、米白內框與一道雲紋，不含任何文字）
     /** @type {{ x0: number, y0: number }} 印章中心（側視） */
@@ -615,9 +528,9 @@ export const kunpengBody = makePolyBody({
   src: {
     density_g_cm3: 'SPEC 1.14：ABS 約 1.05 g/cm³（推估）',
     wallThickness_mm: '推估：射出 ABS 殼 0.8 mm（同其他款）；水天窗片同厚度，以殼面積計入質量',
-    geometry: '本檔站位產生器 P＋endFactor（推估）：長 150（鼻尖 x 78、車尾 x −72，≤ 153 避免立體橋刮底）；前低後高的楔形：殼頂 36.6（座艙段）、鼻尖離地約 16、尖楔魚吻 (1 − u^1.5)^0.9 收尖；前輪拱 R17.5（31 mm 輪半徑 15.5 + 2 mm）；後半窄鳥身半寬 20、下緣約 16.5–17（在後輪內側、底盤上方）',
-    wings: '鵬翼（後掠：覆羽板 x −14 ~ −53.5、飛羽尖 x −64 ~ −71.5、上反 7°）覆羽板厚 2.0、飛羽厚 1.6、上下緣倒圓角 0.45–0.5、羽軸 0.8 × 0.6 圓肋、扇尾厚 1.6，均為 ABS 實心件（推估），質量 = 封閉體積 × 1.05 g/cm³；翼面高 y ≈ 30.6，高於 31 mm 後輪頂 28.5 與後上導輪 20.5',
-    myth: '典故《莊子・逍遙遊》（MYTH_RESEARCH Z1）；魚首 / 鵬身造型參考故宮〈松花石鯤鵬硯〉故文001376 的「魚尾、鷹首鳳身」描述（Z4），本款魚頭不做龍首（避免龍頭車身撞形）',
+    geometry: '本檔站位產生器 P＋endFactor（推估）：長 150（鼻尖 x 78、車尾 x −72，≤ 153 避免立體橋刮底）；前低後高的楔形：殼頂 36.6（座艙段）、鼻尖離地約 16、車頭以 (1 − u^1.5)^0.9 收尖；前輪拱 R17.5（31 mm 輪半徑 15.5 + 2 mm）；窄車尾半寬 20、下緣約 16.5–17（在後輪內側、底盤上方）；側進氣口為前輪拱後方深 0.6 的斜長槽',
+    wings: '鰭刀（x −12 ~ 16、厚 1.6、上反 10°）、下層翼片（x −55 ~ −12、厚 1.8、上反 14°、底面 y 30.6，高於 31 mm 後輪頂 28.5 與後上導輪 20.5）、上層翼片（x −71.5 ~ −36、厚 1.6、上反 24°，翼尖頂約 y 46；翼尖分件上墨黑）、前緣金線 Ø1.1 圓肋，均為 ABS 實心件（推估），上下緣倒圓角 0.45，質量 = 封閉體積 × 1.05 g/cm³；翼根埋進殼面',
+    myth: '典故《莊子・逍遙遊》（MYTH_RESEARCH Z1）：「化而為鳥」做成鰭 → 翼的三段變形與水 → 風的漸變塗裝，「水擊三千里」做成浪頭帶與水波線；上下兩段、水與風同一件的構成參考故宮〈松花石鯤鵬硯〉故文001376（Z4：下方波濤、上方雲海），不做魚首、鳥首',
     mounts: '對齊 chassis-midship 的車殼安裝點（SPEC 1.14）',
   },
 });
