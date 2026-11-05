@@ -88,5 +88,5 @@ playwright/.cache/
 dist/
 *.tsbuildinfo
 
-# ===== 每輪截圖（2026-11-04 起預設不提交；要當證據的用 git add -f）=====
+# ===== 每輪截圖只留本機，不提交（README 用的 2 張已追蹤，不受影響）=====
 renders/*
