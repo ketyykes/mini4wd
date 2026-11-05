@@ -1,14 +1,13 @@
-// 特洛伊木馬（body-trojan-horse，第八階段神話組・希臘；第九階段 iter-120 改成低趴楔形全罩）：
-// 奔馬伸頸——馬頭與馬頸往前伸成鼻錐（中央隆起的頸脊從座艙前一路往前下降到口鼻，鼻尖離地約 15–19 mm），
-// 頸脊上一列往後傾的鬃毛鰭（被風吹的動勢）、頭側一對往後貼的耳、琥珀色發光眼與青銅口勒貼紙；
-// 車身是木板拼成的曲面全罩：前後輪拱外擴、肩線（腰線稜）＋下半內收（tumblehome），座艙是小的青銅色艙蓋（士兵艙口）；
-// 黑繪陶 livery：黑色頸脊／背脊中線條＋從鼻尖往後上掃的赭紅側條（黑細邊），側面一列沿條紋斜向排列的圓形舷窗（米科諾斯陶甕木馬的側窗）；
-// 車尾是馬尾形的貼身尾翼（尾毛分岔的平面形），由往後傾的尾根支柱撐起。
+// 特洛伊木馬（body-trojan-horse，第八階段神話組・希臘）——第十階段 iter-128 從頭重塑：F2 擋泥板肌肉型「往前奔馳的木馬」。
+// 側視：馬頸是從座艙往前上方斜升的引擎蓋脊（頸脊頂 40.6 在 x 50，鼻尖仍在 x 79，不往前伸），過了頭頂再往下收成馬頭與口鼻；
+// 後輪是高聳的「後腿肌肉」擋泥板（頂 38.6，比背脊高 → 兩塊後腿量體夾著下凹的臀脊），中段大幅收腰（半寬 29.5），前輪擋泥板包住 31 mm 輪；
+// 鬃毛是頸脊上往後飛揚的長背鰭（3 綹，尖端往後上掃）；馬尾從兩塊後腿量體之間的臀脊長出，先往上拱再往後下方流成 3 束分開的尾毛（尾翼 / 擴散器）。
+// 頭側一對立耳、琥珀色發光眼與青銅口勒貼紙；座艙是頸根後的胡桃木士兵艙蓋；木板接縫、黑繪回紋赭紅下半車身、斜排舷窗延續現行材質。
 // 四個 R17.5 輪拱：31 mm 大輪不切輪拱也能裝。
 // 設計：shared/design/body-trojan-horse/DESIGN.md（MYTH_RESEARCH G1、G2）。剖面為本檔站位產生器（推估）。
 // 塗裝全為自創：淺 / 中橡木＋深胡桃木（霧面）＋黑繪陶黑與赭紅（霧面）＋青銅（金屬）；不含任何廠商 / 作品名稱、商標或文字。
 import * as THREE from 'three';
-import { makePolyBody, finPlate, flatPlate } from './polyBody.js';
+import { makePolyBody, finPlate, flatPlate, sweepEllipse } from './polyBody.js';
 import { namedMaterial, decalMaterial, mergeGeos, lerp } from './loft.js';
 import { monoCurve, buildStations } from './gazelleLeap.js';
 import { buildArchWell, chassisBlockedNearArch } from './kitsuneNinetail.js';
@@ -20,18 +19,23 @@ import { buildProfileLiner } from './khepriScarab.js';
 const XS = [-70, -64, -56, -48, -40, -30, -20, -8, 4, 14, 24, 34, 42, 50, 54, 58, 64, 70, 75, 79];
 /** @type {Record<string, (x: number) => number>} */
 const P = {
-  // 中線頂（頸脊 / 座艙 / 背脊）：口鼻 19.5 → 額頭往後上升到頭頂（poll，x 58，32.6）→ 頸根下凹（x 50，30.8，馬頭側影）→ 頸脊往後上升 → 座艙頂 41.5（x −8）→ 背脊往車尾降到 32
-  // iter-124：頭頂（poll）加高到 35、口鼻降到 18.8，額頭到口鼻的落差從 13 加大到 16 mm（評審「馬頭讀不出來」）
-  yN: monoCurve(XS, [32, 35, 37, 37.8, 38.4, 39.5, 41, 41.5, 40.8, 39, 36.8, 35.2, 34, 31, 33.2, 35, 30.8, 25, 21.4, 18.8]),
-  // 擋泥板 / 甲板高度（頸脊兩側）：前後輪上方 ≥ 32（R17.5 輪拱頂 30.5），往口鼻降到 17.5
-  yD: monoCurve(XS, [30, 32.5, 33.6, 33.8, 33.8, 32.8, 32, 31.5, 31.2, 31.2, 31.8, 33.2, 33.4, 30.8, 28.6, 26, 23, 20.8, 19, 17.5]),
-  // 頸脊 / 座艙半寬：座艙 13（約車寬 35%）、頸 9、口鼻 4.5
-  nw: monoCurve(XS, [6, 7, 8, 9, 10, 11.5, 12.5, 13, 12.5, 11, 9.5, 9, 9, 8.2, 9, 9.6, 9, 7.5, 6, 4.5]),
-  // 半寬（腰線稜）：前輪拱外擴 36.8（iter-122：包住輪胎外緣 34.25，到 x 54 仍 35.7）、後輪拱外擴 37.4（馬的後臀）、腰收 31.2、x 54 以後收成細長馬頭鼻錐（22.5 → 7）、後輪拱後方收尖（29 → 12）
-  hw: monoCurve(XS, [10, 17, 27.5, 37, 37.4, 35.4, 32.4, 31.4, 31.2, 32.2, 35.2, 36.8, 36.8, 36.4, 35.7, 18.5, 14, 11, 8.5, 6]),
+  // iter-128 中線頂（臀脊 / 背 / 座艙 / 馬頸 / 馬頭）：臀脊 32（夾在兩塊後腿量體之間，比後腿低）→ 座艙 34.6 → 馬頸往前上方斜升到頸頂 40（x 50）→ 頭頂往下收 → 口鼻 21.4
+  yN: monoCurve(XS, [26, 29, 31, 32, 32.4, 32, 31.6, 33, 34.6, 35.8, 37, 38.4, 39.4, 40, 39.6, 37.2, 32.4, 27.6, 24, 21.4]),
+  // iter-128 擋泥板頂：後腿肌肉 35.8（x −40，比臀脊高 3.4 mm）、收腰段掉到 26.8、前輪擋泥板 33.6（R17.5 輪拱頂 30.5）、往口鼻降到 17.5
+  yD: monoCurve(XS, [23, 29.4, 33.4, 35.4, 35.8, 33.4, 28.2, 26.8, 26.8, 28.4, 31.6, 33.4, 33.6, 31, 28.6, 26, 23, 20.8, 19, 17.5]),
+  // 頸脊 / 座艙 / 臀脊半寬
+  nw: monoCurve(XS, [5, 6, 7, 7.5, 8, 9, 10.5, 11.5, 11.5, 10.5, 9.5, 9, 9, 8.6, 9, 9.6, 9, 7.5, 6, 4.5]),
+  // iter-128 半寬：後腿 39.2（往車尾仍保持寬方的臀部，車尾 29）、腰 24.4（大幅收腰）、前輪 36.8（包住 31 mm 輪胎外緣）、x 54 以後收成馬頭鼻錐（18.5 → 6）
+  hw: monoCurve(XS, [24, 33, 38.4, 39.2, 39.2, 34, 27, 24.4, 25, 29.6, 34.2, 35.6, 35.6, 35.4, 35.2, 18.5, 14, 11, 8.5, 6]),
   // 側裙下緣：兩輪之間 10.5（底盤側框頂 9.4 之上，包住電池艙側面）、口鼻 15
   yLow: monoCurve(XS, [21, 18.5, 15.5, 13.5, 13, 11.5, 10.5, 10.5, 10.5, 10.5, 11, 13, 13, 13.5, 14, 14.5, 15, 15, 15, 15]),
 };
+
+/**
+ * 擋泥板頂高度：x < −12（後腿量體）可以比中線高（臀脊下凹），其餘不高過中線 0.3 mm
+ * @type {(x: number) => number}
+ */
+const deckY = (x) => (x < -12 ? P.yD(x) : Math.min(P.yD(x), P.yN(x) - 0.3));
 
 /**
  * 半剖面 8 點：中線頂 → 頸脊肩 → 頸脊側 → 擋泥板頂 → 肩 → 腰線稜（銳利，最寬處）→ 側面 → 下緣內收
@@ -41,7 +45,7 @@ const profile = (x) => {
   const yN = P.yN(x);
   const hw = P.hw(x);
   const yLow = P.yLow(x);
-  const yD = Math.min(P.yD(x), yN - 0.3);
+  const yD = deckY(x);
   const nw = Math.max(0.6, Math.min(P.nw(x), hw - 7, 0.55 * hw));
   const dr = yN - yD;
   const drop = Math.min(4.5, 0.42 * (yD - yLow));
@@ -71,7 +75,7 @@ const ARCHES = [
 const archRingDist = (x, y) => Math.min(...ARCHES.map((a) => Math.hypot(x - a.x, y - a.y) - a.radius));
 
 /** @type {number[]} 座艙（青銅艙蓋）前後端 x */
-const COCKPIT_X = [-26, 8];
+const COCKPIT_X = [-8, 16];
 
 /** @type {(x: number) => number} 赭紅側條中心高度：鼻尖 16.5 → 車尾 30（往後上掃） */
 const stripeY = (x) => lerp(16.5, 30, Math.min(1, Math.max(0, (79 - x) / 140)));
@@ -93,7 +97,7 @@ const portY = (x) => stripeY(x) + STRIPE_HW + 3.4;
  */
 const redTopY = (x) => {
   const yLow = P.yLow(x);
-  const yD = Math.min(P.yD(x), P.yN(x) - 0.3);
+  const yD = deckY(x);
   const yBelt = yD - Math.min(4.5, 0.42 * (yD - yLow));
   return x > 54 ? stripeY(x) + STRIPE_HW : Math.max(stripeY(x) + STRIPE_HW, yBelt - 0.6);
 };
@@ -173,45 +177,6 @@ export function buildSlantSkirt({ x0, x1, zIn, zOut, yTop, yBot = 10.5, tz = 1.8
   }
   return mergeGeos(geos);
 }
-
-/**
- * 等厚彎曲翼板（iter-125 馬尾翼）：展向 u ∈ [−1, 1]（z = u · span）、弦向 v ∈ [0, 1]（前緣 → 後緣），
- * 中面高度 y(u, v)、上下各偏 thick / 2；四周補側壁 → 封閉網格（實心件以封閉體積算質量）
- * @type {(o: { nU: number, nV: number, span: number, le: (u: number) => number, te: (u: number) => number, y: (u: number, v: number) => number, thick: number }) => THREE.BufferGeometry}
- */
-const bentPlate = (o) => {
-  /** @type {(i: number, j: number, sg: number) => number[]} */
-  const at = (i, j, sg) => {
-    const u = lerp(-1, 1, i / o.nU);
-    const v = j / o.nV;
-    return [lerp(o.le(u), o.te(u), v), o.y(u, v) + sg * 0.5 * o.thick, u * o.span];
-  };
-  /** @type {number[]} */
-  const pos = [];
-  /** @type {(a: number[], b: number[], c: number[], d: number[]) => void} 四邊形（a → b → c → d 逆時針為正面） */
-  const quad = (a, b, c, d) => pos.push(...a, ...b, ...c, ...a, ...c, ...d);
-  for (let i = 0; i < o.nU; i++) {
-    for (let j = 0; j < o.nV; j++) {
-      // 上面法線朝上、下面朝下
-      quad(at(i, j, 1), at(i, j + 1, 1), at(i + 1, j + 1, 1), at(i + 1, j, 1));
-      quad(at(i, j, -1), at(i + 1, j, -1), at(i + 1, j + 1, -1), at(i, j + 1, -1));
-    }
-  }
-  for (let i = 0; i < o.nU; i++) {
-    // 前緣、後緣側壁
-    quad(at(i, 0, -1), at(i, 0, 1), at(i + 1, 0, 1), at(i + 1, 0, -1));
-    quad(at(i, o.nV, 1), at(i, o.nV, -1), at(i + 1, o.nV, -1), at(i + 1, o.nV, 1));
-  }
-  for (let j = 0; j < o.nV; j++) {
-    // 左右翼尖端面
-    quad(at(0, j, 1), at(0, j, -1), at(0, j + 1, -1), at(0, j + 1, 1));
-    quad(at(o.nU, j, -1), at(o.nU, j, 1), at(o.nU, j + 1, 1), at(o.nU, j + 1, -1));
-  }
-  const g = new THREE.BufferGeometry();
-  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
-  g.computeVertexNormals();
-  return g;
-};
 
 /** @type {() => Record<string, THREE.Material>} */
 const materials = () => ({
@@ -301,16 +266,16 @@ const CONFIG = {
     /** @type {(x: number, z: number) => number} 殼面高度 */
     const top = (x, z) => kit.surf.topY(x, z);
 
-    // ── 鬃毛片（iter-122：評審「鋸齒像拉鍊」→ 改成 3 綹往後飄的長鬃）：頸脊中線 x 56 → 17，每綹前緣低、往後拉長到尖端，
-    //    綹與綹之間只淺淺分開（厚 1.4，高 2.2 → 3.8 mm），根部埋進殼面 1 mm；毛流用赭紅刻線貼紙畫在頸側 ──
+    // ── 鬃毛 = 往後飛揚的背鰭（大件 1，iter-128）：頸脊中線 x 55 → 16，3 綹長鬃，每綹前緣低、往後上掃到尖端（高 5.6 → 6.8 mm），
+    //    尖端都在根部後方 6–8 mm（被迎風往後吹開的動勢）；厚 1.6，根部埋進殼面 1 mm；毛流用赭紅刻線貼紙畫在頸側 ──
     {
       /** @type {(x: number, h: number) => number[]} 頸脊上 x 處高 h 的點 */
       const at = (x, h) => [x, top(x, 0) + h];
       const pts = [
-        at(56.5, -1), at(56, 1.0), at(52, 2.2), at(47, 3.0), at(43.2, 3.6), at(44.6, 2.2),
-        at(39, 3.0), at(33.6, 3.8), at(35.2, 2.2), at(29, 2.8), at(22.4, 3.4), at(19.4, 2.4), at(17.6, 0.6), at(17.6, -1),
+        at(55, -1), at(54.4, 1.6), at(50.5, 3.6), at(44.5, 6.4), at(42.6, 6.8), at(45.6, 3.4),
+        at(39, 4.4), at(32.6, 6.4), at(31, 6.6), at(34.4, 3.2), at(28, 3.8), at(21.6, 5.4), at(20.2, 5.6), at(19.6, 2.6), at(16.6, 0.4), at(16.4, -1),
       ];
-      parts.push({ geometry: finPlate(pts.reverse(), 0, 1.4), mat: 'slip2', solid: true, outline: true, name: 'horse-mane-locks' });
+      parts.push({ geometry: finPlate(pts.reverse(), 0, 1.6), mat: 'slip2', solid: true, outline: true, name: 'horse-mane-locks' });
     }
     // ── 耳朵（iter-122：評審「要立起來」；iter-124：「立耳太小」→ 高 5 → 8.5 mm、底寬 4 → 5.4 mm、厚 1.8）：頭頂（poll，x 56–62）一對立耳，略往後傾、往外張 10° ──
     {
@@ -318,8 +283,8 @@ const CONFIG = {
       const ears = [];
       for (const sg of [-1, 1]) {
         const zc = sg * 4.8;
-        const yb = top(59, 4.8);
-        ears.push(finPlate([[61.8, yb - 1], [61, yb + 3.6], [58.6, yb + 8.5], [57.2, yb + 7.6], [56.4, yb - 1]], zc, 1.8, sg * -10));
+        const yb = top(58, 4.8);
+        ears.push(finPlate([[60.8, yb - 1], [60, yb + 2.2], [57.6, yb + 4.6], [56.2, yb + 4.0], [55.2, yb - 1]], zc, 1.8, sg * -10));
       }
       parts.push({ geometry: mergeGeos(ears), mat: 'walnut2', solid: true, outline: true, name: 'horse-ears' });
     }
@@ -338,57 +303,34 @@ const CONFIG = {
       parts.push({ geometry: mergeGeos(eyes), mat: 'eye', solid: true, name: 'horse-eyes' });
     }
 
-    // ── 馬尾尾翼（iter-125，評審「高架的薄槳板、後 3/4 上表面反光成整片白」）：從背脊尾端長出、往後揚起的馬尾形整流翼 ──
-    //    中線前緣貼著背脊（翼底埋進殼面 0.9 mm）往後微揚 0.5 mm（再多正面面積會變大）；兩側往外下垂 4.4 mm（像垂下的馬尾毛，不再是平板架在車尾上方）；
-    //    翼尖大幅後掠、弦長加長（翼尖弦約 2 → 5.2 mm，後緣 −72.6 → 翼尖 −73.4），翼展維持 ±45.6（縮翼展會讓俯視和 mantis / marlin 的 IoU 超標）；
-    //    材質改霧面胡桃木（roughness 0.74、無清漆），尾根塊同材質；厚 2.0 → 1.6 mm（≥ 1.2，省質量）
+    // ── 馬尾（大件 2，iter-128）：從兩塊後腿量體之間的臀脊（x −52）長出，尾根先往後上拱（像奔馳時揚起的尾根），
+    //    再往後下方流成 3 束分開的尾毛（中束沿中線、兩側束往外張到 |z| 13），束尖垂到車尾下緣附近（x −73.6、y 約 21）——
+    //    側視是一道往後下方甩出去的 S 形弧，後 3/4 看得到 3 束尾毛，讀起來是馬尾而不是一片翼板；
+    //    斷面是扁橢圓（寬 3.4 → 0.9 mm、厚 2.2 → 0.8 mm，≥ 0.8 的射出件），霧面胡桃木 ──
     {
-      const ys = top(-57, 0);
-      /** @type {(u: number, v: number) => number} 翼中面高度 */
-      const yMid = (u, v) => ys - 0.1 + 0.5 * v - 4.4 * Math.abs(u) ** 1.6;
-      parts.push({
-        geometry: finPlate([[-53, ys - 1.2], [-58, ys - 1.2], [-66.5, ys + 0.6], [-60.4, ys + 0.6]], 0, 2.6),
-        mat: 'tailWood',
-        solid: true,
-        outline: true,
-        name: 'horse-tail-stalk',
-      });
-      // iter-127（評審「前 3/4 仍是一片比車尾寬很多的平板，讀不出馬尾」）：翼展 ±45.6 → ±37（後輪拱外擴 37.4 以內），
-      //   後緣切成 4 束往後下垂的尖馬尾毛（束尖 −73.9、束間缺口 −68.6；束尖再往下垂 2.2 mm），翼尖弦加長補回俯視面積
-      /** @type {number} 馬尾毛束數 */
-      const nTuft = 4;
-      /** @type {(u: number) => number} 束形：束間 0 → 束中央 1（尖頭） */
-      const tuft = (u) => {
-        const t = (((u + 1) / 2) * nTuft) % 1;
-        return (1 - Math.abs(2 * t - 1)) ** 0.8;
-      };
-      parts.push({
-        geometry: bentPlate({
-          nU: 32,
-          nV: 6,
-          span: 37,
-          le: (u) => -56.8 - 9 * Math.abs(u) ** 1.5,
-          te: (u) => -68.6 - 5.3 * tuft(u),
-          y: (u, v) => yMid(u, v) - 2.2 * v ** 2 * tuft(u),
-          thick: 1.6,
-        }),
-        mat: 'tailWood',
-        solid: true,
-        outline: true,
-        name: 'horse-tail-wing',
-      });
+      const y0 = top(-52, 0);
+      /** @type {(sz: number) => number[][]} 一束尾毛的中心線（sz = 往外張的量） */
+      const strand = (sz) => [
+        [-50.6, y0 - 2.2, 0],
+        [-53.6, y0 + 0.8, 0.15 * sz],
+        [-57.8, y0 + 3.2, 0.3 * sz],
+        [-62.4, y0 + 3.6, 0.48 * sz],
+        [-66.6, y0 + 1.6, 0.66 * sz],
+        [-69.8, y0 - 2.0, 0.82 * sz],
+        [-72.2, y0 - 6.4, 0.94 * sz],
+        [-73.6, y0 - 10.6, sz],
+      ];
+      /** @type {(t: number) => number[]} 扁橢圓斷面（寬、厚） */
+      const tailR = (t) => [lerp(1.7, 0.45, t ** 0.9), lerp(1.1, 0.4, t)];
+      /** @type {THREE.BufferGeometry[]} */
+      const strands = [];
+      for (const sz of [-13, 0, 13]) {
+        strands.push(sweepEllipse(strand(sz), 22, tailR, 8));
+      }
+      parts.push({ geometry: mergeGeos(strands), mat: 'tailWood', solid: true, outline: true, name: 'horse-tail-wing' });
     }
 
-    // iter-122 腹側斜裙（評審「腰部露底盤」）：前後輪之間每側一片往外下斜的實心板（buildSlantSkirt），上緣埋進殼側壁、下緣到 |z| 33.2、y 10.5
-    // iter-124：評審「腰部斜裙渲染成白色平板，像沒上漆」→ 亮面黑釉斜板（法向朝外下）在 Cycles 反射成整片白；
-    //   改成直立外板＋棚板（buildBellySkirt，外板法向水平），材質改霧面黑釉（paint-slip-black-matte）
-    parts.push({
-      geometry: buildBellySkirt({ x0: -21.5, x1: 21.5, zIn: (x) => P.hw(x) - 1.2, zOut: 33.2, yTop: 17 }),
-      mat: 'slipMatte',
-      solid: true,
-      outline: true,
-      name: 'belly-skirt',
-    });
+    // iter-128：拿掉腹側裙板（收腰到 27 後裙板外緣會把俯視收腰填平；側面兩層量體改由腰線稜＋下半內收＋赭紅下半車身表現）
     // 輪拱內襯（前後）：沿剖面反查殼內面，擋住從輪拱看進去的殼內空腔
     parts.push({ geometry: mergeGeos(ARCHES.map((a) => buildProfileLiner(a, 21, profile))), mat: 'liner', shell: true, name: 'arch-liners' });
     // 輪胎內側的環形擋板（|z| 22.9）：擋住從輪拱橫越車身看到另一側地板的視線
