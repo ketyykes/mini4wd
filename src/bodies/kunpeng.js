@@ -1,14 +1,14 @@
 // 鯤鵬（body-kunpeng，神話組・中國）：《莊子・逍遙遊》「北冥有魚，其名為鯤……化而為鳥，其名為鵬」。
 // 不做魚頭、鳥頭與眼睛，「化」用三種元素表現：
-// (1) 鰭 → 翼的變形：車身中段兩側一對後掠的小鰭刀（墨黑），到車尾放大成上下兩層、往後上方揚起的翼片（青綠 → 留白），三組翼片前緣都是金線；
+// (1) 鰭 → 翼的變形：車身中段兩側一對後掠的小鰭刀（墨黑），到車尾放大成上下兩層、往後上方揚起的翼片（青綠 → 留白）；翼片是厚實的倒角板，不加細桿；
 // (2) 水 → 風的漸變 livery：前半墨黑亮面（深水）、後半留白霧面（長風），中間是往後上方斜掃、一條比一條細的青綠條帶；
 //     前半有浪頭帶與淡金水波線（水擊三千里），後半是青綠人字羽紋；
-// (3) 配色與材質：水墨黑白＋松花石青綠珍珠漆＋淡金線，朱砂紅只用在一枚無字印章。
+// (3) 配色與材質：水墨黑白＋松花石青綠珍珠漆＋淡金線（水波線與一道串起前後翼根的車側金線，都是貼紙），朱砂紅只用在一枚無字印章。
 // 低扁全罩的尖楔車身，頂部一道兩端尖的長條透明窗（水天之間）；前輪 R17.5 輪拱、後輪在窄車尾外側由翼片罩住（26 / 31 mm 輪都可裝）。
 // 設計：shared/design/body-kunpeng/DESIGN.md（典故與文物對應 MYTH_RESEARCH 第 7 節 Z1–Z4；黑名單 7-3）。剖面為本檔站位產生器（推估）。
 // 不寫任何文字（含「Kunpeng」字樣）、不做晶片紋、不做紅色魚身 / 海豚形、不做龍角龍鬚。
 import * as THREE from 'three';
-import { makePolyBody, sweepEllipse } from './polyBody.js';
+import { makePolyBody } from './polyBody.js';
 import { namedMaterial, decalMaterial, sdRoundRect, sideDecal, mergeGeos, buildRegion, buildRim, lerp } from './loft.js';
 import { monoCurve, buildStations } from './gazelleLeap.js';
 
@@ -178,8 +178,6 @@ const materials = () => ({
   teal2: namedMaterial('paint-songhua-green-pearl', { color: 0x4f7f6f, roughness: 0.3, metalness: 0.35, clearcoat: 0.9, clearcoatRoughness: 0.1, side: THREE.DoubleSide }),
   paper: namedMaterial('paint-rice-paper-white', { color: 0xece8de, roughness: 0.66, clearcoat: 0.05 }),
   paper2: namedMaterial('paint-rice-paper-white', { color: 0xece8de, roughness: 0.66, clearcoat: 0.05, side: THREE.DoubleSide }),
-  // 真金屬：翼片前緣金線（Blender 依 -brass 結尾換成金屬）
-  gold: namedMaterial('trim-gold-brass', { color: 0xd4b56a, roughness: 0.32, metalness: 0.8, clearcoat: 0.3, side: THREE.DoubleSide }),
   inner: namedMaterial('shell-inner-dark', { color: 0x16181b, roughness: 0.85, side: THREE.BackSide }),
   edge: namedMaterial('shell-edge-ink', { color: 0x2a2e33, roughness: 0.6, side: THREE.DoubleSide }),
   // 水天之間：淡青灰的透明窗
@@ -308,8 +306,7 @@ const mirrorZ = (g) => {
 };
 
 /**
- * 翼片（右側，俯視多邊形 (x, z)；左側鏡射）：底面高 y、厚 thick，以 (y, pivotZ) 為支點上反 dihedral 度；
- * 多邊形前三點是前緣（翼根 → 翼尖）
+ * 翼片（右側，俯視多邊形 (x, z)；左側鏡射）：底面高 y、厚 thick，以 (y, pivotZ) 為支點上反 dihedral 度
  * @typedef {{ y: number, thick: number, dihedral: number, pivotZ: number, poly: number[][] }} Blade
  */
 
@@ -328,33 +325,36 @@ const FIN = {
     [-2, 33],
   ],
 };
-/** @type {Blade} 下層翼片：鰭刀放大、後移，罩在後輪上方（底面 y 30.6，高於 31 mm 後輪頂 28.5），翼尖上揚到約 y 36 */
+/**
+ * @type {Blade} 下層翼片：鰭刀放大、後移，罩在後輪上方（底面 y 30.6，高於 31 mm 後輪頂 28.5），翼尖上揚到約 y 35；
+ * 上反角只給 8°：角度接近常用的 3/4 視角仰角時，近側翼片會剛好側對鏡頭，看起來像一根懸空的細桿
+ */
 const VANE_LOW = {
   y: 30.6,
   thick: 1.8,
-  dihedral: 14,
+  dihedral: 8,
   pivotZ: 25,
   poly: [
     [-12, 17.5],
     [-28, 33],
     [-44, 45.4],
-    [-55, 46.8],
-    [-52, 40.5],
-    [-45, 29.5],
-    [-37, 17.5],
+    [-56, 46.8],
+    [-53.5, 41],
+    [-46, 29.5],
+    [-38.5, 17.5],
   ],
 };
-/** @type {Blade} 上層翼片：再放大、再後移，翼尖揚到全車最高（約 y 46，比窗頂高 9 mm）；和下層前後、上下錯開成兩層 */
+/** @type {Blade} 上層翼片：再放大、再後移，上反 14°，翼尖揚到全車最高（約 y 42，比窗頂高 5 mm）；和下層前後、上下錯開成兩層 */
 const VANE_UP = {
   y: 32.6,
-  thick: 1.6,
-  dihedral: 24,
+  thick: 1.7,
+  dihedral: 14,
   pivotZ: 15,
   poly: [
     [-36, 13],
     [-50, 28],
-    [-58, 37.8],
-    [-65.8, 32.2],
+    [-56.5, 38.5],
+    [-65, 33],
     [-61, 25],
     [-55, 13],
   ],
@@ -363,22 +363,16 @@ const VANE_UP = {
 const VANE_TIP = {
   ...VANE_UP,
   poly: [
-    [-58, 37.8],
-    [-61, 41.5],
-    [-71.5, 44],
-    [-68.5, 36],
-    [-65.8, 32.2],
+    [-56.5, 38.5],
+    [-59.5, 43],
+    [-72, 46],
+    [-69, 37.5],
+    [-65, 33],
   ],
 };
 
 /** @type {(b: Blade) => THREE.BufferGeometry} 右側翼片：上下緣倒 0.45 mm 圓角的平板（射出件的倒角邊），再上反 */
 const buildBlade = (b) => dihedral(bevelPlate(b.poly, b.y, b.thick, 0.45), b.y, b.pivotZ, b.dihedral);
-
-/** @type {(b: Blade) => THREE.BufferGeometry} 右側翼片的前緣金線：沿前緣的一道 Ø1.1 圓肋，和翼片一起上反 */
-const buildEdgeRail = (b) => {
-  const pts = b.poly.slice(0, 3).map(([x, z]) => [x, b.y + b.thick / 2, z]);
-  return dihedral(sweepEllipse(pts, 8, () => [0.55, 0.55], 6), b.y, b.pivotZ, b.dihedral);
-};
 
 export const kunpengBody = makePolyBody({
   id: 'body-kunpeng',
@@ -390,7 +384,7 @@ export const kunpengBody = makePolyBody({
   form: 'wave-wedge',
   roof: 'clear',
   wing: 'fin-vanes',
-  theme: '《莊子・逍遙遊》鯤化為鵬，不做魚頭與鳥頭：低扁的尖楔車身前半墨黑亮面（深水）、後半留白霧面（長風），中間是往後上方斜掃、一條比一條細的青綠條帶；車身中段一對後掠小鰭刀，到車尾放大成上下兩層往後上方揚起的翼片，前緣都是金線；前半浪頭帶與淡金水波線、後半青綠人字羽紋，頂部一道水天之間的長條透明窗',
+  theme: '《莊子・逍遙遊》鯤化為鵬，不做魚頭與鳥頭：低扁的尖楔車身前半墨黑亮面（深水）、後半留白霧面（長風），中間是往後上方斜掃、一條比一條細的青綠條帶；車身中段一對後掠小鰭刀，到車尾放大成上下兩層往後上方揚起的翼片，車側一道金線串起前後翼根；前半浪頭帶與淡金水波線、後半青綠人字羽紋，頂部一道水天之間的長條透明窗',
   material: 'ABS',
   density_g_cm3: 1.05,
   wallThickness_mm: 0.8,
@@ -438,7 +432,7 @@ export const kunpengBody = makePolyBody({
       name: 'arch-liners',
     });
 
-    // 鰭 → 翼：鰭刀（墨黑）→ 下層翼片（青綠）→ 上層翼片（留白＋墨黑翼尖），顏色跟著塗裝由深到淺；前緣金線各組共用，讀成同一個形狀的三個階段
+    // 鰭 → 翼：鰭刀（墨黑）→ 下層翼片（青綠）→ 上層翼片（留白＋墨黑翼尖），顏色跟著塗裝由深到淺，讀成同一個形狀的三個階段
     /** @type {[Blade, string, string][]} */
     const blades = [
       [FIN, 'ink2', 'fin-blades'],
@@ -450,8 +444,6 @@ export const kunpengBody = makePolyBody({
       const g = buildBlade(blade);
       parts.push({ geometry: mergeGeos([g, mirrorZ(g)]), mat, solid: true, outline: true, name });
     }
-    const rails = blades.map(([blade]) => buildEdgeRail(blade));
-    parts.push({ geometry: mergeGeos([...rails, ...rails.map(mirrorZ)]), mat: 'gold', solid: true, outline: true, name: 'blade-edge-rails' });
 
     // 水波 livery（墨黑區）：從鼻尖沿肩部往後掃的一道米白浪頭帶（上緣是起伏的浪頭，往鼻尖收細）、頂面再一道較細的浪，之間與上下共三道淡金細浪線（只到前輪前方，前端收尖）；
     // 位置用斷面周向座標算（側線為 0，沿側面往上、再沿頂面往中線遞增；斷面接近方形，近似弧長），頂面上的浪幅才不會被放大
@@ -468,9 +460,9 @@ export const kunpengBody = makePolyBody({
           return -1;
         }
         const v = waveV(x, y, z);
-        const half = 1.3 * Math.min(1, Math.max(0.3, (76 - x) / 14));
+        const half = 1.7 * Math.min(1, Math.max(0.3, (76 - x) / 14));
         // 第二道浪（往中線 13 mm、較細，只到前輪上方，前端收尖）
-        const half2 = 0.65 * Math.min(1, Math.max(0, (54 - x) / 8));
+        const half2 = 1.0 * Math.min(1, Math.max(0, (54 - x) / 8));
         const inner = half2 > 0.1 ? Math.min(half2 + 0.5 * Math.sin(x / 2.6 + 1.6) - (v - 13), v - 13 + half2) : -1;
         return Math.max(Math.min(half + 0.8 * Math.sin(x / 2.6) - v, v + half), inner);
       }),
@@ -488,6 +480,12 @@ export const kunpengBody = makePolyBody({
       }),
       mat: 'dGold',
       name: 'decal-wave-lines',
+    });
+    // 車側金線：沿側線（剖面最寬處）從鰭刀翼根往後拉到下層翼片翼根的一道貼身金線（1 mm），把前後翼片串起來
+    parts.push({
+      geometry: kit.decal((x, y, z) => (x > 16 || x < -38 || Math.abs(z) < 0.6 * sec(x).hw ? -1 : 0.5 - Math.abs(y - (sec(x).ySh + 0.4))), { offset: 0.12 }),
+      mat: 'dGold',
+      name: 'decal-side-line',
     });
     // 羽紋（留白區）：條帶之後到車尾，一排排尖端朝車尾的青綠人字線
     parts.push({
@@ -529,7 +527,7 @@ export const kunpengBody = makePolyBody({
     density_g_cm3: 'SPEC 1.14：ABS 約 1.05 g/cm³（推估）',
     wallThickness_mm: '推估：射出 ABS 殼 0.8 mm（同其他款）；水天窗片同厚度，以殼面積計入質量',
     geometry: '本檔站位產生器 P＋endFactor（推估）：長 150（鼻尖 x 78、車尾 x −72，≤ 153 避免立體橋刮底）；前低後高的楔形：殼頂 36.6（座艙段）、鼻尖離地約 16、車頭以 (1 − u^1.5)^0.9 收尖；前輪拱 R17.5（31 mm 輪半徑 15.5 + 2 mm）；窄車尾半寬 20、下緣約 16.5–17（在後輪內側、底盤上方）；側進氣口為前輪拱後方深 0.6 的斜長槽',
-    wings: '鰭刀（x −12 ~ 16、厚 1.6、上反 10°）、下層翼片（x −55 ~ −12、厚 1.8、上反 14°、底面 y 30.6，高於 31 mm 後輪頂 28.5 與後上導輪 20.5）、上層翼片（x −71.5 ~ −36、厚 1.6、上反 24°，翼尖頂約 y 46；翼尖分件上墨黑）、前緣金線 Ø1.1 圓肋，均為 ABS 實心件（推估），上下緣倒圓角 0.45，質量 = 封閉體積 × 1.05 g/cm³；翼根埋進殼面',
+    wings: '鰭刀（x −12 ~ 16、厚 1.6、上反 10°）、下層翼片（x −56 ~ −12、厚 1.8、上反 8°、底面 y 30.6，高於 31 mm 後輪頂 28.5 與後上導輪 20.5）、上層翼片（x −72 ~ −36、厚 1.7、上反 14°，翼尖頂約 y 42；翼尖分件上墨黑），均為 ABS 實心件（推估），上下緣倒圓角 0.45，質量 = 封閉體積 × 1.05 g/cm³；翼根埋進殼面',
     myth: '典故《莊子・逍遙遊》（MYTH_RESEARCH Z1）：「化而為鳥」做成鰭 → 翼的三段變形與水 → 風的漸變塗裝，「水擊三千里」做成浪頭帶與水波線；上下兩段、水與風同一件的構成參考故宮〈松花石鯤鵬硯〉故文001376（Z4：下方波濤、上方雲海），不做魚首、鳥首',
     mounts: '對齊 chassis-midship 的車殼安裝點（SPEC 1.14）',
   },
