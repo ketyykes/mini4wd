@@ -3,8 +3,8 @@
 // 車上不做鳥：主題只用「火羽」「金蘋果」「Khokhloma 漆器」三種元素表現。
 // 造型（F3 半罩露輪）：箭簇形的楔形尖鼻，前輪罩後半切開露出前輪，外緣留一支往後指的翼尖；
 // 車尾是 7 片從同一個翼根放射、往後上方張開的扇形尾翼（每片由翼根到翼梢深紅 → 火焰橘 → 金）；
-// 座艙罩是一顆金色的半球（金蘋果）。
-// 塗裝：殼面由鼻到尾深紅 → 朱紅 → 火焰橘漸層、車尾收在黑漆，分界是往後疊的圓弧羽緣＋金線；鼻尖到座艙一支黑漆草葉形長條，
+// 座艙罩是琥珀金色的透明半球，罩在金色底盤與金框上（金蘋果）。
+// 塗裝：殼面由鼻到尾深紅 → 朱紅 → 火焰橘三段漸層（車尾整段是火焰橘亮漆，不用深色，免得看起來像破洞），分界是往後疊的圓弧羽緣＋金線；鼻尖到座艙一支黑漆草葉形長條，
 // 上面是 Khokhloma 的金色捲莖與朱紅漿果；側面 5 片往後拉長的飛羽貼紙。
 // 刻意避開：中國鳳凰（雞冠、卷雲尾）、希臘不死鳥（從火焰中升起的姿態）、Fawkes、寶可夢火焰鳥、Marvel Phoenix 徽章、Stravinsky 芭蕾舞台服。
 // 設計：shared/design/body-firebird/DESIGN.md（研究一節列出實際打開的來源）。剖面為本檔站位產生器（推估）。
@@ -86,7 +86,7 @@ const frontCutSd = (x, y, z) => {
 };
 
 /**
- * 座艙罩（金蘋果）：不透明的金色半橢球殼（俯視橢圓：中心 x 4、前後半長 15、半寬 10.5；底面 y 30、頂 38）。
+ * 座艙罩（金蘋果）：琥珀金色的透明半橢球殼（俯視橢圓：中心 x 4、前後半長 15、半寬 10.5；底面 y 30、頂 38），罩下的殼面貼金。
  * 16 × 6 段，以殼面積計入質量
  * @type {{ xc: number, a: number, b: number, y0: number, h: number }}
  */
@@ -112,8 +112,8 @@ const featherEdgeX = (x0, z) => {
   const q = 2 * ((((az / 7 + 0.5) % 1) + 1) % 1) - 1;
   return x0 - 0.3 * az - 4 * Math.sqrt(Math.max(0, 1 - q * q));
 };
-/** @type {number[]} 三條漸層分界的 x0：深紅 | 朱紅、朱紅 | 火焰橘、火焰橘 | 車尾黑漆 */
-const EDGE_X0 = [33, -16, -47];
+/** @type {number[]} 兩條漸層分界的 x0：深紅 | 朱紅、朱紅 | 火焰橘 */
+const EDGE_X0 = [33, -16];
 
 /** @type {{ x0: number, x1: number, w: number }} 鼻尖到座艙的黑漆草葉形長條（俯視兩端收尖，最寬處半寬 w） */
 const BLADE = { x0: 12, x1: 73.5, w: 5.4 };
@@ -130,7 +130,7 @@ const stemZ = (x) => 1.5 * Math.sin((2 * Math.PI * (x - 22)) / 13);
 
 /** @type {() => Record<string, THREE.Material>} */
 const materials = () => ({
-  // Khokhloma 黑漆：鼻上的草葉形長條、側裙下緣帶、車尾、扇形尾翼的羽軸
+  // Khokhloma 黑漆：鼻上的草葉形長條、側裙下緣帶、扇形尾翼的羽軸
   black: namedMaterial('paint-khokhloma-black', { color: 0x0e0b0a, roughness: 0.26, clearcoat: 0.9, clearcoatRoughness: 0.08 }),
   // 漸層三色（亮漆）：鼻段深紅 → 中段朱紅 → 尾段火焰橘；以紅橙為主、黑只當圖形色，避開 Black Saber 的黑＋紅灰＋深金座艙
   crimson: namedMaterial('paint-firebird-crimson', { color: 0x8a1512, roughness: 0.28, clearcoat: 0.9, clearcoatRoughness: 0.08 }),
@@ -138,8 +138,8 @@ const materials = () => ({
   flame: namedMaterial('paint-flame-orange', { color: 0xe0761c, roughness: 0.42, clearcoat: 0.5 }),
   // 金：真金屬（名稱含 -brass → Blender metallic）：扇形尾翼的翼梢、翼根座
   gold: namedMaterial('trim-gold-brass', { color: 0xd1a23e, metalness: 0.8, roughness: 0.3, clearcoat: 0.3 }),
-  // 金蘋果座艙罩：拋光的金（比翼梢亮）
-  apple: namedMaterial('trim-apple-gold-brass', { color: 0xdcae3c, metalness: 0.85, roughness: 0.2, clearcoat: 0.6 }),
+  // 金蘋果座艙罩：琥珀金色的透明 PC（名稱沿用座艙罩的 pc-smoke-tint，Blender 依名稱當玻璃）
+  glass: namedMaterial('pc-smoke-tint', { color: 0xd9962a, roughness: 0.05, specularIntensity: 0.6, transparent: true, opacity: 0.5, envMapIntensity: 0.5, depthWrite: false, side: THREE.DoubleSide }),
   inner: namedMaterial('shell-inner-dark', { color: 0x161212, roughness: 0.85, side: THREE.BackSide }),
   edge: namedMaterial('shell-edge-black', { color: 0x120e0c, roughness: 0.5, side: THREE.DoubleSide }),
   mount: namedMaterial('abs-mount-black', { color: 0x222326, roughness: 0.6 }),
@@ -313,7 +313,7 @@ export const firebirdBody = makePolyBody({
   form: 'firebird-glide',
   roof: 'canopy',
   wing: 'radial-fan',
-  theme: '火鳥的元素（不做鳥）：箭簇形楔形尖鼻、前輪罩後半切開露出前輪；車尾 7 片從同一翼根放射的扇形尾翼（深紅 → 火焰橘 → 金翼梢）；金蘋果色的半球座艙罩；殼面由鼻到尾深紅 → 朱紅 → 火焰橘漸層、車尾收在黑漆（圓弧羽緣＋金線分界），鼻上一支黑漆草葉長條畫 Khokhloma 金色捲莖與朱紅漿果，側面 5 片往後拉長的飛羽貼紙',
+  theme: '火鳥的元素（不做鳥）：箭簇形楔形尖鼻、前輪罩後半切開露出前輪；車尾 7 片從同一翼根放射的扇形尾翼（深紅 → 火焰橘 → 金翼梢）；琥珀金透明半球座艙罩（罩下貼金）；殼面由鼻到尾深紅 → 朱紅 → 火焰橘三段漸層（圓弧羽緣＋金線分界），鼻上一支黑漆草葉長條畫 Khokhloma 金色捲莖與朱紅漿果，側面 5 片往後拉長的飛羽貼紙',
   material: 'ABS',
   density_g_cm3: 1.05,
   wallThickness_mm: 0.8,
@@ -333,11 +333,9 @@ export const firebirdBody = makePolyBody({
     // 由鼻到尾漸層：深紅 → 朱紅 → 火焰橘
     { mat: 'crimson', keep: (x, y, z) => x - featherEdgeX(EDGE_X0[0], z) },
     { mat: 'vermilion', keep: (x, y, z) => x - featherEdgeX(EDGE_X0[1], z) },
-    { mat: 'flame', keep: (x, y, z) => x - featherEdgeX(EDGE_X0[2], z) },
-    // 車尾收在黑漆（扇形尾翼下方）
-    { mat: 'black', keep: () => 1 },
+    { mat: 'flame', keep: () => 1 },
   ],
-  mats: { inner: 'inner', edge: 'edge', cap: 'black', mount: 'mount' },
+  mats: { inner: 'inner', edge: 'edge', cap: 'flame', mount: 'mount' },
   materials,
   extras: (kit) => {
     /** @type {BodyPart[]} */
@@ -356,12 +354,12 @@ export const firebirdBody = makePolyBody({
       shell: true,
       name: 'arch-well-front',
     });
-    // 座艙罩：金色半橢球殼（殼面積計入質量）
+    // 座艙罩：琥珀金透明半橢球殼（殼面積計入質量）
     {
       const dome = new THREE.SphereGeometry(1, 16, 6, 0, Math.PI * 2, 0, Math.PI / 2);
       dome.scale(CANOPY.a, CANOPY.h, CANOPY.b);
       dome.translate(CANOPY.xc, CANOPY.y0, 0);
-      parts.push({ geometry: dome, mat: 'apple', shell: true, name: 'canopy-dome' });
+      parts.push({ geometry: dome, mat: 'glass', shell: true, renderOrder: 3, name: 'canopy-dome' });
     }
     // 扇形尾翼（實體件，依段上色）；翼根埋進背脊 0.5 mm
     const rootY = kit.surf.topY(FAN_ROOT_X, 0) - 0.5;
@@ -375,11 +373,11 @@ export const firebirdBody = makePolyBody({
     parts.push({ geometry: boss, mat: 'gold', solid: true, outline: true, name: 'fan-root-boss' });
 
     // ---- 貼紙 ----
-    // 座艙框（金，座艙罩外圍 1.2 mm）＋座艙到翼根座的金色背脊線
+    // 座艙罩下的貼金底面連同外圍 1.2 mm 金框（透過琥珀罩看到的是金色）＋座艙到翼根座的金色背脊線
     parts.push({
       geometry: kit.decal((x, y, z) => {
         const r = canopyR(x, z);
-        const ring = Math.min(r - 0.99, 1 + 1.2 / CANOPY.b - r);
+        const ring = 1 + 1.2 / CANOPY.b - r;
         const spine = Math.min(0.45 - Math.abs(z), CANOPY.xc - CANOPY.a - x, x - FAN_ROOT_X);
         return Math.max(ring, spine);
       }),
@@ -525,7 +523,7 @@ export const firebirdBody = makePolyBody({
     geometry: '本檔站位產生器 P（推估）：殼面 x −58 ~ 75（鼻尖），扇形尾翼翼梢約 x −75；殼頂 31.6–32.6、座艙罩頂 38、扇形尾翼頂約 45.5（V7：尾翼比座艙頂高 ≤ 10）；前輪上方半寬 39.2（側裙外張 1.0）',
     wheelArches: '前後 R17.5（31 mm 輪胎半徑 15.5 + 2 mm），可裝 26 / 31 mm 輪；前輪罩後半切開露出輪胎（x 22 起，前緣俯視後掠：內側 x 44、外緣約 x 36，|z| ≥ 23.6）；後輪有輪拱內襯，前輪有胎內側環形擋板',
     fan: '扇形尾翼：7 片 ABS 平板（厚 1.1 mm，推估），偏航 0° / ±11° / ±22° / ±33°、長 50 / 48 / 44 / 38 mm、最大半寬 4.6 → 3.6 mm、外緣下垂 0° / 10° / 20° / 30°，同一翼根（x −27 背脊）放射，翼梢高 44.4 → 39；每片分三段上色（深紅、火焰橘、金），上表面中線一條黑漆羽軸凸條（寬 0.9 → 0.3、高 0.15 mm）；翼根座為金色扁橢球；質量 = 封閉體積 × 1.05 g/cm³',
-    canopy: '座艙罩（金蘋果）：不透明金色半橢球殼 30 × 21 mm、高 8 mm，16 × 6 段，以殼面積 × 0.8 mm 計入質量（推估）',
+    canopy: '座艙罩（金蘋果）：琥珀金透明半橢球殼 30 × 21 mm、罩下殼面貼金、高 8 mm，16 × 6 段，以殼面積 × 0.8 mm 計入質量（推估）',
     palette: 'Khokhloma 漆器的黑＋朱紅＋金與捲莖、漿果母題（研究來源見 DESIGN.md S3）；金蘋果與發亮的尾羽取自 Afanasyev 故事（S2）；色碼自訂（推估）',
     mounts: '對齊 chassis-midship 的車殼安裝點（SPEC 1.14）',
   },
