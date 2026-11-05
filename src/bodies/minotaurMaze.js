@@ -1,8 +1,8 @@
 // 米諾陶洛斯（body-minotaur-maze，神話組・希臘）——F2 擋泥板肌肉型，姿態是「低頭衝撞的蠻牛」；車上沒有牛的臉、眼、鼻孔、鼻環。
-// 側視：鼻尖壓到 15.6 mm 的黑色鼻錐，往後一路斜升到前輪上方的「牛肩」擋泥板量體（最高 37.6，比中央脊線還高），
+// 側視：鼻尖壓到 15.6 mm 的低鼻錐，往後一路斜升到前輪上方的「牛肩」擋泥板量體（最高 37.6，比中央脊線還高），
 // 中段大幅收腰（半寬 46 → 29，肩線降到 24 以下），後輪再鼓起一對較低的「牛臀」擋泥板，車尾往下收——量體集中在四個角，像低頭蓄力往前衝的公牛。
 // 斷面：中央隆起的圓脊（不是 V 形）＋兩側凹谷＋擋泥板頂；肩線是唯一銳利稜線，下面往內收 3.5–4 mm 成第二層（壁畫藍下裙＋黑色下緣），側視有上下兩層量體。
-// 神話元素：鼻錐是黑繪陶的亮黑素面；新月角 = 從牛肩擋泥板長出、貼著擋泥板往前衝、在鼻尖兩側往上挑的金色粗長新月角（前翼 / 分流片，圓斷面）；
+// 神話元素：新月角 = 一片貼低的新月形金色前翼——從左右前擋泥板的前坡長出、往前往內收，在鼻尖上方連成一道弧（扁平翼斷面，不是圓錐形的角）；鼻錐和車身同為赭紅，沒有牛的臉、眼、鼻孔、鼻環；
 // 迷宮回紋 = 從鼻尖沿中央脊往後掃到車尾的黑底奶油白雙回紋賽車條，中線一條微微發光的金色阿里阿德涅之線走進座艙；座艙是脊線後段的方形開放座艙（迷宮中心，井壁和賽車條同為黑色）。
 // 設計：shared/design/body-minotaur-maze/DESIGN.md（MYTH_RESEARCH G6、G9、G10、G13）。剖面為本檔站位產生器（推估）；塗裝全為自創，不含任何文字、號碼或商標。
 import * as THREE from 'three';
@@ -99,8 +99,6 @@ const ARCHES = [
 /** @type {(x: number, y: number) => number} 側視到最近輪拱圓周的距離（正值 = 在輪拱切口外） */
 const archRingDist = (x, y) => Math.min(...ARCHES.map((a) => Math.hypot(x - a.x, y - a.y) - a.radius));
 
-/** @type {number} 黑色鼻錐起點（x 大於此值漆黑） */
-const X_HEAD = 55;
 /** @type {number} 下裙下緣黑色帶上緣高度 */
 const ROCKER_Y = 13.0;
 /** @type {number} 脊線黑底賽車條半寬 */
@@ -168,9 +166,9 @@ const materials = () => ({
   ochre: namedMaterial('paint-fresco-ochre-red', { color: 0xa5452c, roughness: 0.64, clearcoat: 0.05 }),
   blue: namedMaterial('paint-fresco-blue', { color: 0x2e5b85, roughness: 0.62, clearcoat: 0.05 }),
   cream: namedMaterial('paint-fresco-cream', { color: 0xebdfc1, roughness: 0.62, clearcoat: 0.05 }),
-  // 鼻錐、賽車條底色、座艙井壁：亮面黑（少數亮面部位）
+  // 賽車條底色、座艙井壁：亮面黑（少數亮面部位）
   black: namedMaterial('paint-bull-black', { color: 0x1d1b1a, roughness: 0.3, clearcoat: 0.8, clearcoatRoughness: 0.12 }),
-  // 牛角：金色（真金屬：名稱含 -brass）
+  // 新月前翼：金色（真金屬：名稱含 -brass）
   gold: namedMaterial('trim-gold-brass', { color: 0xc9a23a, roughness: 0.3, metalness: 0.8, clearcoat: 0.2 }),
   inner: namedMaterial('shell-inner-dark', { color: 0x1a1716, roughness: 0.85, side: THREE.BackSide }),
   edge: namedMaterial('shell-edge-black', { color: 0x1d1b1a, roughness: 0.6, side: THREE.DoubleSide }),
@@ -254,7 +252,7 @@ const CONFIG = {
   form: 'bull-slab',
   roof: 'open-cockpit',
   wing: 'none',
-  theme: 'F2 擋泥板肌肉型「低頭衝撞的蠻牛」：低矮的黑色鼻錐往後斜升到前輪上方高聳的牛肩擋泥板、中段大幅收腰、後輪牛臀擋泥板；肩線下內收的壁畫藍下裙；金色粗長新月牛角貼著牛肩往前衝、在鼻尖兩側上挑（前翼 / 分流片）；黑底奶油白雙回紋賽車條從鼻尖沿中央脊掃到車尾，發光的金色阿里阿德涅之線走進脊線後段的迷宮中心座艙；沒有牛臉、牛眼、鼻環',
+  theme: 'F2 擋泥板肌肉型「低頭衝撞的蠻牛」：低矮的鼻錐往後斜升到前輪上方高聳的牛肩擋泥板、中段大幅收腰、後輪牛臀擋泥板；肩線下內收的壁畫藍下裙；一片貼低的新月形金色前翼從左右前擋泥板前坡長出、在鼻尖上方連成一道弧；黑底奶油白雙回紋賽車條從鼻尖沿中央脊掃到車尾，發光的金色阿里阿德涅之線走進脊線後段的迷宮中心座艙；沒有牛臉、牛眼、鼻環',
   material: 'ABS',
   density_g_cm3: 1.05,
   wallThickness_mm: 0.8,
@@ -274,8 +272,6 @@ const CONFIG = {
   ],
   sideZMin: 28,
   zones: () => [
-    // 黑色鼻錐
-    { mat: 'black', keep: (x) => x - X_HEAD },
     // 下裙下緣黑色帶
     { mat: 'black', keep: (x, y) => ROCKER_Y - y },
     // 下裙：壁畫藍（肩線稜以下的第二層）
@@ -316,32 +312,26 @@ const CONFIG = {
       parts.push({ geometry: mergeGeos(walls), mat: 'well', solid: true, name: 'cockpit-well' });
     }
 
-    // ── 牛角 = 往前衝的前翼（大件 1）：根部埋進牛肩擋泥板頂（x 42、|z| 38），貼著擋泥板前坡往前、往外鼓成新月，
-    //    到鼻尖兩側（x 80.4、|z| 30）往上挑——俯視是兩道往外凸的新月，角尖左右分開（不在鼻前合成 U 形）；側視是低伏前衝、尖端上挑的弧 ──
+    // ── 新月前翼（大件 1）：一片貼低、近乎水平的新月形金色翼——兩端埋進前擋泥板前坡的肩線（x 56、|z| 41），往前一路降低，
+    //    繞過前輪前方，在鼻尖上方（x 78.5）連成一道弧，壓在鼻尖頂面上（不在鼻子下方）；斷面是扁平的翼形（弦向寬、上下薄），不是圓錐形的角。
+    //    最前緣 x 80.8，不超過外框原本的最前緣 ──
     {
-      /** @type {(sg: number) => number[][]} */
-      const hornPath = (sg) => [
-        [41.0, top(41, 38) - 2.4, sg * 38],
-        [45.0, top(45, 39.6) + 0.9, sg * 39.6],
-        [51.0, 34.0, sg * 41.6],
-        [57.5, 31.6, sg * 42.4],
-        [64.0, 30.2, sg * 41.6],
-        [70.0, 30.0, sg * 39.4],
-        [74.6, 31.2, sg * 36.4],
-        [78.0, 33.6, sg * 33.2],
-        [80.2, 36.8, sg * 30.4],
+      /** @type {number[][]} 翼的中心線（左端 → 鼻尖 → 右端） */
+      const half = [
+        [56.0, 28.8, 41.0],
+        [62.0, 26.4, 42.4],
+        [70.0, 23.4, 41.0],
+        [76.6, 20.4, 34.0],
+        [78.5, 18.4, 21.0],
+        [78.5, 17.5, 8.0],
       ];
-      /** @type {(t: number) => number[]} 角的斷面半徑（正圓）：根部 3.6 → 角尖 0.85 */
-      const hornR = (t) => {
-        const r = lerp(3.6, 0.85, Math.pow(t, 0.85));
-        return [r, r];
+      const path = [...half.map(([x, y, z]) => [x, y, -z]), [78.5, 17.3, 0], ...half.map(([x, y, z]) => [x, y, z]).reverse()];
+      /** @type {(t: number) => number[]} 斷面半徑 [弦向, 上下]：兩端弦寬 5.2、中央收到 4（最前緣不超過 x 80.9） */
+      const wingR = (t) => {
+        const w = 1 - Math.abs(2 * t - 1);
+        return [lerp(2.6, 2.0, Math.sqrt(w)), lerp(0.7, 0.9, w)];
       };
-      /** @type {THREE.BufferGeometry[]} */
-      const horns = [];
-      for (const sg of [-1, 1]) {
-        horns.push(smoothNormals(sweepEllipse(hornPath(sg), 28, hornR, 10)));
-      }
-      parts.push({ geometry: mergeGeos(horns), mat: 'gold', solid: true, outline: true, name: 'bull-horns' });
+      parts.push({ geometry: smoothNormals(sweepEllipse(path, 40, wingR, 8)), mat: 'gold', solid: true, outline: true, name: 'crescent-front-wing' });
     }
 
     // 輪拱內襯、環形擋板
@@ -395,13 +385,13 @@ const CONFIG = {
       mat: 'dGold',
       name: 'decal-gold-shoulder-line',
     });
-    // 下裙回紋帶（奶油白）：只在兩輪之間的腰段
+    // 下裙回紋帶（奶油白）：只在兩輪之間的腰段；腰段側壁內收到 |z| 25 左右，zMin 要取 24 才不會把回紋切成碎片
     /** @type {(u: number, v: number) => number} u = 往車頭為正的 x */
     const keyBand = (u, v) => Math.max(greekKey(u + 80, v - 0.6), u - 22, -22 - u, 1.2 - archRingDist(u, v));
     parts.push({
       geometry: mergeGeos([
-        kit.decal(sideDecal(keyBand, { x0: 0, y0: 0, zMin: 28, side: 1 })),
-        kit.decal(sideDecal((u, v) => keyBand(-u, v), { x0: 0, y0: 0, zMin: 28, side: -1 })),
+        kit.decal(sideDecal(keyBand, { x0: 0, y0: 0, zMin: 24, side: 1 })),
+        kit.decal(sideDecal((u, v) => keyBand(-u, v), { x0: 0, y0: 0, zMin: 24, side: -1 })),
       ]),
       mat: 'dCream',
       name: 'decal-meander-band',
@@ -411,13 +401,13 @@ const CONFIG = {
   src: {
     density_g_cm3: 'SPEC 1.14：ABS 約 1.05 g/cm³（推估）',
     wallThickness_mm: '推估：射出 ABS 殼 0.8 mm（同其他車殼）',
-    geometry: '本檔站位產生器 P（推估）：殼 x −70 → 77.5、牛角尖 x 約 81（外框長 151.0 ≤ 153，SPEC 1.14a）；脊線 19（車尾）→ 36.4（x 26）→ 15.6（鼻尖）；擋泥板頂：牛肩 37.6（x 37）、牛臀 33.4（x −41）；牛角尖頂 39.9（全車最高）；半寬：牛臀 37.6、腰 29、牛肩 46.0（外框半寬 ≤ 48.0）、鼻吻 13.5',
+    geometry: '本檔站位產生器 P（推估）：殼 x −70 → 77.5、新月前翼最前緣 x 80.8（外框長 150.8 ≤ 153，SPEC 1.14a）；脊線 19（車尾）→ 36.4（x 26）→ 15.6（鼻尖）；擋泥板頂：牛肩 37.6（x 37）、牛臀 33.4（x −41）；全車最高點是牛肩擋泥板頂 37.8；半寬：牛臀 37.6、腰 29、牛肩 46.0（外框半寬 ≤ 48.0）、鼻吻 13.5',
     wheelArches: '前後 R15.2（26 mm 輪胎半徑 13 + 2.2 mm），前 cutZFrom 33、後 30；31 mm 大輪需切輪拱。輪拱內襯從側壁內面往內 4.5 mm，輪胎內側另有 buildArchWell 環形擋板（|z| 22.9）',
     labyrinth: '迷宮 / 回紋：克諾索斯銀幣背面的直線迷宮（MYTH_RESEARCH G9）與「回紋是線性形式的迷宮」（G10）——畫成沿中央脊的雙回紋賽車條與兩輪之間的下裙回紋帶（線寬 0.75 mm，格距自訂）',
     thread: '阿里阿德涅之線（G6）：金色 1.1 mm 細線沿中線從鼻尖走進座艙，自發光強度 0.45（推估）',
     cockpit: '迷宮中心方形開放座艙 14 × 12.4 mm、井壁深約 4 mm（0.8 mm 實心壁，亮面黑），沒有底板',
-    horns: '牛角為實心 ABS 掃掠件（根部 φ7.2 → 角尖 φ1.7，圓斷面），質量 = 封閉體積 × 1.05 g/cm³（推估）',
-    nose: '黑色鼻錐借克諾索斯石雕牛頭角杯的黑色石材（Minoan art 條目），素面，不做眼、鼻孔、鼻環',
+    frontWing: '新月前翼為一條實心 ABS 掃掠件（40 × 8 段）：扁平斷面，弦向寬 4–5.2 mm、厚 1.4–1.8 mm；兩端埋進前擋泥板前坡的肩線（x 56、|z| 41、y 28.8），繞過前輪前方（最寬 |z| 42.4），中央在鼻尖上方（x 78.5、y 17.3），最前緣 x 80.8；質量 = 封閉體積 × 1.05 g/cm³（推估）',
+    nose: '鼻錐和車身同為壁畫赭紅，素面，不做眼、鼻孔、鼻環；只有中央的黑底回紋賽車條與金線通到鼻尖',
     mounts: '對齊 chassis-midship 的車殼安裝點（SPEC 1.14）',
   },
 };
