@@ -38,7 +38,8 @@ const P = {
   // iter-127（評審連兩輪「仍是平板車」）：屋脊改成從車尾一路往前下壓的楔形——車尾 38 → 座艙 33.4 → 前輪上方 28.6 → 鼻端 16，
   // 側視像一間往前衝、低頭的小屋（原本 34.6 一路平到前輪才降）；屋簷 yS 不動（前輪擋泥板隆起與輪拱間隙不變）
   // iter-128：屋脊整條壓低（車尾 38 → 33.6），讓出正面面積給 2 段式瓦片後翼；仍是鼻端 16 往後升的楔形
-  yTop: monoCurve(XS, [33.4, 34, 34.2, 33.9, 33.2, 32.4, 31.6, 30.6, 29.6, 28.6, 26.4, 23, 19.4, 16]),
+  // iter-129：中央脊樑高出屋面 2.0，脊頂整條抬 1.2（兩側屋面比 iter-128 略低）；鼻端不變
+  yTop: monoCurve(XS, [34.6, 35.2, 35.4, 35.1, 34.4, 33.6, 32.8, 31.8, 30.6, 29.4, 26.8, 23, 19.4, 16]),
   // 屋簷外緣高度（頂面與側面交界＝肩線）：前輪上方隆起成擋泥板（28.2，V1），往前壓到鼻端 16.6
   yS: monoCurve(XS, [28.6, 29.4, 30, 30.2, 29.4, 28.4, 27.6, 27, 27.2, 28.2, 25.6, 21.8, 18.2, 15.8]),
   // 側裙（最下一根圓木）下緣：車尾封口下緣 14.2（遮住後齒輪箱）
@@ -78,7 +79,30 @@ const yLogBot = (x) => yWallTop(x) - Math.min(7.6, 0.55 * (yWallTop(x) - P.yLow(
 /** @type {(x: number) => number} 每根圓木高度 */
 const logH = (x) => (yWallTop(x) - yLogBot(x)) / LOG_COUNT;
 /** @type {(x: number, az: number) => number} 屋面高度（|z| 處，直線斜面） */
-const roofY = (x, az) => P.yTop(x) - ((P.yTop(x) - P.yS(x)) * az) / (P.hw(x) + EO);
+/**
+ * iter-129（評審「屋頂殼面和對照相同，不算重塑」）：屋頂斷面改成「中央隆起的脊樑＋兩側較平的屋面」——
+ * 脊樑半寬 rw（最多 7），頂面比兩側屋面高 SPINE_H（鼻端 12 mm 內漸收為 0），脊樑邊是一道銳利折線；
+ * 側視仍是往前低頭的楔形，前視斷面從單一人字坡變成「脊＋肩」兩段
+ * @type {(x: number) => number} 脊樑半寬
+ */
+const ridgeW = (x) => Math.min(7, 0.3 * (P.hw(x) + EO));
+/** @type {number} 脊樑高出屋面的量 */
+const SPINE_H = 2.0;
+/** @type {(x: number) => number} 脊樑高度（鼻端漸收） */
+const spineH = (x) => Math.min(SPINE_H * Math.max(0, Math.min(1, (60 - x) / 12)), Math.max(0, P.yTop(x) - P.yS(x) - 1.2));
+/** @type {(x: number, az: number) => number} 屋面高度（|z| 處）：脊樑頂微拱 → 脊樑肩 → 直線屋面到屋簷 */
+const roofY = (x, az) => {
+  const t = P.yTop(x);
+  const rw = ridgeW(x);
+  const tb = t - spineH(x);
+  if (az <= rw) {
+    return t - 0.4 * (az / rw) ** 2;
+  }
+  if (az <= rw + 1.4) {
+    return lerp(t - 0.4, tb, (az - rw) / 1.4);
+  }
+  return tb - ((tb - P.yS(x)) * (az - rw - 1.4)) / Math.max(0.5, P.hw(x) + EO - rw - 1.4);
+};
 
 /**
  * 半剖面：屋脊 → 直線屋面 → 屋簷外緣（銳利）→ 封簷板（垂直）→ 屋簷底內收 → 4 根圓木（每根鼓起 + 銳利接縫）
@@ -91,9 +115,11 @@ const profile = (x) => {
   const yW = yWallTop(x);
   const L = logH(x);
   /** @type {number[][]} */
+  const rw = ridgeW(x);
   const pts = [
     [0, t],
-    [0.5 * (h + EO), lerp(t, s, 0.5)],
+    [rw, roofY(x, rw)],
+    [rw + 1.4, roofY(x, rw + 1.4)],
     [h + EO, s],
     [h + EO, s - FASCIA_H],
     [h, yW],
@@ -108,7 +134,7 @@ const profile = (x) => {
   return pts;
 };
 /** @type {number[]} 銳利稜線：屋簷外緣、封簷板下緣、牆頂、圓木接縫、屋身下緣、裙身內收角 */
-const HARD = [2, 3, 4, 6, 8, 9];
+const HARD = [1, 2, 3, 4, 5, 7, 9, 10];
 
 /** @type {{ x: number, pts: number[][] }[]} 車尾與車頭每 1 mm 一站（iter-120：0.75 → 1，曲面內部每 0.5 mm 取樣，0.75 會變成每 0.375 mm 一列），中段每 2 mm */
 const STATIONS = [...buildStations(X_REAR, -55, 1, profile).slice(0, -1), ...buildStations(-55, 55, 2, profile).slice(0, -1), ...buildStations(55, X_FRONT, 1, profile)];
@@ -169,6 +195,8 @@ const materials = () => ({
   // iter-122：木瓦改成深炭灰（和 trojan / serpent / tanngrisnir 的木褐低平車拉開），屋簷底與車頭封口是 izba 彩繪的藍
   shingle: namedMaterial('paint-shingle-charcoal', { color: 0x3a3e44, roughness: 0.74, clearcoat: 0.04 }),
   shingleDark: namedMaterial('paint-shingle-charcoal-dark', { color: 0x2a2d32, roughness: 0.76, clearcoat: 0.04 }),
+  // iter-129：屋簷翼（比屋頂再深一階的炭灰，避免讀成未上色的灰塑膠）
+  shingleWing: namedMaterial('paint-shingle-charcoal-eave', { color: 0x2c2f35, roughness: 0.72, clearcoat: 0.05, side: THREE.DoubleSide }),
   soffit: namedMaterial('paint-izba-blue', { color: 0x2a5aa0, roughness: 0.6, clearcoat: 0.08 }),
   // 白色窗飾 / 封簷板 / 博風板（白漆木作，霧面）
   white: namedMaterial('paint-nalichnik-white', { color: 0xf0ece2, roughness: 0.6, clearcoat: 0.05 }),
@@ -187,7 +215,7 @@ const materials = () => ({
   sill: namedMaterial('paint-sill-charcoal', { color: 0x2c2f33, roughness: 0.62, clearcoat: 0.08 }),
   // iter-127：往後飄的煙流（霧面暖灰白）
   // iter-128：煙流背鰭（霧面暖灰白；材質與網格名稱都不含 smoke，避免 Blender 當成玻璃）
-  plume: namedMaterial('paint-ash-plume', { color: 0xd6d1c8, roughness: 0.92, clearcoat: 0.0, side: THREE.DoubleSide }),
+  plume: namedMaterial('paint-ash-plume', { color: 0xe8e4dc, roughness: 0.92, clearcoat: 0.0 }),
   hole: namedMaterial('plastic-chimney-black', { color: 0x120d0a, roughness: 0.9 }),
   inner: namedMaterial('shell-inner-dark', { color: 0x1e1712, roughness: 0.85, side: THREE.BackSide }),
   edge: namedMaterial('shell-edge-wood', { color: 0x4a2f1b, roughness: 0.7, side: THREE.DoubleSide }),
@@ -391,6 +419,137 @@ const buildRearWing = () => {
   bottom.push([CHIMNEY_X - 2.3, CHIMNEY_TOP]);
   const plume = finPlate([...top, ...bottom].reverse(), 0, 1.5);
   return { planes, endplates: mergeGeos(ends), chimney, cap, flue, plume };
+};
+
+/**
+ * 依 (x, |z|) 變形的實心薄板：BoxGeometry 分段後把每個頂點的 y 加上 yFn(x, z)
+ * @type {(x0: number, x1: number, span: number, thick: number, yFn: (x: number, z: number) => number) => THREE.BufferGeometry}
+ */
+const bentPlate = (x0, x1, span, thick, yFn) => {
+  const g = new THREE.BoxGeometry(x1 - x0, thick, 2 * span, 4, 1, 24);
+  g.translate((x0 + x1) / 2, 0, 0);
+  const pos = g.attributes.position;
+  for (let i = 0; i < pos.count; i++) {
+    pos.setY(i, pos.getY(i) + yFn(pos.getX(i), pos.getZ(i)));
+  }
+  g.computeVertexNormals();
+  return g;
+};
+
+/** @type {number} iter-129 屋簷翼：前緣（埋進屋頂後段）x */
+const EAVE_X0 = -57;
+/** @type {number} 屋簷翼後緣 x（車尾封口 −67 之後 2 mm） */
+const EAVE_X1 = -69;
+/** @type {number} 屋簷翼半翼展 */
+const EAVE_SPAN = 25;
+/** @type {(x: number, z: number) => number} 屋簷翼板中面高度：和屋頂脊樑後段連成一片、往後微升，兩端往上翹（寺廟式起翹） */
+const eaveY = (x, z) => {
+  const q = Math.abs(z) / EAVE_SPAN;
+  return P.yTop(-62) - 0.9 + 0.22 * (EAVE_X0 - x) + 5.2 * q ** 2.6;
+};
+
+/**
+ * iter-129（評審「灰色尾翼是通用 GT 翼、沒上色」）：後翼改成往後伸出的炭灰瓦屋簷——前緣埋進屋頂後段，翼面從屋脊高度往後微升，
+ * 兩端往上翹；後緣一條白色封簷板；翼面上 3 道深色瓦縫壓條。單片，不是 3 段
+ * @type {() => { plate: THREE.BufferGeometry, fascia: THREE.BufferGeometry, courses: THREE.BufferGeometry }}
+ */
+const buildEaveWing = () => {
+  const plate = bentPlate(EAVE_X1 + 1.0, EAVE_X0, EAVE_SPAN, 1.2, eaveY);
+  const fascia = bentPlate(EAVE_X1, EAVE_X1 + 1.1, EAVE_SPAN + 0.4, 2.0, (x, z) => eaveY(x, z) - 0.3);
+  /** @type {THREE.BufferGeometry[]} */
+  const courses = [];
+  for (const xc of [-60, -63.5]) {
+    courses.push(bentPlate(xc - 0.35, xc + 0.35, EAVE_SPAN - 0.6, 0.5, (x, z) => eaveY(x, z) + 0.75));
+  }
+  return { plate, fascia, courses: mergeGeos(courses) };
+};
+
+/** @type {number[]} iter-129：後倒煙囪的根部（屋脊上、座艙後方）與管口 (x, y) */
+const FLUE_A = [-21, 0];
+/** @type {number[]} 管口 */
+const FLUE_B = [-35.5, 40.6];
+
+/**
+ * iter-129（評審「煙囪與煙流拿掉，冒煙的小屋讀不出來」）：紅磚方煙囪從座艙後方的脊樑往後倒（約 55°），
+ * 管口冒出 4 團往後拉長、漸小的霧面白煙，最後一團落在屋簷翼前緣上方（煙流＝背鰭，網格名不含 smoke）
+ * @type {() => { stack: THREE.BufferGeometry, cap: THREE.BufferGeometry, flue: THREE.BufferGeometry, plume: THREE.BufferGeometry }}
+ */
+const buildChimneyPlume = () => {
+  const a = new THREE.Vector3(FLUE_A[0], P.yTop(FLUE_A[0]) - 1.6, 0);
+  const b = new THREE.Vector3(FLUE_B[0], FLUE_B[1], 0);
+  const dir = b.clone().sub(a);
+  const len = dir.length();
+  dir.normalize();
+  const quat = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir);
+  /** @type {(r: number, l: number, at: number) => THREE.BufferGeometry} 沿管軸的方柱（4 段圓柱轉 45° = 方形斷面） */
+  const seg = (r, l, at) => {
+    const g = new THREE.CylinderGeometry(r, r, l, 4);
+    g.rotateY(Math.PI / 4);
+    g.applyQuaternion(quat);
+    const c = a.clone().addScaledVector(dir, at);
+    g.translate(c.x, c.y, c.z);
+    return g;
+  };
+  /** @type {THREE.BufferGeometry[]} */
+  const puffs = [];
+  for (const [x, y, r, sx] of [
+    [-38.6, 42.4, 2.4, 1.5],
+    [-43.4, 43.5, 2.1, 1.8],
+    [-48.4, 43.9, 1.8, 2.0],
+    [-53.2, 43.6, 1.45, 2.1],
+  ]) {
+    const g = new THREE.SphereGeometry(r, 12, 8);
+    g.scale(sx, 0.9, 0.85);
+    g.translate(x, y, 0);
+    puffs.push(g);
+  }
+  return { stack: seg(3.0, len - 1.0, (len - 1.0) / 2), cap: seg(3.5, 1.3, len - 0.7), flue: seg(2.0, 0.3, len - 0.02), plume: mergeGeos(puffs) };
+};
+
+/**
+ * iter-129（評審「雞腳仍是黏在側壁上的細棍」）：前輪上方一個往前伸的暖褐圓木半罩＝抬起的雞大腿——
+ * 根部（髖）埋進前輪後方的屋身側面，往前上方鼓起罩住露出的胎面上方，前端（膝）在前輪前上方收細；
+ * 黃橙跗蹠從半罩前下緣往前下方伸出，三根前趾與深色爪尖抓向前方
+ * @type {() => { thigh: THREE.BufferGeometry, leg: THREE.BufferGeometry, tips: THREE.BufferGeometry }}
+ */
+const buildThighFender = () => {
+  /** @type {THREE.BufferGeometry[]} */
+  const thighs = [];
+  /** @type {THREE.BufferGeometry[]} */
+  const legs = [];
+  /** @type {THREE.BufferGeometry[]} */
+  const tips = [];
+  for (const sg of [-1, 1]) {
+    const hip = [20.5, 25.8, sg * 31.2];
+    const mid = [33.5, 30.6, sg * 33.4];
+    const knee = [46.5, 29.4, sg * 32.6];
+    thighs.push(smoothNormals(sweepEllipse([hip, mid, knee], 14, (q) => {
+      const k = Math.sin(Math.PI * Math.min(1, 0.25 + 0.75 * q));
+      return [lerp(3.0, 4.4, k), lerp(2.3, 2.9, k)];
+    }, 12)));
+    const ankle = [53.6, 21.6, sg * 32.8];
+    legs.push(smoothNormals(sweepEllipse([[45.5, 28, sg * 32.6], [50, 24.8, sg * 32.8], ankle], 6, (q) => [lerp(1.4, 1.1, q), lerp(1.4, 1.1, q)], 8)));
+    const ball = new THREE.SphereGeometry(1.25, 8, 6);
+    ball.translate(...ankle);
+    legs.push(ball);
+    for (const [dx, dy, dz, len] of [
+      [1, -0.35, 0, 4.4],
+      [0.9, -0.4, 0.45, 3.8],
+      [0.9, -0.4, -0.45, 3.8],
+    ]) {
+      const l = Math.hypot(dx, dy, dz);
+      const u = [dx / l, dy / l, (sg * dz) / l];
+      const p2 = ankle.map((c, i) => c + u[i] * len);
+      const p1 = ankle.map((c, i) => c + u[i] * len * 0.5 + (i === 1 ? 0.4 : 0));
+      legs.push(smoothNormals(sweepEllipse([ankle, p1, p2], 4, (q) => [lerp(0.7, 0.5, q), lerp(0.62, 0.45, q)], 6)));
+      const tip = new THREE.ConeGeometry(0.48, 1.4, 6);
+      tip.translate(0, 0.7, 0);
+      tip.applyQuaternion(new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), new THREE.Vector3(...u)));
+      tip.translate(...p2);
+      tips.push(tip);
+    }
+  }
+  return { thigh: mergeGeos(thighs), leg: mergeGeos(legs), tips: mergeGeos(tips) };
 };
 
 /**
@@ -714,13 +873,16 @@ export const yagaHutBody = makePolyBody({
     // 前後封口博風板＋屋脊垂飾
     parts.push({ geometry: mergeGeos([buildBargeboards(X_FRONT, 1), buildBargeboards(X_REAR, -1)]), mat: 'white2', solid: true, outline: true, name: 'gable-bargeboards' });
     // iter-128：2 段式瓦片後翼＋博風板端板＋煙囪＋煙流背鰭（取代 iter-120 的後倒排氣管與 iter-127 的煙球）
-    const wing = buildRearWing();
-    parts.push({ geometry: wing.planes, mat: 'shingle', solid: true, outline: true, name: 'shingle-wing' });
-    parts.push({ geometry: wing.endplates, mat: 'white2', solid: true, outline: true, name: 'bargeboard-endplates' });
-    parts.push({ geometry: wing.chimney, mat: 'brick', solid: true, outline: true, name: 'chimney-stack' });
-    parts.push({ geometry: wing.cap, mat: 'white', solid: true, outline: true, name: 'chimney-cap' });
-    parts.push({ geometry: wing.flue, mat: 'hole', solid: true, name: 'chimney-flue' });
-    parts.push({ geometry: wing.plume, mat: 'plume', solid: true, outline: true, name: 'chimney-plume-fin' });
+    // iter-129：2 段灰色翼 → 上翹的炭灰瓦屋簷翼（白封簷）；煙囪往後倒＋白色煙流放回
+    const eave = buildEaveWing();
+    parts.push({ geometry: eave.plate, mat: 'shingleWing', solid: true, outline: true, name: 'eave-wing' });
+    parts.push({ geometry: eave.courses, mat: 'shingleDark', solid: true, name: 'eave-wing-courses' });
+    parts.push({ geometry: eave.fascia, mat: 'white', solid: true, outline: true, name: 'eave-wing-fascia' });
+    const ch = buildChimneyPlume();
+    parts.push({ geometry: ch.stack, mat: 'brick', solid: true, outline: true, name: 'chimney-stack' });
+    parts.push({ geometry: ch.cap, mat: 'white', solid: true, outline: true, name: 'chimney-cap' });
+    parts.push({ geometry: ch.flue, mat: 'hole', solid: true, name: 'chimney-flue' });
+    parts.push({ geometry: ch.plume, mat: 'plume', solid: true, outline: true, name: 'chimney-plume' });
 
     // ---- 貼紙 ----
     // 圓木接縫（苔蘚填縫，深色 0.7 mm）
@@ -814,11 +976,11 @@ export const yagaHutBody = makePolyBody({
     const onSideWall = (x, y, z) => onWall(x, y, z) && archRingDist(x, y) > 1;
     // 側裙（iter-122）＋立體奔跑雞腳（iter-122）
     parts.push({ geometry: buildSills(), mat: 'sill', solid: true, outline: true, name: 'side-sills' });
-    const hen = buildHenLegs();
-    const fl = buildFenderLeg();
-    parts.push({ geometry: mergeGeos([hen.thigh, fl.thigh]), mat: 'feather', solid: true, outline: true, name: 'hen-thighs' });
-    parts.push({ geometry: mergeGeos([hen.leg, fl.leg]), mat: 'claw', solid: true, outline: true, name: 'hen-legs' });
-    parts.push({ geometry: mergeGeos([hen.tips, fl.tips]), mat: 'clawTip', solid: true, outline: true, name: 'hen-claw-tips' });
+    // iter-129：側壁細棍腿與棕色弧桿 → 前輪上方的暖褐圓木大腿半罩＋從前下緣伸出的雞爪
+    const th = buildThighFender();
+    parts.push({ geometry: th.thigh, mat: 'log', solid: true, outline: true, name: 'hen-thigh-fender' });
+    parts.push({ geometry: th.leg, mat: 'claw', solid: true, outline: true, name: 'hen-legs' });
+    parts.push({ geometry: th.tips, mat: 'clawTip', solid: true, outline: true, name: 'hen-claw-tips' });
     // 速度線
     parts.push({
       geometry: kit.decal((x, y, z) => (onSideWall(x, y, z) ? -speedLines(x, y) : -1), { offset: 0.14 }),
