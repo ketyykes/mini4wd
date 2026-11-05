@@ -1,8 +1,8 @@
-// 特洛伊木馬（body-trojan-horse，第八階段神話組・希臘）——第十階段 iter-128 從頭重塑：F2 擋泥板肌肉型「往前奔馳的木馬」。
-// 側視：馬頸是從座艙往前上方斜升的引擎蓋脊（頸脊頂 40.6 在 x 50，鼻尖仍在 x 79，不往前伸），過了頭頂再往下收成馬頭與口鼻；
+// 特洛伊木馬（body-trojan-horse，神話組・希臘）——F2 擋泥板肌肉型「往前奔馳的木馬」。
+// 側視：馬頸是從座艙往前上方斜升的引擎蓋脊（頸脊頂 40.6 在 x 50，鼻尖在 x 79），過了頭頂再往下收成馬頭與口鼻；
 // 後輪是高聳的「後腿肌肉」擋泥板（頂 38.6，比背脊高 → 兩塊後腿量體夾著下凹的臀脊），中段大幅收腰（半寬 29.5），前輪擋泥板包住 31 mm 輪；
 // 鬃毛是頸脊上往後飛揚的長背鰭（3 綹，尖端往後上掃）；馬尾從兩塊後腿量體之間的臀脊長出，先往上拱再往後下方流成 3 束分開的尾毛（尾翼 / 擴散器）。
-// 頭側一對立耳、琥珀色發光眼與青銅口勒貼紙；座艙是頸根後的胡桃木士兵艙蓋；木板接縫、黑繪回紋赭紅下半車身、斜排舷窗延續現行材質。
+// 頭側一對立耳、琥珀色發光眼與青銅口勒貼紙；座艙是頸根後的胡桃木士兵艙蓋；木板接縫、黑繪回紋赭紅下半車身、斜排舷窗。
 // 四個 R17.5 輪拱：31 mm 大輪不切輪拱也能裝。
 // 設計：shared/design/body-trojan-horse/DESIGN.md（MYTH_RESEARCH G1、G2）。剖面為本檔站位產生器（推估）。
 // 塗裝全為自創：淺 / 中橡木＋深胡桃木（霧面）＋黑繪陶黑與赭紅（霧面）＋青銅（金屬）；不含任何廠商 / 作品名稱、商標或文字。
@@ -15,17 +15,17 @@ import { buildProfileLiner } from './khepriScarab.js';
 
 /** @typedef {import('./loft.js').BodyPart} BodyPart */
 
-/** @type {number[]} 站位參數表（x 由後到前，前後軸 x = ±40）；iter-120：車尾 −70、口鼻 79 */
+/** @type {number[]} 站位參數表（x 由後到前，前後軸 x = ±40）；車尾 −70、口鼻 79 */
 const XS = [-70, -64, -56, -48, -40, -30, -20, -8, 4, 14, 24, 34, 42, 50, 54, 58, 64, 70, 75, 79];
 /** @type {Record<string, (x: number) => number>} */
 const P = {
-  // iter-128 中線頂（臀脊 / 背 / 座艙 / 馬頸 / 馬頭）：臀脊 32（夾在兩塊後腿量體之間，比後腿低）→ 座艙 34.6 → 馬頸往前上方斜升到頸頂 40（x 50）→ 頭頂往下收 → 口鼻 21.4
+  // 中線頂（臀脊 / 背 / 座艙 / 馬頸 / 馬頭）：臀脊 32（夾在兩塊後腿量體之間，比後腿低）→ 座艙 34.6 → 馬頸往前上方斜升到頸頂 40（x 50）→ 頭頂往下收 → 口鼻 21.4
   yN: monoCurve(XS, [26, 29, 31, 32, 32.4, 32, 31.6, 33, 34.6, 35.8, 37, 38.4, 39.4, 40, 39.6, 37.2, 32.4, 27.6, 24, 21.4]),
-  // iter-128 擋泥板頂：後腿肌肉 35.8（x −40，比臀脊高 3.4 mm）、收腰段掉到 26.8、前輪擋泥板 33.6（R17.5 輪拱頂 30.5）、往口鼻降到 17.5
+  // 擋泥板頂：後腿肌肉 35.8（x −40，比臀脊高 3.4 mm）、收腰段掉到 26.8、前輪擋泥板 33.6（R17.5 輪拱頂 30.5）、往口鼻降到 17.5
   yD: monoCurve(XS, [23, 29.4, 33.4, 35.4, 35.8, 33.4, 28.2, 26.8, 26.8, 28.4, 31.6, 33.4, 33.6, 31, 28.6, 26, 23, 20.8, 19, 17.5]),
   // 頸脊 / 座艙 / 臀脊半寬
   nw: monoCurve(XS, [5, 6, 7, 7.5, 8, 9, 10.5, 11.5, 11.5, 10.5, 9.5, 9, 9, 8.6, 9, 9.6, 9, 7.5, 6, 4.5]),
-  // iter-128 半寬：後腿 39.2（往車尾仍保持寬方的臀部，車尾 29）、腰 24.4（大幅收腰）、前輪 36.8（包住 31 mm 輪胎外緣）、x 54 以後收成馬頭鼻錐（18.5 → 6）
+  // 半寬：後腿 39.2（往車尾仍保持寬方的臀部，車尾 29）、腰 24.4（大幅收腰）、前輪 36.8（包住 31 mm 輪胎外緣）、x 54 以後收成馬頭鼻錐（18.5 → 6）
   hw: monoCurve(XS, [24, 33, 38.4, 39.2, 39.2, 34, 27, 24.4, 25, 29.6, 34.2, 35.6, 35.6, 35.4, 35.2, 18.5, 14, 11, 8.5, 6]),
   // 側裙下緣：兩輪之間 10.5（底盤側框頂 9.4 之上，包住電池艙側面）、口鼻 15
   yLow: monoCurve(XS, [21, 18.5, 15.5, 13.5, 13, 11.5, 10.5, 10.5, 10.5, 10.5, 11, 13, 13, 13.5, 14, 14.5, 15, 15, 15, 15]),
@@ -90,7 +90,7 @@ const PORT_R = 1.7;
 const portY = (x) => stripeY(x) + STRIPE_HW + 3.4;
 
 /**
- * 赭紅陶土 / 淺橡木分割高度（iter-125，評審「三款木褐車」→ 赭紅飾帶加寬到下半車身 1/2）：
+ * 赭紅陶土 / 淺橡木分割高度（赭紅飾帶佔下半車身 1/2，和其他木褐色車款拉開）：
  * 取「斜側條上緣」與「腰線稜下 0.6 mm」較高者——兩輪之間到前後輪拱，腰線稜以下整片是赭紅陶土＋黑繪紋帶（腰線稜上方的橡木肩帶留給斜排舷窗）；
  * 馬頭（x 54 以後）仍沿斜側條，保持木頭馬頭
  * @type {(x: number) => number}
@@ -108,7 +108,7 @@ const onCrest = (x, z) => Math.abs(z) < Math.min(P.nw(x), P.hw(x) - 7, 0.55 * P.
 const onSide = (x, z) => Math.abs(z) > P.hw(x) - Math.min(4, 0.3 * (P.hw(x) - P.nw(x))) - 0.6;
 
 /**
- * 腹側裙板（iter-115：評審「側面電池管外露 → 比照 longship、kunpeng 加側裙或腹板包住」）：前後輪拱之間每側一組 L 形實心板——
+ * 腹側裙板（包住側面外露的電池管）：前後輪拱之間每側一組 L 形實心板——
  * 直立外板（|z| zOut − t → zOut，y yBot → yTop）＋頂部水平棚板（y yTop − t → yTop，從殼側壁內 1 mm 的 zIn(x) 往外接到外板），
  * 把底盤側框（|z| 35–36.2、頂 y 9.4）上方、殼側壁下緣以下的電池艙側面整片蓋住。yBot 預設 10.5（離底盤側框頂 1.1 mm）。
  * 外形在 x–z 平面畫棚板外形、沿 y 擠出；外板是 x–y 外形沿 z 擠出；兩件在外板內緣重疊 0.2 mm（質量重複計入極小，偏保守）。
@@ -153,7 +153,7 @@ export function buildBellySkirt({ x0, x1, zIn, zOut, yTop, yBot = 10.5, t = 1.2,
 }
 
 /**
- * 斜腹板（iter-115）：前後輪拱之間每側一片往外下斜的實心板——上緣埋進殼側壁（|z| zIn、y yTop），下緣到底盤側框外緣上方（|z| zOut、y yBot），
+ * 斜腹板：前後輪拱之間每側一片往外下斜的實心板——上緣埋進殼側壁（|z| zIn、y yTop），下緣到底盤側框外緣上方（|z| zOut、y yBot），
  * 斷面是平行四邊形（水平寬 tz，板法向厚約 1.2 mm），沿 x 擠出 x0 → x1；把殼側壁下方、底盤側框以上外露的側框 / 電池艙整片蓋住，
  * 比「直立外板＋水平棚板」省一半質量，側視也像車殼的下斜裙邊
  * @type {(o: { x0: number, x1: number, zIn: number, zOut: number, yTop: number, yBot?: number, tz?: number }) => THREE.BufferGeometry}
@@ -184,14 +184,13 @@ const materials = () => ({
   oak: namedMaterial('paint-oak-light', { color: 0xb98a55, roughness: 0.66, clearcoat: 0.05 }),
   walnut: namedMaterial('paint-walnut-dark', { color: 0x5c3a21, roughness: 0.7, clearcoat: 0.04 }),
   walnut2: namedMaterial('paint-walnut-dark', { color: 0x5c3a21, roughness: 0.7, clearcoat: 0.04, side: THREE.DoubleSide }),
-  // 黑繪陶的黑釉（霧面略帶光澤）
-  // iter-122：黑繪陶的黑釉當上半車身主色（帶光澤的釉面）
+  // 黑繪陶的黑釉（帶光澤的釉面）
   slip: namedMaterial('paint-slip-black', { color: 0x16110e, roughness: 0.38, clearcoat: 0.45, clearcoatRoughness: 0.2 }),
   slip2: namedMaterial('paint-slip-black', { color: 0x16110e, roughness: 0.38, clearcoat: 0.45, clearcoatRoughness: 0.2, side: THREE.DoubleSide }),
-  // iter-124：腰部側裙的黑釉改霧面（roughness > 0.5 → Blender 緞面）：iter-121 亮面斜板在算圖裡反光成一整片白板
+  // 霧面黑釉（roughness > 0.5 → Blender 緞面）：亮面的黑釉斜板在算圖裡會反光成一整片白板
   slipMatte: namedMaterial('paint-slip-black-matte', { color: 0x16110e, roughness: 0.62, clearcoat: 0.08 }),
   // 陶甕赭紅（霧面陶土）
-  // iter-125：赭紅往阿提卡陶土橘移一階（0xb04a2a → 0xc25a2c），和淺橡木、胡桃木的褐色拉開
+  // 色相偏阿提卡陶土橘（0xc25a2c），和淺橡木、胡桃木的褐色拉開
   terracotta: namedMaterial('paint-terracotta-ochre', { color: 0xc25a2c, roughness: 0.66, clearcoat: 0.05 }),
   // 青銅（真金屬：名稱含 -brass）：座艙艙蓋、尾翼
   bronze: namedMaterial('trim-bronze-brass', { color: 0xb07a3c, roughness: 0.3, metalness: 0.8, clearcoat: 0.25 }),
@@ -202,9 +201,9 @@ const materials = () => ({
   edge: namedMaterial('shell-edge-walnut', { color: 0x4a2f1b, roughness: 0.7, side: THREE.DoubleSide }),
   liner: namedMaterial('shell-wheelwell-walnut', { color: 0x3a2516, roughness: 0.8, side: THREE.DoubleSide }),
   dGroove: decalMaterial('decal-walnut-groove', { color: 0x2c1b0f, roughness: 0.8 }),
-  // iter-125：木板接縫改深木色（不是黑），霧面
+  // 木板接縫：深木色（不是黑），霧面
   dSeam: decalMaterial('decal-plank-seam-walnut', { color: 0x6a4426, roughness: 0.8 }),
-  // iter-125：馬尾翼（霧面胡桃木，roughness 0.74、無清漆 → 不再反光成白板）
+  // 馬尾翼（霧面胡桃木，roughness 0.74、無清漆 → 不會反光成白板）
   tailWood: namedMaterial('paint-walnut-tail-matte', { color: 0x5c3a21, roughness: 0.74, clearcoat: 0, side: THREE.DoubleSide }),
   dSlip: decalMaterial('decal-slip-black', { color: 0x16110e, roughness: 0.45 }),
   // 黑繪陶的刻線（刻穿黑釉露出底下的赭紅陶土）
@@ -242,9 +241,9 @@ const CONFIG = {
   hard: [5],
   wheelArches: ARCHES,
   sideZMin: 22,
-  // iter-124 配色反轉（評審「希臘組 3 款＋firebird 都是黑＋赭紅、靠近 Black Saber 色域」）：木色為主、赭紅為次、黑只當輔色——
+  // 配色：木色為主、赭紅為次、黑只當輔色（和希臘組其他款、firebird 的黑＋赭紅拉開，也避開 Black Saber 的色域）——
   // 上半車身與馬頭 = 淺橡木（木板車身＋接縫），頸脊 / 背脊 = 胡桃深木（從口鼻掃到車尾的中央條），下半車身 = 赭紅陶土飾帶（上面黑繪回紋），
-  // 黑釉只剩鬃毛、尾翼、霧面側裙
+  // 黑釉只用在鬃毛與回紋
   zones: () => [
     // 士兵艙蓋（座艙）：胡桃深木，和淺橡木車身分開
     { mat: 'walnut', keep: (x, y, z) => (onCrest(x, z) ? Math.min(x - COCKPIT_X[0], COCKPIT_X[1] - x) : -1) },
@@ -253,7 +252,7 @@ const CONFIG = {
     // 頸脊 / 背脊：胡桃深木中央條
     { mat: 'walnut', keep: (x, y, z) => (onCrest(x, z) ? 1 : -1) },
     // 赭紅陶土下半車身，分割線從鼻尖往後上掃
-    // iter-125：上緣改成 redTopY（腰線稜以下整片赭紅）
+    // 上緣是 redTopY（腰線稜以下整片赭紅）
     { mat: 'terracotta', keep: (x, y) => Math.min(redTopY(x) - y, y - 13.4) },
     // 淺橡木上半車身（木板）與下緣
     { mat: 'oak', keep: () => 1 },
@@ -266,7 +265,7 @@ const CONFIG = {
     /** @type {(x: number, z: number) => number} 殼面高度 */
     const top = (x, z) => kit.surf.topY(x, z);
 
-    // ── 鬃毛 = 往後飛揚的背鰭（大件 1，iter-128）：頸脊中線 x 55 → 16，3 綹長鬃，每綹前緣低、往後上掃到尖端（高 5.6 → 6.8 mm），
+    // ── 鬃毛 = 往後飛揚的背鰭（大件 1）：頸脊中線 x 55 → 16，3 綹長鬃，每綹前緣低、往後上掃到尖端（高 5.6 → 6.8 mm），
     //    尖端都在根部後方 6–8 mm（被迎風往後吹開的動勢）；厚 1.6，根部埋進殼面 1 mm；毛流用赭紅刻線貼紙畫在頸側 ──
     {
       /** @type {(x: number, h: number) => number[]} 頸脊上 x 處高 h 的點 */
@@ -277,7 +276,7 @@ const CONFIG = {
       ];
       parts.push({ geometry: finPlate(pts.reverse(), 0, 1.6), mat: 'slip2', solid: true, outline: true, name: 'horse-mane-locks' });
     }
-    // ── 耳朵（iter-122：評審「要立起來」；iter-124：「立耳太小」→ 高 5 → 8.5 mm、底寬 4 → 5.4 mm、厚 1.8）：頭頂（poll，x 56–62）一對立耳，略往後傾、往外張 10° ──
+    // ── 耳朵：頭頂（poll，x 55–61）一對立耳（高出殼面約 4.6 mm、底寬 5.6 mm、厚 1.8），略往後傾、往外張 10° ──
     {
       /** @type {THREE.BufferGeometry[]} */
       const ears = [];
@@ -303,7 +302,7 @@ const CONFIG = {
       parts.push({ geometry: mergeGeos(eyes), mat: 'eye', solid: true, name: 'horse-eyes' });
     }
 
-    // ── 馬尾（大件 2，iter-128）：從兩塊後腿量體之間的臀脊（x −52）長出，尾根先往後上拱（像奔馳時揚起的尾根），
+    // ── 馬尾（大件 2）：從兩塊後腿量體之間的臀脊（x −52）長出，尾根先往後上拱（像奔馳時揚起的尾根），
     //    再往後下方流成 3 束分開的尾毛（中束沿中線、兩側束往外張到 |z| 13），束尖垂到車尾下緣附近（x −73.6、y 約 21）——
     //    側視是一道往後下方甩出去的 S 形弧，後 3/4 看得到 3 束尾毛，讀起來是馬尾而不是一片翼板；
     //    斷面是扁橢圓（寬 3.4 → 0.9 mm、厚 2.2 → 0.8 mm，≥ 0.8 的射出件），霧面胡桃木 ──
@@ -330,7 +329,7 @@ const CONFIG = {
       parts.push({ geometry: mergeGeos(strands), mat: 'tailWood', solid: true, outline: true, name: 'horse-tail-wing' });
     }
 
-    // iter-128：拿掉腹側裙板（收腰到 27 後裙板外緣會把俯視收腰填平；側面兩層量體改由腰線稜＋下半內收＋赭紅下半車身表現）
+    // 不裝腹側裙板（裙板外緣會把俯視收腰填平；側面兩層量體由腰線稜＋下半內收＋赭紅下半車身表現）
     // 輪拱內襯（前後）：沿剖面反查殼內面，擋住從輪拱看進去的殼內空腔
     parts.push({ geometry: mergeGeos(ARCHES.map((a) => buildProfileLiner(a, 21, profile))), mat: 'liner', shell: true, name: 'arch-liners' });
     // 輪胎內側的環形擋板（|z| 22.9）：擋住從輪拱橫越車身看到另一側地板的視線
@@ -342,9 +341,9 @@ const CONFIG = {
     });
 
     // ── 貼紙 ──
-    // 木板接縫（iter-125，評審「接縫畫成不規則黑線，像裂紋或塗鴉」）：改成等距平行的細直縫（寬 0.44 mm、深木色 0x6a4426，不用黑）——
+    // 木板接縫：等距平行的細直縫（寬 0.44 mm、深木色 0x6a4426，不用黑；不規則的黑線會像裂紋或塗鴉）——
     // 側面：和斜側條平行的直線（每 4.2 mm 一道），對接縫是垂直直線（每 16 mm，相鄰排錯開 8 mm）；
-    // 擋泥板頂面：固定 |z| 的縱向直線（每 4.2 mm 一道，俯視是平行直線，不再跟著半寬起伏成波浪），對接縫同上；馬頭（x > 52）與車尾收尖段（x < −56）不畫
+    // 擋泥板頂面：固定 |z| 的縱向直線（每 4.2 mm 一道，俯視是平行直線，不跟著半寬起伏成波浪），對接縫同上；馬頭（x > 52）與車尾收尖段（x < −56）不畫
     /** @type {(row: number, x: number) => number} 第 row 排木板在 x 處到最近對接縫的距離 */
     const buttDist = (row, x) => {
       const ph = (((x + (row % 2 === 0 ? 0 : 8)) % 16) + 16) % 16;
@@ -372,7 +371,7 @@ const CONFIG = {
     /** @type {(x: number, y: number) => boolean} 在赭紅下半車身 */
     const onRed = (x, y) => y < redTopY(x) && y > 13.4;
     parts.push({ geometry: kit.decal((x, y, z) => (onRed(x, y) ? -1 : seam(x, y, z))), mat: 'dSeam', name: 'decal-plank-seams' });
-    // 赭紅陶土飾帶上的黑繪回紋（iter-124，MYTH_RESEARCH 希臘陶甕的回紋帶）：沿分割線斜向的連續鉤形回紋，週期 7 mm、高 4 mm，上下各一條邊線
+    // 赭紅陶土飾帶上的黑繪回紋（MYTH_RESEARCH 希臘陶甕的回紋帶）：沿分割線斜向的連續鉤形回紋，週期 7 mm、高 4 mm，上下各一條邊線
     /** @type {number[][]} 一個週期內的回紋折線段（u = 沿 x，v = 帶內高度） */
     const KEY = [
       [0, 0, 7, 0],
@@ -387,7 +386,7 @@ const CONFIG = {
         if (!onSide(x, z) || x > 60 || x < -66) {
           return -1;
         }
-        // iter-125：紋帶跟著加寬後的赭紅上緣（redTopY）走；下方再加一圈黑繪陶甕底部常見的放射尖齒紋（底線＋往上的尖三角，週期 3.5 mm、高 3.2 mm）
+        // 紋帶跟著赭紅上緣（redTopY）走；下方是一圈黑繪陶甕底部常見的放射尖齒紋（底線＋往上的尖三角，週期 3.5 mm、高 3.2 mm）
         const v = y - (redTopY(x) - 7.8);
         const u = ((x % 7) + 7) % 7;
         if (v >= -1 && v <= 6.4) {
@@ -430,7 +429,7 @@ const CONFIG = {
       mat: 'dGroove',
       name: 'decal-hatch-planks',
     });
-    // 黑 / 赭紅分割線上的青銅細線（0.7 mm）
+    // 淺橡木 / 赭紅分割線上的青銅細線（0.7 mm）
     parts.push({
       geometry: kit.decal((x, y, z) => (onCrest(x, z) ? -1 : 0.35 - Math.abs(y - redTopY(x))), { offset: 0.1 }),
       mat: 'dBronze',
@@ -476,7 +475,7 @@ const CONFIG = {
       mat: 'dGroove',
       name: 'decal-nostrils',
     });
-    // iter-124：拿掉青銅鉚釘點列（會和赭紅飾帶的回紋重疊）
+    // 不加青銅鉚釘點列（會和赭紅飾帶的回紋重疊）
     return parts;
   },
   src: {

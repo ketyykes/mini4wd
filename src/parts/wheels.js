@@ -1,5 +1,5 @@
 // 輪胎＋輪框（單顆）
-// 第四階段：rimBaseMass_g = 輪框（未鏤空）質量，rimWebCutout = 輪框腹板鏤空比例；輪胎質量 = mass_g − 輪框質量。
+// rimBaseMass_g = 輪框（未鏤空）質量，rimWebCutout = 輪框腹板鏤空比例；輪胎質量 = mass_g − 輪框質量。
 // 轉動慣量由 parts/inertia.js wheelInertia 從這些幾何與質量推導（輪胎厚壁圓環＋輪框外圈 / 腹板 / 轂）
 // tread：胎面種類（外觀用：rubber 橡膠、sponge 海綿、barrel 拱形）；rimStyle：輪框外觀（standard / lightweight 鏤空）
 import { rimMass } from './inertia.js';
@@ -106,7 +106,7 @@ export const wheelParts = [
       mass_g: 'PARTS_RESEARCH 第三階段 C 節：推估與超硬胎同（[NAO] 玩家實測 3.0 g/顆，同模具尺寸）',
     },
   },
-  // ---- 第四階段（iter-54）新增：海綿胎、超硬胎、拱形低摩擦胎、輕量鏤空輪框 ----
+  // ---- 海綿胎、超硬胎、拱形低摩擦胎、輕量鏤空輪框 ----
   {
     id: 'wheel-24-sponge',
     category: 'wheel',
@@ -207,7 +207,7 @@ export const wheelParts = [
       frictionCoeff: 'B13（iter-102）實測：輪胎同 wheel-26-lowprofile（Standard Black 0.7073）；來源 [M4S-T] Mini4Science 2024-09-12「Measuring Tamiya Mini 4WD low profile tyres grip and bounce」https://www.mini4science.com/2024/09/measuring-tamiya-mini-4wd-low-profile-tyres-grip-and-bounce-summer2024/（輪子鎖死、砝碼籃等速拉動整車，Junior Circuit 直線段 ABS 面，5 次×4 種砝碼過原點回歸）',
     },
   },
-  // ---- 第五階段（iter-58）：台灣買得到的 31 mm 低摩擦大徑低扁平胎（台灣來源見 shared/reference/TAIWAN_SOURCES.md）----
+  // ---- 台灣買得到的 31 mm 低摩擦大徑低扁平胎（台灣來源見 shared/reference/TAIWAN_SOURCES.md）----
   {
     id: 'wheel-31-lowfriction',
     category: 'wheel',
@@ -233,7 +233,7 @@ export const wheelParts = [
       taiwan: 'TAIWAN_SOURCES TW22（四驅博士學校／露天，15544）',
     },
   },
-  // ---- 第七階段（iter-79）：單向輪（PARTS_RESEARCH 第七階段 AN 節、AS 第 18 順位）----
+  // ---- 單向輪（PARTS_RESEARCH 第七階段 AN 節、AS 第 18 順位）----
   // oneWayClutch：輪框內有單向離合（輪子只能比輪軸轉得快）。sim.js 依這個物理量把輪子與傳動系拆成兩個轉動自由度（不是依 id 的特例）
   {
     id: 'wheel-26-oneway',
@@ -267,9 +267,9 @@ export const wheelParts = [
       taiwan: 'TAIWAN_SOURCES TW31（新莊超音速陽明／露天，15443）',
     },
   },
-  // ---- 第七階段（iter-76）：大徑 slick 胎、低反發海綿窄胎（PARTS_RESEARCH 第七階段 AN 節）----
+  // ---- 大徑 slick 胎、低反發海綿窄胎（PARTS_RESEARCH 第七階段 AN 節）----
   // 著地恢復係數（AN 節推估 hard 0.2 / soft 0.3 / 海綿 0.05）沒有建模：sim.js 輪胎垂直方向用全車共用的懸吊彈簧 / 阻尼（spec.sim），
-  // 所以不放成零件欄位（避免看起來有物理效果），只記在 src.restitution（iter-76 主 agent 整合時拿掉 subagent 加的 tireRestitution 欄位）
+  // 所以不放成零件欄位（避免看起來有物理效果），只記在 src.restitution
   // tireColor：胎色（0xRRGGBB，model.js 讀取；只影響外觀）
   // 15364 / 15365 只有胎，官方「大径タイヤ用ホイールとあわせて使用」→ 這裡的零件 = 胎＋大徑（ノーマル）輪框，質量 / 慣量都含輪框
   {

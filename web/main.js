@@ -9,7 +9,7 @@ import { buildCircuit } from '../src/track.js';
 import { assemble, loadConfig, SLOTS } from '../src/assembly.js';
 
 /**
- * 棚拍環境（取代 RoomEnvironment：它的多個小燈箱在車漆上反射成斑駁亮點）
+ * 棚拍環境（不用 RoomEnvironment：它的多個小燈箱在車漆上反射成斑駁亮點）
  * 上亮下暗的漸層球＋頂部與側面兩塊大柔光箱，反射成平順的長條高光
  */
 function buildStudioEnvironment() {
@@ -33,7 +33,7 @@ function buildStudioEnvironment() {
   box(120, 50, [0, 80, 0], [0, 0, 0], 3.0);
   box(80, 30, [70, 30, -60], [0, 0, 0], 2.0);
   box(60, 30, [-80, 20, 40], [0, 0, 0], 0.8);
-  // iter-10：後側柔光箱（rear34 相機的鏡射方向，仰角約 24°，距離 90 須在半徑 100 的天空球內）——原本 rear34 的後甲板只反射到暗的天空漸層，
+  // 後側柔光箱（rear34 相機的鏡射方向，仰角約 24°，距離 90 須在半徑 100 的天空球內）——少了這片，rear34 的後甲板只反射到暗的天空漸層，
   // 只剩底漆層的寬高光，讀起來像半光澤；加這片讓清漆層在後甲板／後葉子板出現邊緣清楚的燈箱倒影
   box(45, 16, [65, 36, 51], [0, 0, 0], 2.2);
   return env;
@@ -59,7 +59,7 @@ function buildContactShadow() {
 }
 
 /**
- * 深灰檯面（iter-07）：中央略亮、往外變暗的徑向漸層（模擬參考照的頂光落差），
+ * 深灰檯面：中央略亮、往外變暗的徑向漸層（模擬參考照的頂光落差），
  * 半霧面（roughness 0.5）讓棚拍柔光箱在檯面上反射成柔和光暈
  * @param {number} size 檯面邊長（mm）
  */
@@ -89,13 +89,13 @@ const width = 1600;
 const height = 900;
 
 const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
-// iter-07：2× 超取樣（內部 3200×1800 算圖，畫布以 CSS 1600×900 顯示，截圖時由瀏覽器縮小 → 降低鋸齒與 AO/陰影雜訊）
+// 2× 超取樣（內部 3200×1800 算圖，畫布以 CSS 1600×900 顯示，截圖時由瀏覽器縮小 → 降低鋸齒與 AO/陰影雜訊）
 const SUPERSAMPLE = 2;
 renderer.setPixelRatio(SUPERSAMPLE);
 renderer.setSize(width, height);
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFShadowMap;
-// iter-07：深灰檯面（ref_chevalier-ma_side-high / rear34 / wheel-detail 都是深灰檯面、上方柔光）
+// 深灰檯面（ref_chevalier-ma_side-high / rear34 / wheel-detail 都是深灰檯面、上方柔光）
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
 renderer.toneMappingExposure = 1.0;
 renderer.outputColorSpace = THREE.SRGBColorSpace;
@@ -112,7 +112,7 @@ const sun = new THREE.DirectionalLight(0xffffff, 2.6);
 sun.castShadow = true;
 sun.shadow.mapSize.set(4096, 4096);
 sun.shadow.bias = -0.0005;
-// iter-07：陰影邊緣柔化（PCF 取樣半徑，2× 超取樣後雜訊被平均）
+// 陰影邊緣柔化（PCF 取樣半徑，2× 超取樣後雜訊被平均）
 sun.shadow.radius = 3;
 scene.add(sun);
 scene.add(sun.target);
@@ -124,13 +124,13 @@ const config = loadConfig(params.get('config') ?? 'default');
 if (bodyParam && bodyParam !== 'none') {
   config.body = bodyParam;
 }
-// iter-95：檢查用，?<slot>=<零件 id> 覆寫單一 slot（同換件頁網址），例如 brakeSponge=brake-rubber
+// 檢查用，?<slot>=<零件 id> 覆寫單一 slot（同換件頁網址），例如 brakeSponge=brake-rubber
 for (const slot of Object.keys(SLOTS)) {
   if (slot !== 'body' && params.get(slot)) {
     config[slot] = params.get(slot);
   }
 }
-// B15（iter-100）：?archCut=1 切輪拱
+// B15：?archCut=1 切輪拱
 if (params.get('archCut') === '1') {
   config.bodyArchCut = true;
 }
@@ -173,7 +173,7 @@ if (view === 'track') {
   sun.position.set(target.x + 600, 1500, target.z + 400);
   sun.target.position.copy(target);
   setShadowBox(900);
-  // iter-09：塑膠光澤補光（0.3，弱）：放在相機對面、相對垂直軸鏡射的方向，
+  // 塑膠光澤補光（0.3，弱）：放在相機對面、相對垂直軸鏡射的方向，
   // 讓路面在車子附近出現一片柔和的鏡面反光（半光澤 ABS 的特徵），主光與投影方向不變
   const glint = new THREE.DirectionalLight(0xffffff, 0.3);
   const camOff = camera.position.clone().sub(target);
@@ -212,8 +212,8 @@ if (view === 'track') {
     camera.position.set(-60, -330, -210);
     camera.up.set(0, 1, 0);
   } else if (view === 'sidehigh') {
-    // iter-12：比對用相機改由 scripts/diag/fit_ref_camera.mjs 擬合 ref side-high（導輪螺絲頂 4 點＋輪蓋 2 點，rms 4.3 px）
-    // 仰角 25.75°、方位 1°（略偏車頭）、距離 700 mm（推估：參考照為較長焦距，透視比 iter-11 的 410 mm 弱）
+    // 比對用相機由 scripts/diag/fit_ref_camera.mjs 擬合 ref side-high（導輪螺絲頂 4 點＋輪蓋 2 點，rms 4.3 px）
+    // 仰角 25.75°、方位 1°（略偏車頭）、距離 700 mm（推估：參考照為較長焦距，透視較弱）
     // fov 11.2° 讓車身在 1600×900 中的大小與參考照相近
     const shTheta = (25.75 * Math.PI) / 180;
     const shPhi = (1 * Math.PI) / 180;
@@ -229,7 +229,7 @@ if (view === 'track') {
   } else {
     camera.position.set(250, 135, -235);
   }
-  // iter-17：檢查用特寫相機（?cam=x,y,z&look=x,y,z），不影響正式視角
+  // 檢查用特寫相機（?cam=x,y,z&look=x,y,z），不影響正式視角
   if (params.get('cam')) {
     const [px, py, pz] = params.get('cam').split(',').map(Number);
     camera.position.set(px, py, pz);
@@ -249,7 +249,7 @@ if (view === 'track') {
   }
 }
 
-// iter-07：後處理——GTAO 環境光遮蔽（車底、輪拱內、零件交界變暗）→ OutputPass（色調映射＋sRGB）
+// 後處理——GTAO 環境光遮蔽（車底、輪拱內、零件交界變暗）→ OutputPass（色調映射＋sRGB）
 const composer = new EffectComposer(renderer, new THREE.WebGLRenderTarget(width * SUPERSAMPLE, height * SUPERSAMPLE, { type: THREE.HalfFloatType, samples: 4 }));
 composer.setPixelRatio(SUPERSAMPLE);
 composer.setSize(width, height);

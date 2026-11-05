@@ -130,7 +130,7 @@ describe('P19 網頁換件', () => {
     }
     // 車殼：目錄中每款車殼＋「不裝車殼」；預設組裝設定：listConfigs()
     expect(await page.locator('select[data-slot="body"] option').count()).toBe(listBodies().length + 1);
-    // 第六階段：車殼選單依三組分群（比賽型 / 致敬 LG1 / 致敬 LG2）；第八階段加神話組（依體系分群），每款都在自己那一組
+    // 車殼選單依組分群（比賽型 / 致敬 LG1 / 致敬 LG2 三組，加上依體系分群的神話組），每款都在自己那一組
     /** @type {{ label: string, ids: string[] }[]} */
     const bodyGroups = await page.locator('select[data-slot="body"] optgroup').evaluateAll((gs) =>
       gs.map((g) => ({ label: /** @type {HTMLOptGroupElement} */ (g).label, ids: [...g.querySelectorAll('option')].map((o) => o.value) })),
@@ -151,7 +151,7 @@ describe('P19 網頁換件', () => {
       } else if (b.homageSeries === 'lg2') {
         expected = '致敬《爆走兄弟》2（WGP）';
       } else if (b.style === 'myth') {
-        // 第八階段：神話組依體系各一組
+        // 神話組依體系各一組
         expected = mythGroupLabel(b.mythSeries);
       }
       expect(groupOf[b.id], `${b.id} 的選單分組`).toBe(expected);
@@ -214,7 +214,7 @@ describe('P19 網頁換件', () => {
     // 停用時點按鈕不會開始模擬
     await page.locator('[data-action="race"]').click({ force: true });
     expect((await garageState()).running).toBe(false);
-    // B15（iter-100）：勾「切輪拱」→ 輪胎干涉解除、可上賽道、數值與 Node 一致、網址記錄 archCut=1；取消勾選恢復原狀
+    // B15：勾「切輪拱」→ 輪胎干涉解除、可上賽道、數值與 Node 一致、網址記錄 archCut=1；取消勾選恢復原狀
     await page.check('#chk-arch-cut');
     await expect.poll(async () => (await garageState()).config.bodyArchCut).toBe(true);
     const cut = await garageState();
@@ -300,7 +300,7 @@ describe('P19 網頁換件', () => {
       expect(ms, `${slot}=${value} 更新時間`).toBeLessThan(UPDATE_LIMIT_MS);
       expect(g.config[slot]).toBe(value);
       expectMatchesNode(g);
-      // 第四階段的物理量（轉動慣量、迴路電阻、理論極速）也和 Node 端同一份組裝一致
+      // 物理量（轉動慣量、迴路電阻、理論極速）也和 Node 端同一份組裝一致
       expect(Math.abs(g.asm.spinInertia_gmm2 - asm.spec.spin.total_gmm2)).toBeLessThan(1e-6);
       expect(Math.abs(g.asm.circuitResistance_ohm - asm.P.circuitResistance)).toBeLessThan(1e-9);
     }
@@ -393,22 +393,22 @@ describe('P19 網頁換件', () => {
       ['frontRollers', 'roller-19-rubber'],
       ['rearRollers', 'roller-19-plastic-ring'],
       ['frontRollers', 'roller-17-alu'],
-      // iter-58：Rev-Tuned 2 PRO、31 mm 低摩擦胎（預設車殼 owl-hush 的輪拱放不下 31 mm → 違規，網頁也要一致）、MA 側制振器組
+      // Rev-Tuned 2 PRO、31 mm 低摩擦胎（預設車殼 owl-hush 的輪拱放不下 31 mm → 違規，網頁也要一致）、MA 側制振器組
       ['motor', 'motor-rev'],
       ['wheels', 'wheel-31-lowfriction'],
       ['massDamper', 'damper-side-square-32'],
-      // iter-59：中間齒輪軸（含氟塗層 / 中間齒輪培林組）、9 mm 培林導輪
+      // 中間齒輪軸（含氟塗層 / 中間齒輪培林組）、9 mm 培林導輪
       ['counterShaft', 'gear-shaft-ptfe'],
       ['counterShaft', 'counter-bearing-520'],
       ['rearRollers', 'roller-9-bearing'],
-      // iter-60：碳纖大面積煞車架（沒裝海綿時只是選項，不影響數值）
+      // 碳纖大面積煞車架（沒裝海綿時只是選項，不影響數值）
       ['brakePlate', 'brake-plate-carbon'],
-      // iter-61：前滑動保桿（軟彈簧；前導輪 17 mm 時行程端點全寬 107 mm → WIDTH，網頁也要一致）
+      // 前滑動保桿（軟彈簧；前導輪 17 mm 時行程端點全寬 107 mm → WIDTH，網頁也要一致）
       ['frontStay', 'stay-front-slide-soft'],
       ['frontRollers', 'roller-13'],
-      // iter-63：滑動保桿換 HG 碳纖前寬板 2 mm
+      // 滑動保桿換 HG 碳纖前寬板 2 mm
       ['frontStay', 'stay-front-slide-hard-carbon'],
-      // iter-64：另外兩款塑膠環導輪
+      // 另外兩款塑膠環導輪
       ['rearRollers', 'roller-19-plastic-ring-dish'],
       ['rearRollers', 'roller-17-plastic-ring'],
     ];
@@ -466,7 +466,7 @@ describe('P19 網頁換件', () => {
       ['brakeSponge', 'sponge-3type-b'],
       ['brakeSponge', 'sponge-3type-c'],
       ['bearings', 'bearing-620-hg'],
-      // iter-95（B8）：AR 斜面煞車架（配目前的海綿）、橡膠煞車（不使用煞車架）
+      // B8：AR 斜面煞車架（配目前的海綿）、橡膠煞車（不使用煞車架）
       ['brakePlate', 'brake-plate-ar-skid'],
       ['brakeSponge', 'brake-rubber'],
     ];
@@ -481,7 +481,7 @@ describe('P19 網頁換件', () => {
     for (const [slot, value] of [['massDamper', '__none__'], ['frontRollers', 'roller-13'], ['rearRollers', 'roller-13'], ['stabilizer', '__none__'], ['wheels', 'wheel-26-lowprofile'], ['brakeSponge', '__none__'], ['bearings', 'bearing-620'], ['brakePlate', 'brake-plate-frp']]) {
       await changeSlot(slot, value);
     }
-    // URL 還原：第七階段兩組示範設定的零件
+    // URL 還原：兩組示範設定（p7-demo、p7-parts）的零件
     for (const query of [
       'rearStay=stay-rear-frp&massDamper=damper-balllink-square&wheels=wheel-26-oneway&bearings=bearing-620-hg&frontRollers=roller-11-bearing&rearRollers=roller-19-rubber&body=body-pc-box',
       'frontRollers=roller-19-19-plastic-double&stabilizer=stabilizer-head-15&rearRollers=roller-9-8-alu-double&rearStay=stay-rear-carbon-wide&wheels=wheel-31-hard-slick&massDamper=damper-slim&brakeSponge=sponge-3type-b&body=body-pc-box',

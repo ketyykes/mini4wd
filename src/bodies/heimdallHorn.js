@@ -1,13 +1,12 @@
-// 海姆達爾的號角（body-heimdall-horn，第八階段神話組・北歐）：守護彩虹橋的海姆達爾在諸神黃昏吹響的號角 Gjallarhorn。
+// 海姆達爾的號角（body-heimdall-horn，神話組・北歐）：守護彩虹橋的海姆達爾在諸神黃昏吹響的號角 Gjallarhorn。
 // 整台車是一支平放、微彎的號角：車頭是細的圓斷面吹口（往上翹，金色吹口套）、往後漸粗，側視是一道往上揚的緩弧；
 // 車尾是往外張開的喇叭口（bell-flare 尾翼：扁橢圓喇叭＋金色環邊，開口朝後，口內三道細彩環＝彩虹橋的三色）。
 // 號角身上 6 道金色箍環、兩段 Urnes 風格交織雙股紋（青銅貼紙，自繪曲線）；座艙罩在中段（煙燻）。
 // 號角兩側是低平的深色擋泥側裙（前後輪罩，兩輪之間收腰），蓋住輪胎；前段號角在兩個輪罩之間懸空，俯視是一支獨立的管子。
 // 設計：shared/design/body-heimdall-horn/DESIGN.md（典故：《散文埃達》Gylfaginning；語彙：維京時代飲用角的金屬配件、Urnes 交織紋 MYTH_RESEARCH N8）。
-// iter-121（第九階段炫砲化）：號角壓扁成長而低的箭形（車尾垂直半徑 14.2 → 12）、喇叭口縮小 20%（R31 → 25）並壓扁成車尾擴散器（4 片金色導流片、
-// 口內三色細環低強度自發光）、深色輪罩圓肩上一條從吹口旁到喇叭口漸粗的金色速度線。
-// iter-121 第二版（號角＝車身）：號角頂由吹口 24 一路升到喇叭口 44、斷面由 4 × 2.5 漸粗到 22 × 17，側視整台車就是往後變粗的號角楔形；
-// 喇叭口（R27、扁比 0.5）＋兩側刀形貼身端板＋金色導流片＝車尾擴散器 / 尾翼一體造型。
+// 號角＝車身：號角頂由吹口 24 一路升到喇叭口 44、斷面由 4 × 2.5 漸粗到 22 × 17，側視整台車就是往後變粗的號角楔形；
+// 喇叭口（R27、扁比 0.5）壓扁成車尾擴散器（4 片金色導流片、口內三色細環低強度自發光），加上兩側刀形貼身端板＝車尾擴散器 / 尾翼一體造型；
+// 深色輪罩圓肩上一條從吹口旁到喇叭口漸粗的金色速度線。
 // 塗裝全為自創：牛角漸層（吹口深褐近黑 → 車尾奶油象牙，分段在箍環處交接）＋金箍環＋青銅交織紋；不用盧恩字母、不含文字與商標。
 import * as THREE from 'three';
 import { makePolyBody, sweepEllipse, finPlate } from './polyBody.js';
@@ -24,11 +23,9 @@ const XS = [-63, -58, -50, -40, -30, -15, 0, 15, 30, 40, 50, 60, 66];
 const XS_HW = [-63, -60, -50, -40, -28, -18, -5, 10, 20, 28, 40, 50, 56, 60, 66];
 /** @type {Record<string, (x: number) => number>} */
 const P = {
-  // 號角中心線高度：吹口端 26 → 車尾 28.5（側視往上揚的緩弧，吹口另外往上翹）
-  // iter-121 第二版（號角＝車身）：中心線由車尾 27 往前降到吹口 21.5，配合下方 ry，號角頂由吹口 24 一路升到喇叭口 44——側視整台車就是一支往後變粗的號角楔形
+  // 號角中心線高度：由車尾 27 往前降到吹口 21.5（吹口另外往上翹），配合下方 ry，號角頂由吹口 24 一路升到喇叭口 44——側視整台車就是一支往後變粗的號角楔形
   yc: monoCurve(XS, [27, 27, 26.8, 26.5, 26.2, 25.6, 25, 24.4, 23.8, 23.4, 22.8, 22, 21.5]),
-  // 號角斷面半徑（水平 / 垂直）：吹口根 4.2 → 喇叭口接合處 21（漸粗＋車尾快速外張）
-  // 號角斷面：吹口根 4 × 2.5 → 喇叭接合處 22 × 17（號角頂 = yc + ry：24 → 27 → 33.5（前軸）→ 38.5（座艙）→ 42（後軸）→ 44）
+  // 號角斷面半徑（水平 × 垂直）：吹口根 4 × 2.5 → 喇叭口接合處 22 × 17（號角頂 = yc + ry：24 → 27 → 33.5（前軸）→ 38.5（座艙）→ 42（後軸）→ 44）
   rz: monoCurve(XS, [22, 20, 17.5, 15.2, 13.6, 12.2, 11, 10, 9.2, 8.4, 7, 5.2, 4]),
   ry: monoCurve(XS, [17, 16.6, 16.2, 15.5, 15, 14.4, 13.5, 12.6, 11.2, 10.1, 8.2, 5, 2.5]),
   // 側裙俯視半寬：前後輪罩外張（前 37.5、後 39.2，蓋住輪胎），兩輪之間收成 27.5 的細腰（只剩號角＋窄側裙），車頭收到 11（吹口）
@@ -154,7 +151,7 @@ const materials = () => ({
   dBronze: decalMaterial('decal-bronze-interlace', { color: 0x8a5a2b, metalness: 0.7, roughness: 0.35 }),
   dGold: decalMaterial('decal-gold-line', { color: 0xd2a83e, metalness: 0.75, roughness: 0.3 }),
   // 彩虹橋三色細環（《散文埃達》：彩虹橋「有三種顏色」，色相自訂、低彩度）
-  // iter-121（材質與發光）：三色細環加低強度自發光，從車尾看像擴散器裡亮起的彩虹橋（Blender 不過曝）
+  // 三色細環帶低強度自發光，從車尾看像擴散器裡亮起的彩虹橋（Blender 不過曝）
   ring1: decalMaterial('decal-bifrost-red', { color: 0xa8382c, roughness: 0.5, emissive: 0xa8382c, emissiveIntensity: 0.55 }),
   ring2: decalMaterial('decal-bifrost-ochre', { color: 0xd8a23c, roughness: 0.5, emissive: 0xd8a23c, emissiveIntensity: 0.45 }),
   ring3: decalMaterial('decal-bifrost-teal', { color: 0x2f7f76, roughness: 0.5, emissive: 0x2f7f76, emissiveIntensity: 0.6 }),
@@ -252,12 +249,12 @@ const BELL_R0 = 22;
 /** @type {number} 喇叭口接合處的垂直 / 水平比例（同殼面車尾斷面 ry / rz） */
 const BELL_K = 17 / 22;
 /**
- * @type {number} 喇叭口環邊的垂直 / 水平比例（iter-121：往後橫向外張、垂直收扁成車尾擴散器 / 尾翼一體的扁口）
+ * @type {number} 喇叭口環邊的垂直 / 水平比例（往後橫向外張、垂直收扁成車尾擴散器 / 尾翼一體的扁口）
  */
 const BELL_K_END = 0.5;
 /** @type {number} 喇叭口長度（x −63 → −70.5） */
 const BELL_LEN = 7.5;
-/** @type {number} 喇叭口環邊半徑（水平；iter-121：31 → 25，縮小約 20%，評審「喇叭口太大像樂器擺件」） */
+/** @type {number} 喇叭口環邊半徑（水平；不做太大，避免喇叭口像樂器擺件） */
 const BELL_R = 27;
 
 /**
@@ -346,14 +343,14 @@ export const heimdallHornBody = makePolyBody({
   openings: [HORN_GAP],
   canopy: {
     section: 'ellipse',
-    // 座艙罩 x 21 → −13，最寬 6.6、高 5.8（坐在號角頂上）
+    // 座艙罩 x 21 → −13，最寬 6.6、高 5.0（坐在號角頂上）
     stations: (() => {
       /** @type {{ x: number, yBase: number, yTop: number, halfW: number }[]} */
       const out = [];
       for (let i = 0; i <= 28; i++) {
         const u = i / 28;
         const x = lerp(CANOPY.xc + CANOPY.a, CANOPY.xc - CANOPY.a, u);
-        // iter-121：座艙罩高 5.8 → 5.0（壓低）
+        // 座艙罩高 5.0（壓低）
         out.push({ x, yBase: 0, yTop: 5.0 * Math.sin(Math.PI * u ** 0.85) ** 0.6, halfW: Math.max(1.8, canopyHalfW(x)) });
       }
       return out;
@@ -377,7 +374,7 @@ export const heimdallHornBody = makePolyBody({
   extras: (kit) => {
     /** @type {BodyPart[]} */
     const parts = [];
-    // iter-115 腹側裙板（燻黑褐，和側裙同色）：評審「側面仍露出黑色電池管」→ 前後輪拱之間 x −21.5 → 21.5、外緣 |z| 35.5（底盤側框外緣）、
+    // 腹側裙板（燻黑褐，和側裙同色）：前後輪拱之間 x −21.5 → 21.5、外緣 |z| 35.5（底盤側框外緣）、
     // y 10.5 → 15.6，頂部棚板從側裙下緣內側（半寬 − 1.2）接出，把側裙下緣到底盤側框之間的電池艙側面封住
     parts.push({
       geometry: buildBellySkirt({ x0: -21.5, x1: 21.5, zIn: (x) => P.hw(x) - 1.2, zOut: 35.5, yTop: 15.6 }),
@@ -436,8 +433,8 @@ export const heimdallHornBody = makePolyBody({
         name: `decal-urnes-interlace-${mat}-${side}`,
       });
     }
-    // iter-121（線條）：金色速度線——沿深色輪罩外緣的圓肩，從車頭吹口旁（x 64，寬 0.6）一路往後漸粗到喇叭口（x −63，寬 1.8），
-    // 跟著輪罩俯視的收腰外擴走（取代原本線寬 0.7 的輪罩頂細腰線）
+    // 金色速度線——沿深色輪罩外緣的圓肩，從車頭吹口旁（x 64，寬 0.6）一路往後漸粗到喇叭口（x −63，寬 1.8），
+    // 跟著輪罩俯視的收腰外擴走
     parts.push({
       geometry: kit.decal((x, y, z) => {
         const az = Math.abs(z);
@@ -474,13 +471,12 @@ export const heimdallHornBody = makePolyBody({
       g.translate(-63.08, BELL_Y, 0);
       return g;
     };
-    // iter-121：隨喇叭接合處 21 → 19 等比縮小
     parts.push({ geometry: ring(17, 18), mat: 'ring1', name: 'decal-bifrost-ring-1' });
     parts.push({ geometry: ring(15.3, 16.3), mat: 'ring2', name: 'decal-bifrost-ring-2' });
     parts.push({ geometry: ring(13.6, 14.6), mat: 'ring3', name: 'decal-bifrost-ring-3' });
     // 喇叭口內緣一圈金色細線（後封口上，喇叭接合處）
     parts.push({ geometry: ring(20.4, 21.3), mat: 'dGold', name: 'decal-bell-throat-line' });
-    // ── iter-121 擴散器導流片（實體，金色）：喇叭口下半部 4 片縱向導流片（厚 1.2、高 4.2），從後封口往後拉到環邊，
+    // ── 擴散器導流片（實體，金色）：喇叭口下半部 4 片縱向導流片（厚 1.2、高 4.2），從後封口往後拉到環邊，
     // 喇叭口讀成車尾擴散器（號角＝排氣 / 擴散器）──
     {
       /** @type {THREE.BufferGeometry[]} */
@@ -502,7 +498,7 @@ export const heimdallHornBody = makePolyBody({
       }
       parts.push({ geometry: mergeGeos(strakes), mat: 'gold', solid: true, outline: true, name: 'bell-diffuser-strakes' });
     }
-    // ── iter-121 第二版：喇叭口兩側的貼身端板（深煙褐、厚 1.2，金色環邊外 0.4 mm），側視是刀形：前緣從號角側面斜升、後緣垂直，
+    // ── 喇叭口兩側的貼身端板（深煙褐、厚 1.2，金色環邊外 0.4 mm），側視是刀形：前緣從號角側面斜升、後緣垂直，
     // 喇叭口＋端板讀成車尾擴散器 / 尾翼的一體造型 ──
     {
       const zc = BELL_R + 1.6;

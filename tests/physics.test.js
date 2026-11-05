@@ -1,5 +1,5 @@
 // P01–P03、P05–P07、P10 物理驗證（定義見 SPEC.md 第 2 部分；容許誤差寫在本檔，不得為通過而放寬）
-// P04、P08、P09 第二階段改為透過零件組裝 / 每款車殼檢查，移到 modular.test.js
+// P04、P08、P09 透過零件組裝 / 每款車殼檢查，放在 modular.test.js
 import { describe, test, expect, beforeAll } from 'vitest';
 import { spec } from '../src/spec.js';
 import { Battery, theoreticalTopSpeed, longitudinalForce } from '../src/powertrain.js';
@@ -7,7 +7,7 @@ import { assemble, loadConfig } from '../src/assembly.js';
 import { buildCircuit, buildStraight } from '../src/track.js';
 import { initRapier, createWorld, createCar, stepCar, forwardSpeed, upAxis, wallPenetration, minWallContactDist, localToWorld, heightAboveRoad, carLevel } from '../src/sim.js';
 
-// 第二階段：P01–P10 使用預設組裝（configs/default.json，SPEC 1.12）
+// P01–P10 使用預設組裝（configs/default.json，SPEC 1.12）
 const ASM = assemble(loadConfig('default'));
 const P = ASM.P;
 

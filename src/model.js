@@ -1,6 +1,6 @@
 // Three.js 程序化模型：中置雙軸馬達底盤的 1/32 迷你四驅車（底盤＋可換車殼）＋賽道
 // 單位 mm；車體座標 x 向前、y 向上、z 向右，原點在前後軸中點的地面上
-// 第二階段：所有尺寸來自組裝結果（assembly.js 的 asm.spec，由零件資料組成）與 carLayout.js（與物理共用）
+// 所有尺寸來自組裝結果（assembly.js 的 asm.spec，由零件資料組成）與 carLayout.js（與物理共用）
 import * as THREE from 'three';
 import { wheelLayout, componentLayout } from './carLayout.js';
 import { assemble, loadConfig, rollerLayoutOf, singleShaftTrain } from './assembly.js';
@@ -51,9 +51,9 @@ function rubberNoiseTexture() {
 }
 
 /**
- * 輪胎側壁材質（iter-07）：1024² canvas，以 RingGeometry 的平面 UV 對應（中心 = 貼圖中心，貼圖半邊 = 外半徑）。
+ * 輪胎側壁材質：1024² canvas，以 RingGeometry 的平面 UV 對應（中心 = 貼圖中心，貼圖半邊 = 外半徑）。
  * 內容：放射狀細肋紋（內外兩圈）＋沿圓周的凸起字樣；同一張灰階圖當 bumpMap
- * 字樣為通用尺寸標示（iter-32 起不放廠商名稱）
+ * 字樣為通用尺寸標示（不放廠商名稱）
  */
 function tireSidewallMaterial() {
   // Node（vitest）沒有 DOM：只回傳素色材質，P09 外框量測用的幾何不變
@@ -99,7 +99,7 @@ function tireSidewallMaterial() {
   ctx.font = 'bold 34px Arial, Helvetica, sans-serif';
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
-  // iter-32：側壁字樣改成通用尺寸標示（不放任何廠商名稱），依輪胎零件尺寸產生
+  // 側壁字樣是通用尺寸標示（不放任何廠商名稱），依輪胎零件尺寸產生
   const label = `${spec.tire.diameter_mm}mm  LOW PROFILE  ${spec.tire.width_mm}mm`;
   for (const start of [-Math.PI / 2, Math.PI / 2]) {
     const step = 0.052;
@@ -250,7 +250,7 @@ function spongePoreTexture() {
 }
 
 /**
- * 海綿氣孔貼圖（iter-55：reviewer「煞車海綿只是一個平塊」）：淺底色上隨機分佈的圓形氣孔（中心深、邊緣漸淡），
+ * 海綿氣孔貼圖（避免煞車海綿看起來只是一個平塊）：淺底色上隨機分佈的圓形氣孔（中心深、邊緣漸淡），
  * 一張貼圖 = 4 mm 見方（repeat 1/4，ExtrudeGeometry 的 UV 以 mm 為單位）→ 氣孔直徑約 0.25–0.6 mm（發泡海綿的開孔尺寸，推估）
  * @type {() => THREE.DataTexture}
  */
@@ -299,32 +299,32 @@ function spongeCellTexture() {
 /** 建立材質集合 */
 function makeMaterials() {
   return {
-    // iter-06：黑塑膠與橡膠胎粗糙度區分——底盤 ABS 半光（roughness 0.4＋薄清漆，邊緣有亮線），
+    // 黑塑膠與橡膠胎粗糙度區分——底盤 ABS 半光（roughness 0.4＋薄清漆，邊緣有亮線），
     // 深色內層件平光（0.75），輪胎橡膠全霧（0.96，見 tire）
-    // iter-34：底盤改深槍灰（ref_ma-chassis 為深灰成型件，純黑時肋條與倒角在棚拍光下看不出來）
+    // 底盤用深槍灰（ref_ma-chassis 為深灰成型件，純黑時肋條與倒角在棚拍光下看不出來）
     chassis: new THREE.MeshPhysicalMaterial({ name: 'abs-chassis-gunmetal', color: 0x4a4e55, roughness: 0.45, metalness: 0.05, clearcoat: 0.3, clearcoatRoughness: 0.35 }),
     chassisDark: new THREE.MeshStandardMaterial({ color: 0x212226, roughness: 0.75, metalness: 0.0 }),
-    // iter-42：黑色 ABS 分件（電池艙頂蓋、齒輪箱外殼、馬達固定扣），和深槍灰主框做兩色分件（reviewer iter-41：「全部同一種深灰」）
+    // 黑色 ABS 分件（電池艙頂蓋、齒輪箱外殼、馬達固定扣），和深槍灰主框做兩色分件，避免全部同一種深灰
     chassisBlack: new THREE.MeshPhysicalMaterial({ name: 'abs-chassis-black', color: 0x18191c, roughness: 0.42, metalness: 0.0, clearcoat: 0.35, clearcoatRoughness: 0.3 }),
     body: new THREE.MeshPhysicalMaterial({ vertexColors: true, roughness: 0.28, metalness: 0.35, clearcoat: 1.0, clearcoatRoughness: 0.08 }),
     glass: new THREE.MeshPhysicalMaterial({ color: 0x15181d, roughness: 0.05, metalness: 0.2, clearcoat: 1.0 }),
-    // iter-03：輪胎橡膠粗糙感（程序化雜訊 bump＋roughness 貼圖），顏色由死黑提亮到深炭灰
+    // 輪胎橡膠粗糙感（程序化雜訊 bump＋roughness 貼圖），顏色用深炭灰（不用死黑）
     tire: new THREE.MeshStandardMaterial({ color: 0x232325, roughness: 0.96, metalness: 0.0, bumpMap: rubberNoiseTexture(), bumpScale: 0.6, roughnessMap: rubberNoiseTexture(), envMapIntensity: 0.6 }),
     tireTread: new THREE.MeshStandardMaterial({ color: 0x161617, roughness: 0.97, metalness: 0.0 }),
-    // 第四階段：海綿胎（細孔發泡、全霧）、超硬 / 拱形硬胎（硬膠，表面略亮）
+    // 海綿胎（細孔發泡、全霧）、超硬 / 拱形硬胎（硬膠，表面略亮）
     tireSponge: new THREE.MeshStandardMaterial({ name: 'sponge-tire', color: 0x2b2b2e, map: cachedTexture('sponge-cell', spongeCellTexture), bumpMap: cachedTexture('sponge-cell', spongeCellTexture), bumpScale: 1.0, roughness: 1.0, metalness: 0.0 }),
     tireHard: new THREE.MeshStandardMaterial({ name: 'tire-hard', color: 0x2a2a2d, roughness: 0.62, metalness: 0.0, envMapIntensity: 0.8 }),
     // 穩定零件（POM 樹脂，白色半霧）
     stabPom: new THREE.MeshPhysicalMaterial({ name: 'pom-stabilizer', color: 0xe9e7e0, roughness: 0.45, metalness: 0.0, clearcoat: 0.2, clearcoatRoughness: 0.5 }),
     // 輪框：ref_chevalier-ma_wheel-detail 為淺灰緞面塑膠（帶些許金屬粉），不是鍍鉻
     rim: new THREE.MeshPhysicalMaterial({ color: 0xa4a9b0, roughness: 0.42, metalness: 0.45, clearcoat: 0.35, clearcoatRoughness: 0.3 }),
-    // iter-07：輪輻金屬灰漸層——頂點色依半徑由輪轂（深槍灰）→ 輪框（亮銀灰），金屬度提高（ref_chevalier-ma_wheel-detail 輪輻內側較暗）
+    // 輪輻金屬灰漸層——頂點色依半徑由輪轂（深槍灰）→ 輪框（亮銀灰），金屬度提高（ref_chevalier-ma_wheel-detail 輪輻內側較暗）
     rimSpoke: new THREE.MeshPhysicalMaterial({ color: 0xb4b9c0, vertexColors: true, roughness: 0.34, metalness: 0.7, clearcoat: 0.35, clearcoatRoughness: 0.3 }),
-    // iter-07：輪框內筒（輪輻後方）深灰，增加輪框層次
+    // 輪框內筒（輪輻後方）深灰，增加輪框層次
     rimBarrel: new THREE.MeshStandardMaterial({ color: 0x4a4e55, roughness: 0.5, metalness: 0.6 }),
-    // iter-07：輪胎外側壁（程序化貼圖：細肋紋＋凸起字樣，同一張圖兼作 bump）
+    // 輪胎外側壁（程序化貼圖：細肋紋＋凸起字樣，同一張圖兼作 bump）
     tireWall: tireSidewallMaterial(),
-    // iter-10：罐身改亮銀髮絲面（roughness 0.25 → 0.34）——0.25 時底面平面反射到深色檯面，罐身讀成深灰
+    // 罐身用亮銀髮絲面（roughness 0.34）——0.25 時底面平面反射到深色檯面，罐身讀成深灰
     motorCan: new THREE.MeshStandardMaterial({ color: 0xd4d8de, roughness: 0.34, metalness: 0.85 }),
     motorCap: new THREE.MeshStandardMaterial({ color: 0xe8e2d0, roughness: 0.6 }),
     steel: new THREE.MeshStandardMaterial({ color: 0xb8bcc2, roughness: 0.3, metalness: 0.95 }),
@@ -333,38 +333,37 @@ function makeMaterials() {
     spur: new THREE.MeshStandardMaterial({ color: 0xf08aa0, roughness: 0.5 }),
     battery: new THREE.MeshStandardMaterial({ color: 0x2b2f36, roughness: 0.4, metalness: 0.3 }),
     copper: new THREE.MeshStandardMaterial({ color: 0xc8874a, roughness: 0.3, metalness: 0.9 }),
-    // iter-06：導輪改槍灰色半光塑膠（ref_ma-chassis），與底盤黑塑膠區分
+    // 槍灰色半光塑膠（ref_ma-chassis），與底盤黑塑膠區分
     roller: new THREE.MeshPhysicalMaterial({ color: 0x4a4e55, roughness: 0.34, metalness: 0.25, clearcoat: 0.4, clearcoatRoughness: 0.25, side: THREE.DoubleSide }),
-    // iter-14：導輪本體改黑色塑膠（ref side-high／front34／ma-chassis 素組為黑色塑膠導輪；reviewer「導輪雙層灰色視覺份量重」）；
-    //   尺寸 13 mm 為 SPEC 不改。只換導輪本體，電池艙倒角條等沿用 roller 的部件不動
+    // 導輪本體用黑色塑膠（ref side-high／front34／ma-chassis 素組為黑色塑膠導輪；雙層灰色導輪視覺份量太重）；
+    //   只有導輪本體用這個材質，電池艙倒角條等其他部件仍用 roller
     rollerBody: new THREE.MeshPhysicalMaterial({ color: 0x0e0f12, roughness: 0.38, metalness: 0.0, clearcoat: 0.35, clearcoatRoughness: 0.3, side: THREE.DoubleSide }),
-    // iter-35：鋁合金導輪（roller 零件 finish = 'aluminum'，例如 roller-19）：車削鋁的亮銀色
+    // 鋁合金導輪（roller 零件 finish = 'aluminum'，例如 roller-19）：車削鋁的亮銀色
     rollerAlu: new THREE.MeshPhysicalMaterial({ name: 'metal-roller-aluminum', color: 0xc4c9d0, roughness: 0.28, metalness: 0.95, side: THREE.DoubleSide }),
-    // iter-99（評審 iter-97：單向輪黑色內轂＋黑色分隔縫看不出兩件）：內轂改槍灰緞面（與淺灰輪框、黑縫三種明度；顏色推估，官方頁沒寫）
+    // 單向輪內轂用槍灰緞面（與淺灰輪框、黑縫三種明度；黑色內轂＋黑色分隔縫會看不出兩件；顏色推估，官方頁沒寫）
     onewayHub: new THREE.MeshPhysicalMaterial({ name: 'paint-gunmetal-oneway-hub', color: 0x5f656e, roughness: 0.4, metalness: 0.35, clearcoat: 0.3, clearcoatRoughness: 0.3 }),
     screw: new THREE.MeshStandardMaterial({ color: 0xd8d8d8, roughness: 0.25, metalness: 1.0 }),
-    // 第三階段改裝零件（material.name 給 Blender 管線分類：frp-*、carbon-*、alu-*、sponge-*、*-weight）
-    // iter-47：FRP 板加短玻纖紋（frpFiberTexture）、碳纖板加斜紋貼圖（carbonWeaveTexture）；reviewer iter-46「只是平塗的灰色、黑色」
+    // 改裝零件（material.name 給 Blender 管線分類：frp-*、carbon-*、alu-*、sponge-*、*-weight）
+    // FRP 板加短玻纖紋（frpFiberTexture）、碳纖板加斜紋貼圖（carbonWeaveTexture），避免看起來只是平塗的灰色、黑色
     frpPlate: new THREE.MeshPhysicalMaterial({ name: 'frp-gray', color: 0x7c8488, map: cachedTexture('frp', frpFiberTexture), roughness: 0.62, metalness: 0.0, clearcoat: 0.25, clearcoatRoughness: 0.45 }),
     carbonPlate: new THREE.MeshPhysicalMaterial({ name: 'carbon-plate', color: 0xffffff, map: cachedTexture('carbon', carbonWeaveTexture), roughness: 0.3, metalness: 0.15, clearcoat: 1.0, clearcoatRoughness: 0.08 }),
     aluSpacer: new THREE.MeshStandardMaterial({ name: 'alu-spacer', color: 0xb9bec6, roughness: 0.3, metalness: 0.9 }),
-    // iter-47：黃銅再亮一點（app 沒有環境貼圖時金屬會偏暗，reviewer iter-46「很小的金色圓柱，不容易認出來」）
-    // iter-82（reviewer：app 截圖的黃銅像平光土黃）：粗糙度 0.26 → 0.18、環境反射加強，看得出金屬亮面
-    // iter-85：拿掉自發光（讓黃銅變平光）、metalness 1、較飽和的金色、環境反射加強 → 灰色棚拍環境下也有金屬高光與暗面
+    // 黃銅配重是很小的金色圓柱，不容易認出來：用較飽和的金色、metalness 1、環境反射加強 → 灰色棚拍環境下也有金屬高光與暗面
+    // 不加自發光（自發光會讓黃銅變平光）
     brassWeight: new THREE.MeshStandardMaterial({ name: 'brass-weight', color: 0xf3c35a, roughness: 0.22, metalness: 1.0, envMapIntensity: 2.2 }),
     nylonCap: new THREE.MeshStandardMaterial({ name: 'plastic-nylon-cap', color: 0x34373c, roughness: 0.55, metalness: 0.0 }),
-    // iter-50：板件切口（側面與孔壁）另用一個材質，讓 1.5 mm 板厚與孔緣看得出來：FRP 切口偏白（玻纖斷面）、碳纖切口霧灰
+    // 板件切口（側面與孔壁）另用一個材質，讓 1.5 mm 板厚與孔緣看得出來：FRP 切口偏白（玻纖斷面）、碳纖切口霧灰
     frpEdge: new THREE.MeshStandardMaterial({ name: 'frp-edge', color: 0xc4c9c6, roughness: 0.8, metalness: 0.0 }),
     carbonEdge: new THREE.MeshStandardMaterial({ name: 'carbon-plate-edge', color: 0x5d6166, roughness: 0.75, metalness: 0.05 }),
     aluNut: new THREE.MeshStandardMaterial({ name: 'alu-nut-blue', color: 0x3f6fb8, roughness: 0.3, metalness: 0.85 }),
-    // iter-61：滑動保桿的鋁滑動板（髮絲面霧銀，切口較亮）與樹脂滑軌（黑色低摩擦樹脂）
+    // 滑動保桿的鋁滑動板（髮絲面霧銀，切口較亮）與樹脂滑軌（黑色低摩擦樹脂）
     aluPlate: new THREE.MeshStandardMaterial({ name: 'alu-plate', color: 0xc9ced5, roughness: 0.36, metalness: 0.85 }),
     aluPlateEdge: new THREE.MeshStandardMaterial({ name: 'alu-plate-edge', color: 0xe4e7eb, roughness: 0.25, metalness: 0.9 }),
     slideRail: new THREE.MeshStandardMaterial({ name: 'plastic-slide-rail', color: 0x1d1f23, roughness: 0.45, metalness: 0.0 }),
     steelWeight: new THREE.MeshStandardMaterial({ name: 'steel-weight', color: 0xc3c8ce, roughness: 0.3, metalness: 0.85, emissive: 0x15171a }),
-    // iter-55：煞車海綿改用較大的開孔氣孔貼圖（spongeCellTexture），bump 加深，看得出發泡孔隙
+    // 煞車海綿用較大的開孔氣孔貼圖（spongeCellTexture）與較深的 bump，看得出發泡孔隙
     spongeWhite: new THREE.MeshStandardMaterial({ name: 'sponge-white', color: 0xf8f6ee, map: cachedTexture('sponge-cell', spongeCellTexture), bumpMap: cachedTexture('sponge-cell', spongeCellTexture), bumpScale: 1.2, roughness: 1.0, metalness: 0.0, emissive: 0x2a2a26 }),
-    // 第七階段（iter-78）：灰色海綿（15441 三種摩擦海綿，顏色與摩擦的對應官方沒寫 → 三款都畫灰色）
+    // 灰色海綿（15441 三種摩擦海綿，顏色與摩擦的對應官方沒寫 → 三款都畫灰色）
     spongeGray: new THREE.MeshStandardMaterial({ name: 'sponge-gray', color: 0x8a8c90, map: cachedTexture('sponge-cell', spongeCellTexture), bumpMap: cachedTexture('sponge-cell', spongeCellTexture), bumpScale: 1.2, roughness: 1.0, metalness: 0.0, emissive: 0x111214 }),
     spongeBlue: new THREE.MeshStandardMaterial({ name: 'sponge-blue', color: 0x3c86f0, map: cachedTexture('sponge-cell', spongeCellTexture), bumpMap: cachedTexture('sponge-cell', spongeCellTexture), bumpScale: 1.2, roughness: 1.0, metalness: 0.0, emissive: 0x06142a }),
     // 雙面膠層（海綿與煞車板之間，淡琥珀色、半光澤，和海綿的霧面白區分）
@@ -382,7 +381,7 @@ function extrudeXZ(points, thickness, material, holes = [], bevel = 0) {
   for (const h of holes) {
     shape.holes.push(new THREE.Path(h.map(([x, z]) => new THREE.Vector2(x, -z))));
   }
-  // iter-34：可選倒角（射出件邊緣圓角）；倒角往外長 bevel，厚度維持 thickness（底面在 0、頂面在 thickness）
+  // 可選倒角（射出件邊緣圓角）；倒角往外長 bevel，厚度維持 thickness（底面在 0、頂面在 thickness）
   let opts = { depth: thickness, bevelEnabled: false, curveSegments: 12 };
   if (bevel > 0) {
     opts = { depth: Math.max(0.01, thickness - 2 * bevel), bevelEnabled: true, bevelThickness: bevel, bevelSize: bevel * 0.8, bevelOffset: -bevel * 0.8, bevelSegments: 3, curveSegments: 12 };
@@ -416,7 +415,7 @@ function roundedRect(cx, cz, lx, lz, r, seg = 6) {
   return pts;
 }
 
-/** @type {number} slick 胎側壁平面的外緣（佔胎壁高度的比例；其餘是胎肩小圓角），iter-97 */
+/** @type {number} slick 胎側壁平面的外緣（佔胎壁高度的比例；其餘是胎肩小圓角） */
 const SLICK_SHOULDER = 0.8;
 
 /** 輪子：low profile 輪胎（Lathe）＋ Y 字幅輪框 */
@@ -428,7 +427,7 @@ function buildWheel(mats, side) {
   // 輪胎截面（繞 y 軸旋轉後再轉到 z 軸）
   const prof = [];
   const n = 72;
-  // 第四階段：胎面種類（零件 tread）——rubber 橡膠（溝槽）、hard 超硬（溝槽、較亮）、sponge 海綿（平胎面、方肩、無溝槽）、
+  // 胎面種類（零件 tread）——rubber 橡膠（溝槽）、hard 超硬（溝槽、較亮）、sponge 海綿（平胎面、方肩、無溝槽）、
   // barrel 拱形（斷面圓弧，半徑 crownRadius_mm，中央接地）
   const tread = spec.tire.tread ?? 'rubber';
   const crownR = spec.tire.crownRadius_mm ?? 6;
@@ -441,8 +440,8 @@ function buildWheel(mats, side) {
       // 海綿：幾乎方形的斷面（只有 0.3 mm 小圓角）
       r = rr + (R - rr) * Math.min(1, 0.85 + edge * 6);
     } else if (tread === 'slick') {
-      // 第七階段（iter-76）：slick 胎——胎面沒有溝槽。
-      // iter-97（評審 iter-84：胎壁偏厚、肩部圓角像軟胎）：硬質 slick 用近直角胎肩（側壁平面到 0.8，約 0.25 mm 小圓角），
+      // slick 胎——胎面沒有溝槽。
+      // 硬質 slick 用近直角胎肩（側壁平面到 0.8，約 0.25 mm 小圓角；圓角太大會讓胎壁偏厚、像軟胎），
       // 側面看得到的胎壁就是資料上的 輪框 / 外徑（24.2 / 31 = 0.78）
       r = rr + (R - rr) * Math.min(1, SLICK_SHOULDER + edge * 8);
     } else if (tread === 'barrel') {
@@ -465,7 +464,7 @@ function buildWheel(mats, side) {
   /** @type {Record<string, THREE.Material>} */
   const treadMats = { sponge: mats.tireSponge, hard: mats.tireHard, barrel: mats.tireHard, slick: mats.tireHard };
   let tireMat = treadMats[tread] ?? mats.tire;
-  // 第七階段（iter-76）：零件指定胎色（例如白色硬質 slick、透明軟質 slick）時，複製胎面材質換顏色（材質名稱不變，Blender 分類照舊）
+  // 零件指定胎色（例如白色硬質 slick、透明軟質 slick）時，複製胎面材質換顏色（材質名稱不變，Blender 分類照舊）
   if (spec.tire.tireColor !== undefined) {
     tireMat = tireMat.clone();
     /** @type {THREE.MeshStandardMaterial} */ (tireMat).color.setHex(spec.tire.tireColor);
@@ -480,11 +479,11 @@ function buildWheel(mats, side) {
   const hub = new THREE.Mesh(new THREE.CylinderGeometry(2.6, 2.8, 1.6, 20), mats.rim);
   hub.rotation.x = Math.PI / 2;
   face.add(hub);
-  // iter-35：輪轂中心露出 2 mm 六角輪軸端（reviewer iter-34：「輪轂中心沒有細節」；實車輪框中心孔可看到六角軸頭）
+  // 輪轂中心露出 2 mm 六角輪軸端（實車輪框中心孔可看到六角軸頭），讓輪轂中心有細節
   const hubRing = new THREE.Mesh(new THREE.TorusGeometry(1.9, 0.35, 8, 24), mats.rim);
   hubRing.position.z = side * 0.85;
   face.add(hubRing);
-  // iter-55：中空輪軸（零件 boreDiameter_mm > 0）：不鏽鋼軸端凸出輪轂 0.6 mm，端面看得到中孔（暗色孔＋倒角亮環），孔徑取自零件資料
+  // 中空輪軸（零件 boreDiameter_mm > 0）：不鏽鋼軸端凸出輪轂 0.6 mm，端面看得到中孔（暗色孔＋倒角亮環），孔徑取自零件資料
   const axlePart = asmCur?.partsBySlot?.axles;
   const bore = axlePart?.boreDiameter_mm ?? 0;
   // 軸端最外到 z = 1.6（face 內）→ 離輪子中心 4.48 mm，仍在胎寬 9 mm 之內，不改變外框
@@ -504,7 +503,7 @@ function buildWheel(mats, side) {
     chamfer.rotation.y = side > 0 ? 0 : Math.PI;
     face.add(chamfer);
   }
-  // iter-03：彎曲 Y 字分岔輪輻（ref_chevalier-ma_wheel-detail：5 組輻條，每組在中段分岔成兩支往同一方向彎曲的臂）
+  // 彎曲 Y 字分岔輪輻（ref_chevalier-ma_wheel-detail：5 組輻條，每組在中段分岔成兩支往同一方向彎曲的臂）
   // 每支臂沿二次曲線中心線取樣、左右各偏移半寬，組成多邊形後擠出 1.2 mm
   /** @type {(p0: number[], p1: number[], p2: number[], w0: number, w1: number) => THREE.Mesh} 彎曲臂（二次 Bézier 中心線，寬度 w0 → w1） */
   const curvedArm = (p0, p1, p2, w0, w1) => {
@@ -537,14 +536,14 @@ function buildWheel(mats, side) {
     return new THREE.Mesh(geo, mats.rimSpoke);
   };
   const rimIn = rr - 0.5;
-  // 第四階段：輕量鏤空輪框（rimStyle = lightweight，腹板挖掉 rimWebCutout）→ 輻條寬度依剩餘比例縮小（與 inertia.js 的腹板質量同一個比例）
+  // 輕量鏤空輪框（rimStyle = lightweight，腹板挖掉 rimWebCutout）→ 輻條寬度依剩餘比例縮小（與 inertia.js 的腹板質量同一個比例）
   const spokeScale = spec.tire.rimStyle === 'lightweight' ? Math.max(0.35, 1 - (spec.tire.rimWebCutout ?? 0)) : 1;
   const lightweight = spec.tire.rimStyle === 'lightweight';
   for (let k = 0; k < 5; k++) {
     const a = (k / 5) * Math.PI * 2;
     const spoke = new THREE.Group();
     if (lightweight) {
-      // iter-55：輕量鏤空輪框——Y 字輻條的分岔臂與腹板都挖掉，只留 5 支細直輻（寬 = 標準主幹 × 剩餘比例），
+      // 輕量鏤空輪框——Y 字輻條的分岔臂與腹板都挖掉，只留 5 支細直輻（寬 = 標準主幹 × 剩餘比例），
       // 輻條之間是貫穿的大開口（背板與內側補強肋也不畫，看得到裡面的輪轂與底盤），和標準輪框的密集 Y 字輻對比明顯
       const wSp = Math.max(0.7, 2.0 * spokeScale);
       spoke.add(curvedArm([2.2, 0], [(2.2 + rimIn) / 2, 0.25 * side], [rimIn + 0.2, 0.5 * side], wSp * 1.15, wSp));
@@ -566,10 +565,9 @@ function buildWheel(mats, side) {
     face.add(hubRib);
   }
   if (spec.tire.rimStyle === 'oneway') {
-    // 第七階段（iter-79）：單向輪框——輪框與中央內轂是兩件（內轂裝在輪軸上，輪框可以相對內轂往前空轉）：
+    // 單向輪框——輪框與中央內轂是兩件（內轂裝在輪軸上，輪框可以相對內轂往前空轉）：
     // 內轂比一般輪轂大（φ7.4，內含單向離合），外圈一道暗色分隔縫，轂面 8 道棘輪狀凸肋（示意內部棘爪；實際棘爪在內部看不到）
-    // iter-82（reviewer：內轂與輪框同色看不出兩件）：內轂用黑色塑膠（顏色推估：官方頁沒寫內轂顏色），分隔縫加寬到 0.7 mm
-    // iter-97（評審 iter-84：縫太細、棘輪肋太小）：分隔縫 1.0 mm、棘輪肋放大（外觀示意，不影響質量 / 物理）
+    // 內轂與輪框不同色才看得出兩件（內轂材質見 onewayHub）；分隔縫 1.0 mm、棘輪肋放大，太細或太小會看不出來（外觀示意，不影響質量 / 物理）
     const clutchHub = new THREE.Mesh(new THREE.CylinderGeometry(3.6, 3.6, 1.9, 32), mats.onewayHub);
     clutchHub.rotation.x = Math.PI / 2;
     clutchHub.position.z = side * 0.15;
@@ -593,8 +591,8 @@ function buildWheel(mats, side) {
   face.add(flange);
   face.position.z = side * (w * 0.32);
   g.add(face);
-  // iter-07：外側壁貼片（胎壁平面 r = rr … rr + 0.55 (R − rr)，略浮 0.06 mm）
-  // iter-97：slick 胎肩改方正後，黑色字樣帶仍只到 0.55（評審：拉到胎肩會讓白胎從斜前方看像黑胎），0.55–0.8 露出胎色
+  // 外側壁貼片（胎壁平面 r = rr … rr + 0.55 (R − rr)，略浮 0.06 mm）
+  // slick 胎肩較方正，但黑色字樣帶仍只到 0.55（拉到胎肩會讓白胎從斜前方看像黑胎），0.55–0.8 露出胎色
   const wallOuter = rr + 0.55 * (R - rr);
   const wall = new THREE.Mesh(new THREE.RingGeometry(rr + 0.05, wallOuter - 0.05, 96, 1), mats.tireWall);
   wall.position.z = side * (w / 2 + 0.06);
@@ -608,7 +606,7 @@ function buildWheel(mats, side) {
     back.rotation.y = side > 0 ? 0 : Math.PI;
     g.add(back);
   }
-  // iter-51：輪框內側（reviewer：底視缺培林與輪軸細節）：內側輪轂凸台＋六角軸孔（輪軸六角端插入處）＋5 條補強肋＋內緣唇邊。
+  // 輪框內側（底視看得到的培林與輪軸細節）：內側輪轂凸台＋六角軸孔（輪軸六角端插入處）＋5 條補強肋＋內緣唇邊。
   // 全部在輪框半徑與輪胎寬度內，不改變外框
   const innerZ = -side * (w * 0.2);
   const innerHub = new THREE.Mesh(new THREE.CylinderGeometry(2.7, 3.1, 1.4, 24), mats.rim);
@@ -633,7 +631,7 @@ function buildWheel(mats, side) {
 }
 
 /**
- * 俯視為長條的臂板（兩點之間、寬 w、厚 th），沿中心線開 nHoles 個圓孔（iter-05）
+ * 俯視為長條的臂板（兩點之間、寬 w、厚 th），沿中心線開 nHoles 個圓孔
  * @type {(x0: number, z0: number, x1: number, z1: number, w: number, th: number, y: number, nHoles: number, mat: THREE.Material) => THREE.Mesh}
  */
 const armPlate = (x0, z0, x1, z1, w, th, y, nHoles, mat) => {
@@ -688,7 +686,7 @@ const screwHead = (mats, x, y, z, r) => {
 };
 
 /**
- * 後方上層導輪架（iter-05 重做；ref rear34 / ma-chassis）：
+ * 後方上層導輪架（ref rear34 / ma-chassis）：
  * 中央板（長圓孔＋2 顆螺絲）＋兩支斜伸到上層導輪的臂（減重孔、兩側立起邊框）＋導輪座凸台，
  * 中央以開孔立板連到下層保桿，兩側各 2 支斜臂（I 字斷面）由下層導輪臂斜上撐到上層臂
  * @type {(mats: ReturnType<typeof makeMaterials>, rx: number, rz: number, yLow: number, yUp: number) => THREE.Group}
@@ -850,7 +848,7 @@ function gearTrainLayout() {
 }
 
 /**
- * 滾珠培林導輪（第五階段 iter-59：15344 / 15345）：鋼外圈（四角倒角）＋上下黑色防塵蓋＋鋼內圈，外圈外緣 = 接觸半徑 R；
+ * 滾珠培林導輪（15344 / 15345）：鋼外圈（四角倒角）＋上下黑色防塵蓋＋鋼內圈，外圈外緣 = 接觸半徑 R；
  * 頂部墊片與螺絲頭、底部墊片與螺帽同一般導輪（opt.bare 時不畫底部）
  * @type {(mats: ReturnType<typeof makeMaterials>, r: { x: number, y: number, z: number, r: number, h: number }, opt?: { bare?: boolean }) => THREE.Group}
  */
@@ -910,7 +908,7 @@ const buildBearingRoller = (mats, r, opt = {}) => {
 const rollerRingMats = new Map();
 
 /**
- * 導輪外環（第五階段）：橡膠 O 環是圓截面的環（TorusGeometry），塑膠環是矩形截面（四角倒圓 0.2 mm）的環；外緣半徑 = 接觸半徑 R
+ * 導輪外環：橡膠 O 環是圓截面的環（TorusGeometry），塑膠環是矩形截面（四角倒圓 0.2 mm）的環；外緣半徑 = 接觸半徑 R
  * @type {(ring: import('./parts/types').RollerRing, R: number) => THREE.Mesh}
  */
 const buildRollerRing = (ring, R) => {
@@ -946,15 +944,15 @@ const buildRollerRing = (ring, R) => {
 };
 
 /**
- * 導輪（iter-06 重做；ref_ma-chassis：槍灰色導輪，上下輪緣凸出、中段內縮，頂面內凹看得到培林）：
+ * 導輪（ref_ma-chassis：槍灰色導輪，上下輪緣凸出、中段內縮，頂面內凹看得到培林）：
  * Lathe 截面＝上下輪緣（含倒角）＋中段腰身＋頂底面內凹環；培林分外環（鋼，凸起）／黑色密封蓋（內凹）／內環（鋼）三層；
  * 導輪與臂之間有墊片間隙，頂部墊片＋十字頭螺絲，底部六角螺帽。物理接觸半徑不變（r.r）
  * opt.bare = true：裝在導輪板的導輪柱上（下方的墊片 / 螺帽由 buildStayPlates 的導輪柱負責），不畫底部墊片、螺帽、螺絲尾端
- * iter-56：前後導輪可不同款，材質（r.finish）與錐形輪廓（r.taper）取自這顆導輪自己的零件資料（rollerLayoutOf）
+ * 前後導輪可不同款，材質（r.finish）與錐形輪廓（r.taper）取自這顆導輪自己的零件資料（rollerLayoutOf）
  * @type {(mats: ReturnType<typeof makeMaterials>, r: { x: number, y: number, z: number, r: number, h: number, finish?: string, taper?: import('./parts/types').RollerSpec['taper'], ring?: import('./parts/types').RollerSpec['ring'] }, opt?: { bare?: boolean, noTop?: boolean, noBottomFace?: boolean }) => THREE.Group}
  */
 const buildRoller = (mats, r, opt = {}) => {
-  // 第五階段：滾珠培林直接當導輪（finish = steel，9 / 11 mm）：外形就是一顆培林
+  // 滾珠培林直接當導輪（finish = steel，9 / 11 mm）：外形就是一顆培林
   if (r.finish === 'steel') {
     return buildBearingRoller(mats, r, opt);
   }
@@ -962,7 +960,7 @@ const buildRoller = (mats, r, opt = {}) => {
   const R = r.r;
   const H = r.h / 2;
   const recessR = R - 1.1;
-  // iter-85：小徑導輪（9 / 8 mm）的培林外環放不進內凹（3.7 > R − 1.1）→ 培林環依內凹等比縮小（k = 1 時和原本相同）
+  // 小徑導輪（9 / 8 mm）的培林外環放不進內凹（3.7 > R − 1.1）→ 培林環依內凹等比縮小（k = 1 時不縮小）
   const brgR = Math.min(3.7, recessR - 0.4);
   const k = brgR / 3.7;
   const recessDepth = 0.7;
@@ -984,7 +982,7 @@ const buildRoller = (mats, r, opt = {}) => {
     [recessR, -H + recessDepth],
     [brgR, -H + recessDepth],
   ];
-  // iter-97（評審 iter-84：9-8 導輪像墊片 / 彈簧疊）：矮片（≤ 3.5 mm，例如 9-8 二段導輪每片 3 mm）不畫中央溝，
+  // 矮片（≤ 3.5 mm，例如 9-8 二段導輪每片 3 mm）不畫中央溝（畫了會像墊片 / 彈簧疊），
   // 只留上下 0.3 mm 倒角——每片看起來是一段實心圓柱，兩片中間的縮腰與 9 / 8 mm 外徑差才看得出來
   if (r.h <= 3.5) {
     prof = [
@@ -1000,7 +998,7 @@ const buildRoller = (mats, r, opt = {}) => {
       [brgR, -H + recessDepth],
     ];
   }
-  // 第四階段：錐形導輪（零件 taper）：上段圓柱 h_c、下段截錐縮到底面半徑 R_b（錐面朝下，與 sim.js rollerWallContacts 同一份幾何）
+  // 錐形導輪（零件 taper）：上段圓柱 h_c、下段截錐縮到底面半徑 R_b（錐面朝下，與 sim.js rollerWallContacts 同一份幾何）
   const tp = r.taper ?? null;
   if (tp) {
     const Rb = tp.bottomDiameter_mm / 2;
@@ -1020,7 +1018,7 @@ const buildRoller = (mats, r, opt = {}) => {
       [brgR, -H + recessDepth],
     ];
   }
-  // 第五階段：有外環（橡膠 O 環 / 塑膠環）的導輪：輪轂外緣退到環的內緣，中段挖出環槽，環的外緣 = 接觸直徑 R（零件資料 ring）
+  // 有外環（橡膠 O 環 / 塑膠環）的導輪：輪轂外緣退到環的內緣，中段挖出環槽，環的外緣 = 接觸直徑 R（零件資料 ring）
   const ring = r.ring ?? null;
   if (ring && !tp) {
     const hubR = R - ring.thickness_mm;
@@ -1050,7 +1048,7 @@ const buildRoller = (mats, r, opt = {}) => {
   if (ring && !tp) {
     g.add(buildRollerRing(ring, R));
   }
-  // iter-85：雙層一體導輪的中間面（上片底面、下片頂面）被縮腰擋住、實物也沒有培林 → 不畫培林面與頂部螺絲
+  // 雙層一體導輪的中間面（上片底面、下片頂面）被縮腰擋住、實物也沒有培林 → 不畫培林面與頂部螺絲
   for (const sy of [-1, 1]) {
     if ((sy > 0 && opt.noTop) || (sy < 0 && opt.noBottomFace)) {
       continue;
@@ -1149,7 +1147,7 @@ const buildRollerStack = (mats, r, opt = {}) => {
   const bottom = tiers.reduce((bi, tt, j) => (tt.y < tiers[bi].y ? j : bi), 0);
   tiers.forEach((t, i) => {
     // 雙層導輪是一體成形：只有最下層保留底部五金
-    // 第七階段（iter-76）：每一片可有自己的外環（例如 15418 上層橡膠環）
+    // 每一片可有自己的外環（例如 15418 上層橡膠環）
     g.add(buildRoller(mats, { x: r.x, y: r.y + t.y, z: r.z, r: t.r, h: t.h, finish: r.finish, taper: r.taper, ring: t.ring ?? r.ring, color: r.color }, { bare: opt.bare || i !== bottom, noTop: i !== top, noBottomFace: i !== bottom }));
   });
   // 兩片之間的縮腰（同材質的短圓柱）
@@ -1162,7 +1160,7 @@ const buildRollerStack = (mats, r, opt = {}) => {
 };
 
 /**
- * 滑動保桿的樹脂滑軌與彈簧（iter-61）：滑軌 = 零件資料 slide.rail 的方塊（鎖在前保桿下方、壓在滑動板上）；
+ * 滑動保桿的樹脂滑軌與彈簧：滑軌 = 零件資料 slide.rail 的方塊（鎖在前保桿下方、壓在滑動板上）；
  * 彈簧 = 沿車身 z 的螺旋線圈，左右各 1 支，從滑軌端面（|z| = innerZ）到滑動板上的彈簧座（|z| = outerZ），座在滑動板頂面
  * @type {(mats: ReturnType<typeof makeMaterials>, sl: import('./parts/types').SlideSpec, plateTop: number) => THREE.Group}
  */
@@ -1199,7 +1197,7 @@ const buildSlideRailAndSprings = (mats, sl, plateTop) => {
 
 /**
  * FRP / 碳纖導輪板（外形與開孔取自零件資料 plate，與質量、干涉檢查同一份；板厚照資料 1.5 mm，不加倒角）＋導輪柱
- * 導輪柱（iter-47，ref_chevalier-ma_gradeup / ref_aero-avante-ar）：板底的螺絲頭 → 板面墊片 → 鋁墊管撐到導輪底 → 導輪 →
+ * 導輪柱（ref_chevalier-ma_gradeup / ref_aero-avante-ar）：板底的螺絲頭 → 板面墊片 → 鋁墊管撐到導輪底 → 導輪 →
  * （兩層時）鋁墊管撐到上層導輪 → 頂部墊片＋鋁墊管＋尼龍蓋。導輪高度一律取 rollerLayoutOf（assembly.js，與物理碰撞體同一份；前後導輪各自的款式）
  * @type {(mats: ReturnType<typeof makeMaterials>) => THREE.Group}
  */
@@ -1230,7 +1228,7 @@ const buildStayPlates = (mats) => {
     const plate = extrudeXZ(pl.outline, pl.thickness_mm, mat, holes, 0.25);
     plate.position.y = pl.y_mm;
     moving.add(plate);
-    // 滑動保桿（iter-61）：樹脂滑軌＋左右對頂的彈簧（尺寸取自零件資料 slide，與質量同一份）
+    // 滑動保桿：樹脂滑軌＋左右對頂的彈簧（尺寸取自零件資料 slide，與質量同一份）
     if (st.slide) {
       grp.add(buildSlideRailAndSprings(mats, st.slide, pl.y_mm + pl.thickness_mm));
     }
@@ -1269,7 +1267,7 @@ const buildStayPlates = (mats) => {
         tube(bottom - 0.3, bottom, 2.4, mats.steel);
         y = r.y + r.h / 2;
       }
-      // 頂部（iter-48，reviewer：白色大圓頭像球頭）：墊片＋鋁合金尼龍防鬆螺帽（六角對邊約 4 mm、高 1.8 mm，頂部深灰尼龍環 0.9 mm，推估尺寸），螺絲尾露出 0.4 mm
+      // 頂部：墊片＋鋁合金尼龍防鬆螺帽（六角對邊約 4 mm、高 1.8 mm，頂部深灰尼龍環 0.9 mm，推估尺寸），螺絲尾露出 0.4 mm；不用白色大圓頭（會像球頭）
       tube(y + 0.9, y + 1.3, 2.2, mats.steel);
       const nut = new THREE.Mesh(new THREE.CylinderGeometry(2.3, 2.3, 1.8, 6), mats.aluNut);
       nut.position.set(x, y + 2.2, z);
@@ -1284,7 +1282,7 @@ const buildStayPlates = (mats) => {
 };
 
 /**
- * 擺動式制振器（第七階段 iter-75，球頭連桿 [T15478]）：位置取自組裝結果（asm.optional.dampers 的 seat / pos / swing.pivot，與質量、干涉、物理同一份）。
+ * 擺動式制振器（球頭連桿 [T15478]）：位置取自組裝結果（asm.optional.dampers 的 seat / pos / swing.pivot，與質量、干涉、物理同一份）。
  * 支點底座（FRP 小板，鎖在後導輪板尾端）＋兩支球頭螺柱（鋼球 φ3）→ 擺臂（1.5 mm FRP 小板，前端兩個黑色樹脂球頭杯包住鋼球）→
  * 黃銅方塊 6×6×32（橫放，兩支螺絲由擺臂上方鎖進方塊）；方塊正下方的黑色止擋墊靠在後保桿頂面（座墊）
  * @type {(mats: ReturnType<typeof makeMaterials>, d: any) => THREE.Group}
@@ -1316,8 +1314,8 @@ const buildSwingDamper = (mats, d) => {
   const base = new THREE.Mesh(new THREE.BoxGeometry(7, baseT, 22), [mats.frpEdge, mats.frpEdge, mats.frpPlate, mats.frpPlate, mats.frpEdge, mats.frpEdge]);
   base.position.set(pv.x, baseY + baseT / 2, pv.z);
   grp.add(base);
-  // 擺臂（iter-82 依 reviewer 改）：支點高度 pv.y 落在方塊的高度範圍內 → 擺臂是一片「水平 FRP 板＋末端往上折的 L 形鎖片」，
-  // 鎖片貼在方塊朝支點那一面、兩支螺絲水平鎖進方塊（原本的斜板＋頂板看起來像斜坡）
+  // 擺臂：支點高度 pv.y 落在方塊的高度範圍內 → 擺臂是一片「水平 FRP 板＋末端往上折的 L 形鎖片」，
+  // 鎖片貼在方塊朝支點那一面、兩支螺絲水平鎖進方塊（不用斜板＋頂板，那樣看起來像斜坡）
   const armT = 1.5;
   const faceX = d.seat.x - W / 2;
   const armX0 = pv.x + 1.2;
@@ -1340,7 +1338,7 @@ const buildSwingDamper = (mats, d) => {
     const ball = new THREE.Mesh(new THREE.SphereGeometry(1.6, 20, 14), mats.steel);
     ball.position.set(pv.x, pv.y, zc);
     grp.add(ball);
-    // 樹脂球頭杯（黑）：只包住鋼球上半（半球殼＋往擺臂的短頸），下半顆鋼球露出來、看得出是球頭（iter-82）
+    // 樹脂球頭杯（黑）：只包住鋼球上半（半球殼＋往擺臂的短頸），下半顆鋼球露出來、看得出是球頭
     const cup = new THREE.Mesh(new THREE.SphereGeometry(2.1, 20, 10, 0, Math.PI * 2, 0, Math.PI * 0.42), mats.chassisDark);
     cup.position.set(pv.x, pv.y, zc);
     grp.add(cup);
@@ -1357,14 +1355,14 @@ const buildSwingDamper = (mats, d) => {
 };
 
 /**
- * 選配零件（第三階段）：制振器（含螺絲軸與座）、煞車海綿、配重。位置與尺寸取自組裝結果（asm.optional，與干涉檢查同一份）
+ * 選配零件：制振器（含螺絲軸與座）、煞車海綿、配重。位置與尺寸取自組裝結果（asm.optional，與干涉檢查同一份）
  * @type {(mats: ReturnType<typeof makeMaterials>) => THREE.Group}
  */
 const buildOptionalParts = (mats) => {
   const g = new THREE.Group();
   const o = asmCur.optional ?? {};
   for (const d of o.dampers ?? []) {
-    // 第七階段：擺動式（球頭連桿）制振器另建模型
+    // 擺動式（球頭連桿）制振器另建模型
     if (d.swing) {
       g.add(buildSwingDamper(mats, d));
       continue;
@@ -1401,7 +1399,7 @@ const buildOptionalParts = (mats) => {
         [1.15, h],
       ];
       if (part.profile === 'barrel') {
-        // 第七階段（iter-82）：樽型（15501 官方「樽型タイプ」）——中段最粗 = 零件直徑，兩端縮 0.9 mm 的圓弧鼓腹
+        // 樽型（15501 官方「樽型タイプ」）——中段最粗 = 零件直徑，兩端縮 0.9 mm 的圓弧鼓腹
         prof = [[1.15, 0]];
         for (let i = 0; i <= 12; i++) {
           const t = i / 12;
@@ -1445,7 +1443,7 @@ const buildOptionalParts = (mats) => {
       const t = part.bracket.thickness_mm;
       const side = Math.sign(d.seat.z) || 1;
       const plateH = h + part.stroke_mm + 1.0;
-      // iter-82：圓柱制振器（AR 側制振器）的托架也畫出來（原本只畫方塊）；板長 = 方塊長或圓柱直徑 + 3 mm
+      // 方塊與圓柱制振器（AR 側制振器）的托架都畫出來；板長 = 方塊長或圓柱直徑 + 3 mm
       const plateLen = part.shape === 'box' ? part.length_mm + 3 : part.diameter_mm + 3;
       const halfW = part.shape === 'box' ? part.width_mm / 2 : part.diameter_mm / 2;
       const plate = new THREE.Mesh(new THREE.BoxGeometry(plateLen, plateH, t), [mats.frpEdge, mats.frpEdge, mats.frpEdge, mats.frpEdge, mats.frpPlate, mats.frpPlate]);
@@ -1463,7 +1461,7 @@ const buildOptionalParts = (mats) => {
       shaft.position.set(sxp, (below + shaftTop) / 2, d.seat.z);
       grp.add(shaft);
       if (part.mount !== 'side') {
-        // 皿頭螺絲：頭部埋進板底、與板底齊平（不凸出，板尾下方可貼煞車海綿；iter-48）
+        // 皿頭螺絲：頭部埋進板底、與板底齊平（不凸出，板尾下方可貼煞車海綿）
         const head = new THREE.Mesh(new THREE.CylinderGeometry(1.9, 1.0, 0.9, 20), mats.screw);
         head.position.set(sxp, below + 0.45, d.seat.z);
         grp.add(head);
@@ -1479,7 +1477,7 @@ const buildOptionalParts = (mats) => {
       grp.add(nylon);
     }
     if (d.seat.rearSpacer > 0) {
-      // B10（iter-109）：後制振器墊管（15473 鋁墊管，與 assembly 同尺寸）
+      // B10：後制振器墊管（15473 鋁墊管，與 assembly 同尺寸）
       const height = d.seat.rearSpacer;
       const profile = [[1.1, 0], [2, 0], [2, height], [1.1, height], [1.1, 0]];
       const spacer = new THREE.Mesh(new THREE.LatheGeometry(profile.map(([r, y]) => new THREE.Vector2(r, y)), 24), mats.aluSpacer);
@@ -1497,7 +1495,7 @@ const buildOptionalParts = (mats) => {
     g.add(grp);
   }
   if (o.sponge?.pin) {
-    // iter-95：橡膠煞車（15413）：保桿下向的樹脂管座＋伸出的橡膠柱；大徑輪時管座上方加鋁墊圈。尺寸取組裝結果（與質量、接觸同一份）
+    // 橡膠煞車（15413）：保桿下向的樹脂管座＋伸出的橡膠柱；大徑輪時管座上方加鋁墊圈。尺寸取組裝結果（與質量、接觸同一份）
     const pin = o.sponge.pin;
     const grp = new THREE.Group();
     grp.name = 'brake-rubber';
@@ -1522,11 +1520,11 @@ const buildOptionalParts = (mats) => {
     g.add(grp);
   }
   if (o.sponge && !o.sponge.pin) {
-    // 煞車海綿（iter-47）：圓角方塊（海綿裁切邊），表面氣孔貼圖；白 = 強力、藍 = 溫和（G 節 [T15492]、[T15512]）
-    // iter-50：煞車板（1.5 mm FRP 小板，鎖在導輪架煞車座下）＋貼在板下的海綿；尺寸取組裝結果（與質量、干涉同一份）
+    // 煞車海綿：圓角方塊（海綿裁切邊），表面氣孔貼圖；白 = 強力、藍 = 溫和（G 節 [T15492]、[T15512]）
+    // 煞車板（1.5 mm FRP 小板，鎖在導輪架煞車座下）＋貼在板下的海綿；尺寸取組裝結果（與質量、干涉同一份）
     if (o.sponge.plate) {
       const pb = o.sponge.plate.box;
-      // iter-60：煞車架材質依零件（FRP / 碳纖）
+      // 煞車架材質依零件（FRP / 碳纖）
       const isCarbon = o.sponge.plate.material === 'carbon';
       const face = isCarbon ? mats.carbonPlate : mats.frpPlate;
       const edge = isCarbon ? mats.carbonEdge : mats.frpEdge;
@@ -1538,7 +1536,7 @@ const buildOptionalParts = (mats) => {
       g.add(plateMesh);
       const hull = o.sponge.plate.skidHull;
       if (hull) {
-        // iter-95：AR 煞車組前端斜板（スキッド）：側面梯形沿 z 擠出，頂點與物理凸包同一份
+        // AR 煞車組前端斜板（スキッド）：側面梯形沿 z 擠出，頂點與物理凸包同一份
         const zs = hull.map((q) => q.z);
         const z0 = Math.min(...zs);
         const side = hull.filter((q) => q.z === z0);
@@ -1570,7 +1568,7 @@ const buildOptionalParts = (mats) => {
       sh.quadraticCurveTo(-hx, -hz, -hx + rc, -hz);
       return sh;
     };
-    // iter-55（reviewer：「煞車海綿只是一個平塊，沒有黏貼邊與厚度層次」）：
+    // 海綿要有黏貼邊與厚度層次（不只是一個平塊）：
     // 由上而下 = 雙面膠層（0.12 mm，淡琥珀色）＋海綿本體（剪刀裁切的圓角、下緣倒角 bevel、開孔氣孔貼圖）。
     // 全部在組裝的海綿實體方塊（spongeBox，與干涉 / 離地 / 接觸模型同一份）之內：倒角往內收，不改外框
     const tapeT = Math.min(0.12, ly * 0.15);
@@ -1621,7 +1619,7 @@ const buildOptionalParts = (mats) => {
     grp.name = 'ballast';
     grp.userData.part = 'ballast';
     grp.add(m);
-    // 固定螺絲（iter-48）：M2 皿頭螺絲，頭部埋在配重露出的那一面（吊在保桿或導輪板下 → 底面；中央或導輪板的配重座上 → 頂面），
+    // 固定螺絲：M2 皿頭螺絲，頭部埋在配重露出的那一面（吊在保桿或導輪板下 → 底面；中央或導輪板的配重座上 → 頂面），
     // 方塊配重 2 支、六角配重 1 支；頭部只比表面高 0.02 mm，不改變外框與離地高度
     const faceY = o.ballast.onTop ? b.max.y : b.min.y;
     const dir = o.ballast.onTop ? 1 : -1;
@@ -1641,7 +1639,7 @@ const buildOptionalParts = (mats) => {
     }
     g.add(grp);
   }
-  // 第四階段：穩定零件（前導輪上方同軸；位置與尺寸取自 asm.optional.stabilizers，與干涉檢查、sim.js 碰撞同一份）
+  // 穩定零件（前導輪上方同軸；位置與尺寸取自 asm.optional.stabilizers，與干涉檢查、sim.js 碰撞同一份）
   for (const st of o.stabilizers ?? []) {
     const grp = new THREE.Group();
     grp.name = `stabilizer-${st.pos.z < 0 ? 'L' : 'R'}`;
@@ -1663,7 +1661,7 @@ const buildOptionalParts = (mats) => {
     const spacer = new THREE.Mesh(new THREE.CylinderGeometry(1.8, 1.8, sp, 16), mats.steel);
     spacer.position.set(c.x, c.y - h / 2 - sp / 2, c.z);
     grp.add(spacer);
-    // iter-55：螺絲頭下的平墊片（φ4.4 × 0.3）＋螺絲頭；穩定零件下方的墊片已在上面（spacer）
+    // 螺絲頭下的平墊片（φ4.4 × 0.3）＋螺絲頭；穩定零件下方的墊片已在上面（spacer）
     const washer = new THREE.Mesh(new THREE.CylinderGeometry(2.2, 2.2, 0.3, 24), mats.steel);
     washer.position.set(c.x, c.y + h / 2 + 0.15, c.z);
     grp.add(washer);
@@ -1698,14 +1696,14 @@ function buildChassis(mats) {
   // 所有底面細節都在底板下緣 y0（離地 2.2 mm，SPEC 1.2）之上，不影響離地高度
   const gearWin = (sx) => roundedRect(sx * (gt.counterX + 3), -3.5, 32, 19, 3);
   const openings = [
-    // iter-10：馬達窗加寬到 27 × 21 mm（z 向涵蓋 130 罐身全寬 20.1 mm），從底面看到完整的罐身＋端蓋
+    // 馬達窗 27 × 21 mm（z 向涵蓋 130 罐身全寬 20.1 mm），從底面看到完整的罐身＋端蓋
     roundedRect(0, 0, 27, 21, 3),
     gearWin(-1),
     gearWin(1),
     roundedRect(0, 19, 48, 12, 2.5),
     roundedRect(0, -19, 48, 12, 2.5),
   ];
-  // iter-06：前後段與齒輪箱旁的減重開孔（ref MA 底面多層：開孔後方看得到內層深色板）
+  // 前後段與齒輪箱旁的減重開孔（ref MA 底面多層：開孔後方看得到內層深色板）
   for (const sx of [-1, 1]) {
     openings.push(roundedRect(sx * 53.5, 0, 7, 9, 1.5));
     for (const sz of [-1, 1]) {
@@ -1716,14 +1714,14 @@ function buildChassis(mats) {
   }
   // 外形：馬達／電池段最寬（±29），前後輪之間縮到 ±24.5（輪胎內側 25.25 mm，避免與輪胎重疊）
   const outline = [[61, -22], [61, 22], [58, 24.5], [26, 24.5], [24, 29], [-24, 29], [-26, 24.5], [-58, 24.5], [-61, 22], [-61, -22], [-58, -24.5], [-26, -24.5], [-24, -29], [24, -29], [26, -24.5], [58, -24.5]];
-  // iter-09：電池端子窗（電池蓋兩端，看得到銅片端子）
+  // 電池端子窗（電池蓋兩端，看得到銅片端子）
   for (const sx of [-1, 1]) {
     for (const sz of [-1, 1]) {
       openings.push(roundedRect(sx * 25.9, sz * 19, 2.2, 6.4, 0.8));
     }
   }
-  // iter-09：底板底面抬高 BOTTOM_RIB_H，底面改由「外緣框＋弧形肋條」構成最低面（仍在 y0 = 離地 2.2 mm，SPEC 1.2），
-  // 肋條之間的板面內凹 → 底面讀起來是射出成型的肋格，而不是平板切方孔（reviewer iter-07/08 底盤項）
+  // 底板底面抬高 BOTTOM_RIB_H，由「外緣框＋弧形肋條」構成最低面（仍在 y0 = 離地 2.2 mm，SPEC 1.2），
+  // 肋條之間的板面內凹 → 底面讀起來是射出成型的肋格，而不是平板切方孔
   const BOTTOM_RIB_H = 0.6;
   const plate = extrudeXZ(outline, t - BOTTOM_RIB_H, mats.chassis, openings);
   plate.position.y = y0 + BOTTOM_RIB_H;
@@ -1762,7 +1760,7 @@ function buildChassis(mats) {
       g.add(spine);
     }
   }
-  // iter-06：內層深色板（開孔上方 0.3 mm，從底面看成第二層），前後段與齒輪箱兩側各一片
+  // 內層深色板（開孔上方 0.3 mm，從底面看成第二層），前後段與齒輪箱兩側各一片
   for (const sx of [-1, 1]) {
     const innerFront = extrudeXZ(roundedRect(sx * 54, 0, 11, 44, 2), 0.8, mats.chassisDark);
     innerFront.position.y = y0 + t + 0.3;
@@ -1798,7 +1796,7 @@ function buildChassis(mats) {
       g.add(gus);
     }
   }
-  // iter-09：電池蓋重做（ref MA 底面：獨立分件的電池蓋，周圍有凸緣、一端是弧形指扣肋與卡榫，兩端看得到銅片端子）
+  // 電池蓋（ref MA 底面：獨立分件的電池蓋，周圍有凸緣、一端是弧形指扣肋與卡榫，兩端看得到銅片端子）
   for (const sz of [-1, 1]) {
     const cover = extrudeXZ(roundedRect(0, sz * 19, 47.4, 11.4, 2.3), 0.85, mats.chassisDark);
     cover.position.y = y0 + 0.2;
@@ -1852,12 +1850,11 @@ function buildChassis(mats) {
       g.add(dimple);
     }
   }
-  // iter-10：拿掉 iter-09 的馬達蓋（兩條散熱槽露出罐身，reviewer 說像兩根電池）；
-  // 改成開放的馬達窗，窗兩端（z 向）各一顆固定螺絲，罐身與端蓋本體見下方「雙軸馬達」
+  // 馬達窗兩端（z 向）各一顆固定螺絲，罐身與端蓋本體見下方「雙軸馬達」
   for (const sz of [-1, 1]) {
     g.add(screwHead(mats, 0, y0 + 0.5, sz * 12.0, 0.9).rotateX(Math.PI));
   }
-  // iter-51：底板前後段的固定螺絲（底板與上層框鎖在一起的位置；皿頭，埋在肋格之間的板底，不凸出底面）
+  // 底板前後段的固定螺絲（底板與上層框鎖在一起的位置；皿頭，埋在肋格之間的板底，不凸出底面）
   for (const sx of [-1, 1]) {
     for (const [px, pz] of [[46, 12], [46, -17]]) {
       const head = new THREE.Mesh(new THREE.CylinderGeometry(1.1, 1.1, 0.12, 16), mats.screw);
@@ -1871,7 +1868,7 @@ function buildChassis(mats) {
       }
     }
   }
-  // iter-36：底面馬達蓋（reviewer iter-35：「真實 MA 底面有馬達蓋」）：蓋住馬達窗的深色蓋板，開 3 × 4 的圓形散熱孔、周圍凸緣
+  // 底面馬達蓋（真實 MA 底面有馬達蓋）：蓋住馬達窗的深色蓋板，開 3 × 4 的圓形散熱孔（長條散熱槽露出罐身會像兩根電池）、周圍凸緣
   {
     /** @type {number[][][]} */
     const vents = [];
@@ -1884,16 +1881,15 @@ function buildChassis(mats) {
     motorCover.position.y = y0 + 0.08;
     g.add(motorCover);
   }
-  // ---- 齒輪箱蓋（iter-03；iter-06 改成大檢視窗）----
-  // iter-06：reviewer「齒輪只見兩小窗綠色」→ 齒輪箱底蓋改為外框＋大開口（不再用煙燻片），
-  // 從底面依序看得到紫色小齒輪 → 綠色中間齒輪 → 粉紅輪軸齒輪與輪軸；開口周圍有凸起的窗框（第二層）與固定螺絲
+  // ---- 齒輪箱蓋 ----
+  // 封閉的底蓋＋一條小檢視槽；檢視槽周圍有凸起的窗框（第二層）與固定螺絲
   for (const sx of [-1, 1]) {
     const cx = sx * (gt.counterX + 3);
     const winCx = sx * 30.25;
     const winCz = -4.5;
-    // iter-36：reviewer iter-35「真實 MA 底面有齒輪蓋，不會直接看到齒輪」→ 底蓋改成封閉，只留一條小檢視槽
+    // 真實 MA 底面有齒輪蓋，不會直接看到齒輪 → 底蓋封閉，只留一條小檢視槽
     const winHole = roundedRect(winCx, winCz, 10, 3.4, 1.3);
-    // iter-45：底蓋改成三角肋格（reviewer iter-44：「底盤主體是大面積平板，缺補強肋與成型細節」）：
+    // 底蓋做成三角肋格（避免大面積平板、缺補強肋與成型細節）：
     // 底蓋開一排排三角形口袋（深 0.8 mm），上方另有一片背板封住 → 從底面看是三角補強肋格，離地高度不變
     /** @type {number[][][]} */
     const pockets = [winHole];
@@ -1940,7 +1936,7 @@ function buildChassis(mats) {
     wallN.position.z = -13.4;
     g.add(wallN);
   }
-  // ---- 側裙（iter-03）：電池段兩側的底盤側裙，從側面看得到底盤有厚度而不是薄板 ----
+  // ---- 側裙：電池段兩側的底盤側裙，從側面看得到底盤有厚度而不是薄板 ----
   for (const sideGeom of chassisSideGeometry(c)) {
     const sz = sideGeom.sign;
     const sg = sideGeom.skirt;
@@ -1948,17 +1944,17 @@ function buildChassis(mats) {
     skirt.position.y = sg.y0;
     skirt.name = `chassis-side-skirt-${sz}`;
     g.add(skirt);
-    // iter-09：電池艙側壁（側視可見的底盤厚度；reviewer「側面只是一條細黑邊」）：
+    // 電池艙側壁（側視可見的底盤厚度，避免側面只是一條細黑邊）：
     // x-y 輪廓板，兩端沿輪胎外 2.5 mm 的圓弧內凹（MA 側面在前後輪處是弧形缺口），高到車殼底緣內側；
     // 板面有 3 個內凹窗（深色底）＋窗間立肋＋上緣倒角條，讀起來是有厚度的成型件而非細線
-    // iter-12：車殼下緣 6.4 → 8.6 mm（ref side-high：車門下方露出一整條黑色底盤側裙）→ 側壁頂 6.9 → 9.4 mm，窗與倒角條跟著上移
+    // 車殼下緣 8.6 mm（ref side-high：車門下方露出一整條黑色底盤側裙）→ 側壁頂 9.4 mm，窗與倒角條的高度跟著側壁頂
     const { topY, wheelY, arcR, winY } = sideGeom;
     const wg = sideGeom.wall;
     const sideWall = extrudeXY(wg.outline, wg.z1 - wg.z0, mats.chassis, wg.holes);
     sideWall.position.z = wg.z0;
     sideWall.name = `chassis-side-wall-${sz}`;
     g.add(sideWall);
-    // iter-43：上緣弧形外緣條（中段高、兩端順著輪拱降下，取代平直上緣的視覺）與兩個車殼卡榫凸片
+    // 上緣弧形外緣條（中段高、兩端順著輪拱降下，避免上緣看起來平直）與兩個車殼卡榫凸片
     {
       const arcPts = [];
       for (let k = 0; k <= 24; k++) {
@@ -1991,7 +1987,7 @@ function buildChassis(mats) {
     chamfer.position.set(0, chamferY, sz * 36.3);
     chamfer.rotation.x = sz * 0.6;
     g.add(chamfer);
-    // iter-12：側邊支撐塊（ref side-high：車門下方、兩輪之間偏後的黑色方塊，頂面有 2 個孔）
+    // 側邊支撐塊（ref side-high：車門下方、兩輪之間偏後的黑色方塊，頂面有 2 個孔）
     // 位置由擬合相機量測（推估 ±1 mm）：x −10 … −20、頂面 y ≈ 7、外側面 z ≈ ∓38；底到底盤最低面 y0
     const blockTop = 7.6;
     const bg = sideGeom.block;
@@ -2009,12 +2005,12 @@ function buildChassis(mats) {
       g.add(rim);
     }
   }
-  // iter-33：拿掉 iter-31 以前蓋住馬達與電池的整塊頂板（reviewer：「中央一整塊平板、看不到馬達」；ref_ma-chassis 上方看得到馬達與齒輪）
-  // 改成：兩側電池艙頂蓋（帶補強肋）＋馬達上方的框形齒輪蓋（gear-cover 零件，開窗看得到罐身）＋車殼卡榫柱＋開關
+  // 上方不用整塊頂板蓋住馬達與電池（ref_ma-chassis 上方看得到馬達與齒輪）：
+  // 兩側電池艙頂蓋（帶補強肋）＋馬達兩端的固定扣（罐身中段露出）＋車殼卡榫柱＋開關
   const cellTop = comp.battery.y + comp.battery.dia / 2;
   for (const sz of [-1, 1]) {
     const zc = sz * Math.abs(comp.battery.zs[0]);
-    // iter-34：頂蓋邊緣倒角（reviewer：「平板加長條溝槽、像箱子」）＋外側弧形肋（ref_ma-chassis 電池段兩側的弧形骨架）
+    // 頂蓋邊緣倒角（避免像平板加長條溝槽的箱子）＋外側弧形肋（ref_ma-chassis 電池段兩側的弧形骨架）
     const tub = extrudeXZ(roundedRect(0, zc, 50, 14.6, 3), 1.3, mats.chassisBlack, [], 0.45);
     tub.position.y = cellTop + 0.25;
     g.add(tub);
@@ -2046,7 +2042,7 @@ function buildChassis(mats) {
     lip.position.set(0, cellTop + 1.35 + 0.8, zc + sz * 6.8);
     g.add(lip);
   }
-  // iter-36：馬達上方改成兩端固定扣（reviewer iter-35：「MA 參考圖馬達從上方完整露出，本模型用一片橋板蓋住、只開小窗」）：
+  // 馬達上方是兩端固定扣（MA 參考圖馬達從上方完整露出，不用橋板蓋住）：
   // 罐身中段完全露出，只在兩端（罐口與端蓋處）各一道跨過馬達的扣條，扣條兩端往下接電池艙內側壁並有螺絲
   const motorTop = comp.motor.y + comp.motor.flat / 2;
   for (const sx of [-1, 1]) {
@@ -2078,7 +2074,7 @@ function buildChassis(mats) {
   }
   // 電源開關（switch 零件）：左側電池艙後端的滑動開關座＋撥桿
   const sw = SWITCH_POS;
-  // iter-35：開關再加大（reviewer iter-34：「只看到很小的白色凸塊」）：深色開關座＋滑槽＋淺灰撥桿（止滑紋）＋座上兩個三角箭頭（ON / OFF 方向，非文字）
+  // 開關做大一點（太小只會看到很小的白色凸塊）：深色開關座＋滑槽＋淺灰撥桿（止滑紋）＋座上兩個三角箭頭（ON / OFF 方向，非文字）
   const swBase = extrudeXZ(roundedRect(sw.x, sw.z, 12, 7.5, 1.4), 2.6, mats.chassisDark, [roundedRect(sw.x, sw.z, 8, 2.2, 0.9)], 0.35);
   swBase.position.y = sw.y - 2.4;
   g.add(swBase);
@@ -2096,7 +2092,7 @@ function buildChassis(mats) {
     g.add(tri);
   }
 
-  // ---- 前後保桿：MA 立體保桿（iter-03，依 ref_ma-chassis / front34 / rear34）----
+  // ---- 前後保桿：MA 立體保桿（依 ref_ma-chassis / front34 / rear34）----
   // 中央橋接板＋兩支斜伸到導輪座的臂；臂與橋接板外緣有立起的邊框（厚度），臂下方有三角斜撐連回底盤，
   // 兩臂之間有 X 形補強，導輪座為圓柱凸台
   // 保桿是底盤一體的結構，外形固定用底盤的導輪座位置（換 FRP / 碳纖導輪板時保桿不變，導輪改裝在板上）
@@ -2118,23 +2114,23 @@ function buildChassis(mats) {
     const bg = bumperGeometry(ch, sx);
     // 中央橋接板（底盤前端 → 導輪臂根部）
     const bridge = bg.bridge;
-    // iter-06：橋接板改成「上蓋＋下方鏤空肋層」（MA 保桿底面是三角形肋格，頂面為平整上蓋）：
+    // 橋接板是「上蓋＋下方鏤空肋層」（MA 保桿底面是三角形肋格，頂面為平整上蓋）：
     // 下層 1.4 mm 開三角形／長圓口袋，上層 1.0 mm 上蓋封住 → 底面看是鏤空骨架、不會透出背景；
     // 上蓋外緣加立起的邊框樑、中央 2 顆十字螺絲（與後方上層導輪架同等的細節）
     const ribLayer = extrudeXZ(bridge, bg.ribDepth, mats.chassis, bg.bridgePockets);
     ribLayer.position.y = bumperY;
     g.add(ribLayer);
-    // iter-35：舊的上蓋與邊框樑由下方的一體寬保桿取代
+    // 上蓋由下方的一體寬保桿兼任（不另外建上蓋與邊框樑）
     for (const sz of [-1, 1]) {
       g.add(screwHead(mats, sx * 58, bumperY + bt, sz * 6, 1.5));
     }
     // 橋接板前緣立起的厚邊（保桿正面）
     g.add(beam(sx * (rx + 2.4), -9, sx * (rx + 2.4), 9, 1.4, 4.2, bumperY));
     // 這一端換成 FRP / 碳纖導輪板時，保桿兩側的導輪臂剪掉（實車改裝常見的「保桿切除」，導輪改由板子撐），
-    // 只留中央橋接板當板子的鎖點（iter-47，reviewer iter-46：板子被原廠保桿蓋住、看起來很厚）。
+    // 只留中央橋接板當板子的鎖點（否則板子被原廠保桿蓋住、看起來很厚）。
     // 未加工底盤使用實測 24.4 g；切除體積與質心由 bumperTrim 扣除。
     const platedEnd = sx > 0 ? asmCur.partsBySlot.frontStay.plate : asmCur.partsBySlot.rearStay.plate;
-    // iter-35：導輪臂改成和橋接板一體成形的寬保桿（reviewer iter-34：「細長的直桿導輪架加一塊平板」；
+    // 導輪臂和橋接板是一體成形的寬保桿（不做成細長的直桿導輪架加一塊平板；
     // ref_ma-chassis：前後保桿是一整片帶曲線外形的寬板，兩端包住導輪座，板上有減重孔，外緣有立起的圓角肋）
     if (!platedEnd) {
       const plate = extrudeXZ(bg.wide, bg.skinThickness, mats.chassis, bg.wideHoles);
@@ -2158,7 +2154,7 @@ function buildChassis(mats) {
       center.position.y = bumperY + bg.ribDepth;
       g.add(center);
     }
-    // 導輪座凸台、三角斜撐、補強片屬於導輪臂；保桿切除時一起拿掉（iter-47，幾何同 bumperTrim）
+    // 導輪座凸台、三角斜撐、補強片屬於導輪臂；保桿切除時一起拿掉（幾何同 bumperTrim）
     if (!platedEnd) {
       for (const b of bg.bosses) {
         const boss = new THREE.Mesh(new THREE.CylinderGeometry(b.r, b.r, b.h, 24), mats.chassis);
@@ -2195,9 +2191,9 @@ function buildChassis(mats) {
         g.add(nut);
       }
     }
-    // iter-34：拿掉兩臂之間的 X 形補強（reviewer：「保桿上一根斜放的細桿，像多出來的零件」；上蓋已有安裝孔與邊框樑）
+    // 兩臂之間不做 X 形補強：斜放的細桿看起來像多出來的零件，上蓋已有安裝孔與邊框樑
   }
-  // 後上層導輪架：塑膠標準件（沒有板件）才畫原本的立體導輪架；FRP / 碳纖導輪板另外建模（buildStayPlates）
+  // 後上層導輪架：塑膠標準件（沒有板件）才畫立體導輪架；FRP / 碳纖導輪板另外建模（buildStayPlates）
   const rearStay = asmCur.partsBySlot.rearStay;
   if (!rearStay.plate && c.rearUpperRollerHeight_mm !== null) {
     g.add(buildRearStay(mats, c.rearRollerX_mm, c.rearRollerZ_mm, bumperY + bt, c.rearUpperRollerHeight_mm - 4.4));
@@ -2207,7 +2203,7 @@ function buildChassis(mats) {
     const onPlate = r.x > 0 ? !!asmCur.partsBySlot.frontStay.plate : !!asmCur.partsBySlot.rearStay.plate;
     let roller = buildRollerStack(mats, r, { bare: onPlate });
     const slot = r.x > 0 ? 'frontStay' : 'rearStay';
-    // B13（iter-105）：導輪角度調整板（15373）→ 導輪組以導輪中心為支點，頂端往車頭方向傾 θ（與 sim.js 的導輪軸同一個角度）
+    // B13：導輪角度調整板（15373）→ 導輪組以導輪中心為支點，頂端往車頭方向傾 θ（與 sim.js 的導輪軸同一個角度）
     const plate = asmCur.partsBySlot[r.x > 0 ? 'frontRollerAngle' : 'rearRollerAngle'];
     if (plate) {
       const pivot = new THREE.Group();
@@ -2222,7 +2218,7 @@ function buildChassis(mats) {
   }
 
   // ---- 雙軸馬達（置中、軸向沿 x，130 型外殼平面朝上下）----
-  // iter-10：罐身改為真正的 130 型截面（圓 ∩ 上下平面，原本是縮放圓柱＝橢圓，從底面看像圓柱電池），
+  // 罐身用真正的 130 型截面（圓 ∩ 上下平面；縮放圓柱會變成橢圓，從底面看像圓柱電池），
   // 擠出時帶小倒角（罐口捲邊）；端蓋米白、截面略小；兩端有軸承座凸台，軸從兩端伸出（ref_ma-chassis_tamiya.jpg）
   const m = comp.motor;
   /** @type {(r: number, f: number, len: number, mat: THREE.Material, bevel: number) => THREE.Mesh} 130 型截面（圓 ∩ |y| ≤ f/2）沿 x 擠出 */
@@ -2307,7 +2303,7 @@ function buildChassis(mats) {
     g.add(spur);
   }
 
-  // iter-35：齒輪箱外殼（reviewer iter-34：「齒輪直接裝在薄隔板上，看起來沒有齒輪箱外殼」）：
+  // 齒輪箱外殼（齒輪不直接裝在薄隔板上）：
   // 近側（−z）壁開大窗＋頂蓋開槽窗，保留看得到齒輪的檢視窗，整體讀成一個有外殼的齒輪箱
   for (const sx of [-1, 1]) {
     const gx0 = sx * 15.5;
@@ -2326,13 +2322,13 @@ function buildChassis(mats) {
     hood.position.y = 19.6;
     g.add(hood);
     for (const sz of [-1, 1]) {
-      // iter-44：螺絲座凸台（螺絲頭下方的圓形座）
+      // 螺絲座凸台（螺絲頭下方的圓形座）
       const bossY = new THREE.Mesh(new THREE.CylinderGeometry(1.5, 1.6, 0.5, 16), mats.chassisBlack);
       bossY.position.set(sx * (Math.abs(gx0) + 2.6), 20.6, -2.7 + sz * 5.6);
       g.add(bossY);
       g.add(screwHead(mats, sx * (Math.abs(gx0) + 2.6), 20.85, -2.7 + sz * 5.6, 0.9));
     }
-    // iter-44：外蓋補強肋與分件縫（reviewer iter-43：「齒輪箱外蓋只是平黑板，缺補強肋、螺絲座與分件縫」）
+    // 外蓋補強肋與分件縫（避免齒輪箱外蓋只是平黑板）
     const hoodCx = sx * (Math.abs(gx0) + Math.abs(gx1)) / 2;
     const hoodLen = Math.abs(gx1 - gx0);
     // 槽窗兩側的縱向肋（沿 x）
@@ -2366,16 +2362,16 @@ function buildChassis(mats) {
     g.add(cell);
   }
 
-  // ---- 輪軸（2 mm 六角鋼軸，貫穿左右輪；iter-51 改成六角斷面，外接圓 φ2.3）----
+  // ---- 輪軸（2 mm 六角鋼軸，貫穿左右輪；六角斷面，外接圓 φ2.3）----
   for (const w of wheelLayout(spec).filter((q) => q.z > 0)) {
-    // iter-55：中空輪軸（boreDiameter_mm > 0）用不鏽鋼材質（[T15440] 中空ステンレスシャフト），和一般鋼軸區分
+    // 中空輪軸（boreDiameter_mm > 0）用不鏽鋼材質（[T15440] 中空ステンレスシャフト），和一般鋼軸區分
     const hollowAxle = (asmCur?.partsBySlot?.axles?.boreDiameter_mm ?? 0) > 0;
     const axle = new THREE.Mesh(new THREE.CylinderGeometry(1.15, 1.15, c.trackWidth_mm + 4, 6), hollowAxle ? mats.stainless : mats.steel);
     axle.rotation.x = Math.PI / 2;
     axle.position.set(w.x, w.y, 0);
     g.add(axle);
   }
-  // ---- 輪軸培林（iter-51）：620 培林（外徑 6、內徑 2、寬 2.5，SPEC 1.6 / bearing 零件）嵌在側框外側的軸承座，
+  // ---- 輪軸培林：620 培林（外徑 6、內徑 2、寬 2.5，SPEC 1.6 / bearing 零件）嵌在側框外側的軸承座，
   // 外端面和側框外表面齊平（z = ±24.5，輪胎內側 ≥ 24.75 mm，不碰輪胎）：鋼外環、防塵蓋（培林為深色、塑膠軸承為白色 POM）、鋼內環＋軸承座凸緣。
   // 位置與 assembly.js 的輪軸軸承相同（x = ±軸距/2、z = ±23.4），只是外觀，不另計質量（質量已在 bearings 零件）
   {
@@ -2421,7 +2417,7 @@ function buildChassis(mats) {
 }
 
 /**
- * B14（iter-107）：後置單軸馬達底盤（結構參考 VZ；VZ_RESEARCH 2.2–2.6，位置多為照片量測推估）。
+ * B14：後置單軸馬達底盤（結構參考 VZ；VZ_RESEARCH 2.2–2.6，位置多為照片量測推估）。
  * 平底盤＋開散熱孔的底板（[T18094]「フラットなシャーシ下面にはエアダクト」）、中前段兩顆縱向電池＋電池扣、
  * 後軸前方橫置馬達、+z 側齒輪列（小齒輪 → 中間齒輪 → 後輪軸齒輪）、−z 側傳動軸連接前後冠狀齒輪、螺絲固定的前保桿與後導輪架。
  * 底盤本體網格（abs-chassis-gunmetal）同時是 chassis-vz 的質心／慣性分布來源（tests P14_component_tensors_vz）
@@ -2737,7 +2733,7 @@ export function buildCarModel(asm = assemble(loadConfig('default')), opt = {}) {
 
 /**
  * 非索引牆面幾何：每兩個相鄰三角形（lineToMesh 依序推入的同一個四邊形）取兩者 6 頂點中心的賽道顏色，
- * 四邊形整塊單色 → 色塊交界是四邊形邊界上的硬邊，不再於三角形內內插出漸層（iter-06）
+ * 四邊形整塊單色 → 色塊交界是四邊形邊界上的硬邊，不會在三角形內內插出漸層
  * @type {(geo: THREE.BufferGeometry, colorAt: (x: number, z: number) => THREE.Color) => void}
  */
 const flatColorPerQuad = (geo, colorAt) => {
@@ -2760,7 +2756,7 @@ const flatColorPerQuad = (geo, colorAt) => {
 };
 
 /**
- * iter-09：賽道塑膠表面的程序化細節（物件座標 mm；不需 UV）
+ * 賽道塑膠表面的程序化細節（物件座標 mm；不需 UV）
  * @param {THREE.MeshPhysicalMaterial} mat
  */
 function applyPlasticGrain(mat) {
@@ -2826,10 +2822,10 @@ export function buildTrackModel(track) {
     const piece = Math.min(3, Math.floor(((pr.s - pr.seg.s0) / pr.seg.len) * 4));
     return (arcIdx * 4 + piece) % 2 === 0 ? red : blue;
   };
-  // iter-09：塑膠質感（reviewer「賽道平面單色、無塑膠質感」）——半光澤 ABS：
-  //   roughness 0.62 → 0.34 基準＋大尺度（約 24 mm）粗糙度斑駁（射出成型件表面光澤不均）、
+  // 塑膠質感（避免賽道平面單色、沒有塑膠質感）——半光澤 ABS：
+  //   roughness 0.34 基準＋大尺度（約 24 mm）粗糙度斑駁（射出成型件表面光澤不均）、
   //   細顆粒（0.3 mm）顏色 ±3% 噪點與極低強度法線擾動（霧面細紋），再加一層低強度清漆讓燈箱在路面上反射成柔和光帶
-  // iter-10：壓下紅色車道遠端的過曝泛粉白——specularIntensity 1 → 0.5、clearcoat 0.6 → 0.35、envMapIntensity 1.8 → 1.2
+  // 壓下紅色車道遠端的過曝泛粉白——specularIntensity 0.5、clearcoat 0.35、envMapIntensity 1.2
   //   （遠端掠射角的燈箱反射疊在飽和紅上變粉白；只調 envMap／clearcoat 時幾乎沒改善，主因是底層 F0 鏡面）
   const plasticMat = new THREE.MeshPhysicalMaterial({ vertexColors: true, roughness: 0.34, metalness: 0.0, specularIntensity: 0.5, clearcoat: 0.35, clearcoatRoughness: 0.2, envMapIntensity: 1.2, side: THREE.DoubleSide });
   applyPlasticGrain(plasticMat);
@@ -2860,8 +2856,8 @@ export function buildTrackModel(track) {
     g.add(mesh);
   }
   // 路面：沿中心線鋪設的帶狀網格（灰色 ABS）
-  // iter-06：修賽道接縫顏色漸層（reviewer）——取樣點加入每個片件交界的 s（彎道每 45° 一片、直線段兩端），
-  // 每一段帶狀四邊形取「段中點」單一顏色（不共用頂點），色塊交界剛好落在片件接縫上、不再頂點內插出紫色漸層；
+  // 避免賽道接縫出現顏色漸層——取樣點加入每個片件交界的 s（彎道每 45° 一片、直線段兩端），
+  // 每一段帶狀四邊形取「段中點」單一顏色（不共用頂點），色塊交界剛好落在片件接縫上、不會頂點內插出紫色漸層；
   // 交界處再鋪一條 1.2 mm 深色接縫（JCJC 片件之間的縫）
   const P = track.dims.pitch;
   const halfW = 1.5 * P + 0.02;

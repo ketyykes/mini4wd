@@ -1,5 +1,5 @@
-// 行星環（body-halo-orbit，第四階段致敬《爆走兄弟》風格）：卵石形中高車身＋後輪側裙、環繞一圈的煙燻玻璃帶、
-// 車尾直立封閉環形翼（光環，環面與行進方向垂直、下緣經翼根整流座嵌入車尾，不用支柱）。
+// 行星環（body-halo-orbit，致敬《爆走兄弟》風格）：卵石形中高車身＋後輪側裙、環繞一圈的煙燻玻璃帶、
+// 車尾後傾 30° 的封閉環形翼（光環兼作尾翼，下緣經翼根整流座嵌入車尾，不用支柱）。
 // 設計：shared/design/body-halo-orbit/DESIGN.md（致敬語彙、和劇中車 / 市售車殼的差異）。剖面為本檔站位產生器（推估）。
 // 塗裝全為自創：洋紅＋石墨灰＋白、點狀星軌線、號碼「08」；不含任何廠商 / 作品名稱、商標或角色圖像。
 import * as THREE from 'three';
@@ -67,7 +67,7 @@ const materials = () => ({
   graphite2: namedMaterial('paint-graphite', { color: 0x34373d, roughness: 0.32, metalness: 0.35, clearcoat: 0.7, side: THREE.DoubleSide }),
   // 環繞玻璃帶：不透明的深煙燻（V5「小而有色的座艙」的變形）
   smoke: namedMaterial('glass-smoke-band', { color: 0x14161c, roughness: 0.04, metalness: 0.2, clearcoat: 1.0, clearcoatRoughness: 0.02 }),
-  // iter-123：車尾兩側的亮黑收腰（評審「粉紅車身胖」）
+  // 車尾兩側的亮黑收腰（讓洋紅車身從側面看起來不那麼胖）
   black: namedMaterial('paint-gloss-black', { color: 0x0e0f12, roughness: 0.18, metalness: 0.1, clearcoat: 1.0, clearcoatRoughness: 0.04 }),
   white: namedMaterial('paint-gloss-white', { color: 0xf4f3f0, roughness: 0.25, clearcoat: 0.9 }),
   white2: namedMaterial('paint-gloss-white', { color: 0xf4f3f0, roughness: 0.25, clearcoat: 0.9, side: THREE.DoubleSide }),
@@ -111,7 +111,7 @@ const buildRing = (xc, yc, a, b, c, t, n = 96, m = 16) => {
       const p10 = P2(i + 1, j);
       const p11 = P2(i + 1, j + 1);
       const p01 = P2(i, j + 1);
-      // iter-55 修正繞向：法線朝外（原本朝內，Blender 的背面變暗處理讓光環變成黑色）
+      // 繞向讓法線朝外（朝內時 Blender 的背面變暗處理會讓光環變成黑色）
       pos.push(...p00, ...p10, ...p11, ...p00, ...p11, ...p01);
     }
   }
@@ -122,10 +122,9 @@ const buildRing = (xc, yc, a, b, c, t, n = 96, m = 16) => {
 };
 
 /**
- * 光環幾何參數（iter-55 加粗：x −60、中心高 38.2、半寬 20.5、半高 11、斷面 9.2 × 4.8）。
- * iter-123（第九階段，評審「光環像提把」）：變薄並後傾 30° 兼作尾翼——斷面 9.2 × 4.8 → 10.4 × 2.6（薄翼斷面），
- * 環面略壓扁（半寬 21.5、半高 10），以環底（x −56、y 27.2，埋在頸部整流座裡）為支點往後傾 30°；
- * 環頂後緣約 x −71.5（車殼外框長 ≤ 153），環頂高 51.6 → 約 46。中空兩半合模件，以殼面積 × 壁厚算質量；底部埋進頸部整流座
+ * 光環幾何參數：薄翼斷面（10.4 × 2.6）並後傾 30° 兼作尾翼，
+ * 環面略壓扁（半寬 21.5、半高 10），以環底（x −52、y 27.2，埋在頸部整流座裡）為支點往後傾 30°；
+ * 環頂後緣約 x −66.5（車殼外框長 ≤ 153），環頂高約 47。中空兩半合模件，以殼面積 × 壁厚算質量；底部埋進頸部整流座
  */
 const RING = { xc: -52, yc: 37.2, a: 21.5, b: 10, c: 5.2, t: 1.3, tiltDeg: 30 };
 
@@ -141,7 +140,7 @@ const tiltRing = (g) => {
   return g;
 };
 
-/** @type {(x: number) => number} iter-123 黑色收腰的分色線高度（側視：車門後方往後上掃到側壁肩） */
+/** @type {(x: number) => number} 黑色收腰的分色線高度（側視：車門後方往後上掃到側壁肩） */
 const WAIST = (x) => 12 + 14 * smoothstep(10, -26, x);
 
 /** @type {(x: number, y: number, z: number) => number} 後輪側裙板範圍（側視：上緣是往前後下垂的弧） */
@@ -152,7 +151,7 @@ export const haloOrbitBody = makePolyBody({
   name: '行星環',
   style: 'homage',
   phase: 4,
-  // 第六階段分組（shared/design/HOMAGE_RESEARCH.md 第 6 節）
+  // 分組（shared/design/HOMAGE_RESEARCH.md 第 6 節）
   homageSeries: 'lg2',
   form: 'pebble',
   roof: 'canopy',
@@ -178,12 +177,12 @@ export const haloOrbitBody = makePolyBody({
     { mat: 'smoke', keep: (x, y, z) => Math.min(1 - ell(x, z, GLASS.ao, GLASS.bo), ell(x, z, GLASS.ai, GLASS.bi) - 1) * 20 },
     // 鼻部中央的石墨灰「軌道面板」：從鼻尖往後展開到玻璃帶前緣（概念圖的灰色鼻板）
     { mat: 'graphite', keep: (x, y, z) => Math.min(x - 24, 3 + 0.36 * (76 - x) - Math.abs(z), ell(x, z, GLASS.ao, GLASS.bo) - 1) },
-    // 後輪側裙板：側視圓角板，蓋在後輪外側（iter-123：洋紅 → 亮黑，併入黑色收腰）
+    // 後輪側裙板：側視圓角板，蓋在後輪外側（亮黑，併入黑色收腰）
     {
       mat: 'black',
       keep: (x, y, z) => SKIRT_KEEP(x, y, z),
     },
-    // iter-123 黑色收腰：車門後方往後上掃的斜分色線（x 10 → −26：y 12 → 側壁肩），以後整段側壁亮黑——
+    // 黑色收腰：車門後方往後上掃的斜分色線（x 10 → −26：y 12 → 側壁肩），以後整段側壁亮黑——
     // 洋紅只留在上半車身與車頭，從側面看車尾變細、腰線往後收
     { mat: 'black', keep: (x, y, z) => (Math.abs(z) > 30 ? Math.min(WAIST(x) - y, 10 - x) : -1) },
     // 下半車身石墨灰：前低後高的斜分色線，車尾整段石墨灰（和概念圖的灰色後半身呼應）
@@ -197,12 +196,12 @@ export const haloOrbitBody = makePolyBody({
     const parts = [];
     const top = (x) => kit.surf.topY(x, 0);
     // 光環翼（白）
-    // iter-123：斷面分段 16 → 12、環向 96 → 72（薄翼斷面不需要那麼多段，抵銷黑色收腰分色線多切出的殼面三角形），後傾 30°
+    // 斷面分段 12、環向 72（薄翼斷面不需要更多段，省下的三角形抵銷黑色收腰分色線多切出的殼面三角形），後傾 30°
     parts.push({ geometry: smoothNormals(tiltRing(buildRing(RING.xc, RING.yc, RING.a, RING.b, RING.c, RING.t, 72, 12))), mat: 'white', shell: true, name: 'halo-ring' });
     // 光環下緣的翼根整流座（洋紅）：沿車尾中線從後艙蓋隆起、包住光環下緣
     const pylon = [];
-    // iter-55：頸部整流座——從後艙蓋中線一體隆起、往後上升托住光環下緣（中空件，以殼面積 × 壁厚算質量）
-    // iter-123：光環支點前移到 x −56，整流座終點 −64.5 → −60（托住後傾光環的下緣）
+    // 頸部整流座——從後艙蓋中線一體隆起、往後上升托住光環下緣（中空件，以殼面積 × 壁厚算質量）
+    // 整流座終點在 x −60（托住後傾光環的下緣）
     for (let i = 0; i <= 10; i++) {
       const u = i / 10;
       const x = lerp(-32, -60, u);
@@ -216,12 +215,12 @@ export const haloOrbitBody = makePolyBody({
     });
     // 環上的小衛星（白球，右上 50°）＋石墨灰底座
     const th = (50 * Math.PI) / 180;
-    // iter-123：跟著光環後傾；球分段 18×12 → 14×9，半徑 2.1 → 1.8（光環變薄後等比例縮小）
+    // 跟著光環後傾；球分段 14×9、半徑 1.8（配合薄翼斷面的光環比例）
     const sat = new THREE.SphereGeometry(1.8, 14, 9);
     sat.translate(RING.xc, RING.yc + RING.b * Math.sin(th), RING.a * Math.cos(th));
     parts.push({ geometry: tiltRing(sat), mat: 'magenta', solid: true, outline: true, name: 'halo-satellite' });
-    // 鼻部石墨灰下唇刃（前下擾流片，往前尖出）
-    // iter-123：改成兩側展開的平切前分流板（鼻尖維持基準 x 81：伸到 83.5 會讓 race-frp 設定全長 167.1 mm 超過 165 mm 規則；x 76.5 處半寬 3.6 → 13.5），從俯視看是圓鼻前方一片黑刃；
+    // 鼻部石墨灰下唇刃（前下擾流片）：
+    // 兩側展開的平切前分流板（鼻尖停在 x 81：伸到 83.5 會讓 race-frp 設定全長 167.1 mm 超過 165 mm 規則；x 76.5 處半寬 13.5），從俯視看是圓鼻前方一片黑刃；
     // 只做馬蹄形外圈（內圈在車殼下方，挖空省質量），讓俯視輪廓在別款車頭結束的地方多出一塊（和 prism-facet、khepri-scarab 的俯視 IoU 拉開）
     parts.push({
       geometry: flatPlate(
@@ -261,17 +260,17 @@ export const haloOrbitBody = makePolyBody({
       mat: 'dWhite',
       name: 'decal-orbit-band',
     });
-    // 後輪側裙板（iter-55 改成立體）：裙板範圍往外鼓出 0.9 mm 的一層洋紅板，邊緣的台階側壁是白色＝實際高低差的弧形分件線
+    // 後輪側裙板（立體）：裙板範圍往外鼓出 0.9 mm 的一層亮黑板，邊緣的台階側壁是白色＝實際高低差的弧形分件線
     const skirt = buildRegion(kit.surf, [...kit.holes, (x, y, z) => SKIRT_KEEP(x, y, z)], { offset: 0.9 });
     parts.push({ geometry: skirt.geometry, mat: 'black', shell: true, name: 'rear-skirt-panel' });
     parts.push({ geometry: buildRim(skirt, 0, 0.9), mat: 'white2', name: 'rear-skirt-edge' });
-    // 玻璃帶外圈白色細邊（iter-55：拿掉內圈細邊與頂蓋號碼，讓環繞玻璃帶成為主角）
+    // 玻璃帶外圈白色細邊（不做內圈細邊與頂蓋號碼，讓環繞玻璃帶成為主角）
     parts.push({
       geometry: kit.decal((x, y, z) => 0.55 - Math.abs(ell(x, z, GLASS.ao, GLASS.bo) - 1) * GLASS.bo),
       mat: 'dWhite',
       name: 'decal-glass-trim',
     });
-    // 前輪拱內襯（iter-55）
+    // 前輪拱內襯
     parts.push({ geometry: buildArchLiner({ x: 40, y: 13, radius: 16 }, 29, 36), mat: 'liner', shell: true, name: 'arch-liner' });
     // 點狀星軌線（V13 構圖：從鼻尖斜掃到光環）：側面一條往後上升的弧，上面排一串由小變大的白點，夾一條細虛線
     /** @type {(u: number) => number} 弧線高度（u = x） */
@@ -304,7 +303,7 @@ export const haloOrbitBody = makePolyBody({
       mat: 'dWhite',
       name: 'decal-hood-orbit',
     });
-    // 號碼 08（側面玻璃帶下方、頂蓋）
+    // 號碼 08（側面玻璃帶下方）
     parts.push({
       geometry: mergeGeos([
         kit.decal(sideDecal(sdNumber('08', { h: 5.6, w: 3.1, gap: 0.8 }), { x0: -40, y0: 16.5, zMin: 34 })),

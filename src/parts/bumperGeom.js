@@ -87,7 +87,7 @@ export function bumperGeometry(ch, sx) {
     [sx * 62, 20],
     [sx * 50, 22],
   ];
-  // 一體寬保桿外形（俯視，iter-35）：根部 (50, ±22) 以二次曲線往外前方接到導輪座，包住導輪座，前緣內凹
+  // 一體寬保桿外形（俯視）：根部 (50, ±22) 以二次曲線往外前方接到導輪座，包住導輪座，前緣內凹
   /** @type {Pt2[]} */
   const outline = [];
   const rootX = 50;
@@ -223,7 +223,7 @@ export function bumperTrim(ch, sx) {
   const zs = [...g.wide.map((p) => p[1]), ...g.struts.flatMap((s) => [s.a[1] - s.w, s.a[1] + s.w, s.b[1] - s.w, s.b[1] + s.w])];
   let volume = 0;
   const mom = { x: 0, y: 0, z: 0 };
-  // iter-96（B3）：同時積分 ∫rrᵀ dV（mm⁵），切除區的慣性也從底盤扣掉
+  // B3：同時積分 ∫rrᵀ dV（mm⁵），切除區的慣性也從底盤扣掉
   const second = { xx: 0, yy: 0, zz: 0, xy: 0, xz: 0, yz: 0 };
   for (let x = Math.min(...xs) + step / 2; x < Math.max(...xs); x += step) {
     for (let z = Math.min(...zs) + step / 2; z < Math.max(...zs); z += step) {

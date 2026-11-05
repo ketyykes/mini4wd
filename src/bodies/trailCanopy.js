@@ -1,6 +1,6 @@
-// 越野座艙罩殼（body-trail-canopy，第六階段比賽型，raceType 'buggy-canopy'）：
+// 越野座艙罩殼（body-trail-canopy，比賽型，raceType 'buggy-canopy'）：
 // 短楔形鈍頭＋下方滑板、前半部大型曲面透明座艙罩（前緣直切的平面擋風）、中後段電池上方的方形側箱（側面散熱鰭紋）、
-// 四輪葉子板頂部開口、尾端單支柱單片低位平板擾流、鼻部下方滑板；後甲板有散熱格柵、檢修蓋分件線與固定扣（iter-69）。只裝 26 mm 輪（輪拱 R15.5）。
+// 四輪葉子板頂部開口、尾端單支柱單片低位平板擾流、鼻部下方滑板；後甲板有散熱格柵、檢修蓋分件線與固定扣。只裝 26 mm 輪（輪拱 R15.5）。
 // 比賽做法：0.5 mm 真空成形 PC 透明殼，座艙罩留透明、車身從內側噴漆（shared/reference/BODY_RACE_RESEARCH.md 4.1、4.5、7.2 (2)）。
 // 設計：shared/design/body-trail-canopy/DESIGN.md。剖面由本檔縱向控制表產生（推估，依外框限制與底盤高度掃描）。
 // 塗裝全為自創：沙丘卡其上身＋炭黑側箱與滑板、螢光橘斜線、號碼「09」；不含任何廠商名稱、商標或真實車名。
@@ -18,9 +18,9 @@ const X_NOSE = 64;
 
 /**
  * 縱向控制表（推估；欄位意義同 fastbackCabin.js 的 cabinStations）：
- * - yC：中線。鼻端 x 64 鈍頭（約 18.3，下緣 12）→ 短引擎蓋 → 平面擋風（iter-69：x 48.5 → 31 一直線斜升，約 40°，
+ * - yC：中線。鼻端 x 64 鈍頭（約 18.3，下緣 12）→ 短引擎蓋 → 平面擋風（x 48.5 → 31 一直線斜升，約 40°，
  *   前緣 x 49 與上緣 x 31 兩道折線）→ 座艙罩頂 41.5（x 26–18 幾乎水平）→ 罩尾 x 0 落到引擎蓋 30 → 尾端 24.5
- * - cw / dr：座艙罩頂半寬與弧度（擋風段 dr ≤ 1 = 平面、往上略收窄成梯形；罩頂 dr 3.2 = 淺曲面，iter-67 為 6 的圓泡）；
+ * - cw / dr：座艙罩頂半寬與弧度（擋風段 dr ≤ 1 = 平面、往上略收窄成梯形；罩頂 dr 3.2 = 淺曲面，dr 6 會是圓泡）；
  *   罩後的引擎蓋段 cw 14、dr 1（中央微隆的馬達蓋）
  * - bw / yBelt：座艙罩下緣（= 側箱頂面內緣）
  * - hw / ySh：最寬處與側箱上稜。鼻端半寬 16、前葉子板 30、側箱 37.5（前窄後寬），後輪後方收成半寬 25.5 的短尾
@@ -45,14 +45,13 @@ const smoothstep = (a, b, x) => {
 
 /** @type {{ x: number, pts: number[][] }[]} */
 /**
- * 側窗微弧（iter-71）：在第 2 點（罩頂邊）與第 3 點（罩下緣）之間插入一點，沿外法線鼓出 0.7 mm（iter-110 起 x 4 → 38 全量，後端 0–4、前端 38–47.5 平滑漸收）。
- * iter-69 的側窗是兩個稜線點之間的直線 → 平面，Blender 側視把燈光整片反射成白色長方形；微弧讓反光縮成一道漸層帶。
+ * 側窗微弧：在第 2 點（罩頂邊）與第 3 點（罩下緣）之間插入一點，沿外法線鼓出 0.7 mm（x 4 → 38 全量，後端 0–4、前端 38–47.5 平滑漸收）。
+ * 側窗若是兩個稜線點之間的直線 → 平面，Blender 側視把燈光整片反射成白色長方形；微弧讓反光縮成一道漸層帶。
  * 共用的 cabinStations 不動，只在本檔對它的結果插點（第 3 點以後的索引 +1）
  * @type {(x: number) => number}
  */
-// iter-110（評審 iter-110「A 柱旁仍有一條直立沙漏形亮帶」）：Blender 純自發光洋紅逐層測試——亮帶在近側側窗表面（側窗換成不透明洋紅就消失、
-// 座艙／殼內面／黑框換色都還在），是側窗反光。微弧原本只做到 x 32、在 28–32 線性收掉，往前是平面：曲面轉平面的折線正好在亮帶處，
-// 平面段把燈箱反成一整片。側窗已延伸到 x 47.5（見 sideWindowKeep），微弧跟著延伸到側窗前端，兩端改 smoothstep 收尾（不留折線）
+// 微弧要一路做到側窗前端（x 47.5，見 sideWindowKeep），兩端用 smoothstep 收尾（不留折線）：
+// 中途線性收掉、往前接平面的話，曲面轉平面的折線會在 A 柱旁留下一條直立的亮帶（側窗反光），平面段把燈箱反成一整片
 const sideBulge = (x) => 0.7 * smoothstep(0, 4, x) * (1 - smoothstep(38, 47.5, x));
 
 /** @type {{ x: number, pts: number[][] }[]} */
@@ -76,7 +75,7 @@ const beltY = (x) => Math.min(T('yBelt', x), T('yC', x) - T('dr', x) - 0.2);
 const canopyKeep = (x, y, z) => Math.min(47.5 - x - 0.25 * (beltY(x) + 0.8 - y), x - 1.5, y - (beltY(x) + 0.8), T('bw', x) - 0.6 - Math.abs(z));
 
 /**
- * 擋風玻璃框（iter-69）：上緣橫樑（x 30.2–31.6）＋兩側 A 柱（沿罩頂邊稜線 |z| = cw ± 0.6，x 31 → 47.5），內噴黑；
+ * 擋風玻璃框：上緣橫樑（x 30.2–31.6）＋兩側 A 柱（沿罩頂邊稜線 |z| = cw ± 0.6，x 31 → 47.5），內噴黑；
  * 讓前緣的平面擋風和後方的曲面罩頂分成兩塊，讀得出「直切平面擋風」
  * @type {KeepFn}
  */
@@ -87,16 +86,16 @@ const shieldFrameKeep = (x, y, z) => {
 };
 
 /**
- * 側窗（iter-71）：擋風上緣橫樑之後、罩頂邊稜線外側的座艙罩側面，改用淡煙燻 PC（Blender 依名稱 pc-smoke → glass 薄殼煙燻材質），
+ * 側窗：罩頂邊稜線（A 柱）外側的座艙罩側面整片用淡煙燻 PC（Blender 依名稱 pc-smoke → glass 薄殼煙燻材質），
  * 和透明的擋風、罩頂分開；回傳 > 0 = 在側窗內
  * @type {KeepFn}
  */
-// iter-110（評審 iter-106「A 柱旁直立白色反光」）：側窗前端 x 30.2 到擋風下緣 x 47.5 那一段側面原本是透明 PC（反射全量），
-// 夾在煙燻側窗（反射 × 0.15，見 render/showcase.py thin_pc_material）與 A 柱之間反成一道白條。
-// 改成實車結構：A 柱（罩頂邊稜線）以外的側面整片都是淡煙燻側窗，透明只留在 A 柱之間的擋風與罩頂；剩下的折線反光見 sideBulge
+// 實車結構：A 柱（罩頂邊稜線）以外的側面整片都是淡煙燻側窗，透明只留在 A 柱之間的擋風與罩頂。
+// 擋風兩側（x 30.2–47.5）的側面若留透明 PC（反射全量），夾在煙燻側窗（反射 × 0.15，見 render/showcase.py thin_pc_material）
+// 與 A 柱之間會反成一道直立白條；剩下的折線反光見 sideBulge
 const sideWindowKeep = (x, y, z) => Math.min(canopyKeep(x, y, z), Math.abs(z) - T('cw', x) - 0.6);
 /**
- * 側窗分格窗框（iter-71）：x 14 一道 1 mm 寬的直框，把側窗分成前後兩格（內噴黑）
+ * 側窗分格窗框：x 14 一道 1 mm 寬的直框，把側窗分成前後兩格（內噴黑）
  * @type {KeepFn}
  */
 const sideMullionKeep = (x, y, z) => Math.min(sideWindowKeep(x, y, z) + 0.6, 0.5 - Math.abs(x - 14));
@@ -114,13 +113,13 @@ const splitY = (x) => {
 
 /** @type {() => Record<string, THREE.Material>} */
 const materials = () => ({
-  // iter-69：沙丘卡其加深（iter-67 的 0xc9b48a 在畫面上偏象牙白，改 0x8c7a56）
+  // 沙丘卡其取較深的 0x8c7a56（較淺的 0xc9b48a 在畫面上偏象牙白）
   sand: namedMaterial('pc-paint-sand-khaki', { color: 0x8c7a56, roughness: 0.3, clearcoat: 1.0, clearcoatRoughness: 0.06 }),
   sand2: namedMaterial('pc-paint-sand-khaki', { color: 0x8c7a56, roughness: 0.3, clearcoat: 1.0, side: THREE.DoubleSide }),
   char: namedMaterial('pc-paint-charcoal', { color: 0x24262a, roughness: 0.35, clearcoat: 1.0, clearcoatRoughness: 0.08 }),
   char2: namedMaterial('pc-paint-charcoal', { color: 0x24262a, roughness: 0.35, clearcoat: 1.0, side: THREE.DoubleSide }),
   // 透明座艙罩、檢視窗（淡煙燻透明 PC）
-  // 側窗淡煙燻 PC（iter-71）：app 裡比擋風略深，Blender 走 glass（煙燻薄殼、反射色 0.7、粗糙 0.1），不會整片反白
+  // 側窗淡煙燻 PC：app 裡比擋風略深，Blender 走 glass（煙燻薄殼、反射色 0.7、粗糙 0.1），不會整片反白
   sideGlass: namedMaterial('pc-smoke-side-window', { color: 0x6f7c88, roughness: 0.08, specularIntensity: 0.4, transparent: true, opacity: 0.42, envMapIntensity: 0.3, depthWrite: false }),
   clear: namedMaterial('pc-clear-shell', { color: 0xdbe6ef, roughness: 0.04, specularIntensity: 0.5, transparent: true, opacity: 0.2, envMapIntensity: 0.4, depthWrite: false }),
   frame: namedMaterial('pc-paint-black', { color: 0x111214, roughness: 0.2, clearcoat: 1.0, clearcoatRoughness: 0.05 }),
@@ -142,7 +141,7 @@ export const trailCanopyBody = makePolyBody({
   id: 'body-trail-canopy',
   name: 'PC 越野座艙罩殼',
   style: 'race',
-  // 第六階段分組（shared/reference/BODY_RACE_RESEARCH.md 4.5、7.2 (2)）
+  // 比賽型分類（shared/reference/BODY_RACE_RESEARCH.md 4.5、7.2 (2)）
   raceType: 'buggy-canopy',
   form: 'buggy-wedge',
   roof: 'canopy',
@@ -153,8 +152,8 @@ export const trailCanopyBody = makePolyBody({
   wallThickness_mm: 0.5,
   stations: STATIONS,
   tuck: 0.8,
-  // 平滑剖面；罩頂邊（第 2 點）、座艙罩下緣（第 4 點）與側箱上稜（第 7 點）為稜線（iter-71 插入側窗微弧點後索引 +1）
-  // （iter-69 加罩頂邊稜線：罩頂淺曲面與側窗之間有折線，不再是圓泡；iter-71 側窗由平面改成 0.7 mm 微弧）
+  // 平滑剖面；罩頂邊（第 2 點）、座艙罩下緣（第 4 點）與側箱上稜（第 7 點）為稜線（索引已含插入的側窗微弧點）
+  // （罩頂邊稜線：罩頂淺曲面與側窗之間有折線，不是圓泡；側窗是 0.7 mm 微弧）
   hard: [2, 4, 7],
   wheelArches: [
     { x: 40, y: 13, radius: 15.5, cutZFrom: 23.8 },
@@ -181,7 +180,7 @@ export const trailCanopyBody = makePolyBody({
       depth: 0.7,
     },
     {
-      // iter-69 後甲板細節：透明檢視窗兩側的散熱格柵（每側 5 道橫向淺槽，x −15 → −31、|z| 11.5–17.5，深 0.6 mm）
+      // 後甲板細節：透明檢視窗兩側的散熱格柵（每側 5 道橫向淺槽，x −15 → −31、|z| 11.5–17.5，深 0.6 mm）
       id: '後甲板散熱格柵',
       view: 'top',
       shape: 'fn',
@@ -224,7 +223,7 @@ export const trailCanopyBody = makePolyBody({
 
 
     // 單支柱單片平板擾流（PC，實心件）：平板 x −57 → −68、半翼展 25（翼端後掠）；中央單支柱（前後寬 6 mm）插進尾段殼面。
-    // iter-123（第九階段，評審「尾翼升高並加端板」）：板面 y 34.6 → 38.0（離尾甲板約 10.5 mm，仍比座艙罩頂 41.5 低），
+    // 板面 y 38.0（離尾甲板約 10.5 mm，仍比座艙罩頂 41.5 低），
     // 兩端加螢光橘端板（前低後高的後掠梯形）
     const yPlate = 38.0;
     const plate = flatPlate(
@@ -261,7 +260,7 @@ export const trailCanopyBody = makePolyBody({
       outline: true,
       name: 'spoiler-strut',
     });
-    // 端板（iter-123，PC 實心件 0.8 mm，螢光橘內噴）：前緣貼著平板前緣、往後下斜到板下 4.5 mm，後緣高出板面 3 mm
+    // 端板（PC 實心件 0.8 mm，螢光橘內噴）：前緣貼著平板前緣、往後下斜到板下 4.5 mm，後緣高出板面 3 mm
     const endplatePts = [
       [-57.2, yPlate + 0.7],
       [-57.8, yPlate - 2.2],
@@ -295,7 +294,7 @@ export const trailCanopyBody = makePolyBody({
     });
 
     // 側面圖形：前段散熱鰭紋 → 白底黑字號碼牌「09」；引擎蓋另有黑字「09」。
-    // iter-123（第九階段，評審「側面加一條從前輪拱往後上的橘色斜條」）：原本兩道短斜線改成一條長楔形斜條——
+    // 一條橘色長楔形斜條——
     // 從前輪拱後緣（x 24.5、y 15）往後上掃到後輪拱前上方（x −27、y 22–27），前細 1.6 mm、後粗 4.7 mm；下緣再一道 0.7 mm 黑細線
     /** @type {(x: number) => number} 斜條下緣 */
     const slashLow = (x) => 15.0 + 0.15 * (24.5 - x);
@@ -321,7 +320,7 @@ export const trailCanopyBody = makePolyBody({
       mat: 'black',
       name: 'decal-number',
     });
-    // 後甲板檢修蓋（iter-69）：x −43 → −56、|z| ≤ 13 的分件線（黑色 0.35 mm 細線，圓角 2）＋四角固定扣（金屬小圓扣）
+    // 後甲板檢修蓋：x −43 → −56、|z| ≤ 13 的分件線（黑色 0.35 mm 細線，圓角 2）＋四角固定扣（金屬小圓扣）
     const hatchSd = (u, v) => Math.abs(sdRoundRect(u, v, -13, 13, -6.5, 6.5, 2)) - 0.175;
     parts.push({ geometry: kit.decal(topDecal(hatchSd, { x0: -49.5, z0: 0, yMin: 24 })), mat: 'black', name: 'decal-hatch-seam' });
     const clips = [];

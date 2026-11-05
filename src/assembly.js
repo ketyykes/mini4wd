@@ -38,9 +38,9 @@ export const SLOTS = {
   gear: 'gear',
   wheels: 'wheel',
   bearings: 'bearing',
-  // iter-59：中間齒輪軸 / 中間齒輪軸承（含氟塗層軸、中間齒輪培林組）；舊設定沒有這個 slot 時用標準軸（SLOT_DEFAULTS）
+  // 中間齒輪軸 / 中間齒輪軸承（含氟塗層軸、中間齒輪培林組）；舊設定沒有這個 slot 時用標準軸（SLOT_DEFAULTS）
   counterShaft: 'counter-shaft',
-  // iter-56：前後導輪分開選（原本單一 rollers slot 前後共用；舊欄位由 normalizeConfig 相容）
+  // 前後導輪分開選（舊欄位 rollers 由 normalizeConfig 相容）
   frontRollers: 'roller',
   rearRollers: 'roller',
   frontStay: 'stay-front',
@@ -53,11 +53,11 @@ export const SLOTS = {
   hardware: 'hardware',
   massDamper: 'mass-damper',
   brakeSponge: 'brake-sponge',
-  // iter-60：煞車架（FRP / 碳纖大面積），只在裝煞車海綿時有作用；舊設定沒有時用 FRP（SLOT_DEFAULTS）
+  // 煞車架（FRP / 碳纖大面積），只在裝煞車海綿時有作用；舊設定沒有時用 FRP（SLOT_DEFAULTS）
   brakePlate: 'brake-plate',
   ballast: 'ballast',
   stabilizer: 'stabilizer',
-  // B13（iter-105）：前／後導輪角度調整板（ダウンスラスト，15373）
+  // B13：前／後導輪角度調整板（ダウンスラスト，15373）
   frontRollerAngle: 'roller-angle-plate',
   rearRollerAngle: 'roller-angle-plate',
 };
@@ -66,7 +66,7 @@ export const SLOTS = {
 export const OPTIONAL_SLOTS = ['massDamper', 'brakeSponge', 'ballast', 'stabilizer', 'frontRollerAngle', 'rearRollerAngle'];
 
 /**
- * 舊組裝設定欄位 → 新 slot（相容層）：iter-56 起導輪拆成 frontRollers / rearRollers，
+ * 舊組裝設定欄位 → 新 slot（相容層）：導輪拆成 frontRollers / rearRollers，
  * 只寫 `rollers` 的設定（舊分享連結、舊測試）視為前後都裝同一款
  * @type {Record<string, string[]>}
  */
@@ -157,7 +157,7 @@ export function loadConfig(name = 'default') {
 }
 
 /**
- * 把零件資料組成和第一階段 spec.json 相同結構的整車規格（底盤座標），讓建模 / 物理沿用同一套欄位
+ * 把零件資料組成整車規格（底盤座標），讓建模 / 物理共用同一套欄位
  * @type {(p: Record<string, any>) => any}
  */
 function buildSpec(p) {
@@ -173,7 +173,7 @@ function buildSpec(p) {
     battery: p.battery,
     motor: p.motor,
     tire: p.wheels,
-    // 第四階段：迴路電阻（開關＋端子零件）與傳動系轉動慣量（輪子、輪軸、齒輪、馬達電樞，換算到輪軸）
+    // 迴路電阻（開關＋端子零件）與傳動系轉動慣量（輪子、輪軸、齒輪、馬達電樞，換算到輪軸）
     circuit: { resistance_ohm: p.switch.circuitResistance_ohm ?? 0 },
     spin: drivetrainInertia(p),
     drivetrain: {
@@ -190,7 +190,7 @@ function buildSpec(p) {
     bearings: {
       kind: p.bearings.kind,
       frictionCoeff: p.bearings.frictionCoeff,
-      // iter-59：中間齒輪軸承的 μ 與輪軸軸承分開（中間齒輪軸 slot 決定，見 counterBearingFriction）
+      // 中間齒輪軸承的 μ 與輪軸軸承分開（中間齒輪軸 slot 決定，見 counterBearingFriction）
       counterFrictionCoeff: counterBearingFriction(p.bearings, p.counterShaft),
       shaftRadius_mm: globalSpec.bearingsGeometry.shaftRadius_mm,
       counterShaftRadius_mm: globalSpec.bearingsGeometry.counterShaftRadius_mm,
@@ -206,7 +206,7 @@ function buildSpec(p) {
       refWheelDiameter_mm: ch.refWheelDiameter_mm,
       groundClearance_mm: ch.groundClearanceRef_mm,
       plateThickness_mm: ch.plateThickness_mm,
-      // iter-56：前 / 後導輪各自的款式（直徑、高度、材質、疊層、錐形輪廓）；位置由 rollerLayoutOf() 依前後分別推導
+      // 前 / 後導輪各自的款式（直徑、高度、材質、疊層、錐形輪廓）；位置由 rollerLayoutOf() 依前後分別推導
       frontRoller: rollerSpec(p.frontRollers),
       rearRoller: rollerSpec(p.rearRollers),
       rollerCenterHeight_mm: fs.rollerY_mm,
@@ -245,11 +245,11 @@ const rollerSpec = (ro) => ({
   height_mm: ro.height_mm,
   finish: ro.finish,
   tiers: ro.tiers ?? null,
-  // 第四階段：錐形導輪的輪廓（上段圓柱＋下段截錐），3D 模型與 sim.js 接觸幾何用同一份
+  // 錐形導輪的輪廓（上段圓柱＋下段截錐），3D 模型與 sim.js 接觸幾何用同一份
   taper: ro.taper ?? null,
-  // 第五階段：導輪外環（橡膠 O 環 / 塑膠環），只給 3D 外形用
+  // 導輪外環（橡膠 O 環 / 塑膠環），只給 3D 外形用
   ring: ro.ring ?? null,
-  // 第七階段（iter-81）：塑膠導輪的顏色（例如 15532 藍色 POM），只給 3D 外形用
+  // 塑膠導輪的顏色（例如 15532 藍色 POM），只給 3D 外形用
   color: ro.color,
 });
 
@@ -319,7 +319,7 @@ export function assemble(rawConfig) {
   // body 為 null / 空字串時不裝車殼（只有底盤）：質量、重心、外框、規則檢查都只算底盤
   const s = buildSpec(p);
   const ch = p.chassis;
-  // B15（iter-100）：bodyArchCut = true 時把輪胎附近的殼面剪掉（底盤座標，輪軸相對底盤固定；切口跟著實際輪徑與輪寬）
+  // B15：bodyArchCut = true 時把輪胎附近的殼面剪掉（底盤座標，輪軸相對底盤固定；切口跟著實際輪徑與輪寬）
   const baseBody = config.body ? getBody(config.body) : null;
   const body = baseBody && config.bodyArchCut
     ? archCutBody(baseBody, wheelLayout(s).map((w) => ({ x: w.x, y: w.y, z: w.z, r: p.wheels.diameter_mm / 2, width: p.wheels.width_mm })))
@@ -353,7 +353,7 @@ export function assemble(rawConfig) {
     parts.push({ slot, id: p[slot]?.id ?? body?.id ?? slot, category: p[slot]?.category ?? 'body', label, mass_g, pos: lifted(pos, lift), ...(inertia_gmm2 ? { inertia_gmm2 } : {}) });
   };
 
-  // 保桿切除（iter-47）：裝 FRP / 碳纖導輪板（chassisTrim）的那一端，底盤保桿兩側導輪臂剪掉；
+  // 保桿切除：裝 FRP / 碳纖導輪板（chassisTrim）的那一端，底盤保桿兩側導輪臂剪掉；
   // 切除質量 = 切除幾何（parts/bumperGeom.js，與 3D 模型同一份）× 底盤密度，從底盤本體的質量與重心扣除
   const chassisTrim = [];
   for (const [slot, sx] of [['frontStay', 1], ['rearStay', -1]]) {
@@ -365,7 +365,7 @@ export function assemble(rawConfig) {
   }
   let chMass = ch.mass_g;
   const chMom = { x: ch.mass_g * ch.com_mm.x, y: ch.mass_g * ch.com_mm.y, z: ch.mass_g * ch.com_mm.z };
-  // iter-96（B3）：底盤本體慣性 = 3D 模型網格分布（每 g 中心張量 × 實測質量），對原點；保桿切除區的 ∫rrᵀ dm 同樣扣掉
+  // B3：底盤本體慣性 = 3D 模型網格分布（每 g 中心張量 × 實測質量），對原點；保桿切除區的 ∫rrᵀ dm 同樣扣掉
   const chOrigin = addTensor(Object.fromEntries(Object.entries(ch.inertiaPerMass_mm2).map(([k, v]) => [k, v * ch.mass_g])), pointTensor(ch.mass_g, ch.com_mm));
   for (const t of chassisTrim) {
     chMass -= t.mass_g;
@@ -378,7 +378,7 @@ export function assemble(rawConfig) {
   }
   const chCom = { x: chMom.x / chMass, y: chMom.y / chMass, z: chMom.z / chMass };
   place('chassis', chassisTrim.length > 0 ? '底盤本體（保桿切除後）' : '底盤本體', chMass, chCom, addTensor(chOrigin, pointTensor(chMass, chCom), -1));
-  // iter-96（B3）：馬達外殼（兩側削平的圓柱，軸沿 x）均質中心張量（推估：電樞、磁鐵、外殼的實際分布未實測）
+  // B3：馬達外殼（兩側削平的圓柱，軸沿 x）均質中心張量（推估：電樞、磁鐵、外殼的實際分布未實測）
   if (rearMotor) {
     // B14：橫置馬達（軸沿 z）：同一顆扁圓柱張量，把 x、z 軸對調
     const t = flattenedCylinderXTensor(p.motor.mass_g, comp.motor.dia, comp.motor.flat, comp.motor.length);
@@ -395,7 +395,7 @@ export function assemble(rawConfig) {
       cylinderXTensor(cellMass, comp.battery.dia / 2, comp.battery.length));
   });
   // 齒輪組：前後各一半；質心取中間齒輪與輪軸齒輪之間（推估）
-  // iter-96（B3）：齒輪組視為軸沿 z、半徑 = 輪軸齒輪節圓的實心圓盤（同 inertia.js 傳動系的推估），厚度取 0（上限：齒輪實際有腹板開孔）
+  // B3：齒輪組視為軸沿 z、半徑 = 輪軸齒輪節圓的實心圓盤（同 inertia.js 傳動系的推估），厚度取 0（上限：齒輪實際有腹板開孔）
   const gearR = p.gear.spurPitchRadius_mm;
   if (ssTrain) {
     // B14：單軸齒輪組拆成「後齒輪列（小齒輪＋中間齒輪＋輪軸齒輪）」「前後冠狀齒輪」「傳動軸」三處（質量來自 inertiaMasses_g，合計 = 齒輪組質量）
@@ -437,7 +437,7 @@ export function assemble(rawConfig) {
     }
     const cpos = ssTrain ? { x: ssTrain.counter.x, y: ssTrain.counter.y, z: ssTrain.z + sx * 2 } : { x: sx * counterX, y: comp.motor.y, z: 0 };
     const clabel = ssTrain ? (sx > 0 ? '右' : '左') : sx > 0 ? '前' : '後';
-    // iter-59：中間齒輪軸 slot 自帶培林（中間齒輪培林組）時，中間齒輪軸承改由它提供（取代輪軸軸承 slot 的中間齒輪軸承）
+    // 中間齒輪軸 slot 自帶培林（中間齒輪培林組）時，中間齒輪軸承改由它提供（取代輪軸軸承 slot 的中間齒輪軸承）
     const cb = p.counterShaft.counterBearing;
     if (cb) {
       place('counterShaft', `中間齒輪培林 ${clabel}`, cb.mass_g, cpos);
@@ -445,12 +445,12 @@ export function assemble(rawConfig) {
       place('bearings', `中間齒輪軸承 ${clabel}`, p.bearings.counterMass_g, cpos);
     }
   }
-  // iter-96（B3）：導輪視為軸沿 y 的均質圓柱（外徑、總高取導輪佈局；推估，實際有培林與鋁殼分層）
+  // B3：導輪視為軸沿 y 的均質圓柱（外徑、總高取導輪佈局；推估，實際有培林與鋁殼分層）
   for (const r of rollers) {
     const m = p[r.slot].mass_g;
     place(r.slot, `導輪 ${r.id}`, m, { x: r.x, y: r.y, z: r.z }, axisymmetricTensor(m, (m * r.r * r.r) / 2, r.h, 'y'));
   }
-  // B13（iter-105）：導輪角度調整板夾在導輪架與底盤之間，每端一片；位置取該端導輪的 x 平均、往內 8 mm，高度同導輪中心往下 3.5 mm（同塑膠導輪架質心的推估）
+  // B13：導輪角度調整板夾在導輪架與底盤之間，每端一片；位置取該端導輪的 x 平均、往內 8 mm，高度同導輪中心往下 3.5 mm（同塑膠導輪架質心的推估）
   for (const [slot, rollerSlot, sx] of [['frontRollerAngle', 'frontRollers', 1], ['rearRollerAngle', 'rearRollers', -1]]) {
     const plate = p[slot];
     const own = rollers.filter((r) => r.slot === rollerSlot);
@@ -465,7 +465,7 @@ export function assemble(rawConfig) {
     const st = p[slot];
     const label = sx > 0 ? '前導輪架' : '後導輪架';
     if (st.slide) {
-      // 滑動保桿（iter-61；iter-64 起前後皆可）：滑動板（隨導輪左右滑動）、樹脂滑軌與小五金（固定在底盤）分開放，滑動部分另建剛體（見下方 sliders）
+      // 滑動保桿（前後皆可）：滑動板（隨導輪左右滑動）、樹脂滑軌與小五金（固定在底盤）分開放，滑動部分另建剛體（見下方 sliders）
       const [cx, cz] = polygonCentroid(st.plate.outline);
       const rail = st.slide.rail;
       const railPos = { x: (rail.xMin_mm + rail.xMax_mm) / 2, y: rail.y_mm + rail.thickness_mm / 2, z: 0 };
@@ -475,7 +475,7 @@ export function assemble(rawConfig) {
       place(slot, `${end}滑動保桿彈簧與螺絲`, st.slide.hardware_g, railPos);
     } else if (st.plate) {
       const [cx, cz] = polygonCentroid(st.plate.outline);
-      // iter-96（B3）：板件用俯視外形的均質平板張量（開孔不扣；質量仍用零件值）
+      // B3：板件用俯視外形的均質平板張量（開孔不扣；質量仍用零件值）
       place(slot, label, st.mass_g, { x: cx, y: st.plate.y_mm + st.plate.thickness_mm / 2, z: cz }, plateTensor(st.mass_g, st.plate.outline, st.plate.thickness_mm));
     } else if (sx > 0) {
       place(slot, label, st.mass_g, { x: st.rollerX_mm - 8, y: st.rollerY_mm - 3.5, z: 0 });
@@ -497,16 +497,16 @@ export function assemble(rawConfig) {
   // 小五金分散在底盤上，質心取底盤本體質心（推估）
   place('hardware', '小五金', p.hardware.mass_g, ch.com_mm);
 
-  // ---- 選配零件（第三階段）：制振器、煞車海綿、配重。實體形狀（底盤座標）同時給干涉檢查、外框、離地高度、3D 模型 ----
+  // ---- 選配零件：制振器、煞車海綿、配重。實體形狀（底盤座標）同時給干涉檢查、外框、離地高度、3D 模型 ----
   const opt = optionalLayout(p, comp, rollers);
   for (const d of opt.dampers) {
     place('massDamper', d.label, d.mass_g, d.pos);
-    // 第七階段：擺動式制振器的擺臂隨配重一起擺動（另列一筆質量，物理引擎併入同一個擺動剛體）
+    // 擺動式制振器的擺臂隨配重一起擺動（另列一筆質量，物理引擎併入同一個擺動剛體）
     if (d.swing) {
       place('massDamper', `${d.label}擺臂`, d.swing.armMass_g, d.swing.armPos);
     }
   }
-  // 第五階段：制振器托架（例如 MA 側制振器的 FRP 側板）鎖死在底盤上，質量計入剛體，不跟配重一起滑動
+  // 制振器托架（例如 MA 側制振器的 FRP 側板）鎖死在底盤上，質量計入剛體，不跟配重一起滑動
   for (const b of opt.damperBrackets) {
     place('massDamper', b.label, b.mass_g, b.pos);
   }
@@ -537,8 +537,8 @@ export function assemble(rawConfig) {
   // 制振器鎖死（locked = true，用螺帽鎖緊當固定配重）時視為剛體的一部分
   const damperLabels = new Set(opt.dampers.flatMap((d) => (d.swing ? [d.label, `${d.label}擺臂`] : [d.label])));
   const movableParts = p.massDamper && !p.massDamper.locked ? parts.filter((q) => q.slot === 'massDamper' && damperLabels.has(q.label)) : [];
-  // 滑動保桿（iter-61）：滑動板＋裝在上面的前導輪（＋同一支螺絲上的穩定零件）是另一個剛體，不屬於車體剛體
-  // iter-64：後滑動保桿同理（後滑動板＋後導輪）；前後都裝時是兩個獨立的滑動剛體
+  // 滑動保桿：滑動板＋裝在上面的前導輪（＋同一支螺絲上的穩定零件）是另一個剛體，不屬於車體剛體
+  // 後滑動保桿同理（後滑動板＋後導輪）；前後都裝時是兩個獨立的滑動剛體
   const slider = sliderOf('frontStay', p.frontStay, parts, opt.stabilizers);
   const rearSlider = sliderOf('rearStay', p.rearStay, parts, opt.stabilizers);
   const sliders = [slider, rearSlider].filter((q) => q !== null);
@@ -570,8 +570,8 @@ export function assemble(rawConfig) {
   for (const w of wheels) {
     boxes.push({ min: { x: w.x - R, y: 0, z: w.z - halfTire }, max: { x: w.x + R, y: 2 * R, z: w.z + halfTire } });
   }
-  // 滑動保桿（推估規則，iter-61）：裝在滑動板上的零件（前導輪、滑動板、穩定零件）以行程端點（左右各 ±stroke）的外框計入，車寬檢查較保守
-  // iter-64：後滑動保桿同理（後導輪、後滑動板）
+  // 滑動保桿（推估規則）：裝在滑動板上的零件（前導輪、滑動板、穩定零件）以行程端點（左右各 ±stroke）的外框計入，車寬檢查較保守
+  // 後滑動保桿同理（後導輪、後滑動板）
   /** @type {(slot: string) => number} 某個 slot 的零件因滑動行程在 z 方向外擴的量（不在滑動板上 = 0） */
   const strokeOf = (slot) => sliders.find((sl) => sl.slot === slot || sl.rollerSlot === slot)?.stroke_mm ?? 0;
   /** @type {number[]} 每個外框在 z 方向因滑動行程外擴的量（只有滑動板上的零件 > 0；迎風面積用不外擴的寬度） */
@@ -654,7 +654,7 @@ export function assemble(rawConfig) {
     optional: { dampers: opt.dampers, damperBrackets: opt.damperBrackets, solids: opt.solids, sponge: opt.sponge, ballast: opt.ballast, stabilizers: opt.stabilizers },
     rigid: { mass_g: rigid.mass_g, com_mm: rigid.com_mm, inertia_kgm2: rigid.inertia_kgm2, inertiaTensor_kgm2: rigid.inertiaTensor_kgm2, inertiaFrame: rigid.inertiaFrame },
     movable,
-    // 滑動保桿的滑動部分（iter-61）：slider = 前、rearSlider = 後（iter-64），沒裝時為 null；sliders = 有裝的（前在前）
+    // 滑動保桿的滑動部分：slider = 前、rearSlider = 後，沒裝時為 null；sliders = 有裝的（前在前）
     slider,
     rearSlider,
     sliders,
@@ -668,7 +668,7 @@ export function assemble(rawConfig) {
     P: deriveParams({ ...s, frontalArea_mm2 }, mass_g),
     layout: {
       wheels: wheels.map((w) => ({ ...lifted(w, lift), id: w.id, r: R, width: p.wheels.width_mm })),
-      // B13（iter-105）：thrust_deg = 該端導輪角度調整板的下推角（沒裝為 0）
+      // B13：thrust_deg = 該端導輪角度調整板的下推角（沒裝為 0）
       rollers: rollers.map((r) => ({ ...r, y: r.y + lift, thrust_deg: p[r.slot === 'frontRollers' ? 'frontRollerAngle' : 'rearRollerAngle']?.angle_deg ?? 0 })),
     },
     chassisMounts: ch.bodyMounts.map((m) => ({ ...lifted(m, lift), id: m.id })),
@@ -690,7 +690,7 @@ export function assemble(rawConfig) {
 }
 
 /**
- * 擺動式制振器（第七階段 iter-75，球頭連桿）的擺動剛體：配重＋擺臂合成一個剛體，繞支點（球頭中心）的橫向軸（車體 z 軸）轉動。
+ * 擺動式制振器（球頭連桿）的擺動剛體：配重＋擺臂合成一個剛體，繞支點（球頭中心）的橫向軸（車體 z 軸）轉動。
  * 質心 = 配重與擺臂的質量加權；對自身質心的慣性：配重方塊（6 × 6 × 32 mm，32 沿 z）＋擺臂細桿（沿 x）＋平行軸定理。
  * 座墊接觸點 = 配重中心（座墊在配重正下方）。位置都是車體座標（已加 lift）
  * @type {(d: Record<string, any>, movableParts: PlacedPart[], placed: any, lift: number) => any[]}
@@ -750,7 +750,7 @@ function swingMovable(d, movableParts, placed, lift) {
 const SLIDE_PLATE_LABELS = { frontStay: '前滑動板', rearStay: '後滑動板' };
 
 /**
- * 滑動保桿的滑動部分（iter-61；iter-64 推廣到後方）：滑動板＋裝在上面的導輪（前：FL / FR＋前導輪上方的穩定零件（同一支螺絲）；後：RL / RR / RUL / RUR），
+ * 滑動保桿的滑動部分：滑動板＋裝在上面的導輪（前：FL / FR＋前導輪上方的穩定零件（同一支螺絲）；後：RL / RR / RUL / RUR），
  * 質量、質心（車體座標）、對自身質心的慣性。慣性：各零件以質點計（平行軸定理），滑動板另加自身外框方塊的慣性。導輪架不是滑動保桿時回傳 null
  * @type {(slot: 'frontStay' | 'rearStay', st: Record<string, any>, parts: PlacedPart[], stabilizers: any[]) => import('./parts/types').PlacedSlider | null}
  */
@@ -812,7 +812,7 @@ function sliderOf(slot, st, parts, stabilizers) {
 
 /**
  * Full parallel-axis tensor. Body uses shell/solid integrals; the chassis and
- * components carry their own central tensors (iter-96: chassis mesh
+ * components carry their own central tensors (chassis mesh
  * distribution, motor, wheels, axles, gears, rollers, plates, ballast, AA
  * cells); remaining small items (bearings, covers, switch, hardware) are points.
  * @type {(parts: PlacedPart[], ch: any, bodyProps: any) => { mass_g: number, com_mm: Vec3, inertia_kgm2: Vec3 }}
@@ -853,7 +853,7 @@ const boxAt = (cx, cz, y0, lx, lz, ly) => ({
  * 選配零件與導輪板的擺放（底盤座標，未加 lift）
  * 制振器：靜止在行程下止點；干涉檢查用「整個行程掃過的範圍」
  * 煞車海綿：貼在後導輪架的煞車座下方；配重：依安裝點（前 / 後鎖在保桿或導輪板下方，中央貼在齒輪蓋頂面）
- * 穩定零件（第四階段）：前導輪（FL / FR）正上方，底面 = 導輪頂面 + spacer_mm，與導輪同軸（同一支螺絲）
+ * 穩定零件：前導輪（FL / FR）正上方，底面 = 導輪頂面 + spacer_mm，與導輪同軸（同一支螺絲）
  * @type {(p: Record<string, any>, comp: any, rollers: any[]) => { dampers: any[], damperBrackets: { label: string, mass_g: number, pos: Vec3 }[], sponge: any, ballast: any, stabilizers: any[], solids: PlacedSolid[] }}
  */
 function optionalLayout(p, comp, rollers) {
@@ -869,11 +869,11 @@ function optionalLayout(p, comp, rollers) {
 
   /** @type {any[]} */
   const dampers = [];
-  /** @type {{ label: string, mass_g: number, pos: Vec3 }[]} 制振器托架（固定在底盤，第五階段） */
+  /** @type {{ label: string, mass_g: number, pos: Vec3 }[]} 制振器托架（固定在底盤） */
   const damperBrackets = [];
   const d = p.massDamper;
   if (d && d.swing) {
-    // 第七階段（iter-75）：擺動式制振器（球頭連桿）——支點在後導輪板制振器座上方，配重橫放在支點前方 armLength 處，
+    // 擺動式制振器（球頭連桿）——支點在後導輪板制振器座上方，配重橫放在支點前方 armLength 處，
     // 靜止時靠在後保桿頂面的止擋墊上；往上擺到 maxAngle 為止。干涉用「擺動掃過的範圍」：方塊轉 maxAngle 時角點多出的量另加 1 mm
     const sw = d.swing;
     const m = p.rearStay.damperMount ?? { x_mm: -79, z_mm: 0, y_mm: ch.bumperBottomY_mm };
@@ -898,7 +898,7 @@ function optionalLayout(p, comp, rollers) {
       seats = [{ x: m.x_mm, y: m.y_mm, z: -m.z_mm, ...extra }, { x: m.x_mm, y: m.y_mm, z: m.z_mm, ...extra }].slice(0, d.count);
     } else {
       const m = p.rearStay.damperMount ?? { x_mm: -79, z_mm: 0, y_mm: ch.bumperBottomY_mm };
-      // 墊管（rearSpacer_mm）：制振器整個墊高，墊管本身是固定的安裝五金（B10 iter-109）
+      // 墊管（rearSpacer_mm）：制振器整個墊高，墊管本身是固定的安裝五金（B10）
       const spacer = d.rearSpacer_mm ?? 0;
       seats = [{ x: m.x_mm, y: m.y_mm + spacer, z: m.z_mm, baseY: m.y_mm, rearSpacer: spacer }];
     }
@@ -967,7 +967,7 @@ function optionalLayout(p, comp, rollers) {
       // 齒輪蓋頂面（推估：馬達頂面上方 3.5 mm，齒輪蓋質心在頂面上方 2 mm 處的板厚中央）
       y0 = comp.motor.y + comp.motor.flat / 2 + 3.5;
     } else if (endStay?.ballastMount) {
-      // 導輪板自帶的配重座（iter-50）：鎖在板面上（例如後板尾端的舌片上方）
+      // 導輪板自帶的配重座：鎖在板面上（例如後板尾端的舌片上方）
       m = endStay.ballastMount;
       y0 = endStay.ballastMount.y_mm;
     } else {
@@ -997,7 +997,7 @@ function optionalLayout(p, comp, rollers) {
 }
 
 /**
- * 煞車海綿＋煞車架（iter-50 / 60；iter-95 加 AR 斜面架）：海綿貼在煞車架下，煞車架鎖在導輪架煞車座下方。
+ * 煞車海綿＋煞車架（含 AR 斜面架）：海綿貼在煞車架下，煞車架鎖在導輪架煞車座下方。
  * 回傳的 contact（車體底盤座標，mm）給 sim.js 的煞車接觸：接觸點、總面積、可壓縮厚度；backing 是海綿壓到底後承受接觸的剛性部分
  * @type {(sp: any, bp: any, m: any) => any}
  */
@@ -1018,7 +1018,7 @@ function spongePadLayout(sp, bp, m) {
     // 干涉 / 離地用的實體：煞車板＋海綿合成一個方塊（外框取煞車板）
     const solid = boxAt(cx, 0, m.y_mm - tp - t, lx + 2 * margin, lz + 2 * margin, tp + t);
     const plateMass_g = ((lx + 2 * margin) * (lz + 2 * margin) * tp * bp.density_g_cm3) / 1000;
-    // 接觸點：底面 4 角＋中心（沿用第三階段：外框取煞車板）
+    // 接觸點：底面 4 角＋中心（外框取煞車板）
     const b = solid;
     const pts = [[b.min.x, b.min.z], [b.min.x, b.max.z], [b.max.x, b.min.z], [b.max.x, b.max.z], [(b.min.x + b.max.x) / 2, 0]].map(([x, z]) => ({ x, y: b.min.y, z }));
     return {
@@ -1109,7 +1109,7 @@ function skidBacking(flatFront, skidFront, yBottom, rise, tp, zHalf) {
 }
 
 /**
- * 橡膠煞車（iter-95，15413）：後保桿煞車座下方向下的樹脂管座，橡膠柱從管座伸出 pinProtrusion_mm。
+ * 橡膠煞車（15413）：後保桿煞車座下方向下的樹脂管座，橡膠柱從管座伸出 pinProtrusion_mm。
  * 大徑輪時（輪徑使底盤抬高 ≥ 鋁墊圈長度）在管座上方加鋁墊圈，端面離地與小徑輪相同（官方：鋁墊圈讓小徑、大徑輪都能用）。
  * 接觸：端面中心一點（面積 = 橡膠柱截面、可壓縮長度 = 伸出長度）；壓到底後由管座（剛性）承受
  * @type {(sp: any, m: any, lift: number) => any}
@@ -1173,8 +1173,8 @@ const GROUP_ORDER = ['ballast', 'damper', 'sponge', 'stabilizer', 'stay', 'rolle
 const MOUNTED_ON = new Set(['sponge|stay', 'ballast|stay', 'damper|stay']);
 
 /**
- * 實體干涉檢查（第三階段）：零件兩兩之間、零件與車殼之間的最小間隙。間隙 < 1 mm 由規則檢查器判為違規
- * 群組：tire（輪胎）、roller（導輪）、stay（導輪板）、damper（制振器行程範圍）、sponge（煞車海綿）、ballast（配重）、stabilizer（穩定零件，第四階段）
+ * 實體干涉檢查：零件兩兩之間、零件與車殼之間的最小間隙。間隙 < 1 mm 由規則檢查器判為違規
+ * 群組：tire（輪胎）、roller（導輪）、stay（導輪板）、damper（制振器行程範圍）、sponge（煞車海綿）、ballast（配重）、stabilizer（穩定零件）
  * 車殼與輪胎 / 導輪沿用 bodies/index.js 的 bodyClearance（BODY_TIRE_CLEARANCE / BODY_ROLLER_CLEARANCE）
  * @type {(body: any, bodyProps: any, wheels: any[], rollers: any[], solids: PlacedSolid[]) => { code: string, a: string, b: string, gap_mm: number }[]}
  */

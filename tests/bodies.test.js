@@ -1,6 +1,6 @@
-// 第六階段（第八階段沿用並加神話組，見檔尾）：車殼造型差異（P20，定義見 SPEC.md 第 2 部分）
+// 車殼造型差異（P20，定義見 SPEC.md 第 2 部分；神話組見檔尾）
 // - 三組車殼：比賽型（style 'race'，raceType）≥ 6 款且 raceType ≥ 5 種；致敬《爆走兄弟》1（homageSeries 'lg1'）≥ 5 款；致敬《爆走兄弟》2（'lg2'，WGP）≥ 5 款
-// - 第三階段的舊致敬款（wedge / beast / fork）已退役，不可留在清單
+// - 已退役的舊致敬款（wedge / beast / fork）不可留在清單
 // - 全部車殼任兩款的側視 / 俯視輪廓 IoU 都低於門檻（量法見 src/bodies/silhouette.js：外形三角形投影、0.5 mm 光柵化、填滿輪廓、同安裝點座標）
 // - 同組內兩兩之間，在車高、長度、車頂型態、尾翼型式、車身型態中至少 2 項不同；每組內 form / roof / wing 各至少 3 種
 // - 每組至少 2 款與 31 mm 大徑輪（wheel-31-large）組裝合法
@@ -15,14 +15,14 @@ import { MYTH_SERIES } from '../src/bodies/mythSeries.js';
 
 /** @type {number} 輪廓 IoU 門檻（SPEC P20 補充定案 0.85；不可為了讓相似款通過而放寬） */
 const IOU_MAX = 0.85;
-/** @type {number} 車殼最高點相差至少這麼多才算「車高不同」（mm；SPEC P20 第四階段補充，第六階段沿用） */
+/** @type {number} 車殼最高點相差至少這麼多才算「車高不同」（mm；SPEC P20 第四階段補充） */
 const HEIGHT_DIFF_MM = 3;
-/** @type {number} 車殼長度相差至少這麼多才算「長度不同」（mm；SPEC P20 第四階段補充，第六階段沿用） */
+/** @type {number} 車殼長度相差至少這麼多才算「長度不同」（mm；SPEC P20 第四階段補充） */
 const LENGTH_DIFF_MM = 5;
-/** @type {string[]} 第三階段退役的致敬款 */
+/** @type {string[]} 已退役的致敬款 */
 const RETIRED = ['body-wedge', 'body-beast', 'body-fork'];
 
-/** @type {{ key: string, label: string, minCount: number, pick: (b: BodyDef) => boolean }[]} 第六階段的三組（GOAL 完成條件 4） */
+/** @type {{ key: string, label: string, minCount: number, pick: (b: BodyDef) => boolean }[]} 三組車殼（GOAL 完成條件 4） */
 const GROUPS = [
   { key: 'race', label: '比賽型', minCount: 6, pick: (b) => b.style === 'race' },
   { key: 'lg1', label: '致敬《爆走兄弟》1', minCount: 5, pick: (b) => b.style === 'homage' && b.homageSeries === 'lg1' },
@@ -119,8 +119,8 @@ describe('第六階段：車殼造型差異（P20）', () => {
   }, 300000);
 });
 
-// 第八階段：神話車殼（P20 第八階段定義，GOAL「驗證標準」、SPEC 第 2 部分）
-// - 第六階段三組的條件持續成立（上面的 P20_body_variety；IoU 檢查已涵蓋全部車殼，含神話組）
+// 神話車殼（P20 第八階段定義，GOAL「驗證標準」、SPEC 第 2 部分）
+// - 比賽型 / LG1 / LG2 三組的條件持續成立（上面的 P20_body_variety；IoU 檢查已涵蓋全部車殼，含神話組）
 // - 神話組：希臘 ≥ 3、北歐 ≥ 3、其他體系 ≥ 4 個且各 ≥ 1、合計 ≥ 12；每款有 mythSeries（在 MYTH_SERIES 清單內）與 mythTheme，mythTheme 不重複
 // - 神話組內兩兩在車高 / 長度 / roof / wing / form 至少 2 項不同；form / roof / wing 各 ≥ 4 種；同體系 ≥ 3 款時該體系 form ≥ 3 種
 // - 神話組至少 3 款（含希臘、北歐各 1）搭配 wheel-31-large、不切輪拱組裝合法

@@ -1,5 +1,5 @@
 // Local records are versioned: future physics/track changes need a new key.
-export const RESULTS_KEY = 'mini4wd-results-v6'; // iter-93: coupled wall contact friction and stops.
+export const RESULTS_KEY = 'mini4wd-results-v6'; // v6: coupled wall contact friction and stops.
 const LIMIT = 20;
 
 export function readResults(storage) {

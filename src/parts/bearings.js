@@ -23,7 +23,7 @@ export const bearingParts = [
       counterMass_g: 'PARTS_RESEARCH [ALBECO]：MR52ZZ（2×5×2.5）0.20 g',
     },
   },
-  // ---- 第七階段（iter-78）：HG 丸穴培林（15519，PARTS_RESEARCH 第七階段 AQ 節，台灣 TW39）----
+  // ---- HG 丸穴培林（15519，PARTS_RESEARCH 第七階段 AQ 節，台灣 TW39）----
   // 與 bearing-620 同結構；物理差異只有質量（較薄）與軸承摩擦係數（推估較小），沒有依 id 的特例
   {
     id: 'bearing-620-hg',

@@ -1,4 +1,4 @@
-// 中間齒輪軸與中間齒輪軸承（第五階段 iter-59，台灣買得到的傳動零件；台灣來源見 shared/reference/TAIWAN_SOURCES.md）
+// 中間齒輪軸與中間齒輪軸承（台灣買得到的傳動零件；台灣來源見 shared/reference/TAIWAN_SOURCES.md）
 // 中間齒輪（前後各 1 個）套在 φ2 × 13 mm 的軸上轉動；軸承摩擦力矩 = μ ×（兩個嚙合點的力）× 軸半徑（powertrain.js counterGearLossFraction）
 // μ 的決定方式（assembly.js buildSpec）：
 //   1. 本 slot 的零件自帶中間齒輪培林（counterBearing）→ 用培林的 μ（與輪軸軸承 slot 無關）

@@ -18,7 +18,7 @@ import { readResults, recordResult } from './garageResults.js';
 
 const { SLOTS, listConfigs, loadConfig, assemble } = Assembly;
 
-/** @type {Record<string, string[]>} 舊 URL 參數 → 新 slot（iter-56：rollers → 前 / 後導輪；src/assembly.js 若尚未匯出則為空） */
+/** @type {Record<string, string[]>} 舊 URL 參數 → 新 slot（rollers → 前 / 後導輪；src/assembly.js 若尚未匯出則為空） */
 const LEGACY_SLOT_ALIASES = /** @type {any} */ (Assembly).LEGACY_SLOT_ALIASES ?? {};
 
 /** @type {string[]} 可以「不裝」的選配 slot（src/assembly.js 若尚未匯出 OPTIONAL_SLOTS 則為空） */
@@ -288,7 +288,7 @@ const hud = $('hud');
 const warmHint = $('warm-hint');
 const presetModified = $('preset-modified');
 const chkCom = /** @type {HTMLInputElement} */ ($('chk-com'));
-/** B15（iter-100）：切輪拱（config.bodyArchCut；網址 archCut=1） */
+/** B15：切輪拱（config.bodyArchCut；網址 archCut=1） */
 const chkArchCut = /** @type {HTMLInputElement} */ ($('chk-arch-cut'));
 
 const assemblyLabel = () => `${PRESET_LABELS[garage.preset] ?? garage.preset}${sameValue(garage.config, presetConfig(garage.preset)) ? '' : '（已修改）'} · ${currentAsm?.body?.def.name ?? '無車殼'}`;
@@ -361,7 +361,7 @@ const buildPresetSelect = () => {
   }
 };
 
-/** @type {{ label: string, pick: (b: import('../src/bodies/types').BodyDef) => boolean }[]} 車殼選單分組（第六階段：比賽型 / 致敬 LG1 / 致敬 LG2；第八階段：神話組依體系各一組） */
+/** @type {{ label: string, pick: (b: import('../src/bodies/types').BodyDef) => boolean }[]} 車殼選單分組（比賽型 / 致敬 LG1 / 致敬 LG2；神話組依體系各一組） */
 const BODY_GROUPS = [
   { label: '比賽常用車殼', pick: (b) => b.style === 'race' },
   { label: '致敬《爆走兄弟》1', pick: (b) => b.style === 'homage' && b.homageSeries === 'lg1' },
@@ -541,7 +541,7 @@ const readUrl = () => {
     preset = DEFAULT_PRESET;
   }
   const config = presetConfig(preset);
-  // 舊分享連結（iter-56 以前）：rollers=<id> 視為前後導輪同一款；同時有新參數（frontRollers / rearRollers）時由下面的迴圈覆寫該端
+  // 舊分享連結：rollers=<id> 視為前後導輪同一款；同時有新參數（frontRollers / rearRollers）時由下面的迴圈覆寫該端
   for (const [legacy, slots] of Object.entries(LEGACY_SLOT_ALIASES)) {
     const v = params.get(legacy);
     if (v === null) {
@@ -639,7 +639,7 @@ const renderStats = (asm, codes, topSpeed) => {
     ['車殼與導輪間隙', clearanceText(asm.fit, 'roller_mm'), '須 ≥ 1 mm', codes.has('BODY_ROLLER_CLEARANCE')],
     ['齒輪比', `${asm.gearRatio}:1`, '', codes.has('GEAR_RATIO')],
     ['理論極速', `${fx(topSpeed, 2)} m/s（${fx(topSpeed * 3.6)} km/h）`, '滿電、平直路面的力平衡解', false, 'em'],
-    // 第四階段：傳動系轉動慣量（換算到輪軸）與迴路電阻，都由零件資料推導（與模擬同一份 asm.P）
+    // 傳動系轉動慣量（換算到輪軸）與迴路電阻，都由零件資料推導（與模擬同一份 asm.P）
     ['傳動系轉動慣量', `${fx(asm.spec.spin.total_gmm2, 0)} g·mm²（等效 +${fx(asm.spec.spin.equivalentMass_g, 2)} g）`, '輪子＋輪軸＋齒輪＋馬達電樞 × 齒輪比²', false],
     ['迴路電阻', `${fx(asm.P.circuitResistance * 1000)} mΩ（電池內阻 ${fx(asm.P.batteryResistance * 1000)} mΩ）`, '端子本體＋接點，串聯在馬達迴路', false],
   ];
@@ -998,7 +998,7 @@ const updateHud = () => {
 
 const warmBodies = () => {
   const ids = listBodies().map((b) => b.id);
-  // iter-56：導輪架也預先組裝一次——FRP / 碳纖板第一次裝上時要積分保桿切除幾何（parts/bumperGeom.js bumperTrim，約 1 s），
+  // 導輪架也預先組裝一次——FRP / 碳纖板第一次裝上時要積分保桿切除幾何（parts/bumperGeom.js bumperTrim，約 1 s），
   // 先在背景算好，使用者第一次換導輪架才不會卡頓
   /** @type {[string, string][]} [slot, 零件 id] */
   const stays = [];

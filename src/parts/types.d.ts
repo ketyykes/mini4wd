@@ -31,7 +31,7 @@ export type Solid =
 
 /** 組裝後一個零件實例的實體（干涉檢查的對象） */
 export interface PlacedSolid {
-  /** 干涉群組：tire、roller、stay、damper、sponge、ballast、stabilizer（第四階段） */
+  /** 干涉群組：tire、roller、stay、damper、sponge、ballast、stabilizer */
   group: string;
   slot: string;
   label: string;
@@ -81,7 +81,7 @@ export interface PlacedPart {
   inertia_gmm2?: { xx: number; yy: number; zz: number; xy: number; xz: number; yz: number };
 }
 
-/** 傳動系轉動慣量（parts/inertia.js drivetrainInertia；第四階段） */
+/** 傳動系轉動慣量（parts/inertia.js drivetrainInertia） */
 export interface SpinInertia {
   /** 單件繞自身軸的慣量（g·mm²）：輪子（胎＋框）、輪軸、輪軸齒輪、中間齒輪、小齒輪、電樞 */
   perItem_gmm2: { wheel: number; axle: number; spur: number; counter: number; pinion: number; armature: number };
@@ -94,7 +94,7 @@ export interface SpinInertia {
   equivalentMass_g: number;
 }
 
-/** 整車規格（asm.spec.chassis.frontRoller / rearRoller）中一端導輪的款式（iter-56：前後導輪分開選） */
+/** 整車規格（asm.spec.chassis.frontRoller / rearRoller）中一端導輪的款式（前後導輪分開選） */
 export interface RollerSpec {
   id: string;
   /** 最大接觸直徑（mm） */
@@ -106,7 +106,7 @@ export interface RollerSpec {
   tiers: RollerTier[] | null;
   /** 錐形導輪輪廓；一般導輪為 null */
   taper: { cylinderHeight_mm: number; coneHeight_mm: number; bottomDiameter_mm: number } | null;
-  /** 外環（第五階段：橡膠 O 環 / 塑膠環，環的外緣就是接觸直徑）；沒有外環為 null */
+  /** 外環（橡膠 O 環 / 塑膠環，環的外緣就是接觸直徑）；沒有外環為 null */
   ring: RollerRing | null;
 }
 
@@ -115,14 +115,14 @@ export interface RollerTier {
   diameter_mm: number;
   height_mm: number;
   y_mm: number;
-  /** 第七階段（iter-76）：這片自己的牆面摩擦 / 恢復係數（沒有時用零件層級的值） */
+  /** 這片自己的牆面摩擦 / 恢復係數（沒有時用零件層級的值） */
   wallFriction?: number;
   restitution?: number;
-  /** 第七階段（iter-76）：這片自己的外環（例如 15418 上層橡膠環）；沒有時無外環 */
+  /** 這片自己的外環（例如 15418 上層橡膠環）；沒有時無外環 */
   ring?: RollerRing;
 }
 
-/** 導輪外環（第五階段）：只影響 3D 外形；接觸直徑、摩擦、恢復係數、質量仍取零件本身的欄位 */
+/** 導輪外環：只影響 3D 外形；接觸直徑、摩擦、恢復係數、質量仍取零件本身的欄位 */
 export interface RollerRing {
   /** 'rubber'（橡膠 O 環，圓截面）| 'plastic'（塑膠環，矩形截面） */
   material: 'rubber' | 'plastic';
@@ -153,7 +153,7 @@ export interface PlacedRoller {
   ring: RollerSpec['ring'];
 }
 
-/** 滑動保桿（第五階段 iter-61）：滑動板相對底盤沿車身 z（左右）1 自由度，彈簧＋預壓＋阻尼，行程端點硬止擋 */
+/** 滑動保桿：滑動板相對底盤沿車身 z（左右）1 自由度，彈簧＋預壓＋阻尼，行程端點硬止擋 */
 export interface SlideSpec {
   /** 單邊行程（mm）：滑動板可從中央往左右各滑這麼多，端點為硬止擋 */
   stroke_mm: number;
@@ -176,7 +176,7 @@ export interface SlideSpec {
   spring: { x_mm: number; innerZ_mm: number; outerZ_mm: number; coilDiameter_mm: number; wireDiameter_mm: number; turns: number; color: number };
 }
 
-/** 組裝後的滑動保桿（asm.slider = 前、asm.rearSlider = 後，iter-64；車體座標）：滑動部分 = 滑動板＋裝在上面的導輪（前款另含穩定零件） */
+/** 組裝後的滑動保桿（asm.slider = 前、asm.rearSlider = 後；車體座標）：滑動部分 = 滑動板＋裝在上面的導輪（前款另含穩定零件） */
 export interface PlacedSlider {
   slot: 'frontStay' | 'rearStay';
   /** 裝在這塊滑動板上的導輪 slot */

@@ -1,4 +1,4 @@
-// 硬式飛船（body-zeppelin-xtail，第六階段 LG2 致敬款）：圓斷面雪茄形全罩（最粗處在前 1/3、半球形圓鼻、往後收成圓錐尾），
+// 硬式飛船（body-zeppelin-xtail，LG2 致敬款）：圓斷面雪茄形全罩（最粗處在前 1/3、半球形圓鼻、往後收成圓錐尾），
 // 四個 31 mm 輪拱直接在雪茄側面切出；頂部一條長窄煙燻透明觀景窗帶（看得到底盤）；車尾 4 片小舵面呈 X 形（穩定舵＝外露機能件，舵面不超出車尾）。
 // 設計：shared/design/body-zeppelin-xtail/DESIGN.md（HOMAGE_RESEARCH 第 6 節 LG2 語彙、和劇中車 / 市售車殼的差異）。剖面為本檔站位產生器（推估）。
 // 塗裝全為自創：錫灰＋奶油白＋訊號橘、環向骨架分節線、縱向鉚釘點列、號碼「75」；不含任何廠商 / 作品名稱、商標、隊徽、國旗或角色圖像。
@@ -13,17 +13,17 @@ import { monoCurve, buildStations, sdCircle } from './gazelleLeap.js';
 const XS = [-72, -66, -60, -50, -40, -28, -14, 0, 14, 28, 40, 50, 58, 65, 70.5, 75.3, 78.2, 79.6];
 /** @type {Record<string, (x: number) => number>} */
 const P = {
-  // 雪茄軸線高度（iter-69：前段 21.5 → 23，配合加高的圓斷面；圓錐尾往上收到 28.5，讓下兩片 X 舵離開後保桿）
-  // iter-123（第九階段，評審「前後一樣高、最不像跑車」）：前 1/3 軸線略往下壓（23 → 22.5）；鼻尖不再更低——
-  // 正面投影會把鼻尖到船腹之間的空隙補滿，鼻尖壓到 19.5 時整車正面面積反而 +3.5%（量測），所以楔形靠頂線下降來做
+  // 雪茄軸線高度：中段 23（配合圓胖斷面），前 1/3 略往下壓到 22.5；圓錐尾往上收到 28.5，讓下兩片 X 舵離開後保桿
+  // 鼻尖不能再壓低——正面投影會把鼻尖到船腹之間的空隙補滿，鼻尖壓到 19.5 時整車正面面積反而 +3.5%（量測），
+  // 所以前低後高的楔形靠頂線下降來做
   yA: monoCurve(XS, [28.5, 27.5, 26, 24.5, 23.5, 23, 23, 23, 22.9, 22.8, 22.6, 22.5, 22.5, 22.5, 22.5, 22.5, 22.5, 22.5]),
-  // 垂直半軸（iter-69：最大 16.4 → 21.5，斷面由扁橢圓改成接近 1.8 : 1 的圓胖雪茄）：最粗處在前 1/3，鼻部改成尖拱（ogive）收尖、往後收成圓錐尾
-  // iter-123：頂線改成前低後高的楔形——最高點留在 x −14 ~ 0（44.3），往前一路下降（x 40：43.5 → 38.3、x 58：39 → 32.3、x 70.5：32.4 → 26.5、
-  // 鼻尖 23.8 → 22.8）；鼻部斷面變成扁平的楔形吊艙（x 70.5 寬 15 × 高 4）；最大斷面 21.5 → 21.3（正面面積不變大）
+  // 垂直半軸（最大 21.3，斷面是接近 1.8 : 1 的圓胖雪茄，不是扁橢圓）：最粗處在前 1/3，鼻部以尖拱（ogive）收尖、往後收成圓錐尾
+  // 頂線是前低後高的楔形——最高點在 x −14 ~ 0（44.3），往前一路下降（x 40：38.3、x 58：32.3、x 70.5：26.5、鼻尖 22.8）；
+  // 鼻部斷面是扁平的楔形吊艙（x 70.5 寬 15 × 高 4）；最大斷面不超過 21.3（正面面積不變大）
   ry: monoCurve(XS, [2.5, 6, 9.5, 13.5, 16.5, 19, 20.6, 21.3, 20.0, 18.0, 15.7, 12.8, 9.8, 6.8, 4.0, 1.7, 0.8, 0.3]),
-  // 水平半軸（iter-69：最寬 47.2 → 39，俯視不再是方肥皂盒）：鼻、尾都提早收窄成尖拱 / 圓錐
-  // iter-123：前 1/3 俯視也收尖（x 58：30.2 → 28、x 70.5：18 → 15），楔形吊艙從上面看是尖鼻
-  // 圓錐尾也略收（x −50：26 → 24.5），和 prism-facet 的俯視 IoU 拉開（0.846 → 量測見 DESIGN.md）
+  // 水平半軸（最寬 39，再寬俯視會像方肥皂盒）：鼻、尾都提早收窄成尖拱 / 圓錐
+  // 前 1/3 俯視也收尖（x 58：28、x 70.5：15），楔形吊艙從上面看是尖鼻
+  // 圓錐尾也略收（x −50：24.5），和 prism-facet 的俯視 IoU 拉開（量測見 DESIGN.md）
   hw: monoCurve(XS, [4.5, 11, 17, 24.5, 30.5, 35, 37.8, 38.8, 39, 38.8, 37.6, 33.8, 28, 21.5, 15, 8.5, 4, 1.2]),
 };
 
@@ -68,7 +68,7 @@ const materials = () => ({
   edge: namedMaterial('shell-edge-pewter', { color: 0x5d6167, roughness: 0.5, side: THREE.DoubleSide }),
   glass: namedMaterial('pc-smoke-tint', { color: 0x2a3440, roughness: 0.05, specularIntensity: 0.6, transparent: true, opacity: 0.4, envMapIntensity: 0.5, depthWrite: false, side: THREE.DoubleSide }),
   frame: namedMaterial('paint-graphite', { color: 0x2c2f34, roughness: 0.4, metalness: 0.3, side: THREE.DoubleSide }),
-  // iter-123：圓錐尾的石墨灰金屬漆（橘色 X 舵的深色底）
+  // 圓錐尾的石墨灰金屬漆（橘色 X 舵的深色底）
   graphite: namedMaterial('paint-graphite', { color: 0x2c2f34, roughness: 0.32, metalness: 0.35, clearcoat: 0.9, clearcoatRoughness: 0.08 }),
   lamp: namedMaterial('lamp-ice', { color: 0xfff6dc, emissive: 0xffe2a0, emissiveIntensity: 0.6, roughness: 0.08, clearcoat: 1.0 }),
   tail: namedMaterial('lamp-red', { color: 0xd0142a, emissive: 0x900010, emissiveIntensity: 0.6, roughness: 0.1, clearcoat: 1.0 }),
@@ -76,7 +76,7 @@ const materials = () => ({
   dOrange: decalMaterial('decal-signal-orange', { color: 0xff5a14, roughness: 0.4 }),
   dCream: decalMaterial('decal-cream', { color: 0xf3ead6, roughness: 0.4 }),
   mount: namedMaterial('abs-mount-black', { color: 0x222326, roughness: 0.6 }),
-  // iter-71：輪拱內襯改成深錫灰（原為近黑），從輪拱切口看進去是灰色輪弧，不再是黑色殼內面
+  // 輪拱內襯用深錫灰，從輪拱切口看進去是灰色輪弧，而不是黑色殼內面
   liner: namedMaterial('shell-wheelwell-pewter', { color: 0x4b4f56, roughness: 0.6, side: THREE.DoubleSide }),
 });
 
@@ -132,7 +132,7 @@ const buildHullLiner = (arch, depth) => {
 };
 
 /**
- * 輪拱擋泥唇（iter-71）：沿輪拱切口上半圈、半埋在雪茄殼面上的圓斷面細唇（半徑 0.75），往外凸出約 0.7 mm；
+ * 輪拱擋泥唇：沿輪拱切口上半圈、半埋在雪茄殼面上的圓斷面細唇（半徑 0.75），往外凸出約 0.7 mm；
  * 只沿殼面真的被切開的那一段（殼面 |z| > 21.5），且只在軸線上方（俯視不變寬）
  * @type {(arch: { x: number, y: number, radius: number }, sg: number) => THREE.BufferGeometry}
  */
@@ -186,7 +186,7 @@ export const zeppelinXtailBody = makePolyBody({
     { mat: 'cream', keep: (x) => x - 73.8 },
     // 訊號橘鼻環
     { mat: 'orange', keep: (x) => x - 70.5 },
-    // iter-123：圓錐尾（尾環之後）整段石墨灰，讓加大的訊號橘 X 舵和車身形成強對比
+    // 圓錐尾（尾環之後）整段石墨灰，讓訊號橘 X 舵和車身形成強對比
     { mat: 'graphite', keep: (x) => -53.8 - x },
     // 奶油白下半船身：軸線以下（飛船吊艙側的分色）
     { mat: 'cream', keep: (x, y, z) => (Math.abs(z) > 16 ? P.yA(x) - 0.6 - y : -1) },
@@ -207,8 +207,8 @@ export const zeppelinXtailBody = makePolyBody({
     const bars = buildRegion(kit.surf, [(x, y, z) => Math.min(0.6 - Math.min(Math.abs(x + 14), Math.abs(x - 8)), 0.5 - windowSd(x, y, z))], { offset: 0.35 });
     parts.push({ geometry: bars.geometry, mat: 'frame', name: 'window-bars' });
     // 鼻尖繫留錐（石墨灰金屬圓錐，往前尖出）
-    // iter-103（評審 iter-73「zeppelin 缺臉」，對照概念圖 concept_front34_v1）：底徑 4 → 6.4、底面往後埋進鼻帽到 x 78.4，錐尖仍在 x 81.2（全長不變）
-    // iter-123：錐高 2.8 → 2.5（錐尖 x 81.2 → 80.9，車殼外框長 153.2 → 152.9，回到 ≤ 153 的卡橋上限內）；分段 32 → 16
+    // 底徑 6.4（對照概念圖 concept_front34_v1，鼻端要有「臉」）、底面埋進鼻帽到 x 78.4
+    // 錐高 2.5（錐尖 x 80.9，車殼外框長 152.9，在 ≤ 153 的卡橋上限內）；分段 16
     const cone = new THREE.ConeGeometry(3.2, 2.5, 16);
     cone.rotateZ(-Math.PI / 2);
     cone.translate(78.4 + 1.25, P.yA(78.4), 0);
@@ -221,7 +221,7 @@ export const zeppelinXtailBody = makePolyBody({
       shell: true,
       name: 'arch-liners',
     });
-    // 輪拱擋泥唇（iter-71）：石墨灰細唇沿四個輪拱切口邊緣，收住切口、框出車輪（評審：車身變窄後四輪外側外露、看得到黑色殼內面）
+    // 輪拱擋泥唇：石墨灰細唇沿四個輪拱切口邊緣，收住切口、框出車輪（車身窄，四輪外側外露，不收邊會看到黑色殼內面）
     parts.push({
       geometry: mergeGeos([-1, 1].flatMap((sg) => [buildArchLip({ x: 40, y: 13, radius: 17.5 }, sg), buildArchLip({ x: -40, y: 13, radius: 17.5 }, sg)])),
       mat: 'frame',
@@ -230,9 +230,8 @@ export const zeppelinXtailBody = makePolyBody({
       name: 'arch-lips',
     });
     // X 形尾舵（L2-1 外露機能件「穩定舵」）：上兩片外上 45°、下兩片外下 45°（下片較短，保持離地與導輪間隙），後緣不超出車尾
-    // iter-69：圓錐尾軸線抬高到 27.5、下片 11.5 → 9 mm，下舵尖離開後保桿（舵尖約 y 21）
-    // iter-123（評審「X 尾翼加大並漆對比橘」）：上片展長 21 → 25、弦長 10 → 12（根部前緣 −55 → −50）；下片 9 → 10.5；
-    // 後緣仍停在 x −72（車長不變）。舵面維持訊號橘，圓錐尾改成石墨灰（見 zones），橘舵在深色尾錐上跳出來
+    // 圓錐尾軸線抬高到 27.5、下片展長 10.5 mm，下舵尖離開後保桿
+    // 上片展長 25、根部前緣 x −50；後緣停在 x −72（不加車長）。舵面訊號橘、圓錐尾石墨灰（見 zones），橘舵在深色尾錐上跳出來
     const rudders = [
       buildRudder([-50, -71.5], [-62, -72], 25, 1, -45),
       buildRudder([-50, -71.5], [-62, -72], 25, 1, 45),
@@ -273,13 +272,12 @@ export const zeppelinXtailBody = makePolyBody({
     const numSd = sdNumber('75', { h: 9, w: 4.8, gap: 1.3 });
     parts.push({ geometry: kit.decal(sideDecal((u, v) => numSd(u, v) - 0.7, { x0: NUM.x0, y0: NUM.y0, zMin: 30 })), mat: 'dCream', name: 'decal-number-outline' });
     parts.push({ geometry: kit.decal(sideDecal(numSd, { x0: NUM.x0, y0: NUM.y0, zMin: 30 }), { offset: 0.1 }), mat: 'dOrange', name: 'decal-number' });
-    // iter-103：繫留錐底一圈訊號橘同心環（概念圖鼻帽上的橘環），和鼻環、尾環呼應
+    // 繫留錐底一圈訊號橘同心環（概念圖鼻帽上的橘環），和鼻環、尾環呼應
     parts.push({ geometry: kit.decal((x) => Math.min(x - 76.9, 78.3 - x)), mat: 'dOrange', name: 'decal-nose-cone-ring' });
-    // 鼻帽兩側一對圓形探照燈（V14）；iter-103：燈片 r 1.5 → 1.7，外加石墨灰燈圈（r 2.3），讀成「一對眼睛」
+    // 鼻帽兩側一對圓形探照燈（V14）：燈片 r 1.8，外加石墨灰燈圈（r 2.5），讀成「一對眼睛」
     parts.push({
-      // iter-110（評審 iter-106「斜看時白色內圓有視差」）：燈圈 r 2.3 → 2.5、燈片 r 1.9 → 1.8；
-      // 燈圈原本是整片圓、燈片墊高 0.35 mm 蓋在上面，鼻帽斜面上燈片沿法線外移 → 一側露出白圓（評審 iter-110 仍見左眼 9–11 點缺框）。
-      // 改成燈圈只畫 r 1.8–2.5 的環、燈片同高（offset 0.1），兩者不重疊：沒有視差，也沒有深度緩衝打架（iter-106 俯視問題的原因）
+      // 燈圈只畫 r 1.8–2.5 的環、和燈片同高（offset 0.1），兩者不重疊：沒有視差，也沒有深度緩衝打架。
+      // 燈圈若是整片圓、燈片墊高蓋在上面，鼻帽斜面上燈片沿法線外移 → 斜看時一側露出白圓、另一側缺框
       geometry: kit.decal((x, y, z) => {
         if (y <= 20) {
           return -1;
@@ -291,14 +289,13 @@ export const zeppelinXtailBody = makePolyBody({
       name: 'lamp-searchlight-bezels',
     });
     parts.push({
-      // iter-106（評審 iter-103／104「俯視兩眼仍是實心黑點」）：近距離正上方看燈片是白的；整車俯視時相機很遠，
-      // 燈片只比燈圈高 0.1 mm（offset 0.2 對 0.1），深度緩衝分不出前後，燈圈蓋過燈片 → 燈片 offset 0.2 → 0.45
-      // iter-110：燈圈改成環、和燈片不重疊 → 燈片回到 offset 0.1（同燈圈），不再墊高
+      // 燈片和燈圈同高（offset 0.1）、不重疊，不必墊高；兩者重疊時，整車俯視的相機很遠，
+      // 0.1 mm 的高度差深度緩衝分不出前後，燈圈會蓋過燈片（兩眼變成實心黑點）
       geometry: kit.decal((x, y, z) => (y > 20 ? -sdCircle(75.0, 5.0, 1.8)(x, Math.abs(z)) : -1), { offset: 0.1 }),
       mat: 'lamp',
       name: 'lamp-searchlights',
     });
-    // iter-123：楔形吊艙側面一排 4 扇石墨灰吊艙窗（飛船吊艙的窗列，鼻部讀成「下壓的吊艙」），在前輪拱之前
+    // 楔形吊艙側面一排 4 扇石墨灰吊艙窗（飛船吊艙的窗列，鼻部讀成「下壓的吊艙」），在前輪拱之前
     parts.push({
       geometry: kit.decal((x, y, z) => {
         if (Math.abs(z) < 0.6 * P.hw(x)) {

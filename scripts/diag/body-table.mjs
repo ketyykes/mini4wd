@@ -1,4 +1,4 @@
-// 第六階段車殼總表（markdown）：分組、型態、質量、車殼長 / 高、26 / 31 mm 合法性（主 agent 寫 SPEC 1.14 / FINAL_REPORT 用）
+// 車殼總表（markdown）：分組、型態、質量、車殼長 / 高、26 / 31 mm 合法性（寫 SPEC 1.14 / FINAL_REPORT 用）
 import { listBodies, bodyMassProps } from '../../src/bodies/index.js';
 import { assemble, loadConfig } from '../../src/assembly.js';
 import { validateAssembly } from '../../src/regulation.js';

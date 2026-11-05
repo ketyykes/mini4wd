@@ -27,13 +27,9 @@ const box = (yRoof, halfW, yLow) =>
  * @type {{ x: number, pts: number[][] }[]}
  */
 const STATIONS = [
-  // iter-47b 兩段式車頭：短鼻斜面（x 64 → 54）、低平引擎蓋（y ≈ 23–24.6，x 54 → 36）、
-  // 擋風玻璃斜面（x 36 → 24 升到車頂 28.5）、平頂。前齒輪箱（y ≤ 21.4、x ≤ 45）上方仍留 ≥ 2 mm
-  // iter-123（第九階段，評審「透明箱形輪廓像零件盒」）：前齒輪箱前方（x ≥ 49）的鼻段整段壓低約 4 mm 成楔形
-  //（鼻端 17 → 13.3、x 60 20.2 → 16.4、x 54 22.8 → 19.6），x 49 加一站讓楔面一路斜升到引擎蓋；
-  // 平頂前段也往前下傾（x 24 28.5 → 27.2、x 0 → 28.0），側視從鼻端到車尾是一條前低後高的斜線
-  // iter-125（第二版，主 agent「前 3/4 和側視幾乎和改前一樣」）：楔形再壓低約 1.2–1.4 mm（鼻端 13.3 → 12.95、x 60 16.4 → 15.0、
-  // x 54 19.6 → 18.2、x 49 22.2 → 21.2），鼻端下緣 11.5 → 11.2 接加大的黑色分流唇
+  // 兩段式車頭：楔形鼻（x 64 → 49，鼻端 y 12.6 一路斜升到 21.2）、低平引擎蓋（y ≈ 24.2–24.6，x 44 → 36）、
+  // 擋風玻璃斜面（x 36 → 24 升到 27.2）、往前下傾的平頂（x 0 28.0、x −25 之後 28.5）。前齒輪箱（y ≤ 21.4、x ≤ 45）上方仍留 ≥ 2 mm
+  // 前齒輪箱前方（x ≥ 49）的鼻段壓低成楔形，側視從鼻端到車尾是一條前低後高的斜線，輪廓才不像透明零件盒
   { x: 64, pts: box(12.6, 23, 11.2) },
   { x: 60, pts: box(15.0, 31, 11.5) },
   { x: 54, pts: box(18.2, 37.5, 12.3) },
@@ -44,10 +40,10 @@ const STATIONS = [
   { x: 0, pts: box(28.0, 39, 9) },
   { x: -25, pts: box(28.5, 39, 9.5) },
   { x: -40, pts: box(28.5, 39, 11) },
-  // iter-47 斷尾加長到 x −58：尾段下緣抬到後輪胎頂之上，車頂後緣往下內傾（28.4 → 25.4），
-  // 尾端再接一片幾乎垂直的透明尾板（extras 的 tailPanel）往下蓋到 y 19.5，從後方不再直接看到齒輪
-  // iter-125 鴨尾：原本車頂後緣往下內傾（28.4 → 25.4），改成貼身往上翹的鴨尾（x −49 起 28.4 → 尾端 30.8），尾端 3 mm 內噴黑，
-  // 側視尾端由下垂變成上翹，和壓低的楔形鼻連成前低後高的姿態
+  // 斷尾到 x −58：尾段下緣抬到後輪胎頂之上，
+  // 尾端再接一片幾乎垂直的透明尾板（extras 的 tailPanel）往下蓋到 y 19.5，從後方不會直接看到齒輪
+  // 鴨尾：車頂後緣貼身往上翹（x −49 起 28.4 → 尾端 30.8），尾端 3 mm 內噴黑，
+  // 側視尾端上翹，和壓低的楔形鼻連成前低後高的姿態
   { x: -46, pts: box(28.4, 38.5, 20) },
   { x: -49, pts: box(28.4, 38, 26) },
   { x: -53, pts: box(28.8, 37.5, 26.2) },
@@ -60,7 +56,7 @@ const STATIONS = [
  * @type {{ x: number, yBase: number, yTop: number, halfW: number }[]}
  */
 const CABIN = [
-  // iter-50：座艙縮短到約 2/3（56 → 38 mm）、後段改成往後收窄的斜背，不再像小廂型車
+  // 座艙長 38 mm、後段是往後收窄的斜背（太長、後段直立會像小廂型車）
   { x: 24, yBase: 0, yTop: 0, halfW: 21 },
   { x: 18, yBase: 0, yTop: 3.6, halfW: 25 },
   { x: -2, yBase: 0, yTop: 3.6, halfW: 24 },
@@ -84,17 +80,17 @@ const cabinHalfW = (x) => {
 /** @type {(x: number, y: number, z: number) => number} 座艙底開口（負值 = 挖掉）：座艙罩下緣往內 0.8 mm，且只在平頂（y ≥ 22） */
 const cabinHoleSd = (x, y, z) => (y < 22 ? 10 : Math.max(Math.abs(z) - (cabinHalfW(x) - 0.8), CABIN[CABIN.length - 1].x + 1.5 - x, x - (CABIN[0].x - 1.5)));
 
-/** @type {(x: number) => number} 粉紅 / 透明的斜分割線（iter-123）：前低後高，鼻端 y 12.5、x 0 y 19.5、車尾 x −58 y 25.9 */
+/** @type {(x: number) => number} 粉紅 / 透明的斜分割線：前低後高，鼻端 y 12.5、x 0 y 19.5、車尾 x −58 y 25.9 */
 const splitY = (x) => 19.5 - 0.11 * x;
 
 /** @type {() => Record<string, THREE.Material>} */
 const materials = () => ({
   // 淡煙燻透明 PC（Blender 依名稱對應透明聚碳酸酯）
-  // iter-48：更通透（顏色更淡、不透明度與環境反射降低，減少灰霧）
+  // 顏色淡、不透明度與環境反射低，保持通透、減少灰霧
   clear: namedMaterial('pc-clear-shell', { color: 0xdbe6ef, roughness: 0.04, specularIntensity: 0.5, transparent: true, opacity: 0.18, envMapIntensity: 0.35, depthWrite: false }),
   clearIn: namedMaterial('pc-clear-shell-inner', { color: 0xc8d6e2, roughness: 0.06, transparent: true, opacity: 0.07, depthWrite: false, side: THREE.BackSide }),
   // 座艙段：煙燻車窗、內噴黑色窗框
-  // iter-125：前半內噴煙燻（比車窗淡，看得到裡面的齒輪輪廓）
+  // 前半內噴煙燻（比車窗淡，看得到裡面的齒輪輪廓）
   smoke: namedMaterial('pc-smoke-tint-front', { color: 0x30363f, roughness: 0.05, specularIntensity: 0.6, transparent: true, opacity: 0.5, envMapIntensity: 0.45, depthWrite: false }),
   window: namedMaterial('pc-smoke-window', { color: 0x262c34, roughness: 0.05, specularIntensity: 0.6, transparent: true, opacity: 0.55, envMapIntensity: 0.5, depthWrite: false }),
   frame: namedMaterial('pc-paint-black', { color: 0x111214, roughness: 0.2, clearcoat: 1.0, clearcoatRoughness: 0.05 }),
@@ -117,7 +113,7 @@ export const pcBoxBody = makePolyBody({
   id: 'body-pc-box',
   name: 'PC 透明平頂短尾殼',
   style: 'race',
-  // 第六階段分組（shared/reference/BODY_RACE_RESEARCH.md）
+  // 比賽型分類（shared/reference/BODY_RACE_RESEARCH.md）
   raceType: 'clear-pc',
   form: 'box',
   roof: 'clear',
@@ -132,20 +128,20 @@ export const pcBoxBody = makePolyBody({
     { x: 40, y: 13, radius: 17.6, cutZFrom: 23.3 },
     { x: -40, y: 13, radius: 17.6, cutZFrom: 23.3 },
   ],
-  // iter-48 座艙段：平頂中段再隆起 3.6 mm 的梯形座艙（前擋風斜面 x 26 → 20、側窗、後窗斜面 x −22 → −30），
+  // 座艙段：平頂中段再隆起 3.6 mm 的梯形座艙（前擋風斜面 x 24 → 18、側窗、斜背後窗 x −2 → −14），
   // 側視有「車頭 → 座艙 → 車尾」的層次；座艙下方的殼面維持透明
   canopy: { section: 'trapezoid', stations: CABIN },
   // 座艙罩取代那片平頂：真空成形 PC 殼只有一層，座艙底下的平頂在幾何上挖掉（留 0.8 mm 和座艙罩下緣重疊）
   openings: [{ id: '座艙底開口', view: 'top', shape: 'fn', sd: cabinHoleSd }],
   zones: () => [
-    // iter-123：粉紅下裙改成前下往後上的斜分割（splitY：鼻端 y 12.5 → 車尾 y 25.9），後段側面整片內噴粉紅、前段留透明；
-    // 分割線上方的白色細線做成貼紙（extras 的 decal-split-line），不再多切一條殼面分區線（殼面面數維持改前）。白色中線寬條紋與兩側粉紅細條紋照舊
-    // iter-125：鴨尾上翹段（x < −55）整段內噴黑，側視和後 3/4 看得出一道黑色尾唇
+    // 粉紅下裙是前下往後上的斜分割（splitY：鼻端 y 12.5 → 車尾 y 25.9），後段側面整片內噴粉紅、前段留透明；
+    // 分割線上方的白色細線做成貼紙（extras 的 decal-split-line），不多切一條殼面分區線（省殼面面數）
+    // 鴨尾上翹段（x < −55）整段內噴黑，側視和後 3/4 看得出一道黑色尾唇
     { mat: 'frame', keep: (x) => -55 - x },
     { mat: 'pink', keep: (x, y) => splitY(x) - y },
-    // iter-125：原本的白色中線＋兩道細粉紅線，改成兩條寬 6 mm 的粉紅賽車條（|z| 3.2–9.2），從鼻端楔面一路到鴨尾，中間 6.4 mm 留透明
+    // 兩條寬 6 mm 的粉紅賽車條（|z| 3.2–9.2），從鼻端楔面一路到鴨尾，中間 6.4 mm 留透明
     { mat: 'pink', keep: (x, y, z) => Math.min(Math.abs(z) - 3.2, 9.2 - Math.abs(z), y - 14) },
-    // iter-125：前半內噴煙燻（分界線上緣在後：車頂 y 28 在 x 14、下緣 y 12 在 x 30，往後傾的斜線），後半留透明
+    // 前半內噴煙燻（分界線上緣在後：車頂 y 28 在 x 14、下緣 y 12 在 x 30，往後傾的斜線），後半留透明
     { mat: 'smoke', keep: (x, y) => x + y - 42 },
     { mat: 'clear', keep: () => 1 },
   ],
@@ -171,7 +167,7 @@ export const pcBoxBody = makePolyBody({
     const drv = buildDriver(6, kit.innerYAt(6) - 5.8, 1.1);
     parts.push({ geometry: drv.body, mat: 'driver', solid: true, name: 'cockpit-driver' });
     parts.push({ geometry: drv.helmet, mat: 'helmet', solid: true, name: 'cockpit-helmet' });
-    // 內傾透明尾板（iter-47）：從尾端下緣 (x −58, y 24.6) 往下、略往前收到 (x −57.4, y 19.5)；
+    // 內傾透明尾板：從尾端下緣 (x −58, y 24.6) 往下、略往前收到 (x −57.4, y 19.5)；
     // x ≤ −57.4 離後輪軸 ≥ 17.4 mm，31 mm 輪胎（半徑 15.5）仍留 ≥ 1 mm
     const tail = [];
     const zs = [-35.2, 35.2];
@@ -193,8 +189,8 @@ export const pcBoxBody = makePolyBody({
     band.translate(-58.1, 21.2, 0);
     parts.push({ geometry: band, mat: 'pink', name: 'tail-band' });
 
-    // 輪拱弧線（iter-47b）：沿輪拱外緣的粉紅內噴弧帶（半徑 18.2–19.4，只在側面）
-    // iter-123：後輪拱落在粉紅斜分割裡，弧帶改白色（前輪拱在透明區，維持粉紅）
+    // 輪拱弧線：沿輪拱外緣的內噴弧帶（半徑 18.2–19.4，只在側面）
+    // 後輪拱落在粉紅斜分割裡，弧帶用白色；前輪拱在透明區，用粉紅
     /** @type {(ax: number) => KeepFn} */
     const archLine = (ax) => (x, y, z) => {
       if (Math.abs(z) < 30 || y < 12) {
@@ -206,9 +202,9 @@ export const pcBoxBody = makePolyBody({
     parts.push({ geometry: kit.decal(archLine(40)), mat: 'pinkDecal', name: 'decal-arch-lines' });
     parts.push({ geometry: kit.decal(archLine(-40)), mat: 'whiteDecal', name: 'decal-arch-lines-rear' });
 
-    // iter-125 修正：拿掉鼻下分流唇、擋板與前緣粉紅線。分流唇會改變碰撞外包絡與質量分布，P17 的 pc-box 組裝跑圈穿牆超過 1 mm
-    // （31 mm 輪 1.497 mm；收回車鼻範圍後 p7-demo 起跑擾動 1.051 mm）；拿掉後 p7-demo 最差 0.945、31 mm 輪 0.819 mm（基準 0.734 / 0.204）
-    // 斜分割線上方 1.4 mm 白色細線（iter-123，只在側面與肩部）
+    // 鼻下不加分流唇、擋板：會改變碰撞外包絡與質量分布，P17 的 pc-box 組裝跑圈穿牆會超過 1 mm
+    // （31 mm 輪 1.497 mm；收在車鼻範圍內時 p7-demo 起跑擾動仍有 1.051 mm）；不加時 p7-demo 最差 0.945、31 mm 輪 0.819 mm
+    // 斜分割線上方 1.4 mm 白色細線（只在側面與肩部）
     parts.push({ geometry: kit.decal((x, y, z) => (Math.abs(z) < 30 ? -1 : Math.min(y - splitY(x), splitY(x) + 1.4 - y))), mat: 'whiteDecal', name: 'decal-split-line' });
     // 擋風玻璃下緣折線（白色細線，x ≈ 36）
     parts.push({ geometry: kit.decal((x, y, z) => Math.min(0.45 - Math.abs(x - 35.6), 30 - Math.abs(z))), mat: 'whiteDecal', name: 'decal-windshield-line' });
@@ -227,7 +223,7 @@ export const pcBoxBody = makePolyBody({
       mat: 'black',
       name: 'decal-number',
     });
-    // iter-125：引擎蓋號碼落在煙燻區，改白字，並移到粉紅賽車條外側（z 14）
+    // 引擎蓋號碼落在煙燻區，用白字，放在粉紅賽車條外側（z 14）
     parts.push({
       geometry: kit.decal(topDecal(sdNumber('17', { h: 5.4, w: 3.1, gap: 0.8 }), { x0: 45, z0: 14, yMin: 22 }), { offset: 0.12 }),
       mat: 'whiteDecal',

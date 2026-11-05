@@ -1,6 +1,6 @@
-// 蟬翼（body-cicada-veil，第六階段 LG1 致敬款）：前段寬而平、往前收圓的「頭」（俯視最寬在前輪後方）、頭部外上角一對貼合的扁平多面複眼（iter-70；原為外突圓球燈）、鼻端下緣的下顎前唇；
+// 蟬翼（body-cicada-veil，LG1 致敬款）：前段寬而平、往前收圓的「頭」（俯視最寬在前輪後方）、頭部外上角一對貼合的扁平多面複眼、鼻端下緣的下顎前唇；
 // 後段斷面呈 Λ 字（帳篷形）屋脊、往後漸低；後半車頂是兩片煙燻琥珀透明「脈翅」板（沿屋脊斜放、長格翅脈、看得到底盤），
-// 往前延伸蓋住駕駛艙；兩片脈翅尾端超出車尾殼面（iter-125：8 → 14 mm，後緣分叉成左右兩個往後外的翅尖，中間露出炭黑腹節車尾；tent-tail，沒有獨立尾翼）。
+// 往前延伸蓋住駕駛艙；兩片脈翅尾端超出車尾殼面 14 mm（後緣分叉成左右兩個往後外的翅尖，中間露出炭黑腹節車尾；tent-tail，沒有獨立尾翼）。
 // 設計：shared/design/body-cicada-veil/DESIGN.md（HOMAGE_RESEARCH 第 6 節 P6、LG1 語彙 L1-x、和劇中車 / 市售車殼的差異）。
 // 剖面為本檔站位產生器（推估，依 31 mm 輪拱、底盤內件高度與外框限制）。
 // 塗裝全為自創：炭黑＋煙燻琥珀透明＋薄荷綠（三道聲波弧、簷線細線、頭頂三點單眼符號、車尾腹節環）；不含任何廠商 / 作品名稱、商標或角色圖像。
@@ -16,7 +16,7 @@ import { monoCurve, buildStations, sdCircle } from './gazelleLeap.js';
 const X_TAIL = -59;
 /** @type {number} 鼻端 x */
 const X_NOSE = 60;
-/** @type {number} 脈翅翅尖 x（iter-125：超出車尾殼面 8 → 14 mm，分叉的兩個翅尖像蟬翼蓋過腹端） */
+/** @type {number} 脈翅翅尖 x（超出車尾殼面 14 mm，分叉的兩個翅尖像蟬翼蓋過腹端） */
 const X_TIP = -73;
 
 /** 縱向控制節點（x 由後到前；前後軸 x = ±40） */
@@ -26,14 +26,14 @@ const XS = [-59, -54, -49, -40, -30, -20, -8, 4, 12, 18, 24, 30, 40, 46, 50, 54,
  * - yR：屋脊（中線）高度。尾端 29 → 後輪上方 37.8 → 屋脊最高 41（x −8）→ 往前降到頭部 33.4 → 鈍鼻 23（短鼻：鼻端離前軸 20 mm）
  * - yE：屋簷（帳篷斜面與側壁的交線）高度。後輪上方 31.8（31 mm 輪頂 28.5＋間隙＋壁厚）、兩輪之間降到 26.6（帳篷斜面最陡）、
  *   頭部 32.4（幾乎和屋脊同高 → 寬而平的頭）
- * - hw：半寬。俯視最寬 46 在前輪後方（x 4–12，脈翅肩部）、往前收到頭部 37（複眼燈再往外突出約 4 mm）、往後收到後輪 37.6、尾端 16
+ * - hw：半寬。俯視最寬 46 在前輪後方（x 4–12，脈翅肩部）、往前收到頭部 37（複眼再往外凸出約 1 mm）、往後收到後輪 37.6、尾端 16
  * - yLow：側壁下緣
  * @type {Record<string, (x: number) => number>}
  */
 const P = {
   yR: monoCurve(XS, [29, 32.6, 35, 37.8, 39.6, 40.5, 41, 40.7, 39.2, 37, 34.6, 33.6, 33.4, 33.2, 32.8, 31.6, 29.2, 23]),
   yE: monoCurve(XS, [24, 26.8, 29.2, 31.8, 29.4, 27.2, 26.6, 27.4, 29, 30.8, 31.8, 32.3, 32.4, 32.2, 31.7, 30.5, 27.8, 22]),
-  // iter-70：頭部前段改成往前收圓的「臉」（x 54 → 60：36 / 34 / 30 / 27 → 33.5 / 29.5 / 25 / 21），不再是方盒；前緣下方另加下顎前唇
+  // 頭部前段是往前收圓的「臉」（x 54 → 60：33.5 / 29.5 / 25 / 21），不是方盒；前緣下方另有下顎前唇
   hw: monoCurve([-59, -56, -51, -46, -40, -30, -20, -8, 4, 12, 20, 26, 32, 40, 48, 54, 57, 59, 60], [21, 28, 34, 37, 37.6, 39.5, 42, 44.5, 46, 46, 44, 41, 38.5, 37.2, 36.6, 33.5, 29.5, 25, 21]),
   yLow: monoCurve(XS, [18, 16, 14, 13, 13, 13.5, 14, 14, 13.8, 13.5, 13.5, 13.5, 13.2, 13.2, 13.3, 13.6, 14.2, 15]),
 };
@@ -65,7 +65,7 @@ const profile = (x) => {
 const STATIONS = [...buildStations(X_TAIL, -48, 1, profile).slice(0, -1), ...buildStations(-48, 48, 2, profile).slice(0, -1), ...buildStations(48, X_NOSE, 0.75, profile)];
 
 /**
- * 帳篷斜面高度（屋脊 → 屋簷的直線；車尾殼面之後依最後 7 mm 的斜率線性外插，給超出車尾的脈翅尖尾用）
+ * 帳篷斜面高度（屋脊 → 屋簷的直線；車尾殼面之後取車尾殼面處同一 |z| 的高度、每 mm 往下 0.45 mm，給超出車尾的脈翅翅尖用）
  * @type {(x: number, z: number) => number}
  */
 const tentY = (x, z) => {
@@ -75,7 +75,7 @@ const tentY = (x, z) => {
     const yE = Math.min(P.yE(x), yR - 0.3);
     return yR - ((yR - yE) * az) / zEave(x);
   }
-  // iter-125：翅尖分叉後不在中線（|z| 最大約 16），改成取車尾殼面處同一 |z| 的斜面高度，再每 mm 往下 0.45 mm（翅尖微下垂）
+  // 分叉的翅尖不在中線（|z| 最大約 16），所以取車尾殼面處同一 |z| 的斜面高度，再每 mm 往下 0.45 mm（翅尖微下垂）
   const yE0 = Math.min(P.yE(X_TAIL), P.yR(X_TAIL) - 0.3);
   const y0 = P.yR(X_TAIL) - ((P.yR(X_TAIL) - yE0) * Math.min(az, zEave(X_TAIL))) / zEave(X_TAIL);
   return y0 + 0.45 * (x - X_TAIL);
@@ -83,15 +83,14 @@ const tentY = (x, z) => {
 
 /**
  * 脈翅俯視外形：外緣 zOut(x)（翅根在駕駛艙前 x 24；最寬 48.5 在 x −6，越過屋簷往外伸出約 4 mm＝收起的蟬翼比身體寬）。
- * iter-125（第九階段，評審：「大片琥珀翅罩蓋住整台車，像甲蟲蓋子」→「後緣分叉成左右兩片後翼，露出黑色車尾」）：
- * 兩片脈翅不再在中線收攏，各自往後外收成一個翅尖（x −73、|z| 18.5，超出車尾殼面 14 mm），翅尖往後外分叉；中間露出炭黑腹節車尾
+ * 兩片脈翅不在中線收攏（整片琥珀翅罩蓋住車尾會像甲蟲蓋子），各自往後外收成一個翅尖（x −73、|z| 18.5，超出車尾殼面 14 mm），翅尖往後外分叉；中間露出炭黑腹節車尾
  */
 const WING_X = [-73, -69, -64, -59, -54, -46, -34, -20, -6, 6, 14, 20, 24];
 const wingOut = monoCurve(WING_X, [18.6, 21.6, 23.4, 24.6, 28.5, 34, 40, 45.5, 48.5, 46, 36, 20, 1.8]);
 /** @type {number} 翅後緣開始分叉的 x（此處之後內緣往外斜開） */
 const X_FORK = -26;
 /**
- * 脈翅內緣（沿屋脊留 1.4 mm 炭黑脊條；iter-125：x −26 之後內緣往外斜開到翅尖 |z| 18.4 → 兩翅之間是往後張開的 V 形缺口，露出黑色車尾）
+ * 脈翅內緣（沿屋脊留 1.4 mm 炭黑脊條；x −26 之後內緣往外斜開到翅尖 |z| 18.4 → 兩翅之間是往後張開的 V 形缺口，露出黑色車尾）
  * @type {(x: number) => number}
  */
 const wingIn = (x) => (x > X_FORK ? 1.4 : 1.4 + ((X_FORK - x) / (X_FORK - X_TIP)) * 17);
@@ -248,10 +247,8 @@ const materials = () => ({
   inner: namedMaterial('shell-inner-dark', { color: 0x18191b, roughness: 0.85, side: THREE.BackSide }),
   edge: namedMaterial('shell-edge-charcoal', { color: 0x3a3d42, roughness: 0.5, side: THREE.DoubleSide }),
   slot: namedMaterial('plastic-gill-black', { color: 0x08090a, roughness: 0.9, side: THREE.DoubleSide }),
-  // 半透明琥珀脈翅（iter-70：pc-smoke-amber → pc-tint-amber。Blender 依名稱 pc-tint → 有色透明 PC 薄殼材質 glass_tint（保留色相、不加煙燻灰，
-  // 舊名 pc-smoke 會被當煙燻 PC 而變成黑玻璃）；app 端提高明度、降低不透明度，看得出半透明琥珀而不是不透明橘）
-  // iter-125（第九階段，評審：「翅罩改半透明煙燻琥珀」）：明亮琥珀 0xf2b040 → 煙燻琥珀 0xa8691c、不透明度 0.3 → 0.42；
-  // 名稱仍以 pc-tint- 開頭（Blender 走有色透明 PC，保留色相，不會變成黑玻璃）
+  // 半透明煙燻琥珀脈翅（0xa8691c、不透明度 0.42）：名稱以 pc-tint- 開頭，Blender 依名稱 pc-tint → 有色透明 PC 薄殼材質 glass_tint
+  // （保留色相、不加煙燻灰；以 pc-smoke 開頭會被當煙燻 PC 而變成黑玻璃）
   amber: namedMaterial('pc-tint-amber-smoke', { color: 0xa8691c, roughness: 0.03, specularIntensity: 0.9, transparent: true, opacity: 0.42, envMapIntensity: 0.9, depthWrite: false, side: THREE.DoubleSide }),
   vein: namedMaterial('paint-vein-umber', { color: 0x2b1b0d, roughness: 0.35, clearcoat: 0.6 }),
   mint2: namedMaterial('paint-bright-mint-green', { color: 0x5fe0b0, roughness: 0.22, clearcoat: 1.0, side: THREE.DoubleSide }),
@@ -299,7 +296,7 @@ export const cicadaVeilBody = makePolyBody({
     parts.push({ geometry: mergeGeos([vR.veins, vL.veins]), mat: 'vein', name: 'wing-veins' });
     parts.push({ geometry: mergeGeos([vR.costa, vL.costa]), mat: 'vein', name: 'wing-costa' });
 
-    // 複眼（iter-70）：由外突圓球燈改成貼合頭部外上角的扁平多面複眼（20 面體細分一次的 80 個平面小眼面，只凸出殼面約 1 mm），
+    // 複眼：貼合頭部外上角的扁平多面複眼（20 面體細分一次的 80 個平面小眼面，只凸出殼面約 1 mm），
     // 沿屋簷角往外上傾 29°；和 mantis / dartfrog 的外突圓頂眼燈區隔
     /** @type {THREE.BufferGeometry[]} */
     const eyes = [];
@@ -313,7 +310,7 @@ export const cicadaVeilBody = makePolyBody({
       eyes.push(g);
     }
     parts.push({ geometry: mergeGeos(eyes), mat: 'eye', solid: true, outline: true, name: 'compound-eye-facets' });
-    // 下顎前唇（iter-70）：鼻端下緣往前伸 3.5 mm 的薄板，中央有一道 V 形口器缺口（頭部前緣不再是平切方塊）
+    // 下顎前唇：鼻端下緣往前伸 3.5 mm 的薄板，中央有一道 V 形口器缺口（讓頭部前緣不是平切方塊）
     const lip = new THREE.Shape();
     lip.moveTo(55, -19);
     lip.lineTo(60, -15.5);
@@ -334,7 +331,7 @@ export const cicadaVeilBody = makePolyBody({
 
     // 屋脊薄荷綠細線（從翅根到車尾，沿炭黑脊條）
     parts.push({ geometry: kit.decal((x, y, z) => Math.min(0.45 - Math.abs(z), x + 57.5, 20 - x)), mat: 'dMint', name: 'decal-ridge-line' });
-    // iter-125：兩翅分叉後露出的炭黑車尾上，3 道往前彎的薄荷綠腹節環（蟬的腹節；V 尖朝前、越往後越短），只畫在兩翅內緣之間
+    // 兩翅分叉處露出的炭黑車尾上，3 道往前彎的薄荷綠腹節環（蟬的腹節；V 尖朝前、越往後越短），只畫在兩翅內緣之間
     parts.push({
       geometry: kit.decal((x, y, z) => {
         const az = Math.abs(z);

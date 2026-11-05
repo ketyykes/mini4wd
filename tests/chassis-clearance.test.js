@@ -6,8 +6,8 @@ import { solidGap, sdf, solidBox } from '../src/parts/clearance.js';
 import { buildCarModel } from '../src/model.js';
 import * as THREE from 'three';
 
-// iter-111：MA 側制振器座改成外掛式（側板底面齊底盤底面 y 2.2、配重中心 z ±44，見 chassis.js src.sideDamperMount）；
-// 舊的「側裙頂面＋6 mm 墊管」座位仍用 chassis 覆寫檢查：墊管不足時配重被底盤實體擋下
+// MA 側制振器座是外掛式（側板底面齊底盤底面 y 2.2、配重中心 z ±44，見 chassis.js src.sideDamperMount；查證紀錄：ITERATION_LOG iter-111）；
+// 「側裙頂面＋6 mm 墊管」的座位用 chassis 覆寫檢查：墊管不足時配重被底盤實體擋下
 test('P18_side_mount 缺墊管的配重被底盤實體擋下，正確安裝的全行程保留間隙', () => {
   for (const id of ['damper-side-square', 'damper-side-square-32', 'damper-square-8x8x14', 'damper-square-8x8x32', 'damper-ar-side']) {
     const config = { ...loadConfig('default'), body: null, massDamper: id };
@@ -59,7 +59,7 @@ test('P14_side_geometry 外觀與干涉使用相同側裙、側壁、支撐塊�
   }
   const plates = [], spacers = [];
   model.traverse(o => { if (o.name === 'side-damper-mount-plate') plates.push(o); if (o.name === 'side-damper-mount-spacer') spacers.push(o); });
-  // iter-111 外掛式：側板 19 mm 長、從側壁外側 z 36.4 伸到配重外緣 44＋3.25，不用墊管
+  // 外掛式側座：側板 19 mm 長、從側壁外側 z 36.4 伸到配重外緣 44＋3.25，不用墊管（查證紀錄：ITERATION_LOG iter-111）
   expect(plates).toHaveLength(2); expect(spacers).toHaveLength(0);
   asm.optional.dampers.forEach((d, i) => check(plates[i], d.adapter.plate));
   const fixed = 2 * (19 * (44 + 3.25 - 36.4) * 1.5 * 1.85 / 1000 + 19 * 6 * 1 * 0.12 / 1000);

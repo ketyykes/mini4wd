@@ -1,4 +1,4 @@
-// 第四階段新致敬款 B 組的車殼註冊（由 B 組 subagent 維護；index.js 只匯入這個陣列）
+// 新致敬款的車殼註冊（gazelle-leap / halo-orbit / dartfrog-hop；index.js 只匯入這個陣列）
 import { gazelleLeapBody } from './gazelleLeap.js';
 import { haloOrbitBody } from './haloOrbit.js';
 import { dartfrogHopBody } from './dartfrogHop.js';

@@ -1,4 +1,4 @@
-// B15（iter-100）：切輪拱改裝（config.bodyArchCut）
+// B15：切輪拱改裝（config.bodyArchCut）
 import { describe, test, expect, beforeAll } from 'vitest';
 import * as THREE from 'three';
 import { assemble, loadConfig } from '../src/assembly.js';
@@ -16,8 +16,8 @@ beforeAll(async () => {
 const cfg = (over) => ({ ...loadConfig('default'), ...over });
 const neutral = new Proxy({}, { get: () => new THREE.MeshStandardMaterial() });
 
-// 第八階段（iter-112）：車殼由 19 款增加到 25 款以上，原本單一測試逐款切輪拱會超過 120 秒逾時（工作量隨款數線性增加，不是負載）。
-// 依規定不延長逾時，改成每款一個測試（斷言完全相同），最後一個測試檢查「既有 19 款中原本被擋的剛好 9 款」；神話款另外計數
+// 每款車殼一個測試：車殼有 25 款以上，單一測試逐款切輪拱會超過 120 秒逾時（工作量隨款數線性增加，不是負載）。
+// 依規定不延長逾時（斷言和合在單一測試時完全相同；查證紀錄：ITERATION_LOG iter-112），最後一個測試檢查「既有 19 款中原本被擋的剛好 9 款」；神話款另外計數
 /** @type {{ legacy: number, myth: number, checked: number }} 原本被 BODY_TIRE_CLEARANCE 擋下的款數 */
 const archCutTally = { legacy: 0, myth: 0, checked: 0 };
 

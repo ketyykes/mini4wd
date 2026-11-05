@@ -1,4 +1,4 @@
-// P06 穿透診斷（iter-01）：比較 Rapier 步長、求解迭代、允許穿透等設定下，單圈中導輪對牆的最大穿透
+// P06 穿透診斷：比較 Rapier 步長、求解迭代、允許穿透等設定下，單圈中導輪對牆的最大穿透
 import { test } from 'vitest';
 import { spec } from '../../src/spec.js';
 import { buildCircuit } from '../../src/track.js';

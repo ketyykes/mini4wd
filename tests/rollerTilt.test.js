@@ -1,4 +1,4 @@
-// B1（iter-101）：導輪軸跟著車體傾斜。圓柱導輪側傾 φ 時，朝牆的水平伸展 = r·cosφ + (h/2)·|sinφ|（較靠牆的那一緣），接觸點在那一緣上
+// B1：導輪軸跟著車體傾斜。圓柱導輪側傾 φ 時，朝牆的水平伸展 = r·cosφ + (h/2)·|sinφ|（較靠牆的那一緣），接觸點在那一緣上
 import { test, expect, beforeAll } from 'vitest';
 import { assemble, loadConfig } from '../src/assembly.js';
 import { buildStraight } from '../src/track.js';

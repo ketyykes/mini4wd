@@ -1,4 +1,4 @@
-// B13（iter-105）：p7-demo {s 0.15, lane 0, soc 0.9} 牆接觸求解 256 次未收斂——抓出那一步，分析收斂行為
+// B13：p7-demo {s 0.15, lane 0, soc 0.9} 牆接觸求解 256 次未收斂——抓出那一步，分析收斂行為
 import { test, beforeAll } from 'vitest';
 import { writeFileSync } from 'node:fs';
 import { assemble, loadConfig } from '../../src/assembly.js';

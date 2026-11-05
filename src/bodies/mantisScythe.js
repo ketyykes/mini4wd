@@ -1,4 +1,4 @@
-// 螳螂鐮刀伏擊型（body-mantis-scythe，第六階段 LG1 致敬款）：俯視倒三角小頭＋兩顆大複眼燈、斷面三角形的細長「前胸」引擎蓋、
+// 螳螂鐮刀伏擊型（body-mantis-scythe，LG1 致敬款）：俯視倒三角小頭＋兩顆大複眼燈、斷面三角形的細長「前胸」引擎蓋、
 // 左右前擋泥板各自成量體，頂面各貼一片往後摺的鐮刀片（刃朝後）；座艙後置的開放座艙＋極低擋風片＋駕駛人剪影；
 // 後輪由寬而圓的「腹部」包住，車尾兩片細長葉形平板翼左右錯開疊合（收起的翅膀，從腹部直接長出、無支柱）。
 // 設計：shared/design/body-mantis-scythe/DESIGN.md（角色、LG1 語彙 L1-x、和劇中車 / 市售車殼的差異）。
@@ -24,8 +24,8 @@ const XS = [-70, -66, -60, -52, -44, -36, -26, -16, -6, 4, 14, 22, 30, 40, 50, 5
  * - yC：中線高度。腹部 31（後輪上方）→ 座艙段 28.5 → 前胸脊線往前降到 24（底盤齒輪箱頂約 21，殼內面要高過它）→ 頸部 23.1 → 小頭 23 → 鼻尖 14
  * - yF：前擋泥板稜線（前輪上方 29.6，比前胸高 → 擋泥板成為獨立量體，L1-2）；腹部段不用
  * - hw：半寬。後輪上方 36.5（寬圓腹部）、腰部收到 21.5（俯視沙漏形：前胸 / 腹部分節；|z| < 28 的側壁下緣抬到 22.6，跨在底盤內件之上）、前擋泥板 42.5、小頭 13–14 → 鼻尖 5.6（俯視倒三角，鼻端小平面）
- *   iter-69：腰部加炭灰側板（俯視外擴到 28.4）後，和 marlin-sail 俯視 IoU 0.85 → 0.88；改成「更寬的前肢擋泥板（37 → 42.5）＋更窄的頸 / 小頭
- *   （22 → 13）＋往後收尖的腹部末端（x −60 / −66：33 / 22 → 25.5 / 12）＋腹部略收（38 → 36.5）」把俯視平面拉開（螳螂的寬前肢、小頭、尖腹）
+ *   腰部的炭灰側板俯視外擴到 28.4，會讓和 marlin-sail 的俯視 IoU 升高；所以用「寬的前肢擋泥板（42.5）＋窄的頸 / 小頭
+ *   （13）＋往後收尖的腹部末端（x −60 / −66：25.5 / 12）＋略收的腹部（36.5）」把俯視平面拉開（螳螂的寬前肢、小頭、尖腹）
  * - yLow：側壁下緣
  * @type {Record<string, (x: number) => number>}
  */
@@ -60,7 +60,7 @@ const profile = (x) => {
   const yF = Math.max(P.yF(x), yC - 1.2);
   const zF = Math.min(29.5 * k + 0.7 * Math.max(0, hw - 37.2), hw - 2.6);
   // 前胸谷底：x 22–54 的 |z| ≤ 26 範圍內底盤內件最高約 21 mm → 外殼至少 22.4（內面 21.6）
-  // iter-69：原本在 x 55 由 22.4 直接跳到 18.6 → 谷底點在擋泥板前緣斷開 2.4 mm（鼻部 / 頸部的皺褶來源），改成 x 54–59 平滑過渡
+  // x 54–59 平滑過渡到 18.6：在 x 55 直接跳下去的話，谷底點會在擋泥板前緣斷開（鼻部 / 頸部出現皺褶）
   const vFloor = x > 22 ? lerp(22.4, 18.6, smoothstep(54, 59, x)) : 18.6;
   const yV = Math.max(Math.min(yC - 3.6, yF - 3), Math.min(vFloor, yC - 1.2));
   const yFi = smoothMax(Math.min(yF - 1.2, lerp(yV, yF, 0.7)), Math.min(frontFenderFloor(x), yF - 0.6), 0.6);
@@ -87,8 +87,8 @@ const profile = (x) => {
   if (h <= 0) {
     return body;
   }
-  // iter-69（評審 iter-67「鼻部有皺褶」）：鼻尖附近 yC 降到 14，原本肩點 yC − 3.8 會低於下緣 11.6 → 剖面往回折（皺褶）。
-  // 改成依可用高度 (yC − 下緣) 等比縮小圓頂落差與肩點，剖面永遠由上往下單調
+  // 鼻尖附近 yC 降到 14，肩點若固定取 yC − 3.8 會低於下緣 11.6 → 剖面往回折（皺褶）。
+  // 所以依可用高度 (yC − 下緣) 等比縮小圓頂落差與肩點，剖面永遠由上往下單調
   const yBot = Math.min(yLow, Math.max(yC - 4.8, 11.6));
   const sHead = Math.min(1, Math.max(0.2, (yC - yBot - 0.6) / 4.8));
   const head = fr.map((q) => [q * hw, yC - 3.2 * sHead * q * q]);
@@ -117,7 +117,7 @@ const COCKPIT = {
 
 /** @type {() => Record<string, THREE.Material>} */
 const materials = () => ({
-  // iter-61 起 paint-bright- 開頭 → Blender 以亮面實色漆算（萊姆綠要亮，不要灰）
+  // paint-bright- 開頭 → Blender 以亮面實色漆算（萊姆綠要亮，不要灰）
   lime: namedMaterial('paint-bright-lime-green', { color: 0x8fd12a, roughness: 0.2, clearcoat: 1.0, clearcoatRoughness: 0.05 }),
   lime2: namedMaterial('paint-bright-lime-green', { color: 0x8fd12a, roughness: 0.2, clearcoat: 1.0, side: THREE.DoubleSide }),
   graphite: namedMaterial('paint-graphite-charcoal', { color: 0x2e3236, roughness: 0.28, metalness: 0.25, clearcoat: 0.9, clearcoatRoughness: 0.08 }),
@@ -220,9 +220,9 @@ const buildWindscreen = (x0, y0) => {
   };
 };
 
-/** @type {number} 鐮刀片從擋泥板頂面隆起的高度（iter-73：1.6 → 3.2 mm） */
+/** @type {number} 鐮刀片從擋泥板頂面隆起的高度（mm） */
 const BLADE_RISE = 3.2;
-/** @type {number[]} 收翅尖端高度 [左片, 右片]（iter-73：32.2 / 33 → 41 / 42.5，立起一個角度） */
+/** @type {number[]} 收翅尖端高度 [左片, 右片]（讓翅膀沿長度立起一個角度） */
 const WING_TIP_Y = [41, 42.5];
 
 /** @type {number[][]} 鐮刀片中心線（俯視 (x, |z|)）：根部在擋泥板前內角，往後外彎到刃尖 */
@@ -264,7 +264,7 @@ const scytheSd = (x, z) => {
 };
 
 /**
- * 腰部炭灰側板（iter-69，評審 iter-67「細腰處整段露出電池與底盤側框」）：前後輪拱之間，從殼面下緣往外伸出一道圓角肩、再往下垂到底盤側框上方，
+ * 腰部炭灰側板：前後輪拱之間，從殼面下緣往外伸出一道圓角肩、再往下垂到底盤側框上方，
  * 側視把電池艙整段遮住；俯視只外擴到 |z| 28.4（電池艙頂蓋外緣 26.5 ＋ 間隙 ≥ 1 mm），萊姆綠的沙漏殼面不變。
  * 斷面為封閉 L 形薄板（厚 0.9 mm）：腰部 = 肩台（y ≈ 23）＋圓角 R2.5 ＋ 垂直側板；腹部 / 擋泥板段 = 側壁內側 0.4 mm 往下延伸的垂直板。
  * 下緣 y 10.6（底盤側框禁入區 y ≤ 9.9 之上），前後端以 R4 圓角往上收。
@@ -387,14 +387,14 @@ export const mantisScytheBody = makePolyBody({
     /** @type {BodyPart[]} */
     const parts = [];
     const topY = (x, z) => kit.surf.topY(x, z);
-    // 鐮刀片（L1-5 的唯一刃形元素）：前擋泥板頂面隆起 1.6 mm 的炭灰片，凹側（朝後內）是番茄紅鋸齒刃
+    // 鐮刀片（L1-5 的唯一刃形元素）：前擋泥板頂面隆起 3.2 mm 的炭灰片，凹側（朝後內）是番茄紅鋸齒刃
     /** @type {KeepFn} */
     const bladeKeep = (x, y, z) => (y < 22 ? -1 : -scytheSd(x, Math.abs(z)).d);
-    // iter-73（評審 iter-72「刃片不明顯」）：隆起 1.6 → 3.2 mm，刃片側視也看得出一道立起的鐮刀
+    // 隆起 3.2 mm：刃片側視也看得出一道立起的鐮刀
     const blade = buildRegion(kit.surf, [...kit.holes, bladeKeep], { offset: BLADE_RISE });
     parts.push({ geometry: blade.geometry, mat: 'graphite2', shell: true, name: 'scythe-blades' });
     parts.push({ geometry: buildRim(blade, 0, BLADE_RISE), mat: 'graphite2', name: 'scythe-blade-walls' });
-    /** @type {KeepFn} 刃：凹側 1 mm 寬的帶，帶鋸齒（每段 u 1/9 一齒） */
+    /** @type {KeepFn} 刃：凹側 1.1–2.4 mm 寬的帶，帶鋸齒（每段 u 1/9 一齒） */
     const edgeKeep = (x, y, z) => {
       if (y < 22) {
         return -1;
@@ -403,7 +403,7 @@ export const mantisScytheBody = makePolyBody({
       if (s.side <= 0 || s.u > 0.93) {
         return -1;
       }
-      // iter-73：刃帶 0.75–1.65 → 1.1–2.4 mm 寬，番茄紅鋸齒刃在遠景也讀得出來
+      // 刃帶 1.1–2.4 mm 寬：番茄紅鋸齒刃在遠景也讀得出來
       const tooth = 1.1 + 1.3 * Math.abs(((s.u * 9) % 1) - 0.5) * 2;
       return Math.min(-s.d, s.d + tooth);
     };
@@ -415,7 +415,7 @@ export const mantisScytheBody = makePolyBody({
     const ringsDark = [];
     /** @type {THREE.BufferGeometry[]} */
     const ringsLime = [];
-    // iter-71（評審 iter-69「複眼燈有一半嵌進擋泥板邊緣、旁邊有折痕」）：燈往前移 1.8 mm、半徑 3.5 → 3.3，外環收小，整顆落在小頭上、離開擋泥板前面
+    // 燈的位置、半徑（3.3）與外環大小要讓整顆落在小頭上、離開擋泥板前面：嵌進擋泥板邊緣時旁邊會出現折痕
     const EYE = { x: 63.3, z: 10.2, r: 3.3 };
     const eyeY = topY(EYE.x, EYE.z) + 0.6;
     for (const sg of [-1, 1]) {
@@ -438,9 +438,9 @@ export const mantisScytheBody = makePolyBody({
     parts.push({ geometry: mergeGeos(eyes), mat: 'eye', solid: true, outline: true, name: 'compound-eye-lamps' });
     parts.push({ geometry: mergeGeos(ringsDark), mat: 'graphite2', solid: true, name: 'eye-rings-dark' });
     parts.push({ geometry: mergeGeos(ringsLime), mat: 'lime2', solid: true, name: 'eye-rings-lime' });
-    // 收起的翅膀（folded-wings）：兩片細長葉形平板，左片在下、右片在上（往後錯開 7 mm、抬高 0.9 mm），在中線疊合；尖端翹到 y 33
-    // iter-73（評審 iter-72「收翅平貼在車背上、比概念圖縮小很多」）：尖端 y 32.2 / 33 → 41 / 42.5，翅膀沿長度立起約 10°；
-    // 俯視根部與尖端 (x, z) 不變（俯視投影不變大，維持和 marlin-sail / aero-wing 的 IoU）
+    // 收起的翅膀（folded-wings）：兩片細長葉形平板，左片在下、右片在上（往後錯開 7 mm、抬高 0.9 mm），在中線疊合；
+    // 尖端翹到 y 41 / 42.5，翅膀沿長度立起約 10°（不平貼在車背上）；
+    // 只抬高尖端，俯視的根部與尖端 (x, z) 不動（俯視投影不變大，維持和 marlin-sail / aero-wing 的 IoU）
     const wingL = { root: [-19, -6.8], tip: [-71.5, 2.2], width: 8.6, thick: 1.15, topY, yTip: WING_TIP_Y[0] };
     const wingR = { root: [-26, 6.8], tip: [-73.5, -2.0], width: 8.6, thick: 1.15, topY, yTip: WING_TIP_Y[1], lift: 0.9 };
     parts.push({ geometry: mergeGeos([leafPlate(wingL), leafPlate(wingR)]), mat: 'graphite2', solid: true, outline: true, name: 'folded-wings' });
@@ -479,7 +479,7 @@ export const mantisScytheBody = makePolyBody({
       }
     }
     parts.push({ geometry: mergeGeos(veins), mat: 'lime2', name: 'wing-veins' });
-    // 腰部炭灰側板（iter-69）：遮住細腰下方的電池艙（outline：屬於車殼外形，計入輪廓）
+    // 腰部炭灰側板：遮住細腰下方的電池艙（outline：屬於車殼外形，計入輪廓）
     parts.push({ geometry: mergeGeos([buildWaistPanel(1), buildWaistPanel(-1)]), mat: 'graphite2', solid: true, outline: true, name: 'waist-side-panels' });
     // 擋風片與駕駛
     const ws = buildWindscreen(-0.4, P.yC(-1) - 1.4);
@@ -489,7 +489,7 @@ export const mantisScytheBody = makePolyBody({
     const drv = buildDriver(-13, deck, 1.2);
     parts.push({ geometry: drv.body, mat: 'driver', solid: true, name: 'cockpit-driver' });
     parts.push({ geometry: drv.helmet, mat: 'helmet', solid: true, name: 'cockpit-helmet' });
-    // 頭 / 前胸分件線（iter-71，評審 iter-69「頭與擋泥板的交界做成乾淨的分件線」）：x 58.4 一圈 0.5 mm 炭灰細線，
+    // 頭 / 前胸分件線：x 58.4 一圈 0.5 mm 炭灰細線，
     // 把小頭讀成一個獨立的頭殼件
     parts.push({
       geometry: kit.decal((x, y) => (y < 12 ? -1 : 0.25 - Math.abs(x - 58.4)), { offset: 0.06 }),

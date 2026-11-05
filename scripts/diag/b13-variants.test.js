@@ -1,4 +1,4 @@
-// B13 診斷（iter-102）：導輪實測滾動阻力／軸向滑動摩擦各自對三圈的影響
+// B13 診斷：導輪實測滾動阻力／軸向滑動摩擦各自對三圈的影響
 import { test, beforeAll } from 'vitest';
 import { assemble, loadConfig } from '../../src/assembly.js';
 import { buildCircuit } from '../../src/track.js';

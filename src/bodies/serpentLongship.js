@@ -1,11 +1,11 @@
-// 蛇首長船（body-serpent-longship，第八階段神話組・北歐）：維京長船意象的低船身——側面 4 道往外疊的疊板（clinker）稜線、
-// 船舷上緣每側 5 面圓盾、iter-115 起甲板封成和船舷齊平、中央微拱的木板蓋板（只留一個小座艙口，評審：開放船斗不像比賽用車殼），船首柱往上彎成 S 形蛇頸、頂端是有眼、口、眉稜的蛇頭（沒有牙與角），船尾往上捲成 stern-curl 尾翼。
-// iter-120（第九階段：LG1 低風阻楔形＋神話元素做成車身零件）：船首不再翹起，改成往前下壓的楔形鼻、船首柱高頸拿掉，蛇頭變成往前下伸的低平鼻錐衝角（封住車頭）；
-// 疊板沿前低後高的船舷線排成側面速度線（最上一道漆赭紅＝沿船側延伸的蛇身賽車條），圓盾降到船舷下排成一列，船尾捲飾縮成小鴨尾擾流，蛇眼自發光。頂高 58.5 → 43。
-// iter-114：船殼加寬並往下包（船舷在前後輪上方蓋住輪胎上半部、中段側面往下到 y 10 擋住電池艙），原本整艘船架在底盤上、四輪與電池艙全露。
+// 蛇首長船（body-serpent-longship，神話組・北歐）：維京長船意象的低船身（LG1 低風阻楔形）——側面 4 道往外疊的疊板（clinker）稜線、
+// 船舷下每側 5 面圓盾、甲板是和船舷齊平、中央微拱的木板蓋板（只留一個小座艙口；開放船斗不像比賽用車殼），船首是往前下壓的楔形鼻，
+// 蛇頭是往前下伸的低平鼻錐衝角（有眼、口、眉稜，沒有牙與角；封住車頭），船尾是 stern-curl 小鴨尾擾流（尾翼）；
+// 疊板沿前低後高的船舷線排成側面速度線（最上一道漆赭紅＝沿船側延伸的蛇身賽車條），圓盾在船舷下排成一列，蛇眼自發光。頂高 43。
+// 船殼寬並往下包（船舷在前後輪上方蓋住輪胎上半部、中段側面往下到 y 10 擋住電池艙），四輪與電池艙不外露。
 // 設計：shared/design/body-serpent-longship/DESIGN.md（典故、借用的古代語彙、和市售車殼 / 現代作品 / 既有車殼的差異）。
 // 造型回到出土文物（MYTH_RESEARCH N1、N2、N5–N7）：Oseberg 船艏柱盤捲的蛇（現存名船都不是龍頭）、Gokstad 陪葬的整船盾牌、疊板船殼的鉚釘列；
-// 不做整車龍頭（避開市售 Dragon Jr. 系列；船首只有船首柱頂端的小蛇頭）、不用任何盧恩字母或符號、不用白藍配色。
+// 不做整車龍頭（避開市售 Dragon Jr. 系列；船首只有一顆低平的蛇頭鼻錐）、不用任何盧恩字母或符號、不用白藍配色。
 // 塗裝全為自創：焦油黑褐船殼＋赭紅 / 奶油白對半分區的圓盾＋青銅盾心與鉚釘點列＋疊板邊緣淺木色細線；不含任何文字、號碼、商標。
 import * as THREE from 'three';
 import { makePolyBody } from './polyBody.js';
@@ -19,24 +19,23 @@ import { buildArchWell, chassisBlockedNearArch } from './kitsuneNinetail.js';
 const XS = [-66, -62, -56, -48, -40, -28, -14, 0, 14, 28, 40, 48, 56, 63, 69, 73];
 /** @type {Record<string, (x: number) => number>} */
 const P = {
-  // 船舷上緣（sheer line）：中段最低 32.5，往船首 / 船尾翹起（長船的弦弧）
-  // iter-120（第九階段：LG1 低風阻楔形；基準評審：船首船尾翹高、中段凹像擺件船）：船首不再翹起，改成往前下壓的楔形鼻（x 40 的 33.6 → 船首尖 19，V3 鼻尖低），
-  // 中段幾乎水平（33.3），船尾只微微上揚成鴨尾（38.6）。前後輪上方甲板仍 ≥ 31.3（31 mm 輪拱頂 30.5 之上）
+  // 船舷上緣（sheer line，LG1 低風阻楔形）：船首是往前下壓的楔形鼻（x 40 的 33.6 → 船首尖 19，V3 鼻尖低），
+  // 中段幾乎水平（33.3），船尾只微微上揚成鴨尾（38）；船首船尾翹高、中段凹會像擺件船。前後輪上方甲板 ≥ 31.3（31 mm 輪拱頂 30.5 之上）
   sheer: monoCurve(XS, [38, 37.1, 36, 34.8, 33.6, 33.4, 33.3, 33.2, 33.2, 33.3, 33.6, 31.5, 27, 23.5, 20.6, 19]),
-  // 船舷半寬（iter-114 加寬）：中段最寬 38（寬 76 × 長 139，比例像 Gokstad 型的寬腹長船），前後輪上方仍有 35.5（船舷蓋住輪胎上半部，
-  // 31 mm 輪胎外側面 |z| 34.75），往船首 / 船尾收成兩頭尖的柳葉形。原本中段 26、輪上 16，四輪與電池艙全露在船殼外（iter-113 評審）
-  // iter-120：船首收尖段放寬成蛇頭鼻錐的底座（x 56 / 63 / 69 / 73：14 / 7.5 / 3.2 / 2.4 → 16 / 10.5 / 6.4 / 4）
+  // 船舷半寬：前後輪上方最寬 35（船舷蓋住輪胎上半部，31 mm 輪胎外側面 |z| 34.75），中段收到 27.5，
+  // 往船首 / 船尾收尖；船殼要夠寬，四輪與電池艙才不會全露在船殼外
+  // 船首收尖段放寬成蛇頭鼻錐的底座（x 56 / 63 / 69 / 73：16 / 10.5 / 6.4 / 4）
   hw: monoCurve(XS, [2.4, 4.5, 10, 21.5, 35, 30.5, 28, 27.5, 28, 30.5, 35, 25, 16, 10.5, 6.4, 4]),
-  // 船身下緣（iter-114 壓低）：中段 10（剛好在底盤側壁頂 9.4 之上，側面擋住電池艙；原本 13.2），往船首 / 船尾彎上去（龍骨前後上翹的 forefoot）；
-  // 前後卡榫處（x 52 / −50）約 15，遮住卡座吊耳；船首 / 船尾下緣也比原本壓低 2–4 mm，前後齒輪不從船尖下方露出
-  // iter-120：船首下緣不再往上翹（原本 20 / 27 / 34 的 forefoot 讓車頭開口露出底盤），壓成 15.6–16 封住車頭
+  // 船身下緣：中段 10（剛好在底盤側壁頂 9.4 之上，側面擋住電池艙），往船尾彎上去（龍骨上翹）；
+  // 前後卡榫處（x 52 / −50）約 15，遮住卡座吊耳；船首 / 船尾下緣壓低到前後齒輪不從船尖下方露出
+  // 船首下緣不往上翹（上翹的 forefoot 會讓車頭開口露出底盤），壓在 15.6–16 封住車頭
   yLow: monoCurve(XS, [33, 22, 16.5, 14, 12.5, 10.4, 10, 10, 10, 10.4, 12.5, 14.2, 15.5, 15.6, 15.8, 16]),
-  // 船底收向龍骨的下緣半寬（iter-114）：中段 34（船殼下段幾乎垂直往下，像龍骨側板）；前後輪處由輪拱切開（cutZFrom 21）
+  // 船底收向龍骨的下緣半寬：中段 25.5（船殼下段幾乎垂直往下，像龍骨側板）；前後輪處由輪拱切開（cutZFrom 21）
   keel: monoCurve(XS, [1.5, 3, 7.5, 18.5, 31, 28, 26, 25.5, 26, 28, 31, 21, 12.5, 7.5, 4.4, 2.6]),
 };
 
 /**
- * 甲板蓋板上的小座艙開口（iter-115）：原本中段整片下沉 10 mm 的開放甲板（評審：開放式船斗不像比賽用車殼）改成和船舷齊平的木板甲板，
+ * 甲板蓋板上的小座艙開口：甲板是和船舷齊平的木板蓋板（開放式船斗不像比賽用車殼），
  * 只在中段留一個 24 × 18 mm 的圓角方口（舵手 / 划手位），深 4.5 mm
  * @type {{ x0: number, x1: number, hz: number, r: number, depth: number }}
  */
@@ -62,9 +61,9 @@ const stationAt = (x) => {
   const yLow = P.yLow(x);
   const keel = Math.min(P.keel(x), hw - 0.5);
   const k = tipScale(x);
-  // iter-115：甲板蓋板只比船舷頂低 1.2 mm（船舷欄成一道低矮的護欄），不再下沉
+  // 甲板蓋板只比船舷頂低 1.2 mm（船舷欄成一道低矮的護欄），不下沉
   const deckY = sheer - 1.2;
-  // 船舷欄厚度（外側船殼到內壁）至少 1.5 mm：iter-114 修正——船首 / 船尾尖端原本只有 3k（< 殼厚 0.8），殼內面會從外側穿出（Blender 看到內面色塊）
+  // 船舷欄厚度（外側船殼到內壁）至少 1.5 mm：船首 / 船尾尖端只用 3k 的話會小於殼厚 0.8，殼內面會從外側穿出（Blender 看到內面色塊）
   const zi = Math.max(0.4, hw - Math.max(3 * k, 1.5));
   const yTop0 = sheer - 1.4;
   const h = (yTop0 - yLow) / STRAKES;
@@ -91,7 +90,7 @@ const profile = (x) => {
   const k = tipScale(x);
   /** @type {number[][]} */
   const pts = [
-    // 甲板中線拱起 2.2 mm（蓋板是一片弧面而不是平板；iter-120 由 3 mm 降低，減正面面積）
+    // 甲板中線拱起 2.2 mm（蓋板是一片弧面而不是平板；拱高壓低以減少正面面積）
     [0, s.deckY + 2.2 * k],
     [s.zi - 1.2 * k, s.deckY],
     [s.zi, s.sheer - 0.6],
@@ -141,7 +140,7 @@ const SHIELD_T = 0.6;
 
 /** @type {() => Record<string, THREE.Material>} */
 const materials = () => ({
-  // 霧面材質（基準評審 iter-112：神話款要有材質對比）：焦油木船殼、橡木甲板、盾面為霧面（roughness 0.6–0.75、低 clearcoat）
+  // 霧面材質（神話款要有材質對比）：焦油木船殼、橡木甲板、盾面為霧面（roughness 0.6–0.75、低 clearcoat）
   tar: namedMaterial('paint-tar-brown', { color: 0x2a1d16, roughness: 0.72, clearcoat: 0.08, clearcoatRoughness: 0.6 }),
   deck: namedMaterial('paint-deck-oak', { color: 0x6b4a2f, roughness: 0.78, clearcoat: 0 }),
   deck2: namedMaterial('paint-deck-oak', { color: 0x5a3d26, roughness: 0.78, clearcoat: 0, side: THREE.DoubleSide }),
@@ -152,9 +151,9 @@ const materials = () => ({
   // 蛇口內：深焦油紅（霧面）
   mouth: namedMaterial('paint-mouth-darkred', { color: 0x4a1610, roughness: 0.7, clearcoat: 0 }),
   bronze: namedMaterial('trim-bronze-brass', { color: 0xb08d57, metalness: 0.8, roughness: 0.32, clearcoat: 0.2 }),
-  // iter-120b 擋風罩：深色煙燻 PC（V5 有色座艙；名稱 pc-smoke → Blender 煙燻 PC）
+  // 擋風罩：深色煙燻 PC（V5 有色座艙；名稱 pc-smoke → Blender 煙燻 PC）
   smoke: namedMaterial('pc-smoke-umber', { color: 0x1c130d, roughness: 0.05, clearcoat: 1.0, transparent: true, opacity: 0.85 }),
-  // iter-120 蛇眼：自發光琥珀（炫砲手法 5）
+  // 蛇眼：自發光琥珀（炫砲手法 5）
   eye: namedMaterial('lamp-serpent-amber', { color: 0xffb02e, emissive: 0xff8a00, emissiveIntensity: 0.75, roughness: 0.15, clearcoat: 1.0 }),
   inner: namedMaterial('shell-inner-dark', { color: 0x1d1612, roughness: 0.85, side: THREE.BackSide }),
   edge: namedMaterial('shell-edge-tar', { color: 0x3a2a20, roughness: 0.7, side: THREE.DoubleSide }),
@@ -226,7 +225,7 @@ const sweepPlanar = (pts, zc, n, radius, seg = 14) => {
 };
 
 /**
- * 船尾柱中心線（側視 x–y）：iter-120 縮小成船尾上緣往後上翹、末端往前捲一小圈的鴨尾擾流（基準評審：船尾捲飾縮小；原本頂到 51.4）
+ * 船尾柱中心線（側視 x–y）：船尾上緣往後上翹、末端往前捲一小圈的小鴨尾擾流
  * @type {number[][]}
  */
 const STERN_PATH = [
@@ -241,8 +240,7 @@ const STERN_PATH = [
 const STERN_RAD = (t) => [lerp(1.7, 0.9, t), lerp(2.2, 1.1, t)];
 
 /**
- * 蛇頭鼻錐（iter-120 重做；基準評審：船首蛇頭往前下伸成衝角、封住車頭）：原本立在 S 形高頸頂端（頂高 58.5）的小蛇頭，
- * 改成船首尖端往前下伸的扁楔形蛇頭——頭骨蓋在船首上（和船殼融成一體）、吻部往前收尖成衝角，下顎微張、口內深色，
+ * 蛇頭鼻錐（往前下伸成衝角、封住車頭）：船首尖端往前下伸的扁楔形蛇頭——頭骨蓋在船首上（和船殼融成一體）、吻部往前收尖成衝角，下顎微張、口內深色，
  * 眼上一道往後掃的眉稜（Urnes / Oseberg 木雕蛇首的眼眶，自繪）、自發光琥珀蛇眼。沒有牙、沒有角（不做成龍頭）。
  * 低面數：橢球 16 × 10 段
  * @type {() => { head: THREE.BufferGeometry, mouth: THREE.BufferGeometry, eyes: THREE.BufferGeometry }}
@@ -257,7 +255,7 @@ const buildSerpentHead = () => {
     return g;
   };
   // 頭骨：蓋住船首尖端（x 64–76），頂面低平、往前下斜
-  // iter-120b（主 agent 看圖：蛇頭太小）：頭骨與吻部加大約 20%（寬 10.8 → 12.8、高約 6.5 → 8），仍是往前下伸的衝角
+  // 頭骨與吻部寬 12.8、高約 8（蛇頭太小會看不出來），是往前下伸的衝角
   const cranium = ellipsoid([7.4, 3.6, 6.4], [69, 19.9], -0.1);
   // 吻部：往前收尖的衝角（前緣 x ≈ 83）
   const snout = ellipsoid([6.4, 2.3, 4.2], [76.6, 18.7], -0.12);
@@ -285,7 +283,7 @@ const buildSerpentHead = () => {
  */
 const buildShield = (x, sg, i) => {
   const s0 = stationAt(x);
-  // iter-120：盾心由船舷下 1.6 降到 4.4（盾頂只高出船舷 1 mm，盾列沿船側排成一條前低後高的帶，不再在正面輪廓上方多出一圈）
+  // 盾心在船舷下 4.4（盾頂只高出船舷 1 mm，盾列沿船側排成一條前低後高的帶，不在正面輪廓上方多出一圈）
   const yc = s0.sheer - 4.4;
   // 盾貼在該高度的外側船殼上
   const s = { hw: hullZAt(x, yc) };
@@ -419,7 +417,7 @@ export const serpentLongshipBody = makePolyBody({
   zones: () => [
     // 甲板與船舷欄內壁（剖面點 0–2）：橡木色
     { mat: 'deck', keep: (x, y, z, s) => BRK[2] + 1e-4 - Math.abs(s) },
-    // iter-120 賽車條（炫砲手法 4）：最上一道疊板漆赭紅，從蛇頭鼻錐沿船舷一路往後掃到船尾鴨尾——蛇身沿船側延伸（Urnes 蛇身帶的配置），
+    // 賽車條（炫砲手法 4）：最上一道疊板漆赭紅，從蛇頭鼻錐沿船舷一路往後掃到船尾鴨尾——蛇身沿船側延伸（Urnes 蛇身帶的配置），
     // 疊板前低後高，紅條就是一條從鼻尖斜向後上的速度線
     { mat: 'ochre', keep: (x, y, z, s) => Math.min(Math.abs(s) - BRK[4] + 1e-4, BRK[5] + 1e-4 - Math.abs(s)) },
     { mat: 'tar', keep: () => 1 },
@@ -429,12 +427,12 @@ export const serpentLongshipBody = makePolyBody({
   extras: (kit) => {
     /** @type {BodyPart[]} */
     const parts = [];
-    // iter-120 蛇頭鼻錐（赭紅）＋口內＋自發光蛇眼
+    // 蛇頭鼻錐（赭紅）＋口內＋自發光蛇眼
     const sh = buildSerpentHead();
     parts.push({ geometry: sh.head, mat: 'ochre', solid: true, outline: true, name: 'prow-serpent-head' });
     parts.push({ geometry: sh.mouth, mat: 'mouth', solid: true, name: 'prow-serpent-mouth' });
     parts.push({ geometry: sh.eyes, mat: 'eye', solid: true, name: 'prow-serpent-eyes' });
-    // 船尾鴨尾擾流（stern-curl 尾翼，iter-120 縮小）：焦油黑褐，往前捲一小圈
+    // 船尾鴨尾擾流（stern-curl 尾翼）：焦油黑褐，往前捲一小圈
     parts.push({
       geometry: sweepPlanar(STERN_PATH, 0, 24, STERN_RAD, 8),
       mat: 'tar',
@@ -442,7 +440,7 @@ export const serpentLongshipBody = makePolyBody({
       outline: true,
       name: 'stern-curl',
     });
-    // iter-120b 頂面起伏（主 agent 看圖：頂面是一整片平甲板、座艙只是凹洞）：
+    // 頂面起伏（避免頂面是一整片平甲板、座艙只是凹洞）：
     // 1) 蛇脊：赭紅低矮中央脊線，從蛇頭後方沿甲板中線往後升到座艙前（蛇身從鼻錐延伸上甲板，V4 中央隆起的概念，圓脊不是 V 形）
     // 2) 擋風罩：座艙口前段一個深色煙燻的低矮擋風罩（V5 小而有色的座艙，長 18、寬 19、高出甲板約 4.7 mm），座艙口後段仍開放
     // 3) 座艙後方焦油色低矮整流背（頭枕整流罩，往後收進甲板）
@@ -506,14 +504,14 @@ export const serpentLongshipBody = makePolyBody({
     parts.push({ geometry: mergeGeos(facesRed), mat: 'ochre2', name: 'shield-faces-ochre' });
     parts.push({ geometry: mergeGeos(facesCream), mat: 'cream', name: 'shield-faces-cream' });
     parts.push({ geometry: mergeGeos(bosses), mat: 'bronze', solid: true, name: 'shield-bosses' });
-    // 輪拱內襯（前後）：iter-114 從殼內面一路做到 |z| 21（輪拱切口起點；原本只深 3 mm，船殼加寬後會露出殼內空腔），擋住切口裡的殼內空腔與底盤
+    // 輪拱內襯（前後）：從殼內面一路做到 |z| 21（輪拱切口起點；只深 3 mm 的話，寬船殼會露出殼內空腔），擋住切口裡的殼內空腔與底盤
     parts.push({
       geometry: mergeGeos([buildArchLiner({ x: 40, y: 13, radius: 17.5 }, 21, 14), buildArchLiner({ x: -40, y: 13, radius: 17.5 }, 21, 14)]),
       mat: 'liner',
       shell: true,
       name: 'arch-liners',
     });
-    // iter-115：輪胎內側環形擋板（kitsune 的 buildArchWell，|z| 22.9；離 31 mm 輪內側面 1.85 mm）
+    // 輪胎內側環形擋板（kitsune 的 buildArchWell，|z| 22.9；離 31 mm 輪內側面 1.85 mm）
     parts.push({
       geometry: mergeGeos([{ x: 40, y: 13 }, { x: -40, y: 13 }].map((a) => buildArchWell(a, 22.9, 12.3, 17.8, chassisBlockedNearArch))),
       mat: 'liner',

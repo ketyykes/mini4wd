@@ -1,4 +1,4 @@
-// 跑 vitest，依 SPEC 第 2 部分的 P01–P20 統計通過數（第三階段起 20 項）（一個 ID 底下的所有測試都通過才算通過）
+// 跑 vitest，依 SPEC 第 2 部分的 P01–P20 統計通過數（共 20 項；一個 ID 底下的所有測試都通過才算通過）
 // 用法：node scripts/score.mjs [外觀平均分]
 import { execFileSync, spawnSync } from 'node:child_process';
 import fs from 'node:fs';

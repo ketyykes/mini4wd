@@ -13,7 +13,7 @@ const views = (process.argv[3] ?? 'side,top,front34,bottom,track').split(',');
 const bodies = (process.argv[4] ?? 'body-tortoise-dome,body-marlin-sail,body-owl-hush,body-gazelle-leap,body-halo-orbit,body-dartfrog-hop,body-skeleton,body-aero-wing,body-pc-box').split(',');
 const extra = process.argv[5] ?? '';
 
-// port 0：由系統分配空閒埠，多個截圖程序可同時執行（原本寫死 5181 會互相搶埠）
+// port 0：由系統分配空閒埠，多個截圖程序可同時執行（寫死埠號會互相搶埠）
 const server = await createServer({ root, logLevel: 'error', server: { port: 0 } });
 await server.listen();
 /** @type {string} */

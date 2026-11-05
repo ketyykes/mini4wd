@@ -9,8 +9,8 @@ import { solveContactVelocities } from './contactSolver.js';
 
 const MM = 0.001;
 
-// 碰撞群組（第七階段 iter-77，物理稽核 H1）：Rapier 的 collision groups = (成員 << 16) | 過濾，兩個碰撞體都在對方的過濾裡才會碰撞。
-// 導輪與穩定零件的碰撞體只代表「碰牆的那一圈」：導輪用球近似（圓柱對 trimesh 會卡住，見 iter-00），球的垂直範圍（± 半徑）比實際導輪高度大很多，
+// 碰撞群組（物理稽核 H1）：Rapier 的 collision groups = (成員 << 16) | 過濾，兩個碰撞體都在對方的過濾裡才會碰撞。
+// 導輪與穩定零件的碰撞體只代表「碰牆的那一圈」：導輪用球近似（圓柱對 trimesh 會卡住，見 ITERATION_LOG iter-00），球的垂直範圍（± 半徑）比實際導輪高度大很多，
 // 19 mm 導輪的球底只離地 0.5 mm、配 24 mm 輪時球底低於地面 → 整台車架在導輪球上、四輪法向力 0（實車導輪不會碰地）。
 // 所以導輪 / 穩定零件只和牆碰撞；地板、換道器路面、車體方塊照舊互相碰撞
 const GROUP_GROUND = 0x0001;
@@ -84,7 +84,7 @@ export function createWorld(track) {
   );
 
   const wallHandles = new Set();
-  // iter-96：只給 FIX_INTERNAL_EDGES（= 128 | MERGE_DUPLICATE_VERTICES）時，牆面同一平面四邊形的對角線內部邊仍會產生
+  // 只給 FIX_INTERNAL_EDGES（= 128 | MERGE_DUPLICATE_VERTICES）時，牆面同一平面四邊形的對角線內部邊仍會產生
   // 落在牆面平面內的錯誤法向（實測 (0.988, 0.154, 0)，牆面法向是 (0, 0, 1)），車殼掠過時被踢出約 20 rad/s 的角速度。
   // 內部邊修正靠有向的 pseudo-normal；牆與路面網格都是封閉、繞向一致、法向朝外（P16_track_mesh_oriented 驗證），所以加 ORIENTED
   const flags = RAPIER.TriMeshFlags.FIX_INTERNAL_EDGES | RAPIER.TriMeshFlags.ORIENTED;
@@ -306,17 +306,17 @@ export function createCar(env, opt = {}) {
     chassis,
   );
 
-  // 滑動保桿（第五階段 iter-61）：滑動板＋前導輪（＋穩定零件）是獨立剛體，用 prismatic joint 連到車體，只能沿車體 z（左右）滑動，
+  // 滑動保桿：滑動板＋前導輪（＋穩定零件）是獨立剛體，用 prismatic joint 連到車體，只能沿車體 z（左右）滑動，
   // 行程上下限 ±stroke 為 joint 的硬止擋；彈簧（含預壓）與阻尼由 sliderSpringImpulse 每步施加（作用力與反作用力，見該函式）。
   // 前導輪的碰撞體掛在滑動板剛體上，所以牆對前導輪的力只能經過彈簧（或行程端點止擋）傳到車體；牆面接觸衝量見 sliderContactImpulses
-  // iter-64：推廣到前、後各自可有一個滑動板（前後都裝時是兩個獨立剛體，各自一個 prismatic joint 與彈簧）；後導輪掛在後滑動板上
+  // 前、後各自可有一個滑動板（前後都裝時是兩個獨立剛體，各自一個 prismatic joint 與彈簧）；後導輪掛在後滑動板上
   /** @type {import('./parts/types').PlacedSlider[]} */
   const placedSliders = asm.sliders ?? (asm.slider ? [asm.slider] : []);
   const sliders = placedSliders.map((sl) => createSlider(world, chassis, sl, start));
   const slider = sliders.find((sl) => sl.slot === 'frontStay') ?? null;
 
   const rollers = asm.layout.rollers.map((r) => {
-    // iter-56：前後導輪分開選，每顆導輪依自己的 slot（frontRollers / rearRollers）取零件資料（摩擦、恢復係數、錐形輪廓）
+    // 前後導輪分開選，每顆導輪依自己的 slot（frontRollers / rearRollers）取零件資料（摩擦、恢復係數、錐形輪廓）
     const rollerPart = asm.partsBySlot[r.slot];
     // 這顆導輪所在的滑動板（前導輪 → 前滑動板、後導輪 → 後滑動板；沒有就是 null = 固定在車體）
     const mountSlider = sliders.find((sl) => sl.rollerSlot === r.slot) ?? null;
@@ -325,18 +325,18 @@ export function createCar(env, opt = {}) {
     const parent = onSlider ? mountSlider.body : chassis;
     const o = onSlider ? mountSlider.anchor : { x: 0, y: 0, z: 0 };
     // 導輪碰撞體用球：圓柱對 trimesh 的接觸在 Rapier 中會卡住（見 ITERATION_LOG iter-00）
-    // 雙層導輪每一片接觸面各一顆球（單層導輪 tiers 只有 1 片、y = 0，和第二階段相同）
+    // 雙層導輪每一片接觸面各一顆球（單層導輪 tiers 只有 1 片、y = 0）
     const tiers = r.tiers ?? [{ y: 0, r: r.r, h: r.h }];
     const colliders = tiers.map((t) =>
       world.createCollider(
         RAPIER.ColliderDesc.ball(t.r * MM)
           .setTranslation(r.x * MM - o.x, (r.y + t.y) * MM - o.y, r.z * MM - o.z)
           .setDensity(0)
-          // 第七階段（iter-76）：雙層導輪每一片可有自己的摩擦 / 恢復係數（例如 15418 上層橡膠環），沒有時用零件層級的值
+          // 雙層導輪每一片可有自己的摩擦 / 恢復係數（例如 15418 上層橡膠環），沒有時用零件層級的值
           .setFriction(t.wallFriction ?? rollerPart.wallFriction)
           .setFrictionCombineRule(RAPIER.CoefficientCombineRule.Min)
           .setRestitution(t.restitution ?? rollerPart.restitution)
-          // iter-85（稽核 L5）：牆的恢復係數是 0，Rapier 預設 Average 會把零件的 e 砍半；改 Max → 實際 e = 零件資料的值
+          // 稽核 L5：牆的恢復係數是 0，Rapier 預設 Average 會把零件的 e 砍半；改 Max → 實際 e = 零件資料的值
           .setRestitutionCombineRule(RAPIER.CoefficientCombineRule.Max)
           .setCollisionGroups(ROLLER_GROUPS)
         .setSolverGroups((spec.sim.wallContactMode ?? 'impulse').startsWith('impulse') ? 0 : collisionGroups(ALL_GROUPS, ALL_GROUPS)),
@@ -345,11 +345,11 @@ export function createCar(env, opt = {}) {
     );
     // collider：最大那片（與牆接觸的主要接觸面），給 P05 等量測用
     const main = tiers.reduce((bi, t, i) => (t.r > tiers[bi].r ? i : bi), 0);
-    // 錐形導輪（第四階段）：接觸幾何（上段圓柱＋下段截錐）給 rollerWallContacts 用；一般導輪 taper = null（整顆是圓柱）
+    // 錐形導輪：接觸幾何（上段圓柱＋下段截錐）給 rollerWallContacts 用；一般導輪 taper = null（整顆是圓柱）
     return { ...r, restitution: rollerPart.restitution, mu: Math.min(rollerPart.wallFriction, spec.track.wallFriction), collider: colliders[main], colliders, taper: rollerPart.taper ?? null, onSlider, slider: mountSlider };
   });
 
-  // 穩定零件（第四階段）：前導輪上方的 POM 圓柱（不轉動），用 Rapier 圓柱碰撞體掛在車體上。
+  // 穩定零件：前導輪上方的 POM 圓柱（不轉動），用 Rapier 圓柱碰撞體掛在車體上。
   // 接觸力完全由碰撞偵測決定：只有圓柱實際碰到牆面 / 牆頂（或任何其他碰撞體）時才有力；直立行駛時它在導輪外緣內側、離牆有間隙，沒有任何力
   const stabilizers = (asm.optional?.stabilizers ?? []).map((st) => {
     const lift = asm.lift_mm;
@@ -374,7 +374,7 @@ export function createCar(env, opt = {}) {
     return { label: st.label, restitution: st.part.restitution, collider, axisPts, r: st.r * MM, mu: Math.min(st.part.wallFriction, spec.track.wallFriction), contact: false, normalForce: 0, contactSteps: 0, onSlider, slider: onSlider ? slider : null };
   });
 
-  // 制振器（第三階段）：獨立剛體＋prismatic joint（沿車體 y 軸上下滑動，行程上下限為硬止點），
+  // 制振器：獨立剛體＋prismatic joint（沿車體 y 軸上下滑動，行程上下限為硬止點），
   // 下止點是有彈性的座墊（單邊接觸：只能往上推、不能往下拉，見 damperForces）
   const dampers = (asm.movable ?? []).map((d) => {
     if (d.pivot) {
@@ -406,7 +406,7 @@ export function createCar(env, opt = {}) {
     return { body: rb, joint, anchor, mass: m, seatK, seatC, slideC: d.slideFriction_Nspm, label: d.label };
   });
 
-  // 煞車接觸（第三階段海綿；iter-95 起含橡膠煞車端面、AR 海綿條）：接觸點由組裝給（車體座標，m），各點平分面積；
+  // 煞車接觸（海綿、橡膠煞車端面、AR 海綿條）：接觸點由組裝給（車體座標，m），各點平分面積；
   // 接觸剛性 k = E·A / t（t = 可壓縮厚度：海綿厚度或橡膠柱伸出長度），只在射線碰到地面 / 坡道時產生力
   const sp = asm.optional?.sponge;
   let sponge = null;
@@ -443,7 +443,7 @@ export function createCar(env, opt = {}) {
     bodyCol,
     rollers,
     dampers,
-    // slider = 前滑動板（相容 iter-61 的欄位）、rearSlider = 後滑動板、sliders = 全部（前在前）
+    // slider = 前滑動板（相容舊欄位）、rearSlider = 後滑動板、sliders = 全部（前在前）
     slider,
     rearSlider: sliders.find((sl) => sl.slot === 'rearStay') ?? null,
     sliders,
@@ -456,8 +456,8 @@ export function createCar(env, opt = {}) {
     P,
     box: bodyColliderBox(asm), // Diagnostic envelope only; collisions use bodyCol.
     extremePoints: collisionExtremePoints(asm),
-    // 傳動系轉動狀態（第四階段）：omega = 輪子角速度（rad/s，4 輪與齒輪、馬達機械連結成一個自由度），J = 換算到輪軸的等效轉動慣量
-    // 第七階段（iter-79）單向輪：oneWay = true 時 omega = 輪子角速度（J_w = 4 顆輪），omegaD = 傳動系（馬達＋齒輪＋輪軸，J_d = J − J_w）角速度，
+    // 傳動系轉動狀態：omega = 輪子角速度（rad/s，4 輪與齒輪、馬達機械連結成一個自由度），J = 換算到輪軸的等效轉動慣量
+    // 單向輪：oneWay = true 時 omega = 輪子角速度（J_w = 4 顆輪），omegaD = 傳動系（馬達＋齒輪＋輪軸，J_d = J − J_w）角速度，
     // 兩者經單向離合連接（見 stepCar）；engaged = 本步離合是否咬合
     spin: { omega: 0, J: P.spinInertia, oneWay: P.oneWayClutch, omegaD: 0, Jd: P.spinInertia - P.spinInertiaWheels, Jw: P.spinInertiaWheels, engaged: true },
     battery: new Battery(P, opt.soc ?? 1),
@@ -469,7 +469,7 @@ export function createCar(env, opt = {}) {
 }
 
 /**
- * 建立滑動保桿的滑動剛體（iter-61）：質量、質心、慣性取自組裝（asm.slider）；prismatic joint 只留車體 z 方向的平移，
+ * 建立滑動保桿的滑動剛體：質量、質心、慣性取自組裝（asm.slider）；prismatic joint 只留車體 z 方向的平移，
  * joint 行程上下限 ±stroke 是硬止擋。彈簧常數 k、預壓 F0、中央擋塊剛性 k_seat = F0 / δ_seat、阻尼係數 c = 2ζ√(k·m)
  * @type {(world: any, chassis: any, sl: import('./parts/types').PlacedSlider, start: { x: number, z: number, theta: number }) => any}
  */
@@ -553,7 +553,7 @@ function sliderRelative(car, sl = car.slider) {
 
 /**
  * 滑動保桿目前狀態（量測 / 測試用）：位移、相對速度、彈簧位能、本步作用力、累計阻尼耗能；沒有滑動保桿時回傳 null
- * sl 省略時為前滑動板（car.slider，iter-61 的用法）；後滑動板傳 car.rearSlider（iter-64）
+ * sl 省略時為前滑動板（car.slider）；後滑動板傳 car.rearSlider
  * @type {(car: any, sl?: any) => { u: number, uDot: number, springEnergy: number, force: number, dampingWork: number } | null}
  */
 export function sliderState(car, sl = car.slider) {
@@ -574,7 +574,7 @@ export function sliderState(car, sl = car.slider) {
  * 放在 world.step() 之後、牆面接觸衝量之前：滑動板只有約 6 g，若把彈簧力交給 Rapier 在積分中施加，
  * 彈簧在一步內把滑動板往牆推的速度（F/m·dt ≈ 0.08 m/s）只會被 Rapier 的軟接觸部分抵消，前導輪會慢慢壓進牆（實測一圈 2 mm）；
  * 先加彈簧衝量、再解接觸衝量，接觸衝量就會把朝牆速度消掉（非彈性），下一步積分時導輪不再往牆裡移動
- * iter-64：前後各有滑動板時逐一施加（index = 在 car.sliders 的位置，對應廣義座標 6 + index）；每一個衝量各自是後退 Euler，總能量仍不增加
+ * 前後各有滑動板時逐一施加（index = 在 car.sliders 的位置，對應廣義座標 6 + index）；每一個衝量各自是後退 Euler，總能量仍不增加
  * @type {(car: any, sl: any, index: number, system: ReturnType<typeof sliderSystem>) => void}
  */
 function sliderSpringImpulse(car, sl, index, system) {
@@ -668,7 +668,7 @@ export function stepCar(env, car) {
   const dt = spec.sim.dt_s;
   const v = forwardSpeed(car);
   const P = car.P;
-  // 傳動系轉動慣量（第四階段 iter-54）：馬達、齒輪、輪子是一個轉動自由度 ω（輪子角速度），等效轉動慣量 J（parts/inertia.js）。
+  // 傳動系轉動慣量：馬達、齒輪、輪子是一個轉動自由度 ω（輪子角速度），等效轉動慣量 J（parts/inertia.js）。
   // 動力鏈的扭力先作用在這個轉動件上：J·dω/dt = (F_q − F_x)·r，F_q = 準靜態的輪上淨推力（馬達扭力 × 齒輪比 × 效率 − 損失）/ r，
   // F_x = 輪胎實際傳給車體的縱向力（受摩擦圓限制）。純滾動時 v = ω·r，消去 F_x 得 (m + J/r²)·dv/dt = F_q + F_外力，
   // 也就是縱向運動的等效質量多了 J/r²（輕量輪框 / 中空軸 → J 變小 → 起步加速變快；穩態極速 F_q = 阻力時不受 J 影響）。
@@ -679,7 +679,7 @@ export function stepCar(env, car) {
   // 馬達轉速由傳動系轉速決定（不是車體速度）：騰空時輪子可以空轉到無載轉速，落地時再由約束衝量和車速拉齊
   // 單向輪：馬達轉速取傳動系 omegaD（輪子可以比傳動系轉得快）
   const driveSpeed = spin.oneWay ? spin.omegaD * P.wheelRadius : wheelSpeed;
-  // 物理稽核 L3（iter-87）：滾阻與輪軸軸承阻力用上一步的 4 輪法向力合計（本步的法向力要等射線輪算完才知道，
+  // 物理稽核 L3：滾阻與輪軸軸承阻力用上一步的 4 輪法向力合計（本步的法向力要等射線輪算完才知道，
   // 而縱向力要先決定才能分配到各輪；差一步 = 1/240 s，騰空時為 0、落地時跟著法向力變大）
   const lf = longitudinalForce(P, { speed: driveSpeed, powered: car.powered, battery: car.battery, normalLoad: car.last.normalSum });
 
@@ -726,9 +726,9 @@ export function stepCar(env, car) {
   let appliedLong = 0;
   let spareFwd = 0;
   let spareBack = 0;
-  // 接觸開始那一步的預測（iter-94）：射線多看「本步可能前進的距離」，壓縮量本步由 c0 ≤ 0 變成 c1 > 0 時，
+  // 接觸開始那一步的預測：射線多看「本步可能前進的距離」，壓縮量本步由 c0 ≤ 0 變成 c1 > 0 時，
   // 彈簧力用離散梯度 [U(c1) − U(c0)] / (c1 − c0)，讓本步施力做的功等於彈簧位能增量；
-  // 舊做法本步不施力，積分後卻多出 ½k·c1² 的位能，落地瞬間總機械能因而回升（見 ITERATION_LOG iter-94）
+  // 若本步不施力，積分後會多出 ½k·c1² 的位能，落地瞬間總機械能因而回升（見 ITERATION_LOG iter-94）
   const gUp = -spec.sim.gravity * up.y;
   for (const w of car.wheels) {
     const hp = localToWorld(car, w.hardpoint);
@@ -824,14 +824,14 @@ export function stepCar(env, car) {
   }
 
   env.world.step();
-  // 滑動保桿（iter-61）：彈簧＋阻尼以衝量形式在積分後、牆面接觸衝量之前施加（見 sliderSpringImpulse 說明）
-  // iter-64：前後各一塊時逐一施加（質量矩陣只和位置有關，一步內共用）
+  // 滑動保桿：彈簧＋阻尼以衝量形式在積分後、牆面接觸衝量之前施加（見 sliderSpringImpulse 說明）
+  // 前後各一塊時逐一施加（質量矩陣只和位置有關，一步內共用）
   applySliderSpringImpulses(car);
   rollingConstraintImpulse(car, spareFwd * dt, spareBack * dt);
-  // 導輪–牆接觸（iter-93共用求解）：預設 'impulse' = 速度層級的非彈性碰撞衝量（wallContactImpulses，動量一致）；
+  // 導輪–牆接觸（共用求解）：預設 'impulse' = 速度層級的非彈性碰撞衝量（wallContactImpulses，動量一致）；
   // 水平靜止接觸另做不改速度的整組位置穩定化；impulse+position沿用此流程。
-  // 'position' 保留iter-34診斷，'none'只用Rapier。
-  // config 的 wallPositionProjection 已由 wallContactMode 取代（iter-49）
+  // 'position' 保留作診斷用，'none'只用Rapier。
+  // config 的 wallPositionProjection 已由 wallContactMode 取代
   const mode = spec.sim.wallContactMode ?? 'impulse';
   if (mode === 'impulse' || mode === 'impulse+position') {
     wallContactImpulses(env, car);
@@ -848,7 +848,7 @@ export function stepCar(env, car) {
 }
 
 /**
- * 純滾動約束衝量（第四階段）：車體前進速度 v 與傳動系輪面速度 ω·r 之間的完全非彈性耦合。
+ * 純滾動約束衝量：車體前進速度 v 與傳動系輪面速度 ω·r 之間的完全非彈性耦合。
  * 兩者只透過輪胎接地點的摩擦力互相作用：沿車體前進方向對車體施加衝量 Π、對傳動系施加反向扭力衝量 −Π·r，
  * 使 v + Π/m = (ω − Π·r/J)·r → Π = (ω·r − v) / (1/m + r²/J)。
  * 摩擦限制：本步接地點的縱向摩擦衝量合計（每步輪胎力 F_x·dt ＋ Π）不得超過 ±μ·N·dt（扣掉側向力的摩擦圓），
@@ -892,7 +892,7 @@ function rollingConstraintImpulse(car, spareFwd, spareBack) {
 }
 
 /**
- * 單向輪（第七階段 iter-79，官方 15443 / 95628「左右のタイヤの回転差を吸収」）的傳動系一步：
+ * 單向輪（官方 15443 / 95628「左右のタイヤの回転差を吸収」）的傳動系一步：
  * 傳動系（馬達＋齒輪＋輪軸，J_d）承受馬達驅動力與傳動系阻力（輪軸軸承摩擦、斷電時的馬達拖曳）；
  * 輪子（J_w）只承受輪胎滾動阻力，回傳值 = 施加在接地點的縱向力（只有滾阻）。驅動力經離合（oneWayClutchEngage）
  * 合併後由純滾動約束衝量傳到車體。阻力不會讓角速度反向（夾到 0）
@@ -936,7 +936,7 @@ function oneWayClutchEngage(spin) {
 }
 
 /**
- * 煞車海綿接觸力（第三階段）：海綿底面每個接觸點沿車體 −up 打射線，射線起點在海綿底面上方 PROBE；
+ * 煞車海綿接觸力：海綿底面每個接觸點沿車體 −up 打射線，射線起點在海綿底面上方 PROBE；
  * 命中距離 < PROBE 代表海綿被地面 / 坡道壓縮 δ = PROBE − 距離（最多到海綿厚度）。
  * 法向力 = k·δ − c·v_n（≥ 0，單邊接觸），摩擦力 = μ·N，方向與接觸點切向速度相反（低速以 0.05 m/s 正則化避免反向）。
  * 沒碰到地面時完全沒有力（平地上海綿底面離地 > 0 時不影響極速）
@@ -953,7 +953,7 @@ function spongeForces(env, car, { up }) {
   const gUp = -spec.sim.gravity * up.y;
   for (const lp of sp.pts) {
     const p = localToWorld(car, lp);
-    // iter-94：同射線輪，預測本步沿 up 的位移；本步才開始壓縮時用離散梯度力（見 stepCar 的射線輪說明）
+    // 同射線輪，預測本步沿 up 的位移；本步才開始壓縮時用離散梯度力（見 stepCar 的射線輪說明）
     const vP = body.velocityAtPoint(p);
     const vnPred = vP.x * up.x + vP.y * up.y + vP.z * up.z + gUp * dt;
     const origin = { x: p.x + up.x * PROBE, y: p.y + up.y * PROBE, z: p.z + up.z * PROBE };
@@ -996,7 +996,7 @@ function spongeForces(env, car, { up }) {
 }
 
 /**
- * 制振器座墊與滑動摩擦（第三階段）：rel = 制振器相對安裝點沿車體 up 的位移（0 = 座墊剛好接觸、未壓縮）。
+ * 制振器座墊與滑動摩擦：rel = 制振器相對安裝點沿車體 up 的位移（0 = 座墊剛好接觸、未壓縮）。
  * rel < 0 時座墊被壓縮：F = k·(−rel) − c·rel'（≥ 0，只能把制振器往上推）；另有沿螺絲軸的黏滯摩擦 −c_s·rel'。
  * 反作用力施加在車體的安裝點（牛頓第三定律），行程上下限由 prismatic joint 的硬止點處理
  * @type {(car: any, d: any, up: any) => void}
@@ -1017,7 +1017,7 @@ function damperForces(car, d, up) {
 }
 
 /**
- * 擺動式制振器（第七階段 iter-75，球頭連桿）：配重＋擺臂一個剛體，以 revolute joint 繞支點的車體 z 軸轉動（其餘自由度鎖住）。
+ * 擺動式制振器（球頭連桿）：配重＋擺臂一個剛體，以 revolute joint 繞支點的車體 z 軸轉動（其餘自由度鎖住）。
  * 往上擺的上限 = maxAngle（硬止點）；往下由座墊（單邊接觸）撐住，座墊最多壓縮約 1 mm 後是硬止點。
  * 初始姿態：座墊在自重下壓縮 δ 的平衡角 φ0 = −δ / 支點到配重中心的水平距離（繞支點旋轉整個剛體）
  * @type {(world: any, chassis: any, d: any, start: { x: number, z: number, theta: number }) => any}
@@ -1082,7 +1082,7 @@ function createSwingDamper(world, chassis, d, start) {
 }
 
 /**
- * 擺動式制振器的座墊與支點摩擦（第七階段 iter-75）：
+ * 擺動式制振器的座墊與支點摩擦：
  * - 座墊：配重中心（擺動剛體上的點）相對它在車體上的靜止位置沿車體 up 的位移 rel < 0 時被壓縮，F = k·(−rel) − c·rel'（≥ 0，只能往上推）；
  *   作用力施加在擺動剛體的座墊點，反作用力施加在車體的**同一個世界座標點**（牛頓第三定律，力矩也相等相反 → 角動量守恆）。
  * - 支點黏滯摩擦：τ = −c_p·(ω_擺 − ω_車)·ẑ，相等相反地施加在兩個剛體（只消耗相對轉動的能量）
@@ -1125,7 +1125,7 @@ export function swingAngle(car, d) {
 }
 
 /**
- * 整車動能（J）：車體剛體（平移＋轉動）＋制振器剛體＋滑動保桿的滑動剛體（iter-61）＋傳動系轉動動能 ½·J·ω²（第四階段：輪子、輪軸、齒輪、馬達電樞，換算到輪軸）
+ * 整車動能（J）：車體剛體（平移＋轉動）＋制振器剛體＋滑動保桿的滑動剛體＋傳動系轉動動能 ½·J·ω²（輪子、輪軸、齒輪、馬達電樞，換算到輪軸）
  * @type {(car: any) => number}
  */
 function rigidBodyKineticEnergy(b) {
@@ -1144,8 +1144,8 @@ export function carKineticEnergy(car) {
   for (const d of car.dampers ?? []) {
     e += rigidBodyKineticEnergy(d.body);
   }
-  // 滑動保桿的滑動剛體（iter-61）：平移＋轉動動能（轉動與車體同步，joint 鎖住相對轉動）；彈簧位能不在這裡（見 sliderState）
-  // iter-64：前後滑動板各自計入
+  // 滑動保桿的滑動剛體：平移＋轉動動能（轉動與車體同步，joint 鎖住相對轉動）；彈簧位能不在這裡（見 sliderState）
+  // 前後滑動板各自計入
   for (const sl of car.sliders ?? []) {
     e += rigidBodyKineticEnergy(sl.body);
   }
@@ -1159,12 +1159,12 @@ export function carKineticEnergy(car) {
 }
 
 /**
- * 導輪不穿牆的位置投影（iter-34；iter-49 起預設改用 wallContactImpulses，這個只在 wallContactMode = 'position' 時使用）：Rapier 的軟接觸在導輪高頻抖動（前後導輪交替貼牆、約 500 Hz）時
+ * 導輪不穿牆的位置投影（預設用 wallContactImpulses，這個只在 wallContactMode = 'position' 時使用）：Rapier 的軟接觸在導輪高頻抖動（前後導輪交替貼牆、約 500 Hz）時
  * 會累積約 0.6–1.1 mm 的穩態穿透，而且對質量的極小變化很敏感（0.0002 g 就能讓峰值從 0.75 跳到 1.1 mm，見 ITERATION_LOG iter-34）。
  * 提高接觸剛度（contact_natural_frequency 30–10000 Hz）、求解迭代、縮小步長、關 CCD、恢復係數 0 都沒有改善。
  * 這裡在每步積分後做標準的位置投影（constraint stabilization）：導輪中心沿賽道橫向超過牆面 slop 時，
  * 把車體沿牆面法向推回 slop 以內（只改位置、不改速度；速度仍由 Rapier 的接觸求解處理）。牆是剛體，這只是補強不穿透約束。
- * 試過同時移除朝牆的線速度 → 導輪在彎道中反覆彈離牆面（貼牆比例 100% → 約 55%），不合實車，已放棄。
+ * 不同時移除朝牆的線速度：那樣導輪會在彎道中反覆彈離牆面（貼牆比例 100% → 約 55%），不合實車。
  * @param {ReturnType<typeof createWorld>} env
  * @param {ReturnType<typeof createCar>} car
  */
@@ -1214,10 +1214,10 @@ function projectRollersOutOfWalls(env, car) {
 
 /**
  * 導輪與牆的接觸點（世界座標）：接觸法向 n（由牆指向車道）、接觸點 p、沿法向的穿透深度 pen
- * 第四階段起由導輪的「縱斷面輪廓」推導（導輪軸視為鉛直）：
+ * 由導輪的「縱斷面輪廓」推導（導輪軸視為鉛直）：
  *   輪廓 = 上段圓柱（半徑 R、高 h_c）＋下段截錐（半徑 R → R_b、高 h_k）；一般導輪 h_k = 0（整顆圓柱）。
  *   牆是「鉛直牆面＋水平牆頂」，牆頂高 Y_w = 路面高 + 牆高。
- *   (1) 牆頂高於圓柱段底緣：圓柱段碰牆面，法向水平（與第三階段相同）
+ *   (1) 牆頂高於圓柱段底緣：圓柱段碰牆面，法向水平
  *   (2) 牆頂落在錐形段高度內：碰到的是牆頂邊緣（一條水平線）對錐面，該高度的錐面半徑 r(Y_w) 與牆面重疊 δ；
  *       最小分離方向是錐面法向：與水平夾 β = atan((R − R_b)/h_k)，法向 = cosβ·(水平推回車道) + sinβ·(向上)，穿透 = δ·cosβ
  *       → 錐形導輪騎上牆頂時產生「推回車道＋上抬」分力（[T95436]「コース内へ復帰しやすい」）
@@ -1247,13 +1247,13 @@ export function rollerWallContacts(env, car) {
       const hk = r.taper ? r.taper.coneHeight_mm * MM : 0;
       const rb = r.taper ? (r.taper.bottomDiameter_mm / 2) * MM : rr;
       const wallTop = (track.roadHeight ? track.roadHeight(pp.s, level) : 0) + wallH;
-      // iter-101（B1）：導輪軸用車體實際上方向（側傾／俯仰時傾斜），不再假設鉛直。
+      // B1：導輪軸用車體實際上方向（側傾／俯仰時傾斜），不假設鉛直。
       // 導輪輪廓 = 沿軸的幾圈圓環（頂面、圓柱段底緣、錐形段底面）；每圈朝牆的最遠點 = 圈心 + 半徑 × (朝牆方向扣掉軸向分量後的單位向量)。
       // 側面是相鄰兩圈之間的直線段：對鉛直牆，最深點在端點；跨過牆頂的段在牆頂高度截斷（截點碰的是牆頂邊緣）。
-      // B13（iter-105）：導輪角度調整板（田宮 15373，ダウンスラスト）：導輪軸頂端往車頭方向傾 thrust_deg（車體座標繞橫軸轉），θ = 0 時與原本相同
+      // B13：導輪角度調整板（田宮 15373，ダウンスラスト）：導輪軸頂端往車頭方向傾 thrust_deg（車體座標繞橫軸轉），θ = 0 時就是車體上方向
       const th = ((r.thrust_deg ?? 0) * Math.PI) / 180;
       const axis = th === 0 ? upAxis(car) : rotate(car.chassis.rotation(), { x: Math.sin(th), y: Math.cos(th), z: 0 });
-      // B13（iter-105）：導輪只能繞自己的軸轉 → 沿牆滾動方向用實測滾動阻力 mu；沿導輪軸方向（上下）不會滾、只能滑，用塑膠對塑膠滑動摩擦（spec.track.wallFriction）
+      // B13：導輪只能繞自己的軸轉 → 沿牆滾動方向用實測滾動阻力 mu；沿導輪軸方向（上下）不會滾、只能滑，用塑膠對塑膠滑動摩擦（spec.track.wallFriction）
       // r.axialFriction：只給敏感度診斷用（scripts/diag/b13-tune.test.js 依前後導輪材質分開設定）；零件資料沒有這個欄位，一律用 spec.track.wallFriction
       const muAxial = r.axialFriction ?? spec.track.wallFriction;
       /** @type {{ y: number, r: number }[]} 沿軸的圓環（相對導輪片中心，m）：由上往下 */
@@ -1318,7 +1318,7 @@ export function rollerWallContacts(env, car) {
         }
         if (!best.cone) {
           // 牆面接觸，法向水平。導輪不傾斜時上下緣一樣深（線接觸）：接觸點取伸展在最深 0.05 mm 以內各候選點的加權平均，
-          // 鉛直時落在片中心高度（與 iter-100 以前相同），傾斜後連續移到較深的那一緣
+          // 鉛直時落在片中心高度，傾斜後連續移到較深的那一緣
           const band = 0.05 * MM;
           let sw = 0;
           const pc = { x: 0, y: 0, z: 0 };
@@ -1357,7 +1357,7 @@ export function rollerWallContacts(env, car) {
 }
 
 /**
- * 穩定零件與牆的接觸（第四階段）：穩定零件是不轉動的 POM 圓柱（軸 = 車體上方向）。
+ * 穩定零件與牆的接觸：穩定零件是不轉動的 POM 圓柱（軸 = 車體上方向）。
  * 取圓柱軸的上下兩個端點（世界座標），各視為半徑 r 的水平圓盤：
  *   - 端點低於牆頂、圓盤越過牆面（r − 到牆面的水平距離 > 0）→ 牆面接觸，法向水平（由牆指向車道）
  *   - 端點高於牆頂、但下端點低於牆頂且水平位置已在牆頂上方 → 牆頂接觸，法向向上（穿透 = 牆頂 − 下端點，取水平 / 垂直中較小者）
@@ -1409,7 +1409,7 @@ export function stabilizerWallContacts(env, car) {
 }
 
 /**
- * iter-93 wall solve: a single owner for roller/stabilizer normal response,
+ * Wall solve: a single owner for roller/stabilizer normal response,
  * effective Coulomb friction and all slider stops. Rapier still computes the
  * contact manifolds for diagnostics, but its roller/stabilizer solver groups
  * are disabled in impulse mode. Body/track and ground contacts stay native.
@@ -1419,7 +1419,7 @@ export function stabilizerWallContacts(env, car) {
 export function wallContactImpulses(env, car) {
   car.wallSolve = { iterations: 0, residual: 0, converged: true };
   const slop = spec.sim.wallProjectionSlop_mm * MM;
-  // iter-93: both roller effective friction and stabilizer sliding friction are coupled with normal/stop impulses.
+  // Both roller effective friction and stabilizer sliding friction are coupled with normal/stop impulses.
   const stabContacts = car.stabilizers?.length ? stabilizerWallContacts(env, car) : [];
   for (const st of car.stabilizers ?? []) {
     st.contact = stabContacts.some((c) => c.stab === st);
@@ -1504,7 +1504,7 @@ const sdp3 = (s) => [
 ];
 
 /**
- * 車體＋滑動板的 (6 + n) 自由度質量矩陣反矩陣（見 sliderContactImpulses 說明；n = 滑動板數，iter-61 只有前方 n = 1，iter-64 前後都裝時 n = 2）：
+ * 車體＋滑動板的 (6 + n) 自由度質量矩陣反矩陣（見 sliderContactImpulses 說明；n = 滑動板數，只裝一塊時 n = 1，前後都裝時 n = 2）：
  * side = 車體 z 軸（世界座標）、c_c = 車體質心、rs[k] = 第 k 塊滑動板質心 − 車體質心
  * @param {any} car
  */
@@ -1595,15 +1595,15 @@ function writeSliderVelocity(car, { s, rs }, q) {
 }
 
 /**
- * 滑動保桿的牆面接觸衝量（iter-61）：車體（6 自由度）＋滑動板相對車體沿車體 z（side）的滑動 u（1 自由度）＝ 7 自由度系統。
+ * 滑動保桿的牆面接觸衝量：車體（6 自由度）＋滑動板相對車體沿車體 z（side）的滑動 u（1 自由度）＝ 7 自由度系統。
  * 廣義速度 q' = (V, Ω, u')：V、Ω = 車體質心速度與角速度，u' = 滑動速度；滑動板質心速度 = V + Ω×r + u'·side（r = 滑動板質心 − 車體質心），角速度 = Ω。
  * 動能 T = ½·m_c·V² + ½·Ωᵀ(I_c + I_s)Ω + ½·m_s·|V + Ω×r + u'·side|² = ½·q'ᵀ·M·q'（M 為 7×7 質量矩陣）。
  * 接觸點 p 沿方向 d 的速度 = j·q'，j = (d, (p − c_c)×d, 滑動板上的點才有 d·side)；單位衝量的廣義速度變化 = M⁻¹·jᵀ，有效反質量 K = j·M⁻¹·jᵀ。
- * iter-93：法向／止擋active-set同解，再與二維圓盤庫侖摩擦交替至接觸速度殘差≤10^-9 m/s（最多64輪）：
+ * 法向／止擋active-set同解，再與二維圓盤庫侖摩擦交替至接觸速度殘差≤10^-9 m/s（最多64輪）：
  * 牆對前導輪的衝量沿 side 的分量只改變滑動速度 u'（之後由彈簧 / 行程止擋傳到車體），垂直分量經 joint 直接作用在整體。
  * 止擋為預測行程單邊約束；初次接觸才給恢復係數目標。最後把q寫回全部剛體，保持共同角速度與理想滑動速度。
- * iter-64：推廣到 n 塊滑動板（前、後各一）：q' = (V, Ω, u'₀, …, u'ₙ₋₁)，每塊滑動板各一個滑動欄；接觸點只在自己那塊滑動板的欄有 d·side，
- * 後導輪碰牆的側向衝量因此只改變後滑動板的 u'，再經後彈簧 / 止擋傳到車體。n = 1 時與 iter-61 的 7 自由度完全相同
+ * 推廣到 n 塊滑動板（前、後各一）：q' = (V, Ω, u'₀, …, u'ₙ₋₁)，每塊滑動板各一個滑動欄；接觸點只在自己那塊滑動板的欄有 d·side，
+ * 後導輪碰牆的側向衝量因此只改變後滑動板的 u'，再經後彈簧 / 止擋傳到車體。n = 1 時就是上面的 7 自由度系統
  * @type {(car: any, contacts: any[]) => void}
  */
 function sliderContactImpulses(car, contacts) {
@@ -1639,7 +1639,7 @@ function sliderContactImpulses(car, contacts) {
     for (const k of ['x', 'y', 'z']) t[k] /= len;
     const t2 = { x: c.n.y * t.z - c.n.z * t.y, y: c.n.z * t.x - c.n.x * t.z, z: c.n.x * t.y - c.n.y * t.x };
     c.tangents = [jacobian(t, c.p, c.slid), jacobian(t2, c.p, c.slid)];
-    // B13（iter-105）：導輪接觸用橢圓摩擦錐 (f_axial / μ_axial)² + (f_roll / μ_roll)² ≤ J_n²：
+    // B13：導輪接觸用橢圓摩擦錐 (f_axial / μ_axial)² + (f_roll / μ_roll)² ≤ J_n²：
     // 兩條切向改成「導輪軸在切平面上的投影」與「滾動方向」，各乘自己的 μ，再把 μ 設成 1，求解器的圓盤投影就等於橢圓錐
     if (c.muAxial !== undefined) {
       const a = c.axis;
@@ -1684,11 +1684,11 @@ function sliderContactImpulses(car, contacts) {
     c.target = previous.has(key) ? 0 : -(c.restitution ?? 0) * Math.min(0, vn);
   }
   const initial = [...q];
-  // iter-98（B1）：傳入質量矩陣啟用能量保證（同時恢復碰撞不得增加 ½qᵀMq，見 contactSolver.js）
-  // B13（iter-105）：導輪橢圓摩擦錐（滾動 μ ≈ 0.003、軸向 0.3）＋上下兩層導輪同時碰牆（法向、切向方向相同、只差高度）時，
+  // B1：傳入質量矩陣啟用能量保證（同時恢復碰撞不得增加 ½qᵀMq，見 contactSolver.js）
+  // B13：導輪橢圓摩擦錐（滾動 μ ≈ 0.003、軸向 0.3）＋上下兩層導輪同時碰牆（法向、切向方向相同、只差高度）時，
   // 兩組摩擦約束幾乎線性相關，逐接觸 Gauss-Seidel 收斂很慢：p7-demo {s 0.15, lane 0, soc 0.9} 第 19477 步 RR＋RUR 同時撞牆，
   // 殘差 16 次 7.3e-5 → 256 次 8.8e-8 → 1602 次 9.95e-10 收斂（單調下降、不是振盪，能量守門未觸發，該步約 17 ms；scripts/diag/b13-solver*.test.js）。
-  // 收斂門檻 1e-9 不變，迭代上限 64 → 4096（約 1602 的 2.5 倍；計算預算，已收斂的步數提早跳出、結果不變）
+  // 收斂門檻 1e-9，迭代上限設 4096（求解器預設 64；約 1602 的 2.5 倍；計算預算，已收斂的步數提早跳出、結果不變）
   // diagSnap：只有診斷腳本設定 globalThis.__wallSolveDiag 時才抓未收斂那一步的輸入
   const diagSnap = globalThis.__wallSolveDiag ? { q: [...q], Minv: Minv.map((r) => [...r]), M: system.M.map((r) => [...r]), contacts: contacts.map((c) => ({ j: [...c.j], tangents: c.tangents.map((t) => [...t]), mu: c.mu, target: c.target, roller: c.roller, tier: c.tier })), stops: stops.map((c) => ({ j: [...c.j], target: c.target })) } : null;
   car.wallSolve = solveContactVelocities(q, Minv, contacts, stops, { M: system.M, maxIterations: 4096 });

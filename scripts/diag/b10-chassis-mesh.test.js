@@ -1,4 +1,4 @@
-// B10 診斷（iter-109）：所有附件實體 vs 底盤 3D 網格（與質量分布同一份 ABS 本體網格）的穿透。
+// B10 診斷：所有附件實體 vs 底盤 3D 網格（與質量分布同一份 ABS 本體網格）的穿透。
 // 網格三角形以 ≤ 0.7 mm 間距取樣表面點，用各附件實體的有號距離（負值 = 底盤表面點在附件內）。
 import { test, beforeAll } from 'vitest';
 import * as THREE from 'three';

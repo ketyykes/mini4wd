@@ -1,9 +1,9 @@
-// 稜鏡刻面（body-prism-facet，第六階段 LG2 致敬款）：低多邊形楔形全罩，全身由大平面刻面組成、左右完全對稱；
-// 鼻端是寬箭頭鼻＋中線稜（iter-70；原為水平刀口刻面）；座艙置中，上面是多刻面無色透明「水晶」座艙罩（看得到駕駛人）；
-// 車尾一根架高的三角柱斷面「分流稜鏡」橫桿（L2-1 外露機能件，淡青透明外殼＋內部發光分光芯），兩端由兩片黑色三角側板承托（iter-73；原為內側兩根支柱），沒有外伸翼端片。
+// 稜鏡刻面（body-prism-facet，LG2 致敬款）：低多邊形楔形全罩，全身由大平面刻面組成、左右完全對稱；
+// 鼻端是寬箭頭鼻＋中線稜；座艙置中，上面是多刻面無色透明「水晶」座艙罩（看得到駕駛人）；
+// 車尾一根架高的三角柱斷面「分流稜鏡」橫桿（L2-1 外露機能件，淡青透明外殼＋內部發光分光芯），兩端由兩片黑色三角側板承托，沒有外伸翼端片。
 // 設計：shared/design/body-prism-facet/DESIGN.md（HOMAGE_RESEARCH 第 6 節 P7、LG2 語彙 L2-x、和劇中車 / 市售車殼的差異）。
 // 剖面為本檔的折線站位表（推估）：站間直線內插（每 1 mm 一站）→ 每個刻面都是平面，稜線銳利。
-// 塗裝全為自創：白殼＋少數大刻面分件線＋從尾部稜鏡往前散開的冷色分光色塊（青 → 粉 6 塊、黑分隔線、不等寬，iter-70 起不用紅橙黃綠藍紫）；不含任何廠商 / 作品名稱、商標、隊徽、國旗或角色圖像。
+// 塗裝全為自創：白殼＋少數大刻面分件線＋從尾部稜鏡往前散開的冷色分光色塊（青 → 粉 6 塊、黑分隔線、不等寬，不用紅橙黃綠藍紫）；不含任何廠商 / 作品名稱、商標、隊徽、國旗或角色圖像。
 import * as THREE from 'three';
 import { ConvexGeometry } from 'three/examples/jsm/geometries/ConvexGeometry.js';
 import { makePolyBody, finPlate, sweepEllipse, buildDriver } from './polyBody.js';
@@ -14,15 +14,15 @@ import { namedMaterial, decalMaterial, mergeGeos, lerp } from './loft.js';
 /**
  * 關鍵站（x 由後到前；前後軸 x = ±40）：半剖面 5 點 = 中央頂面稜 → 肩稜 → 側面最寬稜 → 側壁下緣（往內收的下刻面）
  * 每點 [z, y]；站與站之間直線內插 → 刻面為平面（推估，依 26 mm 輪拱 R15.2 與底盤內件高度）
- * 俯視是拉長的六角形：最寬 43 在 x −20（側面最寬稜的轉折點），往前直線收到前軸 36.6、寬刀口鼻 32；往後收到尾面 27
+ * 俯視是拉長的六角形：最寬 43 在 x −20（側面最寬稜的轉折點），往前直線收到前軸 36.6、箭頭鼻兩翼 30（x 67）再以 V 形收到鼻尖；往後收到尾面 32
  * @type {{ x: number, pts: number[][] }[]}
  */
-// iter-70 精修：
-// - 鼻部由寬平刀口（鼻端半寬 32）改成寬箭頭鼻：新增 x 62、67 站，x 67 處仍寬 60（箭頭兩翼），再以 V 形收到 x 74 的鼻尖；
+// 造型要點：
+// - 鼻部是寬箭頭鼻：x 62、67 兩站，x 67 處仍寬 60（箭頭兩翼），再以 V 形收到 x 74 的鼻尖；
 //   中線稜（中央頂點高過肩稜 0.7–2.5 mm）從前軸一路拉到鼻尖；
-// - 車尾加寬（x −62 半寬 27 → 32）、x 22 側面稜 38.8 → 40：俯視和 zeppelin（細長雪茄）、halo、cicada 的輪廓 IoU 都壓在 0.85 以下
+// - 車尾寬（x −62 半寬 32）、x 22 側面稜 40：俯視和 zeppelin（細長雪茄）、halo、cicada 的輪廓 IoU 都壓在 0.85 以下
 //   車尾 x ≤ −40 也有低中線稜（座艙段保持平頂，水晶座艙罩坐在上面）
-// - 前後輪拱上方的側面最寬稜 27.8 → 29.0：舊版剛好落在輪拱頂（28.2）之下，輪拱切口在稜線上切出鋸齒小缺口
+// - 前後輪拱上方的側面最寬稜高 29.0：要高過輪拱頂（28.2），否則輪拱切口會在稜線上切出鋸齒小缺口
 const KEY5 = [
   { x: -62, pts: [[0, 29], [10, 28.2], [23, 27], [32, 22], [31, 17.5]] },
   { x: -54, pts: [[0, 31], [11, 30], [26, 29.1], [35, 24], [34, 14.5]] },
@@ -51,7 +51,7 @@ const splitUpperSide = (pts) => {
 const KEY = KEY5.map((k) => ({ x: k.x, pts: splitUpperSide(k.pts) }));
 /** @type {number} 車尾 x（垂直切平的尾面） */
 const X_TAIL = KEY[0].x;
-/** @type {number} 鼻端 x（水平刀口） */
+/** @type {number} 鼻端 x（箭頭鼻的鼻尖） */
 const X_NOSE = KEY[KEY.length - 1].x;
 
 /**
@@ -112,10 +112,9 @@ const materials = () => ({
   lamp: namedMaterial('lamp-ice', { color: 0xf2fbff, emissive: 0xbfe6ff, emissiveIntensity: 0.6, roughness: 0.08, clearcoat: 1.0 }),
   tail: namedMaterial('lamp-red', { color: 0xd0142a, emissive: 0x900010, emissiveIntensity: 0.6, roughness: 0.1, clearcoat: 1.0 }),
   dBlack: decalMaterial('decal-black', { color: 0x141518, roughness: 0.4 }),
-  // iter-70：光譜帶改成「冷色分光」連續漸層（青 → 天藍 → 藍 → 靛 → 紫 → 洋紅 → 粉），相鄰色帶緊貼、不等寬；
-  // 不再是紅橙黃綠藍紫六色等寬（評審：和六色彩虹旗排列相同）
-  // iter-73：色帶改成 6 塊高飽和、有黑色分隔線的刻面色塊（不再是 7 條細帶的柔和漸層）；
-  // 色相仍是冷色範圍（青 → 藍 → 靛 → 紫 → 洋紅 → 粉），但藍系寬度比例下降、紫 / 洋紅 / 粉加寬（不往更藍走）
+  // 分光色帶：6 塊高飽和、有黑色分隔線的刻面色塊，不等寬；
+  // 色相限定在冷色範圍（青 → 藍 → 靛 → 紫 → 洋紅 → 粉），不用紅橙黃綠藍紫六色等寬（排列會和六色彩虹旗相同）；
+  // 藍系寬度比例較低、紫 / 洋紅 / 粉較寬（不往更藍走）
   dS0: decalMaterial('decal-spectrum-cyan', { color: 0x00c2e8, roughness: 0.25, clearcoat: 0.8 }),
   dS2: decalMaterial('decal-spectrum-blue', { color: 0x1f4fff, roughness: 0.25, clearcoat: 0.8 }),
   dS3: decalMaterial('decal-spectrum-indigo', { color: 0x4a1fe0, roughness: 0.25, clearcoat: 0.8 }),
@@ -131,7 +130,7 @@ const materials = () => ({
   mount: namedMaterial('abs-mount-black', { color: 0x222326, roughness: 0.6 }),
 });
 
-/** 冷色分光色塊（由後往前，靠近尾部稜鏡的是青）：材質鍵＋相對寬度（iter-73：6 塊，藍系 43%、紫紅系 57%） */
+/** 冷色分光色塊（由後往前，靠近尾部稜鏡的是青）：材質鍵＋相對寬度（6 塊，藍系 43%、紫紅系 57%） */
 const SPECTRUM = ['dS0', 'dS2', 'dS3', 'dS4', 'dS5', 'dS6'];
 const SPECTRUM_W = [0.8, 0.9, 0.9, 1.1, 1.2, 1.1];
 /** @type {number} 色塊之間的黑色分隔線半寬（mm） */
@@ -180,7 +179,7 @@ const buildCrystalCanopy = () => {
  * 分流稜鏡橫桿：三角柱（底面水平、尖端朝上），沿 z 跨 ±halfSpan
  * @type {(halfSpan: number) => THREE.BufferGeometry}
  */
-/** @type {number[][]} 稜鏡三角斷面（iter-70：架高 6 mm、斷面放大，底 38.4 → 頂 44.4） */
+/** @type {number[][]} 稜鏡三角斷面（架高的橫桿，底 38.4 → 頂 44.4） */
 const PRISM_TRI = [
   [-51, 38.4],
   [-60.4, 38.4],
@@ -252,7 +251,7 @@ export const prismFacetBody = makePolyBody({
 
     // 分流稜鏡（prism-bar，L2-1 外露機能件）：架高的淡青透明三角柱橫桿＋兩端黑色三角側板（無外伸翼端片）
     parts.push({ geometry: buildPrismBar(33), mat: 'prism', solid: true, outline: true, renderOrder: 3, name: 'prism-bar' });
-    // 內部分光芯（iter-70）：縮小 0.5 倍的三角柱，沿 z 分段、從中央青往兩端藍 → 紫 → 洋紅（左右對稱）；外觀件，不計質量
+    // 內部分光芯：縮小 0.5 倍的三角柱，沿 z 分段、從中央青往兩端藍 → 紫 → 洋紅（左右對稱）；外觀件，不計質量
     const CORE = [
       { z0: 0, z1: 9, mat: 'core0' },
       { z0: 9, z1: 17, mat: 'core1' },
@@ -263,7 +262,7 @@ export const prismFacetBody = makePolyBody({
       const segs = [buildPrismBar(c.z1, 0.5, c.z0), buildPrismBar(-c.z0, 0.5, -c.z1)];
       parts.push({ geometry: mergeGeos(segs), mat: c.mat, name: `prism-core-${c.mat}` });
     }
-    // iter-73：承托改成兩端的三角側板（iter-70 評審：內側兩根黑支柱讓它讀成一般 GT 翼）；
+    // 承托用兩端的三角側板（用內側兩根黑支柱會讓它讀成一般 GT 翼）；
     // 側板在橫桿兩端（|z| 31.5，橫桿伸出側板外 1 mm），上緣就是稜鏡三角斷面，不高過稜鏡頂；下緣埋進尾段肩刻面
     /** @type {THREE.BufferGeometry[]} */
     const plates = [];
@@ -288,7 +287,7 @@ export const prismFacetBody = makePolyBody({
     }
     parts.push({ geometry: mergeGeos(plates), mat: 'black2', solid: true, outline: true, name: 'prism-supports' });
 
-    // 刻面分件線（iter-73：拿掉滿佈的細黑格線，只留大刻面的主要分件稜線，約 24 面）：
+    // 刻面分件線（不畫滿佈的細黑格線，只留大刻面的主要分件稜線，約 24 面）：
     // 縱向：鼻 / 尾中線稜、頂面平台邊（p1）、肩稜（p2）、側面最寬稜（y p4）；橫向：只在前後軸（x ±40）與鼻部箭頭轉折（x 62）
     parts.push({
       geometry: kit.decal((x, y, z) => {
@@ -358,7 +357,7 @@ export const prismFacetBody = makePolyBody({
         name: `decal-side-spectrum-${i}`,
       });
     });
-    // iter-103（評審 iter-73「prism 缺臉」，對照概念圖 concept_front34_v1 鼻翼前緣的色塊）：箭頭鼻兩翼前緣一條分光色塊帶，
+    // 車頭的「臉」（對照概念圖 concept_front34_v1 鼻翼前緣的色塊）：箭頭鼻兩翼前緣一條分光色塊帶，
     // 沿 V 形前緣（俯視 (x 67, |z| 30) → (x 74, |z| 5.5)）往內 0.8–6 mm；由翼尖往鼻尖依序 粉 → 洋紅 → 紫 → 靛 → 藍 → 青（和肩部色帶同一組冷色，不加紅橙黃綠）
     const EDGE_LEN = Math.hypot(7, 24.5);
     /** @type {(x: number, az: number) => number} 到 V 形前緣的有號距離（< 0 在殼內） */
@@ -392,7 +391,7 @@ export const prismFacetBody = makePolyBody({
         name: `decal-nose-spectrum-${i}`,
       });
     });
-    // 細縫頭燈的黑色燈框（iter-103：白殼上的冰藍燈片原本幾乎看不見）
+    // 細縫頭燈的黑色燈框（白殼上的冰藍燈片沒有燈框時幾乎看不見）
     parts.push({
       geometry: kit.decal((x, y, z) => {
         const az = Math.abs(z);
@@ -405,7 +404,7 @@ export const prismFacetBody = makePolyBody({
       mat: 'dBlack',
       name: 'lamp-slit-bezels',
     });
-    // 刀口鼻上的細縫頭燈（每側一道往外後斜的長條）
+    // 箭頭鼻上的細縫頭燈（每側一道往外後斜的長條）
     parts.push({
       geometry: kit.decal((x, y, z) => {
         const az = Math.abs(z);

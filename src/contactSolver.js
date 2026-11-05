@@ -95,7 +95,7 @@ function solveNormals(q, rows, A, tolerance) {
  */
 export function solveContactVelocities(q, Minv, contacts, limits = [], { maxIterations = 64, tolerance = 1e-9, M = null } = {}) {
   if (!M) return solveOnce(q, Minv, contacts, limits, maxIterations, tolerance);
-  // iter-98（B1）：全域能量保證。同時多點恢復碰撞（法向目標 −e·v_n）的聯立解可能讓 ½qᵀMq 增加
+  // B1：全域能量保證。同時多點恢復碰撞（法向目標 −e·v_n）的聯立解可能讓 ½qᵀMq 增加
   // （隨機 6 自由度多接觸案例最多 +1.8%，見 scripts/diag/b1-gain-search.test.js）。增加時把所有恢復目標等比例縮小，
   // 二分到剛好不增能的最大比例 α。α = 0 時所有法向／止擋目標 ≤ 0：ΔKE = λᵀv₁ − ½λᵀAλ ≤ 0，摩擦圓盤只耗能 → 必定不增能
   const q0 = [...q];

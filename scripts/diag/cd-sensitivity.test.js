@@ -1,4 +1,4 @@
-// C_d 敏感度（iter-110）：C_d 0.6 是推估（查不到迷你四驅實測／CFD），量化它對理論極速與三圈時間的影響
+// C_d 敏感度：C_d 0.6 是推估（查不到迷你四驅實測／CFD），量化它對理論極速與三圈時間的影響
 import { test, beforeAll } from 'vitest';
 import { assemble, loadConfig } from '../../src/assembly.js';
 import { theoreticalTopSpeed } from '../../src/powertrain.js';

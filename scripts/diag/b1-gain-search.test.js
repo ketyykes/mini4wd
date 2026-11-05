@@ -1,4 +1,4 @@
-// iter-98 診斷（B1）：隨機搜尋「同時多點恢復碰撞（法向速度目標 −e·v_n）」使系統動能增加的案例
+// B1 診斷：隨機搜尋「同時多點恢復碰撞（法向速度目標 −e·v_n）」使系統動能增加的案例
 // npx vitest run --config scripts/diag/vitest.diag.config.js scripts/diag/b1-gain-search.test.js --silent=false
 import { test } from 'vitest';
 import { solveContactVelocities } from '../../src/contactSolver.js';

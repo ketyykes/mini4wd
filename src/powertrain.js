@@ -1,6 +1,6 @@
 // 動力鏈模型：NiMH 電池（內阻＋隨 SOC 變化的開路電壓）→ 線性 DC 馬達 → 齒輪比 → 輪上驅動力
 // 純函式，不依賴物理引擎；物理模擬每一步呼叫，解析理論值也用同一套公式
-// 第二階段：所有函式都吃組裝推導出的物理參數 P（asm.P，見 spec.js deriveParams），換零件就換一份 P
+// 所有函式都吃組裝推導出的物理參數 P（asm.P，見 spec.js deriveParams），換零件就換一份 P
 
 /**
  * 單顆電池開路電壓（依 SOC 線性內插）
@@ -43,7 +43,7 @@ export class Battery {
 }
 
 /**
- * 馬達內部摩擦扭力（庫侖＋黏滯），在 3 V 無載轉速時合計 = k_t·I0（主 agent 決策 D1）
+ * 馬達內部摩擦扭力（庫侖＋黏滯），在 3 V 無載轉速時合計 = k_t·I0（決策 D1）
  * @type {(P: any, omegaMotor: number) => number} N·m
  */
 export function motorFrictionTorque(P, omegaMotor) {
@@ -74,7 +74,7 @@ export function batteryResistanceAt(P, soc) {
 
 /**
  * 在給定開路電壓與馬達轉速下，求電流、端電壓與馬達輸出扭力
- * 電路（第四階段加入迴路電阻 Rc：電池端子、開關、馬達端子的本體＋接點電阻，見 switch 零件）：
+ * 電路（含迴路電阻 Rc：電池端子、開關、馬達端子的本體＋接點電阻，見 switch 零件）：
  *   Voc − I·(Rb + Rc + Rm) − Ub·sign(I) − k·ω = 0；τ = k·I − τ_f(ω)
  * The brush drop opposes CURRENT (including generation), not rotation.
  * At I = 0 it supports any voltage in [−Ub, Ub] (static dead band).
@@ -125,7 +125,7 @@ export function axleFrictionForce(P, normalTotal = P.massTotal * P.gravity) {
  * @type {(P: any) => number}
  */
 export function counterGearLossFraction(P) {
-  // iter-59：μ 用中間齒輪軸承自己的值（中間齒輪軸 slot：含氟塗層軸 / 中間齒輪培林組），舊的整車參數沒有時同輪軸軸承
+  // μ 用中間齒輪軸承自己的值（中間齒輪軸 slot：含氟塗層軸 / 中間齒輪培林組），舊的整車參數沒有時同輪軸軸承
   const mu = P.counterBearingMu ?? P.bearingMu;
   return mu * P.counterShaftRadius_mm * (1 / P.counterLargePitchRadius_mm + 1 / P.counterSmallPitchRadius_mm);
 }
@@ -156,9 +156,9 @@ export function driveEfficiency(P) {
 /**
  * 計算某速度下的縱向力（全部 4 輪合計，N），正值為推進
  * 不含空氣阻力（空氣阻力由物理模擬直接施加在車體上）
- * speed：輪胎接地面的線速度（第四階段起 = 傳動系轉速 ω_w × r，見 sim.js stepCar；純滾動時等於車速）
- * normalLoad：4 輪法向力合計（N）。物理稽核 L3（iter-87）：滾阻 C_rr·N 與輪軸軸承阻力 μ·N·r_軸/r_輪 都和實際法向力成正比，
- * 騰空時為 0、坡道上為 m·g·cosθ、落地瞬間較大；省略時 = 車重（平地靜態，理論極速與舊版相同）
+ * speed：輪胎接地面的線速度（= 傳動系轉速 ω_w × r，見 sim.js stepCar；純滾動時等於車速）
+ * normalLoad：4 輪法向力合計（N）。物理稽核 L3：滾阻 C_rr·N 與輪軸軸承阻力 μ·N·r_軸/r_輪 都和實際法向力成正比，
+ * 騰空時為 0、坡道上為 m·g·cosθ、落地瞬間較大；省略時 = 車重（平地靜態）
  * @type {(P: any, opt: { speed: number, powered: boolean, battery: Battery, normalLoad?: number }) => { drive: number, resist: number, rolling: number, current: number, terminalVoltage: number, motorVoltage: number }}
  */
 export function longitudinalForce(P, { speed, powered, battery, normalLoad = P.massTotal * P.gravity }) {
@@ -176,7 +176,7 @@ export function longitudinalForce(P, { speed, powered, battery, normalLoad = P.m
     current = op.current;
     terminalVoltage = op.terminalVoltage;
     motorVoltage = op.motorVoltage;
-    // 物理稽核 L4（iter-82）：τ ≥ 0 時功率由馬達流向輪子，輪上力 = τ·G·η/r；τ < 0（馬達被拖到無載轉速以上、反向功率流）時
+    // 物理稽核 L4：τ ≥ 0 時功率由馬達流向輪子，輪上力 = τ·G·η/r；τ < 0（馬達被拖到無載轉速以上、反向功率流）時
     // 輪子要多出傳動損失才能拖動馬達 → 輪上力 = τ·G/(r·η)（與 motorCoastDragForce 一致）
     if (op.torque >= 0) {
       drive = (op.torque * gearRatio * driveEfficiency(P)) / r;

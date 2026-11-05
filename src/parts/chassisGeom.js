@@ -71,10 +71,10 @@ export function sideDamperAdapter(ch, part, seat) {
   const side = Math.sign(seat.z), surfaceY = seat.y ?? chassisSideGeometry(ch)[0].skirt.y1;
   const spacerHeight = seat.spacer_mm ?? part.mountSpacer_mm ?? 6; // Tamiya 15473, official length; 底盤可指定不加墊管（VZ）
   // Estimated straight FRP adapter, matching the 6.5 mm side-skirt width.
-  // Unlike the old 0.9 g guessed bracket, mass follows the displayed volume.
+  // Mass follows the displayed volume.
   const plateThickness = 1.5, length = seat.plateLength_mm ?? 35;
   const centerZ = seat.z;
-  // iter-111 外掛式（seat.plateInnerZ_mm）：側板從底盤側壁外側伸到制振器外緣，制振器在側壁外面、貼近離地高度
+  // 外掛式（seat.plateInnerZ_mm）：側板從底盤側壁外側伸到制振器外緣，制振器在側壁外面、貼近離地高度
   const zIn = seat.plateInnerZ_mm !== undefined ? side * seat.plateInnerZ_mm : centerZ - side * 3.25;
   const zOut = centerZ + side * 3.25;
   const width = Math.abs(zOut - zIn);

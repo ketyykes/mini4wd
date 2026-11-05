@@ -113,7 +113,7 @@ export const miscParts = [
     mass_g: 5.5,
     src: { mass_g: 'PARTS_RESEARCH [NAO] 玩家實測：齒輪蓋 5.5 g' },
   },
-  // B14（iter-107）：VZ 底盤附屬的蓋子（[VZ 2.5]、[VZ 2.6]）
+  // B14：VZ 底盤附屬的蓋子（[VZ 2.5]、[VZ 2.6]）
   {
     id: 'battery-cover-vz',
     category: 'battery-cover',

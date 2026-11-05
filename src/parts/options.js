@@ -1,4 +1,4 @@
-// 第三階段選配零件：制振器（mass damper）、煞車海綿（brake sponge）、配重（ballast）
+// 選配零件：制振器（mass damper）、煞車海綿（brake sponge）、配重（ballast）
 // 這些 slot 可以填 null（不裝）。相容性：compat.requires 列出需要的安裝點（由底盤 / 導輪架的 features 提供）
 // 數值來源見 shared/reference/PARTS_RESEARCH.md「第三階段（iter-46）新零件查證」F、G、H 節
 
@@ -12,7 +12,7 @@ export const massDamperParts = [
     mount: 'rear',
     count: 1,
     shape: 'cylinder',
-    /** B10（iter-109）：φ10 會擋到 MA 後保桿正面（x −72.9～−74.9、頂面 9.6 mm），螺絲上先套 6 mm 鋁墊管把制振器墊高 */
+    /** B10：φ10 會擋到 MA 後保桿正面（x −72.9～−74.9、頂面 9.6 mm），螺絲上先套 6 mm 鋁墊管把制振器墊高 */
     rearSpacer_mm: 6,
     diameter_mm: 10,
     height_mm: 7.5,
@@ -61,7 +61,7 @@ export const massDamperParts = [
       mount: 'iter-90 推估：側裙頂面＋6 mm 鋁墊管＋1.5 mm FRP 板＋1 mm 座墊，配重底面 13.8 mm；托板與墊管另計固定質量，尺寸與來源見 chassisGeom.js / SPEC',
     },
   },
-  // ---- 第五階段（iter-58）：台灣買得到的 MA 側制振器組（台灣來源見 shared/reference/TAIWAN_SOURCES.md）----
+  // ---- 台灣買得到的 MA 側制振器組（台灣來源見 shared/reference/TAIWAN_SOURCES.md）----
   {
     id: 'damper-side-square-32',
     category: 'mass-damper',
@@ -91,7 +91,7 @@ export const massDamperParts = [
       taiwan: 'TAIWAN_SOURCES TW20（四驅博士學校／露天，15490）',
     },
   },
-  // ---- 第七階段（iter-75）：滑動式制振器新款（沿用既有座墊＋prismatic 結構，只換尺寸與質量；PARTS_RESEARCH 第七階段 AL 節）----
+  // ---- 重型、8×8×14 滑動式制振器（沿用既有座墊＋prismatic 結構，只換尺寸與質量；PARTS_RESEARCH 第七階段 AL 節）----
   {
     id: 'damper-heavy',
     category: 'mass-damper',
@@ -143,7 +143,7 @@ export const massDamperParts = [
       mount: 'AL 節：官方「使用可能マシン」含 MA；裝在底盤側制振器座（同 damper-side-square，兩者互斥）',
     },
   },
-  // ---- 第七階段（iter-80）：8×8×32 方塊、細長樽型（沿用既有座墊＋prismatic 結構，只換尺寸與質量；PARTS_RESEARCH 第七階段 AL 節）----
+  // ---- 8×8×32 方塊、細長樽型（沿用既有座墊＋prismatic 結構，只換尺寸與質量；PARTS_RESEARCH 第七階段 AL 節）----
   {
     id: 'damper-square-8x8x32',
     category: 'mass-damper',
@@ -230,7 +230,7 @@ export const massDamperParts = [
       taiwan: 'TAIWAN_SOURCES TW27（15501）',
     },
   },
-  // ---- 第七階段（iter-80）：AR 側制振器組 15459（官方適用表含 MA → 做成合法的側裝零件，不是不相容案例；AL 節）----
+  // ---- AR 側制振器組 15459（官方適用表含 MA → 做成合法的側裝零件，不是不相容案例；AL 節）----
   {
     id: 'damper-ar-side',
     category: 'mass-damper',
@@ -264,7 +264,7 @@ export const massDamperParts = [
       taiwan: 'TAIWAN_SOURCES TW28（四驅博士學校／露天，15459）',
     },
   },
-  // ---- 第七階段（iter-75）：球頭連桿制振器（擺動式，新物理機制：繞橫向軸的鉸接自由度）----
+  // ---- 球頭連桿制振器（擺動式：繞橫向軸的鉸接自由度）----
   {
     id: 'damper-balllink-square',
     category: 'mass-damper',
@@ -315,7 +315,7 @@ export const massDamperParts = [
 ];
 
 /**
- * 煞車板（iter-50）：海綿貼在 1.5 mm FRP 小板上，小板鎖在導輪架的煞車座下方（[T15518] 官方 FRP 煞車架「1.5mm厚FRP製ステー」附 2 mm 海綿）。
+ * 煞車板：海綿貼在 1.5 mm FRP 小板上，小板鎖在導輪架的煞車座下方（[T15518] 官方 FRP 煞車架「1.5mm厚FRP製ステー」附 2 mm 海綿）。
  * 板的平面尺寸 = 海綿貼片外擴 margin_mm（推估：板緣比海綿各多 0.6 mm 方便貼齊），質量 = 面積 × 厚度 × FRP 密度 1.85（SPEC 1.14），組裝時計算
  */
 const BRAKE_PLATE = { material: 'frp', thickness_mm: 1.5, density_g_cm3: 1.85, margin_mm: 0.6, src: 'PARTS_RESEARCH 第三階段 A 節 [T15518]：1.5 mm FRP 煞車架；外擴 0.6 mm 為推估' };
@@ -384,7 +384,7 @@ export const brakeSpongeParts = [
       compressiveModulus_Pa: '推估：較硬，取 1 MPa',
     },
   },
-  // ---- 第七階段（iter-78）：15441 三種摩擦煞車海綿（PARTS_RESEARCH 第七階段 AM 節，台灣 TW29）----
+  // ---- 15441 三種摩擦煞車海綿（PARTS_RESEARCH 第七階段 AM 節，台灣 TW29）----
   // 官方只說「ブレーキの効きが異なる3タイプを2枚ずつ」；顏色（綠 / 黑 / 灰）只見於 [T15518] 文字，
   // 哪個顏色對應哪種效力、厚度、硬度官方都沒寫 → 這裡只用「低 / 中 / 高摩擦」三款區分，μ 0.4 / 0.7 / 1.0 全為推估（AM 節），
   // 不指定顏色對應；三款的厚度、壓縮模數、阻尼、密度取相同值，只有 μ 不同（官方唯一說明的差異就是「効き」）
@@ -461,7 +461,7 @@ export const brakeSpongeParts = [
       taiwan: 'TAIWAN_SOURCES TW29',
     },
   },
-  // ---- iter-95（FINAL_REPORT B8）：15413 橡膠煞車，端面單點接觸 ----
+  // ---- FINAL_REPORT B8：15413 橡膠煞車，端面單點接觸 ----
   // 官方只寫安裝方式與作用時機，沒有尺寸與摩擦數值 → 尺寸、模數、μ 全為推估（PARTS_RESEARCH 第七階段 AK 節 [T15413]、AM 節）。
   // 接觸模型：橡膠柱端面一點對路面的壓縮彈簧（k = E·A / 伸出長度）＋阻尼＋庫侖摩擦；壓到底後由剛性管座碰撞體承受
   {
@@ -539,7 +539,7 @@ export const ballastParts = [
 ];
 
 /**
- * 煞車架（第五階段 iter-60，slot brakePlate）：海綿貼在煞車架下，煞車架鎖在後導輪架的煞車座下方；只有裝煞車海綿時才裝。
+ * 煞車架（slot brakePlate）：海綿貼在煞車架下，煞車架鎖在後導輪架的煞車座下方；只有裝煞車海綿時才裝。
  * padHalfZ_mm：海綿貼片的半寬（null = 依導輪架煞車座的大小）；板 = 貼片外擴 margin_mm；質量 = 面積 × 厚度 × 密度（組裝時計算）
  * @type {import('./types').PartBase[]}
  */
@@ -574,7 +574,7 @@ export const brakePlateParts = [
       mass_g: '依貼片面積計算（組裝時）：(13 + 1.2) × (24 + 1.2) × 1.5 × 1.6 ≈ 0.86 g（AE 節估整片約 1.7 g）',
       taiwan: 'TAIWAN_SOURCES TW15（四驅博士學校／露天，15550；另有新莊超音速陽明賣場）',
     },
-  },  // iter-95（FINAL_REPORT B8）：15458 AR 煞車組的塑膠煞車架：前端斜面スキッド＋5 mm 寬海綿條
+  },  // FINAL_REPORT B8：15458 AR 煞車組的塑膠煞車架：前端斜面スキッド＋5 mm 寬海綿條
   {
     id: 'brake-plate-ar-skid',
     category: 'brake-plate',
@@ -603,7 +603,7 @@ export const brakePlateParts = [
 ];
 
 /**
- * B13（iter-105）：導輪角度調整板（田宮 15373「ローラー角度調整プレートセット」，台灣 TAIWAN_SOURCES TW38）。
+ * B13：導輪角度調整板（田宮 15373「ローラー角度調整プレートセット」，台灣 TAIWAN_SOURCES TW38）。
  * 夾在導輪板（FRP 等）與底盤之間，讓導輪軸頂端往車頭方向傾（ダウンスラスト）。導輪沿牆前進時，導輪軸方向的滑動分量 v·sinθ
  * 受滑動摩擦（spec.track.wallFriction）→ 產生把車往下壓的分力（PARTS_RESEARCH AK 節預期 P17）。官方：1°／2°／3° 三種板，組合出 −3°～+3°
  * @type {import('./types').PartBase[]}

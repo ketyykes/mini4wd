@@ -1,7 +1,7 @@
-// Gundestrup 雄鹿（body-gundestrup-stag，第八階段神話組・凱爾特）：丹麥 Gundestrup 銀釜（銀為主、局部鍍金、repoussé 錘起）上的雄鹿。
+// Gundestrup 雄鹿（body-gundestrup-stag，神話組・凱爾特）：丹麥 Gundestrup 銀釜（銀為主、局部鍍金、repoussé 錘起）上的雄鹿。
 // 修長的鹿身：前輪上方是隆起的寬肩（鬐甲最高點），背線往後緩降到臀部，車頭收窄成長鹿吻；中段一個煙燻座艙罩；
-// 車尾從後段車頂長出一對多叉、左右不對稱、自然彎曲的鹿角（實體件，鍍金角尖），兩支角根分開、不形成 Y 字剖面（MYTH_RESEARCH H7）；
-// 鹿吻外圍一圈扭絞金 torc（兩端圓球頭，C8）；側面一道 La Tène 單向 S 形卷鬚紋（金，C7）與紅琺瑯圓點（C4 的紅琺瑯，只取顏色）。
+// 座艙正後方長出一對往後掃、多叉、左右不對稱、自然彎曲的鹿角（實體件，鍍金角尖），兩支角根分開、不形成 Y 字剖面（MYTH_RESEARCH H7）；
+// 鹿吻外圍一圈扭絞金 torc（兩端圓球頭，C8）；側面一道仿銀釜的動物浮雕帶（貼紙）與肩部的紅琺瑯圓點（C4 的紅琺瑯，只取顏色）。
 // 設計：shared/design/body-gundestrup-stag/DESIGN.md（典故與文物對應 MYTH_RESEARCH 第 5 節 C1、C2、C7、C8；黑名單 5-3、第 10 節）。剖面為本檔站位產生器（推估）。
 // 不畫神的人臉、不做盤腿坐像、不用三臂 triskele、不做圓內十字、不重現 Battersea 盾的琺瑯格；不做彩色發光鹿角；不含任何文字。
 import * as THREE from 'three';
@@ -21,19 +21,18 @@ const X_NOSE = 80;
 const XS = [-68, -62, -57, -52, -40, -28, -22, -14, 0, 8, 16, 22, 30, 40, 50, 56, 60, 64, 68, 72, 76, 80];
 /** @type {Record<string, (x: number) => number>} */
 const P = {
-  // 半寬（俯視）：細尖的臀部 → 寬厚的後腿（47–48，罩住後輪）→ 細腰 30（座艙段；坐在底盤側壁 z 35 內側上方）→ 隆起的前胸 / 肩 48（x 22）→ 前輪 40 → 頸部收窄 19 → 鹿頭兩頰 22 → 鹿吻
-  // iter-114：最寬 48 → 47.6（車殼外框半寬 ≤ 48.0）；鹿頭段改成單調收窄（原本頸 19 → 兩頰 22 → 18 的凹凸讓銀面反光起皺）、前輪段 40 平台改成連續收斜
-  // iter-121：鹿吻收得更細長（x 60 → 80 半寬 30.5 → 8；細長的鹿吻＋低鼻，也讓俯視 IoU 和 sleipnir 拉開）
+  // 半寬（俯視）：細尖的臀部 → 寬厚的後腿（47.6，罩住後輪）→ 細腰 30（座艙段；坐在底盤側壁 z 35 內側上方）→ 隆起的前胸 / 肩 47.6（x 22）→ 前輪段連續收斜 → 鹿頭段單調收窄 → 鹿吻
+  // 最寬 47.6（車殼外框半寬 ≤ 48.0）；鹿頭段單調收窄（頸窄、兩頰寬的凹凸會讓銀面反光起皺）
+  // 鹿吻細長（x 60 → 80 半寬 30.5 → 8；細長的鹿吻＋低鼻，也讓俯視 IoU 和 sleipnir 拉開）
   hw: monoCurve(XS, [4, 10, 36, 47.6, 47.6, 46.8, 43.5, 33, 30.5, 32, 38, 47.6, 46.5, 43.5, 39.5, 35, 30, 24.5, 19.6, 15.6, 12, 8]),
-  // 中線頂（背線）：臀部 29 → 臀頂 37 → 背部低處 35（座艙罩）→ 鬐甲（肩峰）42 → 頸、額往前下到鼻尖 21.5
-  // iter-114：鬐甲到鼻尖改成沿車長單純外凸（斜率一路變陡，原本 x 64 後斜率變緩 → 頸部下凹、反光像揉皺的鋁箔）；背部低處 35 → 36.2（座艙兩側的鞍形凹面變淺）
-  // iter-121（第九階段）：整條背線壓低（鬐甲 41.4 → 37.5、背部 36.2 → 34），鹿吻往前一路下斜到鼻尖 16.5（LG1 低尖鼻 V3）；鬐甲到鼻尖仍是斜率一路變陡的單純外凸
+  // 中線頂（背線）：臀部 27 → 臀頂 34.5 → 背部低處 34（座艙罩）→ 鬐甲（肩峰）37.5 → 頸、額往前一路下斜到鼻尖 16.5（LG1 低尖鼻 V3）
+  // 鬐甲到鼻尖沿車長單純外凸（斜率一路變陡；斜率中途變緩會讓頸部下凹、反光像揉皺的鋁箔）；背部低處只比臀頂低 0.5（座艙兩側的鞍形凹面淺）
   yTop: monoCurve(XS, [27, 31, 33, 34, 34.5, 34.5, 34.3, 34, 34, 34.5, 35.5, 36.5, 37.5, 37.3, 34.8, 32.6, 30.6, 28.4, 26, 23.4, 20.2, 16.5]),
   // 剖面最寬處的高度
-  // iter-121：鹿吻段的最寬處跟著鼻尖往下收（19 → 14.2），鼻端變成低而扁的鏟形吻
+  // 鹿吻段的最寬處跟著鼻尖往下收（19 → 14.2），鼻端是低而扁的鏟形吻
   ySh: monoCurve(XS, [24, 24, 23, 22.5, 22, 22, 22, 21.5, 21.5, 21.5, 21.5, 22, 22.5, 22.5, 22, 21, 20, 19, 17.8, 16.6, 15.4, 14.2]),
   // 側裙下緣：中段 11（底盤側框段由 loft.js 自動讓到 9.9），臀部抬高離開後導輪，鹿吻下緣往上收
-  // iter-121：鹿吻下緣 18 → 13（低鼻；仍在底盤前保險桿之上，以 body-check 間隙驗證）
+  // 鹿吻下緣 13（低鼻；在底盤前保險桿之上，以 body-check 間隙驗證）
   yLow: monoCurve(XS, [22, 19, 15, 13, 12, 12, 11.5, 11, 11, 11, 11, 11.5, 12, 12, 12, 12.2, 12.4, 12.6, 12.8, 13, 13, 13]),
 };
 
@@ -98,7 +97,7 @@ const buildLiner = (arch, depth, minZ) => {
   const a1 = Math.PI - 0.15;
   const pos = [];
   /** @type {(t: number) => number} */
-  // iter-114：外緣離殼外面 1.0 → 1.6 mm（解析式 shellZ 和平滑殼面在車頭 / 車尾收窄處差到 0.5 mm，內襯會穿出殼面）
+  // 外緣離殼外面 1.6 mm（解析式 shellZ 和平滑殼面在車頭 / 車尾收窄處差到 0.5 mm，離太近內襯會穿出殼面）
   const zIn = (t) => shellZ(arch.x + r * Math.cos(t), arch.y + r * Math.sin(t)) - 1.6;
   for (const sg of [-1, 1]) {
     for (let i = 0; i < n; i++) {
@@ -106,8 +105,8 @@ const buildLiner = (arch, depth, minZ) => {
       const t1 = lerp(a0, a1, (i + 1) / n);
       /** @type {(t: number, z: number) => number[]} */
       const p = (t, z) => [arch.x + r * Math.cos(t), arch.y + r * Math.sin(t), sg * z];
-      // iter-114：內緣不得超過外緣（原本 zIn < minZ 的角度，內襯被 minZ 撐到殼外面之外：前輪拱前緣、後輪拱後緣穿出殼面最多 3.5 mm、
-      // 而且四邊形反折、法線朝外——Blender 展示圖輪拱邊上的黑白條紋來源之一）；至少留 0.6 mm 寬、一律在殼內面以內
+      // 內緣不得超過外緣（zIn < minZ 的角度若直接取 minZ，內襯會被撐到殼外面之外：前輪拱前緣、後輪拱後緣穿出殼面最多 3.5 mm、
+      // 而且四邊形反折、法線朝外——Blender 展示圖輪拱邊上會出現黑白條紋）；至少留 0.6 mm 寬、一律在殼內面以內
       const A = p(t0, Math.min(zIn(t0) - 0.6, Math.max(minZ, zIn(t0) - depth)));
       const B = p(t1, Math.min(zIn(t1) - 0.6, Math.max(minZ, zIn(t1) - depth)));
       const C = p(t1, zIn(t1));
@@ -143,7 +142,7 @@ const sdSeg = (u, v, [ax, ay], [bx, by], r) => {
 const sdEll = (u, v, cx, cy, rx, ry) => (Math.hypot((u - cx) / rx, (v - cy) / ry) - 1) * Math.min(rx, ry);
 
 /**
- * iter-121（取自 iter-118 版，全部是貼紙、不加面數到碰撞）：仿 Gundestrup 銀釜的動物浮雕帶（只有動物：雄鹿、羊角蛇、狼，全部朝車頭行進；不做人物、不做盤腿坐像）。
+ * 仿 Gundestrup 銀釜的動物浮雕帶（全部是貼紙、不加面數到碰撞；只有動物：雄鹿、羊角蛇、狼，全部朝車頭行進；不做人物、不做盤腿坐像）。
  * u 往車頭、v 往上（帶中線 0），動物高約 ±4，回傳到動物剪影的距離（線寬 ≥ 0.8 mm）
  * @type {(u: number, v: number) => number}
  */
@@ -196,7 +195,7 @@ const animalSd = (u, v) => {
 const FRIEZE = { x0: -20, x1: 20, y: 18.6, h: 4.3 };
 
 /**
- * 側面兩道深色凹槽速度線（iter-121，評審「側面加深色凹槽線把銀面分割出速度線」）：從前輪拱後上方起、往車尾微微上揚、
+ * 側面兩道深色凹槽速度線（把銀面分割出速度線）：從前輪拱後上方起、往車尾微微上揚、
  * 尾端漸細收尖；回傳到線中心的距離減半寬（正值 = 線外）。k 為第幾道（0 上、1 下）
  * @type {(x: number, y: number, k: number) => number}
  */
@@ -236,7 +235,7 @@ const materials = () => ({
   dGold: decalMaterial('decal-gilt', { color: 0xc9a43b, roughness: 0.32, metalness: 0.7 }),
   dRed: decalMaterial('decal-enamel-red', { color: 0xb0302b, roughness: 0.25 }),
   dDark: decalMaterial('decal-niello-dark', { color: 0x2a2c30, roughness: 0.5 }),
-  // iter-121：浮雕帶凹處的氧化暗部（霧面）、凸起動物的亮銀、深色凹槽速度線（藍黑烏銀，不用棕黑）
+  // 浮雕帶凹處的氧化暗部（霧面）、凸起動物的亮銀、深色凹槽速度線（藍黑烏銀，不用棕黑）
   dRecess: decalMaterial('decal-oxidized-recess', { color: 0x2f3134, roughness: 0.75 }),
   dSilver: decalMaterial('decal-relief-silver', { color: 0xd2d3d2, roughness: 0.3, metalness: 0.85 }),
   dGroove: decalMaterial('decal-niello-groove', { color: 0x1a1f29, roughness: 0.55 }),
@@ -251,7 +250,7 @@ const materials = () => ({
  */
 
 /**
- * iter-121（第九階段）：鹿角從車尾移到座艙正後方（角根 x −25），主幹貼著背線往後上方掃（像被風往後吹的角冠，兼當尾部導流件）；
+ * 鹿角在座艙正後方（角根 x −25），主幹貼著背線往後上方掃（像被風往後吹的角冠，兼當尾部導流件）；
  * 角根左右分開（z ±8.5 / ±9.5）、各 3–4 個往後上方的分叉、左右長度與角度不同，不形成 Y 字剖面（MYTH_RESEARCH H7）。
  * 分叉尖一律壓在 y 48.2 以下（車殼頂高 ≤ 49，V17）。
  * @type {AntlerDef} 右角
@@ -309,7 +308,7 @@ export const gundestrupStagBody = makePolyBody({
   wheelArches: ARCHES,
   canopy: {
     section: 'ellipse',
-    // 中段座艙罩：x 12 → −22，最寬 11、最高 5.2（iter-121：7 → 5.2，罩頂約 39.2，小而低的有色座艙 V5）
+    // 中段座艙罩：x 12 → −22，最寬 11、最高 5.2（罩頂約 39.2，小而低的有色座艙 V5）
     stations: (() => {
       /** @type {{ x: number, yBase: number, yTop: number, halfW: number }[]} */
       const out = [];
@@ -345,8 +344,8 @@ export const gundestrupStagBody = makePolyBody({
       shell: true,
       name: 'arch-liners',
     });
-    // iter-114：輪胎內側的環形擋板（|z| 22.9；離 26 mm 輪內側面 2.4、31 mm 輪 1.9 mm）——擋住從輪拱橫越車身看到另一側地板的視線
-    // （Blender 展示圖前輪拱內的黑白直條紋；原因與量測見 DESIGN.md「iter-114 修改」）
+    // 輪胎內側的環形擋板（|z| 22.9；離 26 mm 輪內側面 2.4、31 mm 輪 1.9 mm）——擋住從輪拱橫越車身看到另一側地板的視線
+    // （Blender 展示圖前輪拱內的黑白直條紋；原因與量測見 DESIGN_HISTORY.md「iter-114 修改」）
     parts.push({
       geometry: mergeGeos(ARCHES.map((a) => buildArchWell(a, 22.9, 12.3, 17.8, chassisBlockedNearArch))),
       mat: 'liner',
@@ -378,7 +377,7 @@ export const gundestrupStagBody = makePolyBody({
         }
         return out;
       };
-      // iter-121：低分段（主幹 16 × 8、角尖 4 × 8；原本 40 × 12）
+      // 低分段（主幹 16 × 8、角尖 4 × 8）
       silver.push(sweepEllipse(sample(0, split, 16), 16, (t) => [beamR(t * split), beamR(t * split)], 8));
       gold.push(sweepEllipse(sample(split, 1, 4), 4, (t) => {
         const r = lerp(beamR(split), 0.45, t);
@@ -435,7 +434,7 @@ export const gundestrupStagBody = makePolyBody({
       const len = Math.hypot(z, y - cy) || 1;
       torcPts.push([x, y + ((y - cy) / len) * 0.9, z + (z / len) * 0.9]);
     }
-    // iter-121：低分段（56 × 8；原本 120 × 12），扭節數不變
+    // 低分段（56 × 8），扭節 14 個
     const torc = sweepEllipse(torcPts, 56, (t) => {
       const r = 0.95 + 0.22 * Math.cos(t * 28 * Math.PI);
       return [r, r];
@@ -449,7 +448,7 @@ export const gundestrupStagBody = makePolyBody({
 
     // 鹿眼：金色眼圈＋深藍玻璃眼（鹿吻側面）
     /** @type {{ x: number, y: number }} 鹿眼中心（側視） */
-    const EYE = { x: 69.5, y: 20.6 }; // iter-121：鹿吻壓低，眼睛 23.6 → 20.6
+    const EYE = { x: 69.5, y: 20.6 }; // 配合壓低的鹿吻，眼睛在 y 20.6
     /** @type {(x: number, y: number, z: number) => number} 到鹿眼中心的側視距離（只在側面） */
     const eyeD = (x, y, z) => (Math.abs(z) < 8 ? 10 : Math.hypot(x - EYE.x, y - EYE.y));
     parts.push({ geometry: kit.decal((x, y, z) => Math.min(eyeD(x, y, z) - 1.7, 2.45 - eyeD(x, y, z))), mat: 'dGold', name: 'decal-eye-ring' });
@@ -464,7 +463,7 @@ export const gundestrupStagBody = makePolyBody({
       name: 'decal-dorsal-line',
     });
 
-    // iter-121：側面仿銀釜的動物浮雕帶（取代原本的卷鬚紋帶；iter-118 未合併的改動，改成全貼紙）——氧化暗底＋亮銀動物＋上下鍍金珠點與細邊；兩側動物都朝車頭
+    // 側面仿銀釜的動物浮雕帶（全貼紙）——氧化暗底＋亮銀動物＋上下鍍金珠點與細邊；兩側動物都朝車頭
     /** @type {(x: number, y: number, z: number) => boolean} */
     const inFrieze = (x, y, z) => Math.abs(z) >= 26 && x >= FRIEZE.x0 && x <= FRIEZE.x1;
     parts.push({
@@ -490,7 +489,7 @@ export const gundestrupStagBody = makePolyBody({
       mat: 'dGold',
       name: 'decal-frieze-beads',
     });
-    // iter-121：上側面兩道深色凹槽速度線（避開前後輪拱）
+    // 上側面兩道深色凹槽速度線（避開前後輪拱）
     parts.push({
       geometry: kit.decal((x, y, z) => {
         if (Math.abs(z) < 14) {

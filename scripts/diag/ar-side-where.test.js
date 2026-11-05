@@ -1,4 +1,4 @@
-// AR 側制振器 × 車殼：干涉發生在哪裡（iter-111）。列出制振器掃掠外框，以及落在外框內的車殼頂點的 y／|z| 範圍
+// AR 側制振器 × 車殼：干涉發生在哪裡。列出制振器掃掠外框，以及落在外框內的車殼頂點的 y／|z| 範圍
 import { test } from 'vitest';
 import { assemble, loadConfig } from '../../src/assembly.js';
 import { listBodies, bodyMassProps } from '../../src/bodies/index.js';

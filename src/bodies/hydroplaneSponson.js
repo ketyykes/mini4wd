@@ -1,4 +1,4 @@
-// 水上賽艇浮筒暴走型（body-hydroplane-sponson，第六階段 LG2 致敬款）：取材三點式水上賽艇——
+// 水上賽艇浮筒暴走型（body-hydroplane-sponson，LG2 致敬款）：取材三點式水上賽艇——
 // 前輪分別包在左右兩個往前伸、尖頭流線的浮筒裡（浮筒尖比中央艇身多伸出 8 mm，兩浮筒之間不橋接任何翼）；
 // 中央艇身低而窄、頂面一條 V 形龍骨脊；小型封閉膠囊式煙燻座艙罩在艇身前段；後輪由寬平的後甲板蓋住，車尾平切艉板；
 // 車尾雙層水平翼（下層坐在後甲板上、上層往後錯開 4 mm，兩片細短撐板相連）。
@@ -26,15 +26,14 @@ const XS = [-75, -70, -62, -52, -40, -28, -16, -6, 4, 14, 22, 30, 40, 50, 56, 60
 /**
  * 縱向控制表（推估）：
  * - yC：中央艇身龍骨脊。後段引擎罩 30（比後甲板高 1.4）→ 座艙段 26 → 龍骨往前降到 23.8（底盤齒輪箱頂約 21）→ 艇首 21
- * - yS：浮筒稜線（前段）／後甲板高度（後段）。浮筒在前輪上方 29.4、往前降到 27（iter-69：25.5 → 27，前端斷面包住浮筒尖根部，消除 x 57 段差）；後甲板 28.6 平直、艉板 26.4
- * - hw：半寬。浮筒外側 38.5 → 浮筒後方腰部收到 31 → 後甲板 36.5（剛好蓋住 26 mm 輪胎外側 34.25）→ 艉板 32（平切；避開後導輪 x −71.5、|z| 42、R6.5）
+ * - yS：浮筒稜線（前段）／後甲板高度（後段）。浮筒在前輪上方 29.4、往前降到 27（前端斷面要包住浮筒尖根部，x 57 才不會有段差）；後甲板 28.6 平直、艉板 26.4
+ * - hw：半寬。浮筒外側 38.5 → 浮筒後方腰部收到 32.6 → 後甲板 36.5（剛好蓋住 26 mm 輪胎外側 34.25）→ 艉板 32（平切；避開後導輪 x −71.5、|z| 42、R6.5）
  * - yLow：側壁下緣
  * @type {Record<string, (x: number) => number>}
  */
 const P = {
   yC: monoCurve(XS, [27.4, 29, 30, 30.2, 30, 29.6, 28.6, 27, 26, 25.2, 24.6, 24.2, 23.9, 23.5, 22.4, 21]),
-  // iter-71：yS、hw 節點順平（舊表在 x −16 ~ 22 有 28.4 → 28 → 28 → 28.4 與 33.5 → 31 → 32.5 → 37 的小起伏，
-  // 側面上緣與俯視腰線出現波浪反光）；腰線改成單一平順的凹弧
+  // yS、hw 的節點要順平（x −16 ~ 22 一有小起伏，側面上緣與俯視腰線就會出現波浪反光）；腰線是單一平順的凹弧
   yS: monoCurve(XS, [26.4, 27.5, 28.2, 28.5, 28.6, 28.5, 28.35, 28.2, 28.25, 28.5, 28.85, 29.2, 29.4, 28.8, 27.9, 27.0]),
   hw: monoCurve(XS, [32, 33, 35.4, 36.3, 36.5, 36, 34.2, 32.6, 33.4, 36.2, 38.2, 38.5, 38.5, 38.3, 37.6, 36.4]),
   yLow: monoCurve(XS, [21, 18.5, 15.5, 13.5, 13, 13.2, 14, 14.4, 14.4, 14, 13.6, 13.5, 13.5, 13.8, 14.2, 14.6]),
@@ -91,7 +90,7 @@ const STATIONS = buildStations(X_TAIL, X_FRONT, 1.5, profile);
 
 /** @type {() => Record<string, THREE.Material>} */
 const materials = () => ({
-  // iter-73：鉻黃拉飽和（0xffc414 → 0xd6ac00：色相 45° → 48°，不往橘走；降低明度與清漆反射，色調映射後不再洗成奶油黃）
+  // 高飽和鉻黃 0xd6ac00（色相 48°，不往橘走；明度與清漆反射壓低，色調映射後才不會洗成奶油黃）
   yellow: namedMaterial('paint-bright-chrome-yellow', { color: 0xd6ac00, roughness: 0.32, specularIntensity: 0.45, clearcoat: 0.3, clearcoatRoughness: 0.12 }),
   yellow2: namedMaterial('paint-bright-chrome-yellow', { color: 0xd6ac00, roughness: 0.32, specularIntensity: 0.45, clearcoat: 0.3, side: THREE.DoubleSide }),
   navy: namedMaterial('paint-midnight-blue', { color: 0x16224a, roughness: 0.24, metalness: 0.2, clearcoat: 1.0, clearcoatRoughness: 0.06 }),
@@ -292,8 +291,8 @@ export const hydroplaneSponsonBody = makePolyBody({
       mat: 'dWhite',
       name: 'decal-keel-line',
     });
-    // 浮筒號碼圓牌（L2-6 自創號碼）：浮筒頂、前輪上方的大白圓（iter-73：R6.2 → R8.4，接近概念圖份量）
-    // 外圍一圈午夜藍細框（R9.4）讓白圓和鉻黃分開；圓內午夜藍「14」放大
+    // 浮筒號碼圓牌（L2-6 自創號碼）：浮筒頂、前輪上方的大白圓（R8.4，接近概念圖份量）
+    // 外圍一圈午夜藍細框（R9.4）讓白圓和鉻黃分開；圓內是午夜藍大字「14」
     /** @type {KeepFn} */
     const discRing = (x, y, z) => (y < 24.5 ? -1 : 9.4 - Math.hypot(x - 40, Math.abs(z) - Z_SPONSON));
     parts.push({ geometry: kit.decal(discRing, { offset: 0.06 }), mat: 'dNavy', name: 'decal-number-ring' });

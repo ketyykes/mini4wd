@@ -1,4 +1,4 @@
-// 第二階段：零件組裝 / 規則 / 車殼相關驗證（P04、P08、P09、P11–P16，定義見 SPEC.md 第 2 部分）
+// 零件組裝 / 規則 / 車殼相關驗證（P04、P08、P09、P11–P16，定義見 SPEC.md 第 2 部分）
 // 容許誤差寫在本檔，不得為通過而放寬。
 // 模組化 API（src/assembly.js、src/regulation.js、src/bodies/、src/parts/）用動態 import：
 // 模組還沒實作時只有對應項目失敗，不影響 physics.test.js 的其他項目。
@@ -52,7 +52,7 @@ function cfgWith(over = {}) {
  */
 function runStraightTopSpeed(asm, soc = 1, seconds = 7) {
   const { sim, track } = api();
-  // 直線長度要夠跑完全程（iter-32：motor-high-rev 約 9 m/s × 7 s ≈ 62 m，原本 40 m 會衝出直線末端、量到掉落中的速度）
+  // 直線長度要夠跑完全程（motor-high-rev 約 9 m/s × 7 s ≈ 62 m，40 m 會衝出直線末端、量到掉落中的速度；查證紀錄：ITERATION_LOG iter-32）
   const env = sim.createWorld(track.buildStraight(100));
   const car = sim.createCar(env, { assembly: asm, s: 0.2, lane: 0, soc, drain: false });
   const dt = env.world.timestep;
@@ -299,12 +299,12 @@ describe('第二階段：零件組裝 / 規則 / 車殼（P04、P08、P09、P11�
       { code: 'MASS', over: { chassis: { base: 'chassis-midship', mass_g: 5 }, battery: { base: 'battery-aa-nimh-950', mass_g: 10 } } },
       // 36 mm 輪胎超出規則，同時一定會撞到車殼輪拱（輪拱依 26 mm 輪胎設計）→ 兩個代碼都要回報
       { code: 'TIRE_DIAMETER', codes: ['TIRE_DIAMETER', 'BODY_TIRE_CLEARANCE'], over: { wheels: { base: 'wheel-26-lowprofile', diameter_mm: 36 } } },
-      // 31 mm 大徑輪胎本身合規，但會穿進車殼（2026-10-21 使用者要求：零件替換要符合物理，干涉要擋下）
+      // 31 mm 大徑輪胎本身合規，但會穿進車殼（零件替換要符合物理，干涉要擋下）
       { code: 'BODY_TIRE_CLEARANCE', over: { wheels: 'wheel-31-large' } },
       { code: 'GROUND_CLEARANCE', over: { wheels: { base: 'wheel-26-lowprofile', diameter_mm: 23 } } },
       { code: 'DRIVE_4WD', over: { chassis: { base: 'chassis-midship', driveType: '2WD' } } },
       { code: 'GEAR_RATIO', over: { gear: { base: 'gear-3.5', ratio: 3.0 } } },
-      // ---- 第三階段新零件（iter-46）：安裝相容性 ----
+      // ---- 安裝相容性 ----
       // 4.2:1 是合法齒輪比，但只有單軸底盤有對應零件（SPEC 1.5）
       { code: 'GEAR_CHASSIS', over: { gear: 'gear-4.2' } },
       // 單軸馬達不能裝中置雙軸底盤（SPEC 1.1 [REG] Sec.4）
@@ -313,7 +313,7 @@ describe('第二階段：零件組裝 / 規則 / 車殼（P04、P08、P09、P11�
       { code: 'MOUNT_COMPAT', over: { massDamper: 'damper-rear-cylinder' } },
       // 碳纖寬後板（導輪中心 ±44.5）＋19 mm 導輪 → 全寬 108 mm
       { code: 'WIDTH', over: { rearStay: 'stay-rear-carbon-wide', rollers: 'roller-19' } },
-      // ---- 第三階段新零件：實體干涉 ----
+      // ---- 實體干涉 ----
       // 雙層導輪（高 10 mm）裝在上下兩層的後導輪架 → 上下兩顆導輪互相穿透
       { code: 'ROLLER_ROLLER_CLEARANCE', over: { rollers: 'roller-13-12-double' } },
       // 後保桿下的配重與煞車海綿搶同一個位置
@@ -324,17 +324,17 @@ describe('第二階段：零件組裝 / 規則 / 車殼（P04、P08、P09、P11�
       { code: 'BALLAST_BODY_CLEARANCE', over: { ballast: { base: 'ballast-square-3.6g', mount: 'center', thickness_mm: 40 } } },
       // 3 mm 海綿貼在 FRP 後導輪板（板底離地 3.9 mm）下 → 海綿底離地 0.9 mm
       { code: 'GROUND_CLEARANCE', over: { rearStay: 'stay-rear-frp', brakeSponge: 'sponge-3mm-mild' } },
-      // ---- 第四階段新零件（iter-54）----
+      // ---- 加厚端子、31 mm 拱形胎、穩定頭、錐形導輪 ----
       // 疊兩片的加厚端子：規則禁止（Tamiya 規則 Sec.6-5 double-plated terminals）
       { code: 'TERMINAL_MOD', over: { switch: 'switch-double-terminal' } },
-      // 31 mm 拱形胎與 31 mm 大徑胎同尺寸 → 穿進 body-aero-wing 的輪拱（車殼固定，預設車殼由主線調整）
+      // 31 mm 拱形胎與 31 mm 大徑胎同尺寸 → 穿進 body-aero-wing 的輪拱（車殼固定指定，不跟著預設車殼變動）
       { code: 'BODY_TIRE_CLEARANCE', over: { wheels: 'wheel-31-arched', body: 'body-aero-wing' } },
       // 17 mm 穩定頭只能配 19 mm 前導輪；錐形導輪要鎖在 FRP / 碳纖導輪板
       { code: 'STABILIZER_ROLLER_SIZE', over: { stabilizer: 'stabilizer-head-17', body: null } },
       { code: 'ROLLER_TAPER_MOUNT', over: { rollers: 'roller-13-tapered', body: null } },
       // 17 mm 穩定頭（高 3 mm，在 19 mm 前導輪上方）碰到 body-aero-wing 的車頭
       { code: 'STABILIZER_BODY_CLEARANCE', over: { stabilizer: 'stabilizer-head-17', rollers: 'roller-19', body: 'body-aero-wing' } },
-      // ---- 第五階段（iter-56）：前後導輪分開選，前 / 後各自判定 ----
+      // ---- 前後導輪分開選，前 / 後各自判定 ----
       // 19 mm 錐形前導輪＋FRP 前板合法（全長 161.5 mm），後導輪架也換 FRP 就超長
       { code: 'LENGTH', over: { frontRollers: 'roller-19-tapered', rearRollers: 'roller-13-alu', frontStay: 'stay-front-frp', rearStay: 'stay-rear-frp' } },
       // 錐形導輪只在沒有導輪板的那一端違規（推估規則）
@@ -346,8 +346,8 @@ describe('第二階段：零件組裝 / 規則 / 車殼（P04、P08、P09、P11�
       { code: 'ROLLER_ROLLER_CLEARANCE', over: { rearRollers: 'roller-13-12-double' } },
       // 寬後板＋後面 19 mm → 全寬 108 mm
       { code: 'WIDTH', over: { rearStay: 'stay-rear-carbon-wide', rearRollers: 'roller-19' } },
-      // ---- 第五階段（iter-58）：官方 Sec.3 腳註——輪胎外側禁裝區（側制振器加長到 60 mm 時進入，且碰到輪胎）----
-      // iter-111：側制振器座改外掛式（配重中心 z ±44），配重內緣 41 在輪胎外側面 34.3 外面，加長後不再碰到輪胎（間隙 6.75 mm），只剩禁裝區
+      // ---- 官方 Sec.3 腳註——輪胎外側禁裝區（側制振器加長到 60 mm 時進入）----
+      // 側制振器座是外掛式（配重中心 z ±44），配重內緣 41 在輪胎外側面 34.3 外面，加長後不會碰到輪胎（間隙 6.75 mm），只違反禁裝區（查證紀錄：ITERATION_LOG iter-111）
       { code: 'SIDE_PART_TIRE_ZONE', over: { massDamper: { base: 'damper-side-square-32', length_mm: 60 }, body: null } },
     ];
     for (const c of cases) {
@@ -433,7 +433,7 @@ describe('第二階段：零件組裝 / 規則 / 車殼（P04、P08、P09、P11�
     expect(Math.abs(asm31.mass_g - asm.mass_g - dExpect)).toBeLessThan(0.1);
     expect(asm31.com_mm.y).toBeGreaterThan(asm.com_mm.y);
 
-    // 第四階段新零件：電池（2 顆）、中空輪軸（2 支）、輕量輪框（4 顆）的質量差 = 件數 × 單件差；重心依零件位置移動
+    // 電池（2 顆）、中空輪軸（2 支）、輕量輪框（4 顆）的質量差 = 件數 × 單件差；重心依零件位置移動
     for (const [slot, id, base, n] of [
       ['battery', 'battery-aa-nimh-2500', 'battery-aa-nimh-950', 1],
       ['axles', 'axle-hex-60-hollow', 'axle-hex-60', 2],
@@ -460,7 +460,7 @@ describe('第二階段：零件組裝 / 規則 / 車殼（P04、P08、P09、P11�
     // 電池較重（在底盤低處兩側）→ 重心降低
     expect(assemble(cfgWith({ battery: 'battery-aa-nimh-2500' })).com_mm.y).toBeLessThan(asm.com_mm.y);
 
-    // 第五階段（iter-56）前後導輪分開選：質量差 = 前導輪顆數 × 前款差 + 後導輪顆數 × 後款差；
+    // 前後導輪分開選：質量差 = 前導輪顆數 × 前款差 + 後導輪顆數 × 後款差；
     // 前面換較重的 19 mm、後面不變 → 重心往前（+x）；後面換較重的 19 mm、前面不變 → 重心往後
     const nFront = asm.layout.rollers.filter((r) => r.slot === 'frontRollers').length;
     const nRear = asm.layout.rollers.filter((r) => r.slot === 'rearRollers').length;
@@ -544,8 +544,8 @@ describe('第二階段：零件組裝 / 規則 / 車殼（P04、P08、P09、P11�
     }
   });
 
-  // iter-50：原本一個測試依序跑完所有車殼（6 款 × 3 圈），高負載時整體超過逾時；改成每款車殼一個 P16_ 測試（判定條件完全相同，
-  // 計分腳本要求 P16_ 開頭的測試全部通過才算 P16 通過），另外保留「至少 1 款車殼」的檢查
+  // 每款車殼一個 P16_ 測試：一個測試依序跑完所有車殼的話，高負載時整體會超過逾時（判定條件和合在一個測試時完全相同，
+  // 計分腳本要求 P16_ 開頭的測試全部通過才算 P16 通過；查證紀錄：ITERATION_LOG iter-50），另外保留「至少 1 款車殼」的檢查
   test('P16_every_body_lap_count 車殼清單不為空', () => {
     expect(api().listBodies().length).toBeGreaterThan(0);
   });
@@ -561,7 +561,7 @@ describe('第二階段：零件組裝 / 規則 / 車殼（P04、P08、P09、P11�
       expect(lap.progress).toBeGreaterThanOrEqual(3 * lap.lapLength);
       expect(pen).toBeLessThanOrEqual(0.001);
       expect(lap.minUp).toBeGreaterThan(0.8);
-      // 不飛出：車體原點離所在層路面 < 5 cm（地面層即 y < 0.05，同第二階段；橋上以橋面為準）
+      // 不飛出：車體原點離所在層路面 < 5 cm（地面層即 y < 0.05，和只有地面層時的判定相同；橋上以橋面為準）
       expect(lap.maxH).toBeLessThan(0.05);
       expect(lap.minH).toBeGreaterThan(-0.005);
       for (let k = 0; k < 3; k++) {

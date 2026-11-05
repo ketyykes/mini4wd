@@ -1,5 +1,5 @@
 // 馬達（130 尺寸碳刷馬達；本底盤為中置雙軸）
-// 端點以 3 V 為基準；iter-91 以 k_t=k_e、線圈電阻與電刷壓降聯立擬合（SPEC 1.4）。
+// 端點以 3 V 為基準；以 k_t=k_e、線圈電阻與電刷壓降聯立擬合（SPEC 1.4）。
 
 /**
  * 130 馬達電樞（轉子）：傳動系轉動慣量用（parts/inertia.js；電樞慣量 × 齒輪比² 換算到輪軸）
@@ -186,7 +186,7 @@ export const motorParts = [
       body_mm: '同 motor-standard（130 尺寸外殼）',
     },
   },
-  // ---- 第五階段（iter-58）：台灣買得到的 Rev-Tuned 2 PRO（台灣來源見 shared/reference/TAIWAN_SOURCES.md）----
+  // ---- 台灣買得到的 Rev-Tuned 2 PRO（台灣來源見 shared/reference/TAIWAN_SOURCES.md）----
   {
     id: 'motor-rev',
     category: 'motor',
@@ -241,7 +241,7 @@ export const motorParts = [
       mass_g: '同 motor-standard（推估）',
     },
   },
-  // ---- B14（iter-107）：單軸馬達（給後置單軸底盤 VZ；[VZ 3.1] 官方一覽 15477／15484／15486 含 VZ）----
+  // ---- B14：單軸馬達（給後置單軸底盤 VZ；[VZ 3.1] 官方一覽 15477／15484／15486 含 VZ）----
   // 擬合方法同 PRO 馬達（PARTS_RESEARCH 第 2 節／第三階段 M 節：範圍兩端對應 2.4／3.0 V、I0 = 0.25 A、4 條方程相對誤差最小平方解 k、R）；
   // 同一支程式重算 15487／15489／15375 得到與既有值相同的 k、R（差 ≤ 0.2%），再套到單軸款
   singleShaftMotor('motor-single-hyper', 'Hyper-Dash 3 單軸馬達（130 尺寸，15477）', 31200, 0.00587, 6.89, {

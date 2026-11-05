@@ -13,7 +13,7 @@ import { assemble, loadConfig } from '../src/assembly.js';
  * @type {(bodyId: string, configName?: string) => THREE.Object3D}
  */
 const buildModelForExport = (bodyId, configName = 'default') => {
-  // iter-33：依車殼 id 組裝；iter-47：可指定組裝設定（例如 race-frp、carbon-damper），車殼 id 再覆寫設定裡的車殼
+  // 依車殼 id 組裝；可指定組裝設定（例如 race-frp、carbon-damper），車殼 id 再覆寫設定裡的車殼
   const config = loadConfig(configName);
   if (bodyId && bodyId !== 'none') {
     config.body = bodyId;
@@ -127,20 +127,20 @@ const categoryFromName = (name, mat) => {
     [/^decal-/, 'decal'],
     [/^lamp-.*(lens|cover)/, 'lens'],
     [/^lamp-/, 'lamp'],
-    // 第六階段 iter-70：有色透明 PC（render/showcase.py glass_tint：保留六成色相，例如琥珀脈翅）
+    // 有色透明 PC（render/showcase.py glass_tint：保留六成色相，例如琥珀脈翅）
     [/^pc-tint-/, 'glass_tint'],
     [/pc-clear|clear-pc|lens/, 'lens'],
     [/pc-smoke|smoke|glass|canopy-glass/, 'glass'],
     [/pearl/, 'paint_pearl'],
-    // iter-50：槍灰（paint-gunmetal）是緞面金屬感塑膠，不用金屬漆的金屬片（小面積件上金屬片法線擾動讀成砂紙 / 海綿顆粒）
+    // 槍灰（paint-gunmetal）是緞面金屬感塑膠，不用金屬漆的金屬片（小面積件上金屬片法線擾動讀成砂紙 / 海綿顆粒）
     [/^paint-gunmetal/, 'metallic_plastic'],
-    // iter-61：高明度實色漆（檸檬黃、珍珠白）：亮面漆但明度上限較高（render/showcase.py paint_bright），不被壓成橄欖 / 粉筆灰
+    // 高明度實色漆（檸檬黃、珍珠白）：亮面漆但明度上限較高（render/showcase.py paint_bright），不被壓成橄欖 / 粉筆灰
     [/^paint-bright-/, 'paint_bright'],
     [/metallic|^paint-.*metal/, 'paint'],
     [/^paint-/, 'paint_gloss'],
-    // iter-50：PC 殼內噴的黑框（pc-paint-black）當深色煙燻 PC——不透明黑會讓 pc-box 側面整片黑，讀不出透明殼與內部零件
+    // PC 殼內噴的黑框（pc-paint-black）當深色煙燻 PC——不透明黑會讓 pc-box 側面整片黑，讀不出透明殼與內部零件
     [/^pc-paint-black/, 'glass'],
-    // 第三階段：PC 透明殼內側噴漆（例如 pc-paint-fluo-pink）——外面看是亮面漆（隔一層 PC 的光澤）
+    // PC 透明殼內側噴漆（例如 pc-paint-fluo-pink）——外面看是亮面漆（隔一層 PC 的光澤）
     [/^pc-paint-/, 'paint_gloss'],
     [/inner|interior|dark-matte/, 'plastic_matte'],
     [/carbon/, 'carbon'],
@@ -335,7 +335,7 @@ async function exportGlb(root) {
 async function main() {
   const params = new URLSearchParams(location.search);
   const configName = params.get('config') || '';
-  // 沒指定組裝設定時維持舊行為（預設設定＋車殼 id，預設 body-owl-hush）；指定設定時車殼預設用設定裡的
+  // 沒指定組裝設定時用預設設定＋車殼 id（預設 body-owl-hush）；指定設定時車殼預設用設定裡的
   const bodyId = params.get('body') || (configName ? '' : 'body-owl-hush');
   const model = buildModelForExport(bodyId, configName || 'default');
   model.name = `mini4wd_${configName ? `${configName}_` : ''}${bodyId || 'config-body'}`;

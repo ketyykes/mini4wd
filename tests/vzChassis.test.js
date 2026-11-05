@@ -1,4 +1,4 @@
-// B14（iter-107）：第二款底盤「後置單軸馬達＋傳動軸」（結構參考 Tamiya VZ）的資料、相容性、質量、傳動與跑圈驗證
+// B14：第二款底盤「後置單軸馬達＋傳動軸」（結構參考 Tamiya VZ）的資料、相容性、質量、傳動與跑圈驗證
 // 來源：shared/reference/VZ_RESEARCH.md；容許誤差寫在本檔，不得為通過而放寬
 import { test, expect, beforeAll } from 'vitest';
 import { assemble, loadConfig } from '../src/assembly.js';
@@ -72,9 +72,9 @@ test('P18_vz_compat 單／雙軸馬達、齒輪組、MA 專用零件與 VZ 專�
   for (const [slot, id] of [['batteryCover', 'battery-cover-vz'], ['gearCover', 'gear-cover-vz'], ['rearStay', 'stay-rear-vz']]) {
     expect(codes({ ...loadConfig('default'), [slot]: id }), id).toContain('CHASSIS_COMPAT');
   }
-  // 側制振器（iter-108）：MA 側制振器 15490 一覽不含 VZ（CHASSIS_COMPAT）；AR 側制振器 15459 一覽含 VZ → 裝在 VZ 側壁上、不碰側壁與其他零件
+  // 側制振器：MA 側制振器 15490 一覽不含 VZ（CHASSIS_COMPAT）；AR 側制振器 15459 一覽含 VZ → 裝在 VZ 側壁上、不碰側壁與其他零件
   expect(codes({ ...VZ, massDamper: 'damper-side-square-32' })).toContain('CHASSIS_COMPAT');
-  // iter-111：15459 尺寸重估（φ11.5 × 11.4）＋外掛式側座後，素組的 owl-hush 車殼裝得下；官方「一部のボディは加工が必要」改由寬側裙車殼（pc-box 等）表現
+  // 15459（φ11.5 × 11.4，推估）裝在外掛式側座，素組的 owl-hush 車殼裝得下；官方「一部のボディは加工が必要」由寬側裙車殼（pc-box 等）表現（查證紀錄：ITERATION_LOG iter-111）
   expect(codes({ ...VZ, massDamper: 'damper-ar-side' })).toEqual([]);
   // 官方一覽含 VZ 的後滑動保桿 15467、FRP／碳纖導輪板可以裝
   for (const [slot, id] of [['rearStay', 'stay-rear-slide-soft'], ['frontStay', 'stay-front-frp'], ['rearStay', 'stay-rear-frp'], ['frontStay', 'stay-front-carbon']]) {
@@ -194,7 +194,7 @@ test('P16_vz_tuned 高速 VZ（TT2 單軸＋3.7:1，加零件調校）三條車�
   const tuned = loadConfig('vz-tuned');
   expect(codes(tuned)).toEqual([]);
   raceThreeLanes(tuned, 'P16_vz_tuned');
-  // 側制振器座（iter-111 重估）：AR 側制振器 15459（φ11.5 × 11.4 mm 推估）外掛在側壁外、貼近底盤底面；
+  // 側制振器座（查證紀錄：ITERATION_LOG iter-111）：AR 側制振器 15459（φ11.5 × 11.4 mm 推估）外掛在側壁外、貼近底盤底面；
   // 官方「一部のボディは加工が必要」：PC 車殼 pc-box 側裙碰到（車殼干涉），預設 owl-hush 裝得下。15515 方形短制振器裝得進 PC 車殼
   expect(codes({ ...tuned, massDamper: 'damper-ar-side' })).toEqual(['DAMPER_BODY_CLEARANCE']);
   expect(codes({ ...loadConfig('default'), massDamper: 'damper-ar-side' })).toEqual([]);
@@ -208,7 +208,7 @@ test('P16_vz_tuned 高速 VZ（TT2 單軸＋3.7:1，加零件調校）三條車�
   for (const d of ds) {
     const b = d.adapter.plate;
     const zs = [Math.abs(b.min.z), Math.abs(b.max.z)];
-    // iter-111 外掛式：側板底面 = 底盤底面（不降低離地高度）、比壁頂低；從中段側壁外緣（|z| 27）外側伸到配重外緣
+    // 外掛式側座：側板底面 = 底盤底面（不降低離地高度）、比壁頂低；從中段側壁外緣（|z| 27）外側伸到配重外緣（查證紀錄：ITERATION_LOG iter-111）
     expect(b.min.y).toBeCloseTo(ch.groundClearanceRef_mm, 9);
     expect(b.max.y).toBeLessThan(wallTop);
     expect(Math.min(...zs)).toBeGreaterThan(27);

@@ -1,5 +1,5 @@
-// 箭毒蛙（body-dartfrog-hop，第四階段致敬《爆走兄弟》風格）：前低後高的蹲伏楔形——寬而低的圓鼻、鼓成「後腿肌肉」的後輪拱、
-// 封閉車頂上一對半球形眼泡＋眼前的黑色淚滴座艙罩（iter-62）、車尾低位扇形蹼翼（6 根放射肋、肋間凹弧、收尖肋尖；iter-123 縮小並放低成後掠扇）、鼻下黑色前唇。
+// 箭毒蛙（body-dartfrog-hop，致敬《爆走兄弟》風格）：前低後高的蹲伏楔形——寬而低的圓鼻、鼓成「後腿肌肉」的後輪拱、
+// 封閉車頂上一對半球形眼泡＋眼前的黑色淚滴座艙罩、車尾低位扇形蹼翼（6 根放射肋、肋間凹弧、收尖肋尖的後掠扇）、鼻下黑色前唇。
 // 設計：shared/design/body-dartfrog-hop/DESIGN.md（致敬語彙、和劇中車 / 市售車殼的差異）。剖面為本檔站位產生器（推估）。
 // 塗裝全為自創：檸檬黃＋黑＋土耳其藍、大小不一的黑圓斑、號碼「13」；不含任何廠商 / 作品名稱、商標或角色圖像。
 import * as THREE from 'three';
@@ -17,9 +17,9 @@ const P = {
   yC: monoCurve(XS, [27, 32.5, 33.5, 33.2, 32, 30, 28, 25.5, 23.5, 22.5, 21, 19, 17, 15]),
   // 擋泥板稜線：後腿肌肉（40）明顯高於前輪拱（32）
   yF: monoCurve(XS, [29.5, 38.5, 40, 38.5, 33.5, 30, 29, 30, 31.8, 32.2, 31, 26, 21, 17]),
-  // 半寬：寬圓鼻、腰部略收、後腿外鼓（46.5）
-  // iter-71：和 halo-orbit 的俯視 IoU 0.848（全陣容最高）→ 後腿 46.5 → 44.5、腰部 32.5 / 31.5 → 31.5 / 30.5（halo 的寬後段與中段都比本款寬，
-  // 收窄這兩段就離開它的輪廓；後腿仍比腰部寬 14 mm，蹲伏的後腿肌肉感保留）
+  // 半寬：寬圓鼻、腰部略收、後腿外鼓（44.5）
+  // 後腿 44.5、腰部 31.5 / 30.5 都比 halo-orbit 的寬後段與中段窄，俯視輪廓才和它分得開（俯視 IoU 限制）；
+  // 後腿仍比腰部寬 14 mm，保留蹲伏的後腿肌肉感
   hw: monoCurve(XS, [39.5, 44, 44.5, 44, 39.5, 31.5, 30.5, 34.5, 38.5, 39.5, 40.5, 40, 38, 34]),
   // 側壁下緣
   yLow: monoCurve(XS, [21, 16, 12, 11, 13, 17.5, 17.5, 15, 11, 12, 13.5, 14, 14, 14]),
@@ -34,14 +34,14 @@ const profile = (x) => {
   const hw = P.hw(x);
   const k = Math.min(1, (hw - 2.4) / 34);
   const yF0 = P.yF(x);
-  // iter-55：擋泥板內坡改用平滑拋物線＋平滑最大值（原本圓弧＋Math.max 在站位間留下折痕，車頂像融化的表皮）
+  // 擋泥板內坡用平滑拋物線＋平滑最大值（圓弧＋Math.max 會在站位間留下折痕，車頂像融化的表皮）
   const yValley0 = Math.min(yC - 1.2, yF0 - 1.5);
   const yValley = smoothMax(yValley0, Math.min(fenderFloor(x), yF0 - 0.8), 1.5);
   const yF = smoothMax(yF0, yValley + 1, 1);
   const zF = Math.min(32 * k, hw - 4);
   const yShoulder = yF - 5.5 - 0.5 * Math.max(0, hw - zF - 8);
   const yLow = Math.min(P.yLow(x), yShoulder - 1);
-  // iter-59：鼻端下捲（x 52 → 66），各點高度以側壁下緣為基準壓低，寬圓鼻不再是平切立面＋多邊形折面
+  // 鼻端下捲（x 52 → 66），各點高度以側壁下緣為基準壓低，避免寬圓鼻變成平切立面＋多邊形折面
   const roll = noseRoll(x, NOSE_ROLL.x0, NOSE_ROLL.x1, NOSE_ROLL.minFrac);
   /** @type {(y: number) => number} */
   const r = (y) => yLow + (y - yLow) * roll;
@@ -57,7 +57,7 @@ const profile = (x) => {
     [hw, yLow],
   ];
   // 下捲段再做兩次拉普拉斯平滑（中線、谷、擋泥板稜線往鄰點平均靠攏，越接近鼻尖越平順），
-  // 鼻端黑唇不再是一道道起伏的折面（中線點以左右對稱的鄰點平均）
+  // 避免鼻端黑唇變成一道道起伏的折面（中線點以左右對稱的鄰點平均）
   const soften = (0.8 * (1 - roll)) / (1 - NOSE_ROLL.minFrac);
   if (soften > 0) {
     for (let pass = 0; pass < 2; pass++) {
@@ -71,17 +71,17 @@ const profile = (x) => {
   return pts;
 };
 
-/** @type {{ x0: number, x1: number, minFrac: number }} 鼻端下捲範圍（iter-59） */
+/** @type {{ x0: number, x1: number, minFrac: number }} 鼻端下捲範圍 */
 const NOSE_ROLL = { x0: 52, x1: 66, minFrac: 0.3 };
 
-// iter-59：鼻端下捲段每 1 mm 一站（曲率大，2 mm 站距會留下折痕）
+// 鼻端下捲段每 1 mm 一站（曲率大，2 mm 站距會留下折痕）
 const STATIONS = [...buildStations(-58, 50, 2, profile).slice(0, -1), ...buildStations(50, 66, 1, profile)];
 
 /** 眼泡位置（x、|z|、底座高度由殼面決定） */
 const EYE = { x: 14, z: 13, r: 6 };
 
 /**
- * 黑色座艙罩（iter-62，概念圖的淚滴形黑罩）：中心 x、半長、最大半寬、高度半徑、沉入殼面的深度。
+ * 黑色座艙罩（概念圖的淚滴形黑罩）：中心 x、半長、最大半寬、高度半徑、沉入殼面的深度。
  * 前寬後窄，尾端收進兩個眼泡之間（x 15 處半寬約 3.5 mm，眼泡底座內緣在 |z| 5.8）；頂點高出殼面約 7 mm
  * @type {{ cx: number, len: number, hw: number, h: number, sink: number }}
  */
@@ -111,7 +111,7 @@ const buildCanopy = (topAt) => {
 };
 
 /**
- * 頂面土耳其藍流線（iter-62，概念圖鼻側的藍綠流線面）：從鼻尖兩側沿前擋泥板內坡往後掃，繞過眼泡外側，收尖於後腿前
+ * 頂面土耳其藍流線（概念圖鼻側的藍綠流線面）：從鼻尖兩側沿前擋泥板內坡往後掃，繞過眼泡外側，收尖於後腿前
  * zc(x) 為流線中心的 |z|，half(x) 為半寬
  * @type {{ zc: (x: number) => number, half: (x: number) => number, x0: number, x1: number }}
  */
@@ -124,27 +124,24 @@ const FLOW = {
 
 /** @type {() => Record<string, THREE.Material>} */
 const materials = () => ({
-  // 檸檬黃主色（iter-59）：
-  // - app：ACES 色調映射會把高亮黃色洗成奶油淺黃 → 底色略壓並偏綠（#dcd200，檸檬黃色相）、清漆 1.0 → 0.4、環境反射 0.4，保留飽和度
+  // 檸檬黃主色：
+  // - app：ACES 色調映射會把高亮黃色洗成奶油淺黃 → 清漆壓到 0.4、環境反射 0.4，保留飽和度
   // - Blender：一般 paint- 會被分到 paint_gloss，showcase.py 把明度上限壓到 0.45（防螢光色自發光感），黃色只能變暗成橄欖 / 芥末色；
-  //   iter-61 起用 paint-bright- 開頭 → web/export.js 分到 paint_bright，showcase.py 以較高的明度上限算亮面漆（真正的高明度實色漆）
-  // - iter-62：Blender 實測（AgX Punchy、曝光 −1.9）：這個場景的黃色受光面明度已在 AgX 肩部（約 0.76），底色再亮只會更白、更像奶油；
-  //   底色改成 R = G 的純黃（線性 0.52 / 0.50 / 0，sRGB #bfbc00）→ 色相 53° → 56°（往檸檬黃、離開芥末的橘黃）、飽和 0.49 → 0.57
-  // - iter-106（評審 iter-71／104「主色偏黃綠」；DESIGN「鮮黃底黑斑」＝箭毒蛙的金黃）：#bfbc00（色相 59°）太綠；改 #e0c000（色相 51°），
-  //   明度 0.75 → 0.88 → 不會回到芥末色（芥末 = 低明度的橘黃）。Blender 原色另見 render/showcase.py BLENDER_COLOR_SRGB
+  //   所以用 paint-bright- 開頭 → web/export.js 分到 paint_bright，showcase.py 以較高的明度上限算亮面漆（真正的高明度實色漆）
+  // - 底色 #e0c000（色相 51°、明度 0.88）：DESIGN「鮮黃底黑斑」＝箭毒蛙的金黃；色相往綠到 59° 會偏黃綠，
+  //   明度夠高就不會變成芥末色（芥末 = 低明度的橘黃）。Blender 原色另見 render/showcase.py BLENDER_COLOR_SRGB
   yellow: namedMaterial('paint-bright-lemon-yellow-body', { color: 0xe0c000, roughness: 0.3, clearcoat: 0.4, clearcoatRoughness: 0.05, envMapIntensity: 0.4 }),
   yellow2: namedMaterial('paint-bright-lemon-yellow-body', { color: 0xe0c000, roughness: 0.3, clearcoat: 0.4, envMapIntensity: 0.4, side: THREE.DoubleSide }),
   black: namedMaterial('paint-gloss-black', { color: 0x121316, roughness: 0.28, clearcoat: 0.9 }),
   black2: namedMaterial('paint-gloss-black', { color: 0x121316, roughness: 0.28, clearcoat: 0.9, side: THREE.DoubleSide }),
-  // 蹼翼膜面（iter-59）：深土耳其藍緞面（原本淺藍綠 1 mm 薄片讀成半透明；黑色在灰色攝影棚背景前也讀不出來）
-  // iter-123（第九階段材質）：蹼膜改成深土耳其藍金屬珠光漆（metalness 0.5、亮面清漆），和亮黃車身、亮黑前唇拉開材質層次
+  // 蹼翼膜面：深土耳其藍金屬珠光漆（metalness 0.5、亮面清漆），和亮黃車身、亮黑前唇拉開材質層次；
+  // 淺藍綠 1 mm 薄片會讀成半透明，黑色在灰色攝影棚背景前也讀不出來
   webSkin: namedMaterial('paint-deep-turquoise-web', { color: 0x07807d, roughness: 0.25, metalness: 0.5, clearcoat: 1.0, clearcoatRoughness: 0.05, side: THREE.DoubleSide }),
   turq: namedMaterial('paint-turquoise', { color: 0x12b3b0, roughness: 0.22, clearcoat: 1.0 }),
   turq2: namedMaterial('paint-turquoise', { color: 0x12b3b0, roughness: 0.22, clearcoat: 1.0, side: THREE.DoubleSide }),
-  // 眼泡：深煙燻透明圓頂（不透明度高，看起來是有色的「眼」，V5 的變形）
-  // 球眼：不透明黑色亮面漆（iter-55：原本煙燻透明，在 Blender 裡讀成透明小罩）
+  // 球眼（V5 的變形）：不透明黑色亮面漆，看起來是有色的「眼」（煙燻透明在 Blender 裡會讀成透明小罩）
   eyeBall: namedMaterial('paint-gloss-black-eye', { color: 0x0a0b0d, roughness: 0.08, clearcoat: 1.0, clearcoatRoughness: 0.02 }),
-  // 座艙罩（iter-62）：概念圖的黑色亮面淚滴座艙罩（不透明亮黑，和球眼同一種漆）
+  // 座艙罩：概念圖的黑色亮面淚滴座艙罩（不透明亮黑，和球眼同一種漆）
   canopy: namedMaterial('paint-gloss-black-canopy', { color: 0x0b0c0e, roughness: 0.1, clearcoat: 1.0, clearcoatRoughness: 0.03, side: THREE.DoubleSide }),
   liner: namedMaterial('shell-inner-dark', { color: 0x1c1b14, roughness: 0.85, side: THREE.DoubleSide }),
   inner: namedMaterial('shell-inner-dark', { color: 0x1c1b14, roughness: 0.85, side: THREE.BackSide }),
@@ -160,11 +157,10 @@ const materials = () => ({
 
 /**
  * 蹼翼：翼根在車尾中線（x −45、殼面上 1 mm），放射肋往後外張開，翼面往後上仰
- * iter-59 放大：4 → 6 根肋、肋展 ±27 → ±40、肋長約 26 → 33 mm、仰角 23° → 34°（後方與側面都看得到整片蹼）
+ * 6 根肋、肋展 ±36、肋長約 27 mm、仰角 15°（0.26 rad）
  */
-// iter-123（第九階段，評審：「背扇太大、往上展開像裝飾」→「背扇縮小 20% 並改成後掠角」）：
-// 肋展 ±40 → ±36、肋長約 34 → 27 mm（扇面積約 −28%），仰角 34°（0.6 rad）→ 15°（0.26 rad），扇緣弧度 0.12 → 0.03（外側肋幾乎和中央肋一樣往後伸 → 俯視是往後掠的扇）；
-// 扇頂由約 58.5 降到約 44，從側面看是貼著車尾往後伸的低扇，不再是立起的屏風
+// 小而低的後掠扇（太大、往上展開會像裝飾）：扇緣弧度 0.03，外側肋幾乎和中央肋一樣往後伸 → 俯視是往後掠的扇；
+// 扇頂約 44，從側面看是貼著車尾往後伸的低扇，不是立起的屏風
 const FAN = { hubX: -45, tilt: 0.26, ribs: [-36, -21.6, -7.2, 7.2, 21.6, 36], tipX: -72 };
 
 /** @type {(z: number) => number} 肋尖 x（外側肋略短，扇緣微弧） */
@@ -187,7 +183,7 @@ const buildWebMembrane = (hubY) => {
   }
   shape.lineTo(FAN.hubX + 1, 3);
   shape.lineTo(FAN.hubX + 1, -3);
-  // shape 的 (x, y) = 俯視 (x, z)；擠出方向 = 厚度（iter-59：1.0 → 0.8 ＋ 兩面各 0.3 mm 圓倒角，總厚約 1.4 mm 的實心膜面；iter-62：0.8 → 0.45，總厚約 1.05 mm，抵銷黑色座艙罩與收尖肋尖增加的質量，整車維持 ≤ 135 g）
+  // shape 的 (x, y) = 俯視 (x, z)；擠出方向 = 厚度（0.45 ＋ 兩面各 0.3 mm 圓倒角，總厚約 1.05 mm 的實心膜面；膜面做薄以抵銷黑色座艙罩與收尖肋尖的質量，整車維持 ≤ 135 g）
   const g = new THREE.ExtrudeGeometry(shape, { depth: 0.45, bevelEnabled: true, bevelThickness: 0.3, bevelSize: 0.3, bevelSegments: 2, curveSegments: 12 });
   // (x, y, z) → (x, z, y)：擠出方向轉成 +y
   g.rotateX(-Math.PI / 2);
@@ -199,7 +195,7 @@ const buildWebMembrane = (hubY) => {
 };
 
 /**
- * 蹼翼的放射肋（檸檬黃掃掠管，根粗尖細）與肋尖的土耳其藍收尖爪尖（iter-59 圓珠 → iter-62 收尖）
+ * 蹼翼的放射肋（檸檬黃掃掠管，根粗尖細）與肋尖的土耳其藍收尖爪尖
  * @type {(hubY: number) => { ribs: THREE.BufferGeometry, tips: THREE.BufferGeometry }}
  */
 const buildWebRibs = (hubY) => {
@@ -216,12 +212,12 @@ const buildWebRibs = (hubY) => {
   /** @type {THREE.BufferGeometry[]} */
   const tips = [];
   for (const z of FAN.ribs) {
-    // iter-62：肋尖圓珠（像大頭針）改成收尖的土耳其藍爪尖——黃色肋到 82% 處，接一段由 1.4 mm 收到 0.12 mm 的尖端，
-    // 伸出膜緣約 4 mm 的爪尖（俯視輪廓比原圓珠略長，維持和 halo-orbit 的俯視 IoU < 0.85）
+    // 肋尖是收尖的土耳其藍爪尖（圓珠會像大頭針）——黃色肋到 82% 處，接一段由半徑 1.15 mm 收到 0.12 mm 的尖端，
+    // 伸出膜緣約 4 mm 的爪尖（俯視輪廓要維持和 halo-orbit 的俯視 IoU < 0.85）
     const tipX = fanTipX(z) - 4.2;
     /** @type {(t: number) => number[]} */
     const at = (t) => rot(lerp(FAN.hubX + 1, tipX, t), hubY + 1.4, lerp(0, z * 1.04, t));
-    // iter-123：肋跟著背扇縮小 20%（徑 4.2 → 3.4 mm）、分段 24 × 16 → 16 × 12（實體面數）
+    // 肋徑由根部 3.4 mm 收到 1.9 mm、分段 16 × 12（控制實體面數）
     ribs.push(sweepEllipse([0, 0.27, 0.54, 0.82].map(at), 16, (t) => [lerp(1.7, 0.95, t), lerp(1.7, 0.95, t)], 12));
     tips.push(sweepEllipse([0.8, 0.87, 0.94, 1].map(at), 8, (t) => [lerp(1.15, 0.12, t ** 0.8), lerp(1.15, 0.12, t ** 0.8)], 12));
   }
@@ -263,7 +259,7 @@ export const dartfrogHopBody = makePolyBody({
   name: '箭毒蛙',
   style: 'homage',
   phase: 4,
-  // 第六階段分組（shared/design/HOMAGE_RESEARCH.md 第 6 節）
+  // LG1 / LG2 分組（shared/design/HOMAGE_RESEARCH.md 第 6 節）
   homageSeries: 'lg1',
   form: 'crouch-wedge',
   roof: 'closed',
@@ -282,7 +278,7 @@ export const dartfrogHopBody = makePolyBody({
   ],
   recesses: [
     // 眼泡前方的導流槽（V10）：往外後斜的細長槽
-    // iter-62：往外移 2.5 mm、縮短到 |z| 19，讓出黑色座艙罩的邊緣與土耳其藍流線
+    // 靠外、只到 |z| 19，讓出黑色座艙罩的邊緣與土耳其藍流線
     { id: '眼下導流槽', view: 'top', shape: 'poly', pts: [[26, 10.5], [27.5, 12.5], [23, 19], [21, 18]], depth: 1.6 },
     // 後腿前緣的側面進氣口
     { id: '後腿進氣口', view: 'side', shape: 'poly', pts: [[-14, 13], [-10.5, 13], [-16, 24], [-19.5, 24]], depth: 2.4 },
@@ -302,7 +298,7 @@ export const dartfrogHopBody = makePolyBody({
     /** @type {BodyPart[]} */
     const parts = [];
     const topAt = (x, z) => kit.surf.topY(x, z);
-    // 眼泡（iter-55 放大）：黃色扁座（半埋）＋ 土耳其藍環 ＋ 黑色亮面球眼（直徑 12 mm，中空件以殼面積 × 壁厚算質量）
+    // 眼泡：黃色扁座（半埋）＋ 土耳其藍環 ＋ 黑色亮面球眼（直徑 12 mm，中空件以殼面積 × 壁厚算質量）
     const bases = [];
     const rings = [];
     const balls = [];
@@ -324,16 +320,16 @@ export const dartfrogHopBody = makePolyBody({
     parts.push({ geometry: mergeGeos(bases), mat: 'yellow', solid: true, outline: true, name: 'eye-bases' });
     parts.push({ geometry: mergeGeos(rings), mat: 'turq', solid: true, name: 'eye-rings' });
     parts.push({ geometry: mergeGeos(balls), mat: 'eyeBall', shell: true, name: 'eye-balls' });
-    // 前輪拱內襯（iter-55）
+    // 前輪拱內襯
     parts.push({ geometry: buildArchLiner({ x: 40, y: 13, radius: 17.5 }, 29.5, 35.5, 0.35, Math.PI - 0.35), mat: 'liner', shell: true, name: 'arch-liner' });
     // 扇形蹼翼：黃色翼根座 ＋ 深土耳其藍翼面 ＋ 檸檬黃放射肋 ＋ 土耳其藍肋尖
     const hubY = topAt(FAN.hubX, 0) + 3;
     const hub = new THREE.SphereGeometry(1, 16, 10);
-    // iter-123：翼根座跟著背扇縮小 20%（7.6 × 4.4 × 5.6 → 6.4 × 3.8 × 4.6）
+    // 翼根座大小和背扇相配（半軸 6.4 × 3.8 × 4.6）
     hub.scale(6.4, 3.8, 4.6);
     hub.translate(FAN.hubX - 0.5, hubY - 2.2, 0);
     parts.push({ geometry: hub, mat: 'yellow', solid: true, outline: true, name: 'web-hub' });
-    // iter-59：翼面改成加厚的深土耳其藍實心膜，肋尖加土耳其藍圓珠
+    // 翼面是有厚度的深土耳其藍實心膜，肋尖是土耳其藍收尖爪尖
     parts.push({ geometry: buildWebMembrane(hubY), mat: 'webSkin', solid: true, outline: true, name: 'web-membrane' });
     const web = buildWebRibs(hubY);
     parts.push({ geometry: web.ribs, mat: 'yellow2', solid: true, outline: true, name: 'web-ribs' });
@@ -352,9 +348,9 @@ export const dartfrogHopBody = makePolyBody({
       mat: 'dBlack',
       name: 'decal-spots',
     });
-    // 黑色座艙罩（iter-62）
+    // 黑色座艙罩
     parts.push({ geometry: buildCanopy(topAt), mat: 'canopy', shell: true, outline: true, name: 'canopy-black' });
-    // 鼻側土耳其藍流線（iter-62）：黑邊＋土耳其藍面，蓋在黑圓斑之上
+    // 鼻側土耳其藍流線：黑邊＋土耳其藍面，蓋在黑圓斑之上
     /** @type {(x: number, az: number) => number} 流線內為正 */
     const flow = (x, az) => Math.min(FLOW.half(x) - Math.abs(az - FLOW.zc(x)), x - FLOW.x0, FLOW.x1 - x);
     parts.push({
@@ -406,13 +402,12 @@ export const dartfrogHopBody = makePolyBody({
       mat: 'dWhite',
       name: 'decal-number',
     });
-    // 頭燈（V14）：寬鼻兩側一對往外後斜的三角燈片
-    // iter-55：拿掉鼻端的三角燈片（看起來像獠牙），改成前擋泥板頂面一對往後拉長的橢圓燈
+    // 頭燈（V14）：前擋泥板頂面一對往後拉長的橢圓燈（鼻端的三角燈片看起來像獠牙）
     const lampSd = (px, pz) => Math.hypot((px - 52) / 4.2, (pz - 27) / 2.2) - 1;
     parts.push({ geometry: kit.decal((x, y, z) => -lampSd(x, Math.abs(z)), { offset: 0.1 }), mat: 'lamp', name: 'lamp-head' });
-    // iter-123（第九階段，評審：「車頭圓鈍」→「車頭下緣加黑色前唇擾流」）：寬鼻下緣一片亮黑前唇（實心 1.2 mm 板，y 12.4–13.6），
+    // 黑色前唇擾流（替圓鈍的車頭下緣收邊）：寬鼻下緣一片亮黑前唇（實心 1.2 mm 板，y 12.4–13.6），
     // 俯視是往前凸的寬弧（中央伸出鼻尖約 3.5 mm、兩端往後收到前輪拱前方），像蛙的下唇；左右兩端各一道往上翹的小導流角（鱗片分流片）
-    // 後緣 x 59.5（31 mm 輪胎前緣 x 55.5，留 ≥ 3 mm；原本可裝 31 mm 輪不能變不合法）
+    // 後緣 x 59.5（31 mm 輪胎前緣 x 55.5，留 ≥ 3 mm；31 mm 輪要維持可裝）
     /** @type {number[][]} 前唇俯視多邊形 (x, z)：中央 x 69.5，往兩側沿弧收到 |z| 29、x 61.5 */
     const lipPts = [];
     for (let i = 0; i <= 12; i++) {

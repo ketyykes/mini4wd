@@ -1,11 +1,11 @@
-// 九尾狐（body-kitsune-ninetail，第八階段神話組・日本）：取材日本民間傳說的九尾妖狐（玉藻前傳說；九尾狐源自中國典籍），
+// 九尾狐（body-kitsune-ninetail，神話組・日本）：取材日本民間傳說的九尾妖狐（玉藻前傳說；九尾狐源自中國典籍），
 // 不是稻荷神使——不用稻荷的白＋朱紅、不放鳥居、寶珠與鑰匙。
-// 造型：尖長的狐吻楔形車頭（鼻尖黑漆）、前軸後方一對立起的三角狐耳（實體件，耳內黑漆）、車身中段煙燻座艙罩、
-// 車尾 9 條狐尾尾翼（iter-121 改成上下兩層：下層 5 條、上層 4 條往後展開；銀白 → 淡朱 → 朱紅漸層尖端，毛流用貼紙；
-// iter-124 由扁平尾片改成有厚度、圓斷面、尾尖收細的實心毛束）。
+// 造型：尖長的狐吻楔形車頭（鼻尖黑漆）、前軸後方一對往後貼的三角狐耳（實體件，耳內黑漆）、車身中段煙燻座艙罩、
+// 車尾 9 條狐尾尾翼（上下兩層：下層 5 條、上層 4 條往後展開；銀白 → 淡朱 → 朱紅漸層尖端，毛流用貼紙；
+// 每條是有厚度、圓斷面、尾尖收細的實心毛束）。
 // 設計：shared/design/body-kitsune-ninetail/DESIGN.md（典故與文物對應 MYTH_RESEARCH 日本節 J1、J2、J5、J6、J12、J13；
 // 黑名單：《火影忍者》九喇嘛、寶可夢九尾〔J14〕、The Fox Jr.、WGP 銀狐隊、旭日放射紋〔J15〕）。剖面為本檔站位產生器（推估）。
-// 塗裝全為自創：珍珠銀白（上半車身，亮面）、黑漆（iter-121 起取代靛藍：往後斜升的下半車身、鼻尖、耳內、座艙框，緞面）、
+// 塗裝全為自創：珍珠銀白（上半車身，亮面）、黑漆（往後斜升的下半車身、鼻尖、耳內、座艙框，緞面；不用靛藍）、
 // 朱紅（分色線上的賽車條、尾尖漸層）、金色蒔繪細線（青海波、眼線、腰線）；不含任何廠商 / 作品名稱、商標、文字或人臉。
 import * as THREE from 'three';
 import { makePolyBody } from './polyBody.js';
@@ -21,12 +21,11 @@ const XS = [-70, -66, -60, -50, -40, -25, -10, 5, 20, 30, 40, 50, 58, 64, 69, 73
 const XS_HW = [-70, -66, -60, -50, -40, -30, -18, -5, 8, 20, 30, 40, 50, 58, 64, 69, 73, 75.5];
 /** @type {Record<string, (x: number) => number>} */
 const P = {
-  // 俯視半寬（肩稜線）：狐狸的「深胸—細腰—窄臀」——座艙前的胸最寬 40（x 20）、座艙後段收成細腰 27（x −18）、
-  // 後軸上方的臀 37、往後收成窄尾（車尾半寬 15，九尾從上方往外展開）、往前收成尖長狐吻（鼻尖半寬 2.5）
-  // iter-121：胸 40 → 38.5、臀 37 → 36（正面面積、和 trojan 的俯視 IoU）
+  // 俯視半寬（肩稜線）：狐狸的「深胸—細腰—窄臀」——座艙前的胸最寬 38.5（x 20）、座艙後段收成細腰 26.5（x −18）、
+  // 後軸上方的臀 36、往後收成窄尾（車尾半寬 15，九尾從上方往外展開）、往前收成尖長狐吻（鼻尖半寬 2.5）；
+  // 胸與臀不做更寬（正面面積、和 trojan 的俯視 IoU）
   hw: monoCurve(XS_HW, [15, 18.5, 24, 30, 36, 33, 26.5, 29, 36, 38.5, 33, 33, 26, 21, 15.5, 10, 5.5, 2.5]),
-  // 中線殼頂：座艙段 34.3 的低平背，往前一路下斜成楔形狐吻（鼻尖 17.8）
-  // iter-121：背整體壓低 1.3（33.0）、狐吻從前軸前方開始壓低，鼻尖 17.8 → 14.8（−3 mm 尖楔；前軸上方維持 ≥ 31.6，31 mm 輪的輪拱不破頂）
+  // 中線殼頂：座艙段 33.0 的低平背，狐吻從前軸前方開始往前下斜成尖楔（鼻尖 14.8；前軸上方維持 ≥ 31.6，31 mm 輪的輪拱不破頂）
   yTop: monoCurve(XS, [29.6, 31, 31.8, 32.3, 32.6, 32.8, 33, 33, 32.9, 32.4, 31.6, 29, 25, 21.8, 19, 16.6, 14.8]),
   // 肩稜線高度（頂面與側面交界）
   yS: monoCurve(XS, [26.4, 27.4, 28, 28.4, 28.6, 28.8, 28.8, 28.8, 28.8, 28.4, 27.6, 25.6, 21.6, 18.8, 16.4, 14.6, 13.4]),
@@ -74,7 +73,7 @@ const canopyHalfW = (x) => {
 };
 
 /**
- * iter-121 斜向分色線（V12 從鼻尖往後掃）：黑漆下半車身在車頭只到肩稜線下 7 mm，往後一路斜升，
+ * 斜向分色線（V12 從鼻尖往後掃）：黑漆下半車身在車頭只到肩稜線下 7 mm，往後一路斜升，
  * 到車尾越過肩稜線 2 mm（後甲板兩側也是黑漆，只留中央一道白背脊接到尾翼）——側視是一道往後上揚的楔形分割
  * @type {(x: number) => number}
  */
@@ -83,12 +82,12 @@ const ySplit = (x) => P.yS(x) - 7 + 9 * smoothstep(55, -62, x);
 /** @type {number} 黑漆鼻尖的起點 x */
 const X_NOSE = 72.4;
 
-/** @type {number} 尾尖漸層的色階數（iter-125；最後一階是朱紅尾尖） */
+/** @type {number} 尾尖漸層的色階數（最後一階是朱紅尾尖） */
 const TAIL_FADE_STEPS = 7;
 
 /**
- * iter-125 尾尖漸層材質：評審指出 iter-124 的「銀白 → 淡朱 → 朱紅」三段硬邊色塊像色鉛筆筆芯，
- * 改成 7 階、每階色差很小的漸層（銀白 #E4E6EA → 淡朱 #EC8A66 → 朱紅 #D8401F，sRGB 內插），沿長每段一階。
+ * 尾尖漸層材質：7 階、每階色差很小的漸層（銀白 #E4E6EA → 淡朱 #EC8A66 → 朱紅 #D8401F，sRGB 內插），沿長每段一階；
+ * 只分三段的硬邊色塊會像色鉛筆筆芯。
  * @type {() => Record<string, THREE.Material>}
  */
 const tailFadeMaterials = () => {
@@ -120,11 +119,11 @@ const tailFadeMaterials = () => {
 const materials = () => ({
   // 珍珠銀白：上半車身（少數亮面部位）
   silver: namedMaterial('paint-pearl-silver-white', { color: 0xe4e6ea, metalness: 0.3, roughness: 0.32, clearcoat: 0.9, clearcoatRoughness: 0.1 }),
-  // 黑漆：緞面（漆器感）；iter-121 起也是下半車身的主色（取代靛藍：避開「白＋藍」的 WGP 隊伍配色風險）
+  // 黑漆：緞面（漆器感）；也是下半車身的主色（不用靛藍：避開「白＋藍」的 WGP 隊伍配色風險）
   urushi: namedMaterial('paint-urushi-black', { color: 0x141416, roughness: 0.55, clearcoat: 0.2 }),
-  // iter-121：朱紅（尾尖漸層末端、分色線上的賽車條）與淡朱（漸層中段），亮面漆
+  // 朱紅（尾尖漸層末端、分色線上賽車條的顏色），亮面漆
   vermilion: namedMaterial('paint-vermilion-shu', { color: 0xd8401f, roughness: 0.3, clearcoat: 0.8, clearcoatRoughness: 0.1 }),
-  // iter-125：尾尖漸層 7 階（銀白 → 淡朱 → 朱紅；名稱含 pearl，和銀白尾身同一個 Blender 材質類別，色階之間不跳光澤）
+  // 尾尖漸層 7 階（銀白 → 淡朱 → 朱紅；名稱含 pearl，和銀白尾身同一個 Blender 材質類別，色階之間不跳光澤）
   ...tailFadeMaterials(),
   // 真金屬金（尾尖；名稱含 -brass → Blender metallic）
   gold: namedMaterial('trim-gold-brass', { color: 0xc9a54a, metalness: 0.8, roughness: 0.3, clearcoat: 0.3 }),
@@ -142,13 +141,13 @@ const materials = () => ({
 });
 
 /**
- * 把局部座標（u 橫向、v 往上、w 往前）的耳朵幾何擺到車上：往後仰 14°、往外張 11.5°，耳根中心 (31, 30.8, ±11)
+ * 把局部座標（u 橫向、v 往上、w 往前）的耳朵幾何擺到車上：往後仰 26°、往外張 11.5°，耳根中心 (31, 29.6, ±11)
  * @type {(g: THREE.BufferGeometry, sg: number) => THREE.BufferGeometry}
  */
 const placeEar = (g, sg) => {
   // 局部 w（往前）→ 世界 +x；局部 u → 世界 −z
   g.rotateY(Math.PI / 2);
-  // 往後仰（耳尖往 −x）；iter-121：14° → 26°（耳朵順風往後貼，頂高 ≤ 49）
+  // 往後仰 26°（耳尖往 −x；耳朵順風往後貼，頂高 ≤ 49）
   g.rotateZ(0.45);
   // 往外張（耳尖往 sg·z）
   g.rotateX(sg * 0.2);
@@ -157,8 +156,8 @@ const placeEar = (g, sg) => {
 };
 
 /**
- * 狐耳（單側）：iter-114 改成有厚度的射出件——三角耳板（底寬 10、高 19，兩側微外凸、耳尖小圓角）擠出 1.6 mm、
- * 四周 0.5 mm 圓角倒邊（總厚 2.6 mm），不再是邊緣銳利如刀的四面體（評審：耳朵像無厚度的薄片）；
+ * 狐耳（單側）：有厚度的射出件——三角耳板（底寬 10、高 19，兩側微外凸、耳尖小圓角）擠出 1.6 mm、
+ * 四周 0.5 mm 圓角倒邊（總厚 2.6 mm），不做邊緣銳利如刀的四面體（會像無厚度的薄片）；
  * 耳根埋進前罩約 2.5 mm（和殼面接成一體）。耳內另貼一片 0.55 mm 黑漆三角片（略凸出耳面 0.35 mm）
  * @type {(sg: number) => { ear: THREE.BufferGeometry, inner: THREE.BufferGeometry }}
  */
@@ -188,8 +187,8 @@ const buildEar = (sg) => {
 };
 
 /**
- * 輪拱內側擋板（iter-114：修正 Blender 展示圖前輪拱內的黑白條紋）：
- * 原本的輪拱內襯只是靠外側的一段圓柱面，從側面 / 前 3/4 看進輪拱，視線會穿過輪胎上方與前方的空隙、橫越車身、
+ * 輪拱內側擋板（避免 Blender 展示圖前輪拱內出現黑白條紋）：
+ * 輪拱內襯只是靠外側的一段圓柱面，從側面 / 前 3/4 看進輪拱，視線會穿過輪胎上方與前方的空隙、橫越車身、
  * 從另一側輪拱與側裙下方看到地板（Blender 攝影棚地板在車旁最亮）→ 和車殼安裝柱、對側內面的深色交錯成直條紋。
  * 這裡在輪胎內側（|z| = zw）補一片環形擋板（輪拱圓心為圓心，半徑 rIn → rOut、只取上半圈），把輪室從車身內部隔開。
  * blocked(x, y) 回傳 true 的位置（底盤側框、安裝柱等，已含 1 mm 間隙）不放擋板。
@@ -232,7 +231,7 @@ export function buildArchWell(arch, zw, rIn, rOut, blocked) {
 }
 
 /**
- * chassis-midship 在輪拱內側（|z| 19–26）的障礙物（iter-114 量測，已加 1 mm 間隙）：
+ * chassis-midship 在輪拱內側（|z| 19–26）的障礙物（量測值，已加 1 mm 間隙）：
  * 前後軸之間的底盤側框（前輪拱 x ≤ 25.5、後輪拱 x ≥ −27.5，頂 y 20.4–21.0；後輪拱 x ≥ −20.5 處頂 23.2）、
  * 安裝柱（x ±33.5、±50，寬 < 1 mm、頂 y 19.6，|z| 21.4–24.6）；軸承座（軸心半徑 4.1）在擋板內徑以內
  * @type {(x: number, y: number) => boolean}
@@ -251,13 +250,13 @@ export const chassisBlockedNearArch = (x, y) => {
 };
 
 /**
- * iter-121 雙層狐尾尾翼：iter-120 以前是 9 條掃掠圓尾擠在車尾（評審「尾巴扇擠在車尾」）；iter-118 的蓬鬆中空尾巴面數太高被 revert。
+ * 雙層狐尾尾翼（九條尾巴不擠在車尾一處；蓬鬆中空的尾巴面數太高，不用）。
  * 兩層九條狐尾，中心線是二次 Bézier（先往後、尾段往外甩，像被風往後吹開）：
  * - 下層 5 條：貼著後甲板、往後微升 3°，中央最長；
  * - 上層 4 條：從尾根座往後上揚 13°，錯開半格、張得比下層開——後視兩層錯開，側視是一道往後上揚的雙層尾翼。
- * iter-124（評審：iter-121 的扁平尾片又薄又有稜角，像一堆紅白碎紙或火舌）：每條尾巴改成低分段的實心毛束——
- * 斷面是 8 段的扁橢圓（寬 w、厚 t），沿長 10 段：根部 55% 粗、約 55% 處最蓬、尾尖收細成尖；
- * 中心比尾片底面高 0.35 t，下半截埋進尾根座 / 後甲板，只露出圓鼓的上半截。只分 3 段上色：銀白 → 淡朱 → 朱紅（漸層尖端）。
+ * 每條尾巴是低分段的實心毛束（扁平尾片又薄又有稜角，會像一堆紅白碎紙或火舌）——
+ * 斷面是 12 段的扁橢圓（寬 w、厚 t），沿長 14 段：根部 55% 粗、約 55% 處最蓬、尾尖收細成尖；
+ * 中心比尾片底面高 0.35 t，下半截埋進尾根座 / 後甲板，只露出圓鼓的上半截。前 7 段銀白尾身，後 7 段每段一階漸層（銀白 → 淡朱 → 朱紅尾尖）。
  * @type {{ y: number, tilt: number, xr: number, tips: number[][], wMax: number, tMax: number }[]} tips = 尾尖 [x, z]（含左右）；wMax / tMax = 最蓬處半寬 / 半厚
  */
 const TAIL_LAYERS = [
@@ -292,10 +291,10 @@ const TAIL_LAYERS = [
   },
 ];
 
-/** @type {number} 尾束沿長段數（iter-125：10 → 14；前 7 段銀白尾身，後 7 段每段一階漸層） */
+/** @type {number} 尾束沿長段數（前 7 段銀白尾身，後 7 段每段一階漸層） */
 const TAIL_LEN_SEGS = 14;
 
-/** @type {number} 尾束斷面段數（iter-125：8 → 12，平滑法向、共用頂點，不做 flat shading） */
+/** @type {number} 尾束斷面段數（平滑法向、共用頂點，不做 flat shading） */
 const TAIL_RING_SEGS = 12;
 
 /** @type {(i: number) => string} 第 i 段（0 起算）的材質鍵 */
@@ -318,7 +317,7 @@ const tuftScale = (s) => {
 /**
  * 單條毛束（兩端封口的實心網格）：中心線 root → ctrl → tip 的二次 Bézier（在 xz 平面），
  * 斷面 12 段扁橢圓：側向半寬 wMax·k(s)、上下半厚 tMax·k(s)，中心高 0.35·tMax（相對尾片底面 y = 0）。
- * iter-125：先整條建好、算一次平滑法向，再依段切成各材質的子網格並沿用整條的法向——色階交界不會出現法向折線。
+ * 先整條建好、算一次平滑法向，再依段切成各材質的子網格並沿用整條的法向——色階交界不會出現法向折線。
  * @type {(root: number[], tip: number[], wMax: number, tMax: number) => Record<string, THREE.BufferGeometry>}
  */
 const tailTuft = (root, tip, wMax, tMax) => {
@@ -526,7 +525,7 @@ export const kitsuneNinetailBody = makePolyBody({
   wheelArches: ARCHES,
   canopy: {
     section: 'ellipse',
-    // 超橢圓座艙：x 21.6 → −15.6（每 1.24 mm 一站）；最寬 12.5、最高 8.6（iter-121 由 10.5 壓低；座艙頂約 41.6）
+    // 超橢圓座艙：x 21.6 → −15.6（每 1.24 mm 一站）；最寬 12.5、最高 8.6（壓低；座艙頂約 41.6）
     stations: (() => {
       /** @type {{ x: number, yBase: number, yTop: number, halfW: number }[]} */
       const out = [];
@@ -544,7 +543,7 @@ export const kitsuneNinetailBody = makePolyBody({
   zones: () => [
     // 黑漆鼻尖
     { mat: 'urushi', keep: (x) => x - X_NOSE },
-    // 黑漆下半車身（iter-121：斜向往後上揚的分色線）
+    // 黑漆下半車身（斜向往後上揚的分色線）
     { mat: 'urushi', keep: (x, y) => ySplit(x) - y },
     // 珍珠銀白上半車身
     { mat: 'silver', keep: () => 1 },
@@ -561,7 +560,7 @@ export const kitsuneNinetailBody = makePolyBody({
       shell: true,
       name: 'arch-liners',
     });
-    // iter-114：輪胎內側的環形擋板（|z| 22.9 = 內襯內緣，接成一個輪室；離 26 mm 輪內側面 2.4、31 mm 輪 1.9 mm）
+    // 輪胎內側的環形擋板（|z| 22.9 = 內襯內緣，接成一個輪室；離 26 mm 輪內側面 2.4、31 mm 輪 1.9 mm）
     parts.push({
       geometry: mergeGeos(ARCHES.map((a) => buildArchWell(a, 22.9, 12.3, 17.8, chassisBlockedNearArch))),
       mat: 'liner',
@@ -572,13 +571,13 @@ export const kitsuneNinetailBody = makePolyBody({
     const ears = [-1, 1].map((sg) => buildEar(sg));
     parts.push({ geometry: mergeGeos(ears.map((e) => e.ear)), mat: 'silver', solid: true, outline: true, name: 'fox-ears' });
     parts.push({ geometry: mergeGeos(ears.map((e) => e.inner)), mat: 'urushi', solid: true, outline: true, name: 'fox-ears-inner' });
-    // 九條狐尾（iter-121：上下兩層；iter-124：實心紡錘毛束，實體件，依段上色）
+    // 九條狐尾（上下兩層的實心紡錘毛束，實體件，依段上色）
     const tails = buildTails();
     for (const [mat, g] of Object.entries(tails)) {
       parts.push({ geometry: g, mat, solid: true, outline: true, name: `nine-tails-${mat}` });
     }
     // 尾根座：黑漆扁橢球，把九條尾根和後甲板接成一體
-    // iter-121：分段 32×16 → 16×10（面數預算）；拉長蓋住兩層尾根
+    // 分段 16×10（面數預算）；拉長蓋住兩層尾根
     const boss = new THREE.SphereGeometry(1, 16, 10);
     boss.scale(8, 2.2, 9);
     boss.translate(-42, P.yTop(-42) + 0.2, 0);
@@ -616,7 +615,7 @@ export const kitsuneNinetailBody = makePolyBody({
       mat: 'dGold',
       name: 'decal-eye-flicks',
     });
-    // iter-121：分色線上方的朱紅賽車條（寬 1.8，從狐吻往後斜升到車尾）＋其上 0.6 mm 的金蒔繪細線
+    // 分色線上方的朱紅賽車條（寬 1.8，從狐吻往後斜升到車尾）＋其上 0.6 mm 的金蒔繪細線
     parts.push({
       geometry: kit.decal((x, y) => Math.min(0.9 - Math.abs(y - (ySplit(x) + 1.0)), X_NOSE - 1 - x, x + 68.5)),
       mat: 'dShu',
@@ -627,7 +626,7 @@ export const kitsuneNinetailBody = makePolyBody({
       mat: 'dGold',
       name: 'decal-makie-beltline',
     });
-    // iter-121 毛流（貼紙，取代 iter-118 的實體蓬鬆尾）：後甲板兩側黑漆區上的銀白細毛流線——
+    // 毛流（貼紙）：後甲板兩側黑漆區上的銀白細毛流線——
     // 俯視是一束往後、往中線收攏的弧線（流向尾根），每條線寬由 0.55 往兩端收細、長短錯開
     parts.push({
       geometry: kit.decal((x, y, z) => {
@@ -650,7 +649,7 @@ export const kitsuneNinetailBody = makePolyBody({
       mat: 'dFur',
       name: 'decal-fur-flow',
     });
-    // 側面青海波（前後輪之間的靛藍下半車身，金蒔繪細線）
+    // 側面青海波（前後輪之間的黑漆下半車身，金蒔繪細線）
     const wave = seigaiha(4.5, 9.8);
     for (const side of [-1, 1]) {
       parts.push({

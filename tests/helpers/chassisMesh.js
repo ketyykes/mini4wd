@@ -3,7 +3,7 @@ import { buildCarModel } from '../../src/model.js';
 import { simplexSecond, zeroTensor, addTensor, centralTensor } from '../../src/massTensor.js';
 
 /**
- * 由 3D 模型的 ABS 底盤本體網格（材質 abs-chassis-gunmetal）積分體積權重的質量分布（iter-96，B3）：
+ * 由 3D 模型的 ABS 底盤本體網格（材質 abs-chassis-gunmetal）積分體積權重的質量分布（B3）：
  * 回傳重心（底盤座標 mm）與「每 g 的中心慣性張量」（mm²）。網格有重疊、比實物厚，只當分布權重，總質量另用實測值。
  * @type {(asm: any) => { volume_mm3: number, com_mm: { x: number, y: number, z: number }, gyration_mm2: Record<string, number> }}
  */
@@ -41,7 +41,7 @@ export function chassisMeshDistribution(asm) {
 }
 
 /**
- * B10（iter-109）：底盤本體網格（同上 abs-chassis-gunmetal）的表面取樣點，三角形內以 ≤ step mm 間距取點；
+ * B10：底盤本體網格（同上 abs-chassis-gunmetal）的表面取樣點，三角形內以 ≤ step mm 間距取點；
  * 給附件實體做有號距離檢查（負值 = 底盤表面點在附件實體內 = 穿透）
  * @type {(asm: any, step?: number) => Float32Array}
  */

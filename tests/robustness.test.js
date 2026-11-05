@@ -42,7 +42,7 @@ describe('正式穩健性回歸', () => {
         expect(Object.values(result).every((v) => typeof v !== 'number' || Number.isFinite(v))).toBe(true);
         expect(result.minUp).toBeGreaterThan(0.8);
         expect(result.finalUp).toBeGreaterThan(0.99);
-        // iter-94：射線輪開始接觸那一步改用離散梯度力後，落地過程任何一步的總機械能都不得高於落下前
+        // 射線輪開始接觸那一步用離散梯度力，所以落地過程任何一步的總機械能都不得高於落下前（查證紀錄：ITERATION_LOG iter-94）
         expect(result.maxEnergy).toBeLessThanOrEqual(result.initialEnergy);
         expect(result.finalEnergy).toBeLessThan(result.initialEnergy);
       }
@@ -83,7 +83,7 @@ describe('正式穩健性回歸', () => {
         let maxPen = 0;
         let minUp = 1;
         let steps = 0, maxSolverResidual = 0, solverFailures = 0, maxSolverIterations = 0;
-        // iter-98（B1）：每一次牆接觸共用求解後的系統動能 ½qᵀMq 都不得高於求解前；記錄恢復目標被縮小的次數
+        // B1：每一次牆接觸共用求解後的系統動能 ½qᵀMq 都不得高於求解前；記錄恢復目標被縮小的次數
         let maxWallEnergyGain = -Infinity, energyGuards = 0;
         for (; steps < Math.ceil(30 / spec.sim.dt_s) && distance < 3 * L && minUp > 0.8; steps++) {
           sim.stepCar(env, car);

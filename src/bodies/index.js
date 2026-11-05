@@ -36,12 +36,11 @@ import { yagaHutBody } from './yagaHut.js';
 /** @typedef {import('./types').BodyDef} BodyDef */
 /** @typedef {import('./types').BodyMassProps} BodyMassProps */
 
-// 第四階段（iter-54）：全新 6 款致敬《爆走兄弟》風格車殼（A 組 tortoise-dome / marlin-sail / owl-hush、B 組 gazelle-leap / halo-orbit / dartfrog-hop，
-// 分別註冊在 homageA.js / homageB.js）＋常見比賽車殼型式 3 款（skeleton / aero-wing / pc-box）。
-// 第三階段的致敬款 wedge / beast / fork 已退役（程式碼保留在 git 歷史，設計說明在 shared/design/ 標註已退役）
-// 第六階段（iter-67 起）：比賽型 fastback-cabin / trail-canopy（iter-68 加 hinge-deck / lowline-flat）、致敬 LG2 griffin-vane / zeppelin-xtail / hydroplane-sponson、LG1 mantis-scythe（分組欄位 homageSeries / raceType / form）
+// 致敬《爆走兄弟》風格車殼 6 款（homageA.js：tortoise-dome / marlin-sail / owl-hush；homageB.js：gazelle-leap / halo-orbit / dartfrog-hop）
+// ＋常見比賽車殼型式 3 款（skeleton / aero-wing / pc-box）。
+// 比賽型 fastback-cabin / trail-canopy / hinge-deck / lowline-flat、致敬 LG2 griffin-vane / zeppelin-xtail / hydroplane-sponson、LG1 mantis-scythe（分組欄位 homageSeries / raceType / form）
 /** @type {BodyDef[]} */
-// 第八階段（iter-112 起）：神話組（style 'myth'、mythSeries / mythTheme，體系清單 mythSeries.js）
+// 神話組（style 'myth'、mythSeries / mythTheme，體系清單 mythSeries.js）
 const bodies = [...homageBodiesA, ...homageBodiesB, skeletonBody, aeroWingBody, pcBoxBody, fastbackCabinBody, trailCanopyBody, hingeDeckBody, lowlineFlatBody, griffinVaneBody, zeppelinXtailBody, mantisScytheBody, hydroplaneSponsonBody, cicadaVeilBody, prismFacetBody, trojanHorseBody, cerberusTriheadBody, serpentLongshipBody, gullinburstiBoarBody, kunpengBody, quetzalSerpentBody, khepriScarabBody, kitsuneNinetailBody, minotaurMazeBody, sleipnirStrideBody, mushussuGateBody, gundestrupStagBody, tanngrisnirChariotBody, heimdallHornBody, firebirdBody, yagaHutBody];
 
 /** @type {() => BodyDef[]} */
@@ -81,7 +80,7 @@ const solidOf = (obj) => {
 };
 
 /**
- * 封閉網格的體積與體積重心（iter-49）：先依共用頂點把三角形分成連通塊，每塊用散度定理算有號體積後取絕對值
+ * 封閉網格的體積與體積重心：先依共用頂點把三角形分成連通塊，每塊用散度定理算有號體積後取絕對值
  * （合併幾何裡個別零件的繞向不一定一致，分塊取絕對值可避免互相抵銷）
  * @type {(pts: Float64Array) => { vol: number, mx: number, my: number, mz: number }} pts：每 9 個數一個三角形（世界座標）
  */
@@ -227,7 +226,7 @@ export const bodyMassProps = (body) => {
   // 殼：mm² × mm = mm³；1 cm³ = 1000 mm³
   const shellMass = (area * body.wallThickness_mm * body.density_g_cm3) / 1000;
   const shellCom = area > 0 ? mom.clone().divideScalar(area) : new THREE.Vector3();
-  // 實體件（iter-49，userData.solid）：封閉網格體積 × 密度（預設同車殼材料，可由 solid.density_g_cm3 指定）
+  // 實體件（userData.solid）：封閉網格體積 × 密度（預設同車殼材料，可由 solid.density_g_cm3 指定）
   /** @type {Map<number, number[]>} 密度 → 該密度實體件的世界座標三角形 */
   const solidTris = new Map();
   g.traverse((o) => {

@@ -1,5 +1,5 @@
 // 導輪（單顆；前 2 顆＋後每側 1–2 層，依導輪架而定，SPEC 1.8）
-// 第三階段：tiers 描述疊放的導輪片（由下而上；雙層導輪 = 一顆導輪本體上有兩片接觸面）。沒有 tiers 時視為單片 diameter_mm × height_mm
+// tiers 描述疊放的導輪片（由下而上；雙層導輪 = 一顆導輪本體上有兩片接觸面）。沒有 tiers 時視為單片 diameter_mm × height_mm
 // diameter_mm 一律是最大接觸直徑（外框、與牆接觸都用它）
 
 /** @type {import('./types').PartBase[]} */
@@ -22,7 +22,7 @@ export const rollerParts = [
       mass_g: 'PARTS_RESEARCH [T15551] 官方：13 mm 塑膠導輪（壓入培林）0.45 g',
     },
   },
-  // B14（iter-107）：VZ 標配的新形狀 14 mm 塑膠導輪
+  // B14：VZ 標配的新形狀 14 mm 塑膠導輪
   {
     id: 'roller-14',
     category: 'roller',
@@ -99,7 +99,7 @@ export const rollerParts = [
       mass_g: 'PARTS_RESEARCH 第三階段 D 節 [SAGANO]：0.6 g',
     },
   },
-  // ---- 第四階段（iter-54）：錐形（テーパー）全鋁導輪：上段圓柱＋下段截錐（錐面朝下）----
+  // ---- 錐形（テーパー）全鋁導輪：上段圓柱＋下段截錐（錐面朝下）----
   // taper：上段圓柱高 cylinderHeight_mm（直徑 = diameter_mm）、下段錐形高 coneHeight_mm、錐形底面直徑 bottomDiameter_mm。
   // 與牆面接觸時（牆面垂直）接觸點在上段圓柱、法向水平；騎上牆頂時牆頂邊緣碰到錐面，接觸法向沿錐面法向（與水平夾約 34°），
   // 產生「推回車道＋上抬」分力（sim.js rollerWallContacts 由這份幾何推導，不寫特例）
@@ -141,7 +141,7 @@ export const rollerParts = [
       mount: '同 roller-19-tapered（ROLLER_TAPER_MOUNT）',
     },
   },
-  // ---- 第五階段（iter-57）：台灣買得到的導輪（台灣來源見 shared/reference/TAIWAN_SOURCES.md）----
+  // ---- 台灣買得到的導輪（台灣來源見 shared/reference/TAIWAN_SOURCES.md）----
   // ring：外環（橡膠 O 環 / 塑膠環）只影響 3D 外形；接觸直徑 diameter_mm 就是環的外緣，牆面摩擦 / 恢復係數是整顆導輪的等效值
   {
     id: 'roller-19-rubber',
@@ -204,7 +204,7 @@ export const rollerParts = [
       taiwan: 'TAIWAN_SOURCES TW05（四驅博士學校／露天，15522）',
     },
   },
-  // ---- 第五階段（iter-59）：鋼製滾珠培林直接當導輪（外圈碰牆）----
+  // ---- 鋼製滾珠培林直接當導輪（外圈碰牆）----
   {
     id: 'roller-9-bearing',
     category: 'roller',
@@ -245,7 +245,7 @@ export const rollerParts = [
       taiwan: 'TAIWAN_SOURCES TW08（四驅博士學校／露天，15345）',
     },
   },
-  // ---- 第五階段（iter-64）：另外兩款塑膠環導輪 ----
+  // ---- 另外兩款塑膠環導輪 ----
   {
     id: 'roller-19-plastic-ring-dish',
     category: 'roller',
@@ -287,11 +287,10 @@ export const rollerParts = [
       taiwan: 'TAIWAN_SOURCES TW06（新莊超音速陽明／露天，15449）',
     },
   },
-  // ---- 第七階段（iter-76）：一體成形的二段導輪（PARTS_RESEARCH 第七階段 AO 節）----
+  // ---- 一體成形的二段導輪（PARTS_RESEARCH 第七階段 AO 節）----
   // 沿用 roller-13-12-double 的 tiers 雙層寫法（由下而上）；[REG7] Sec.6 禁止「cutting off one end of double rollers」→ 一體建模、不提供拆層選項。
   // tiers 每片可另帶 ring（該片的外環，3D 用）、wallFriction / restitution（該片的牆面摩擦 / 恢復係數）；
   // 零件層級的 wallFriction / restitution 是「平常碰牆的那片（下層）」的值。
-  // ※ 目前 carLayout.js / sim.js / model.js 只讀零件層級的值與 tiers 的 y / 直徑 / 高度，每片各自的摩擦與外環要等主 agent 接上（見 iter-76 回報）
   {
     id: 'roller-13-12-alu-double',
     category: 'roller',

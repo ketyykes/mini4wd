@@ -1,4 +1,4 @@
-// 列出全部車殼兩兩輪廓 IoU 最高的幾對（主 agent 檢查用）
+// 列出全部車殼兩兩輪廓 IoU 最高的幾對（檢查用）
 import { listBodies } from '../../src/bodies/index.js';
 import { bodyIoU } from '../../src/bodies/silhouette.js';
 const bodies = listBodies();

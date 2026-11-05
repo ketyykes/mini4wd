@@ -1,4 +1,4 @@
-// iter-13：把模型車殼的特徵線（黃：中線、紅：近側前葉子板稜線、青：遠側輪廓）用 fit_ref_camera 擬合相機投影到參考照 ref side-high 上
+// 把模型車殼的特徵線（黃：中線、紅：近側前葉子板稜線、青：遠側輪廓）用 fit_ref_camera 擬合相機投影到參考照 ref side-high 上
 // 直接比較同一相機下的高度差（推估：相機擬合 rms 4.3 px ≈ 0.75 mm）
 // 用法：node scripts/diag/overlay_profile.mjs <輸出 png>
 import { createServer } from 'vite';

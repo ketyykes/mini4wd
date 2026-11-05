@@ -1,5 +1,5 @@
 #!/bin/bash
-# iter-12：把 sidehigh 截圖縮放對齊參考照 ref side-high，輸出疊圖供比例比對
+# 把 sidehigh 截圖縮放對齊參考照 ref side-high，輸出疊圖供比例比對
 # 對齊參數由 scripts/diag/fit_ref_camera.mjs 算出（相機擬合 rms 4.3 px）：ref = 0.835·r − (171, 4)
 # 用法：compare_sidehigh.sh <我們的 sidehigh.png> <輸出前綴>
 set -e

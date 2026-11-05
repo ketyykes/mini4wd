@@ -1,4 +1,4 @@
-// 瞪羚角拉力型（body-gazelle-leap，第四階段致敬《爆走兄弟》風格）：短車頭短車尾、四輪高聳輪拱、開放座艙＋低擋風片、
+// 瞪羚角拉力型（body-gazelle-leap，致敬《爆走兄弟》風格）：短車頭短車尾、四輪高聳輪拱、開放座艙＋低擋風片、
 // 車尾兩支往後上彎、尖端內收的豎琴形角鰭。
 // 設計：shared/design/body-gazelle-leap/DESIGN.md（致敬語彙、和劇中車 / 市售車殼的差異）。剖面為本檔站位產生器（推估，依外框限制與底盤高度）。
 // 塗裝全為自創：番紅花橘＋白＋黑、側面水平黑腰帶、號碼「27」；不含任何廠商 / 作品名稱、商標或角色圖像。
@@ -10,7 +10,7 @@ import { namedMaterial, decalMaterial, sdNumber, sdBar, sdConvexPolygon, sideDec
 /** @typedef {import('./loft.js').BodyPart} BodyPart */
 
 /**
- * 單調三次內插（Fritsch–Carlson，不過衝）：B 組三款共用的站位表工具
+ * 單調三次內插（Fritsch–Carlson，不過衝）：多款車殼共用的站位表工具
  * @type {(xs: number[], vs: number[]) => (x: number) => number}
  */
 export function monoCurve(xs, vs) {
@@ -60,8 +60,8 @@ export function buildStations(x0, x1, step, profile) {
 }
 
 /**
- * 鼻端下捲係數（iter-59）：x ≤ x0 為 1，往鼻尖 x1 以四分之一橢圓降到 minFrac。
- * 剖面各點高度以側壁下緣為基準乘上此係數 → 鼻端由垂直平切面 ＋ 大塊斜折面改成圓滑往下捲的曲面
+ * 鼻端下捲係數：x ≤ x0 為 1，往鼻尖 x1 以四分之一橢圓降到 minFrac。
+ * 剖面各點高度以側壁下緣為基準乘上此係數 → 鼻端是圓滑往下捲的曲面，而不是垂直平切面 ＋ 大塊斜折面
  * @type {(x: number, x0: number, x1: number, minFrac: number) => number}
  */
 export const noseRoll = (x, x0, x1, minFrac) => {
@@ -79,7 +79,7 @@ export const noseRoll = (x, x0, x1, minFrac) => {
 export const sdCircle = (cx, cy, r) => (u, v) => Math.hypot(u - cx, v - cy) - r;
 
 /**
- * 平滑法線（iter-55）：把非索引的掃掠 / 環面幾何依位置合併頂點後重算法線，消除平直著色的多邊形面
+ * 平滑法線：把非索引的掃掠 / 環面幾何依位置合併頂點後重算法線，消除平直著色的多邊形面
  * @type {(g: THREE.BufferGeometry) => THREE.BufferGeometry}
  */
 export const smoothNormals = (g) => {
@@ -100,13 +100,13 @@ export const smoothMax = (a, b, k = 1.2) => {
 
 /**
  * 擋泥板內坡的最低高度：以輪軸為中心的平滑拋物線（輪心正上方 31.8，離輪心 15 mm 處 29.1），
- * 永遠在 R17.5 輪拱圓柱之上，且沒有圓弧端點的無限斜率（iter-55：取代 iter-54 的圓弧，消除站位間的折痕）
+ * 永遠在 R17.5 輪拱圓柱之上，且沒有圓弧端點的無限斜率（圓弧會在站位間留下折痕）
  * @type {(x: number, axles?: number[]) => number}
  */
 export const fenderFloor = (x, axles = [40, -40]) => Math.max(...axles.map((ax) => 31.8 - 0.012 * (x - ax) ** 2));
 
 /**
- * 輪拱內襯（iter-55）：輪拱切口後面的一段圓柱面（半徑 = 輪拱半徑 + 0.3），只取上半圈（角度 a0–a1，0 = 車頭方向），
+ * 輪拱內襯：輪拱切口後面的一段圓柱面（半徑 = 輪拱半徑 + 0.3），只取上半圈（角度 a0–a1，0 = 車頭方向），
  * z 從 zFrom 到 zTo；擋住從側面看進去的殼內空腔。開放面，標 shell（面積 × 壁厚算質量）
  * @type {(arch: { x: number, y: number, radius: number }, zFrom: number, zTo: number, a0?: number, a1?: number) => THREE.BufferGeometry}
  */
@@ -143,11 +143,11 @@ export function buildArchLiner(arch, zFrom, zTo, a0 = 0.15, a1 = Math.PI - 0.15)
 const XS = [-58, -56, -50, -40, -30, -20, -8, 4, 16, 28, 40, 50, 58, 64];
 /** @type {Record<string, (x: number) => number>} */
 const P = {
-  // 中線頂：短車頭從 15.5 抬到引擎蓋 25，座艙段壓低到 24.5（iter-55：腰線更低），後艙蓋 29、車尾收圓到 22
+  // 中線頂：短車頭從 15.5 抬到引擎蓋 25，座艙段壓低到 24.5（壓低腰線），後艙蓋 29、車尾收圓到 22
   yC: monoCurve(XS, [22, 24, 27.5, 29, 28, 26, 24.5, 24.5, 25, 25.5, 25, 22, 18.5, 15.5]),
-  // 擋泥板稜線頂：四輪上方高聳（iter-55：34.2 → 38，「長腿」），兩輪之間降成腰線（27）
+  // 擋泥板稜線頂：四輪上方高聳（38，「長腿」），兩輪之間降成腰線（27）
   yF: monoCurve(XS, [24, 28, 34, 38, 34.5, 29, 27, 27, 29, 34, 38, 35, 28, 19]),
-  // 側壁半寬：前擋泥板最寬（45.5），往後收窄成箭頭形平面，車尾收到 20（iter-55：尾端收圓，不再是平切立面）
+  // 側壁半寬：前擋泥板最寬（45.5），往後收窄成箭頭形平面，車尾收到 20（尾端收圓，不是平切立面）
   hw: monoCurve(XS, [20, 25, 32, 33.5, 34, 35, 36.5, 38.5, 41, 44, 45.5, 45.5, 44, 40]),
   // 側壁下緣：腰部壓低（9.6）、後段抬到 17.5 讓開底盤
   yLow: monoCurve(XS, [22, 21, 18, 17.5, 17.5, 17.5, 17.2, 13, 10, 10, 12, 14, 15.5, 15.6]),
@@ -169,11 +169,11 @@ const profile = (x) => {
   // 擋泥板內坡：輪胎上方以平滑拋物線抬到輪拱圓柱之上，內坡不被輪拱切開（擋泥板成為獨立的高聳量體，V1）
   const yValley0 = Math.min(yC - 2.2, yF - 1.5);
   const yValley = smoothMax(yValley0, fenderFloor(x));
-  // iter-62：鼻尖兩站（x 63–64）的側壁肩低於下緣 + 1，原本以 yShoulder − 1 夾住下緣 → 下緣在最後 1 mm 從 15.6 掉到 13.5，
-  // 鼻部白色擋泥板下緣兩角出現往下的尖齒與看得到殼內的黑色小缺口；改成肩至少比下緣高 1.2 mm，下緣維持平順的 15.5–15.6
+  // 鼻段（x > 56）的肩至少比下緣高 1.2 mm，下緣維持平順的 15.5–15.6：鼻尖兩站（x 63–64）的側壁肩低於下緣 + 1，
+  // 若只以 yShoulder − 1 夾住下緣，下緣會在最後 1 mm 從 15.6 掉到 13.5，鼻部白色擋泥板下緣兩角出現往下的尖齒與看得到殼內的黑色小缺口
   const yShoulder = Math.max(Math.min(yF - 4.5, yF - 0.12 * (hw - zF) * 3), x > 56 ? P.yLow(x) + 1.2 : -Infinity);
   const yLow = Math.min(P.yLow(x), yShoulder - 1);
-  // iter-59：鼻端下捲（x 50 → 64），各點高度以側壁下緣為基準壓低，白色前臉不再是平切立面＋大折面
+  // 鼻端下捲（x 50 → 64），各點高度以側壁下緣為基準壓低，避免白色前臉變成平切立面＋大折面
   const roll = noseRoll(x, NOSE_ROLL.x0, NOSE_ROLL.x1, NOSE_ROLL.minFrac);
   /** @type {(y: number) => number} */
   const r = (y) => yLow + (y - yLow) * roll;
@@ -189,10 +189,10 @@ const profile = (x) => {
   ];
 };
 
-/** @type {{ x0: number, x1: number, minFrac: number }} 鼻端下捲範圍（iter-59） */
+/** @type {{ x0: number, x1: number, minFrac: number }} 鼻端下捲範圍 */
 const NOSE_ROLL = { x0: 50, x1: 64, minFrac: 0.3 };
 
-// iter-59：鼻端下捲段每 1 mm 一站（曲率大，2 mm 站距會留下折痕）
+// 鼻端下捲段每 1 mm 一站（曲率大，2 mm 站距會留下折痕）
 const STATIONS = [...buildStations(-58, 48, 2, profile).slice(0, -1), ...buildStations(48, 64, 1, profile)];
 
 /** @type {any} 開放座艙（俯視凸多邊形，深 7 mm 的座艙槽） */
@@ -237,7 +237,7 @@ const materials = () => ({
 });
 
 /**
- * 角鰭中心線（右側，左側 z 取負）：根部埋在後擋泥板稜線裡，先幾乎垂直往上升、再往後上彎，尖端往內收（iter-55：升高到 57）
+ * 角鰭中心線（右側，左側 z 取負）：根部埋在後擋泥板稜線裡，先幾乎垂直往上升、再往後上彎，尖端往內收（頂高 57）
  * @type {number[][]}
  */
 const HORN_PATH = [
@@ -258,7 +258,7 @@ const HORN_RAD = (t) => [lerp(3.4, 0.3, t ** 0.85), lerp(4.1, 0.35, t ** 0.95)];
 const buildHorn = (sg) => {
   /** @type {number[][]} 角的中心線（根部埋在擋泥板稜線下 1.5 mm） */
   const path = HORN_PATH.map(([x, y, z]) => [x, y, sg * z]);
-  /** @type {(t: number) => number[]} 斷面半徑 [z 向, y 向]（iter-55：根部加粗到 8 × 9.6 mm） */
+  /** @type {(t: number) => number[]} 斷面半徑 [z 向, y 向]（根部斷面 6.8 × 8.2 mm） */
   const rad = HORN_RAD;
   // 分成象牙白主體（前 82%）與黑色尖端；兩段共用同一條曲線（以參數區間取點）
   const curve = new THREE.CatmullRomCurve3(
@@ -308,7 +308,7 @@ const buildHornRings = (sg) => {
 };
 
 /**
- * 低擋風片（iter-55 加大＋黑色框）：座艙前緣一片後傾約 54° 的煙燻片（底寬 26、高 9），外圍 1.1 mm 黑框
+ * 低擋風片：座艙前緣一片後傾約 54° 的煙燻片（底寬 26、高 9），外圍 1.1 mm 黑框
  * 回傳 glass（框內的煙燻片）與 frame（框）
  * @type {(y0: number) => { glass: THREE.BufferGeometry, frame: THREE.BufferGeometry }}
  */
@@ -345,7 +345,7 @@ export const gazelleLeapBody = makePolyBody({
   name: '瞪羚角拉力型',
   style: 'homage',
   phase: 4,
-  // 第六階段分組（shared/design/HOMAGE_RESEARCH.md 第 6 節）
+  // LG1 / LG2 分組（shared/design/HOMAGE_RESEARCH.md 第 6 節）
   homageSeries: 'lg2',
   form: 'rally',
   roof: 'open-cockpit',
@@ -356,7 +356,7 @@ export const gazelleLeapBody = makePolyBody({
   wallThickness_mm: 0.8,
   stations: STATIONS,
   tuck: 1.6,
-  // 平滑剖面，只保留中央脊邊（2）、擋泥板稜線（4）、側壁肩（6）為銳利稜線（iter-59：拿掉擋泥板內坡 3 的折線，鼻部白色量體不再是大塊折面）
+  // 平滑剖面，只保留中央脊邊（2）、擋泥板稜線（4）、側壁肩（6）為銳利稜線（擋泥板內坡 3 不設折線，鼻部白色量體才不會是大塊折面）
   hard: [2, 4, 6],
   wheelArches: [
     { x: 40, y: 13, radius: 17.5, cutZFrom: 21 },
@@ -370,9 +370,9 @@ export const gazelleLeapBody = makePolyBody({
   sideZMin: 36,
   innerSkipRecess: true,
   zones: () => [
-    // 白色下半車身（iter-55 加大）：側壁下段一路到車尾，和白色前臉連成一片（概念圖的白色腹部）
+    // 白色下半車身：側壁下段一路到車尾，和白色前臉連成一片（概念圖的白色腹部）
     { mat: 'white', keep: (x, y, z) => (Math.abs(z) > 24 ? 19.6 - y : -1) },
-    // 白色「臉」：前擋泥板前端（中央脊保持橘色，俯視是 W 形的白面，往後斜切）；iter-55 拿掉鼻部零碎的黑色刃唇
+    // 白色「臉」：前擋泥板前端（中央脊保持橘色，俯視是 W 形的白面，往後斜切）
     { mat: 'white', keep: (x, y, z) => Math.min(x - 46 - 0.35 * (Math.abs(z) - 12), Math.abs(z) - 8.5) },
     { mat: 'saffron', keep: () => 1 },
   ],
@@ -403,12 +403,12 @@ export const gazelleLeapBody = makePolyBody({
     const ws = buildWindscreen(P.yC(12) - 1.2);
     parts.push({ geometry: ws.glass, mat: 'glass', solid: true, renderOrder: 3, name: 'windscreen' });
     parts.push({ geometry: ws.frame, mat: 'black', solid: true, name: 'windscreen-frame' });
-    // 座艙邊框（iter-55）：座艙槽外圍 1.2 mm 寬、凸出 0.6 mm 的黑色立體框＋框的側壁
+    // 座艙邊框：座艙槽外圍 1.2 mm 寬、凸出 0.6 mm 的黑色立體框＋框的側壁
     const cockSd = featureSd(COCKPIT, 36);
     const rim = buildRegion(kit.surf, [...kit.holes, (x, y, z) => cockSd(x, y, z), (x, y, z) => 1.2 - cockSd(x, y, z)], { offset: 0.6 });
     parts.push({ geometry: rim.geometry, mat: 'black', name: 'cockpit-rim' });
     parts.push({ geometry: buildRim(rim, 0, 0.6), mat: 'black2', name: 'cockpit-rim-wall' });
-    // 前輪拱內襯（iter-55）：側壁內側 7 mm 寬的一圈，擋住從側面看進去的殼內空腔（後輪拱上方有角鰭座，空腔不明顯，不加以省質量）
+    // 前輪拱內襯：側壁內側 7 mm 寬的一圈，擋住從側面看進去的殼內空腔（後輪拱上方有角鰭座，空腔不明顯，不加以省質量）
     parts.push({
       geometry: buildArchLiner({ x: 40, y: 13, radius: 17.5 }, 37.5, 44.8, 0.35, Math.PI - 0.35),
       mat: 'liner',
@@ -420,7 +420,7 @@ export const gazelleLeapBody = makePolyBody({
     parts.push({ geometry: drv.helmet, mat: 'helmet', solid: true, name: 'cockpit-helmet' });
     // 側面水平黑腰帶（瞪羚側帶）：從鼻側一路拉到車尾，前端收尖
     /** @type {(u: number, v: number) => number} u = 往前為正的 x、v = y */
-    // iter-62：前端改在 x 52（鼻端下捲之前）收尖——原本延伸到鼻尖 64、寬度只剩 0.3 mm，在下捲曲面上斷成一截截黑色虛線
+    // 前端在 x 52（鼻端下捲之前）收尖——延伸到鼻尖 64 的話寬度只剩 0.3 mm，在下捲曲面上會斷成一截截黑色虛線
     const band = (u, v) => {
       const yMid = 21.4 + 0.01 * u;
       const half = 1.95 * Math.min(1, Math.max(0, (52 - u) / 14));

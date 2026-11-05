@@ -10,16 +10,16 @@ import { makeLoftKit, cachedBuild, namedMaterial, decalMaterial, buildMountTabs,
 /** @typedef {import('./loft.js').BodyPart} BodyPart */
 /** @typedef {import('./loft.js').KeepFn} KeepFn */
 
-/** @type {(x: number) => number} 深藏青下半車身的分色線（iter-34 拉高：中段約側面 1/3、往後升高成楔形，鼻部下半全藏青） */
+/** @type {(x: number) => number} 深藏青下半車身的分色線（中段約側面 1/3、往後升高成楔形，鼻部下半全藏青） */
 const navyLine = (x) => 14.2 - 0.07 * x + 7 * smoothstep(28, 58, x) + 6 * smoothstep(-34, -56, x);
 
 /**
- * 前後葉子板隆起（iter-34）：蓋住輪拱切到肩部造成的 V 形缺口，也讓輪廓更有肌肉感
+ * 前後葉子板隆起：蓋住輪拱切到肩部造成的 V 形缺口，也讓輪廓更有肌肉感
  * @type {(x: number, az: number) => number}
  */
 const bump = (x, az) =>
   smoothstep(12, 30, az) * (3.4 * Math.exp(-(((x - 49) / 8) ** 2)) + 2.5 * Math.exp(-(((x - 34) / 7) ** 2)) + 2.0 * Math.exp(-(((x + 40) / 10) ** 2))) +
-  // iter-36：引擎蓋中央同步抬高 3 mm，葉子板與引擎蓋之間過渡平順（不再像兩個耳朵）
+  // 引擎蓋中央同步抬高 3 mm，葉子板與引擎蓋之間過渡平順（葉子板不會像兩個耳朵）
   3.0 * (1 - smoothstep(10, 26, az)) * Math.exp(-(((x - 44) / 13) ** 2));
 
 /**
@@ -27,7 +27,7 @@ const bump = (x, az) =>
  * @type {any}
  */
 /**
- * iter-46 站位表（推估）：細腰「可樂瓶」平面（兩輪之間半寬收到 28.5）、尾段收窄到 18，俯視輪廓和其他款明顯不同（P20）。
+ * 站位表（推估）：細腰「可樂瓶」平面（兩輪之間半寬收到 28.5）、尾段收窄到 18，俯視輪廓和其他款明顯不同（P20）。
  * 腰部半寬 28.5 仍在電池（|z| ≤ 26.4）外側。
  * @type {any[]}
  */
@@ -73,7 +73,7 @@ const chaikin = (p) => {
 };
 
 /**
- * 本款放樣資料：iter-46 細腰站位表；D1 側導風孔改成有深度的凹腔（黑色腔體＋唇邊）；尾翼翼展 64 → 52（端板外緣 ±27）
+ * 本款放樣資料：細腰站位表；D1 側導風孔改成有深度的凹腔（黑色腔體＋唇邊）；尾翼翼展 52（設計資料為 64；端板外緣 ±27）
  * @type {any}
  */
 const AERO_DATA = {
@@ -83,11 +83,11 @@ const AERO_DATA = {
   openings: [],
   // D1 側導風孔往前移到 x −22 ~ −8（細腰後，原位置的凹腔底會太靠近後輪）
   recesses: data.openings.map((o) => ({ ...o, x: [-22, -8], depth: 2.5 })),
-  // iter-123（第九階段，評審「尾翼端板加大」）：端板高 10 → 13.5、厚 1 → 1.2、下緣 38 → 35.5（長度維持 16，俯視輪廓不變）
+  // 端板比設計資料大：高 13.5、厚 1.2、下緣 35.5（長度維持 16，不影響俯視輪廓）
   wing: { ...data.wing, span: 52, endplate: { ...data.wing.endplate, height: 13.5, thickness: 1.2, yBottom: 35.5 } },
 };
 
-/** @type {number} 賽車條紋半寬（iter-123：鼻尖 → 引擎蓋 → 尾甲板 → 尾翼中央的深藍寬條紋，寬 11 mm） */
+/** @type {number} 賽車條紋半寬（鼻尖 → 引擎蓋 → 尾甲板 → 尾翼中央的深藍寬條紋，寬 11 mm） */
 const STRIPE_HALF = 5.5;
 /** @type {number[]} 條紋兩側洋紅細線的 |z| 範圍（0.8 mm） */
 const STRIPE_PIN = [6.2, 7.0];
@@ -142,8 +142,8 @@ const wingBand = (wing, z0, z1) => {
 };
 
 /**
- * 鵝頸刀片立柱（iter-123，評審「鵝頸尾翼立柱細得像衣架」）：沿 loft.js 同一條鵝頸中心線、在 x–y 平面往兩側偏移成
- * 根部 5 mm、頂端 3 mm 寬的刀片輪廓，再沿 z 擠出 1.6 mm（原本是 1 × 1.8–2.5 mm 的細桿）；封閉實體，面數也比 64 段掃掠少
+ * 鵝頸刀片立柱：沿 loft.js 同一條鵝頸中心線、在 x–y 平面往兩側偏移成
+ * 根部 5 mm、頂端 3 mm 寬的刀片輪廓，再沿 z 擠出 1.6 mm（loft.js 的 1 × 1.8–2.5 mm 細桿看起來像衣架）；封閉實體，面數也比 64 段掃掠少
  * @type {(stays: any) => THREE.BufferGeometry}
  */
 const buildBladeStays = (st) => {
@@ -256,7 +256,7 @@ const makeMaterials = () => ({
   purple: decalMaterial('decal-purple', { color: 0x6a2bd9, roughness: 0.35, clearcoat: 0.6 }),
   wingGrad: namedMaterial('paint-gradient-wing', { vertexColors: true, roughness: 0.22, clearcoat: 1.0, clearcoatRoughness: 0.05 }),
   magenta: decalMaterial('decal-magenta', { color: 0xe6007e, roughness: 0.35, clearcoat: 0.6 }),
-  // iter-123：深藍賽車條紋（貼紙）、條紋上的珍珠白號碼、洋紅亮面端板
+  // 深藍賽車條紋（貼紙）、條紋上的珍珠白號碼、洋紅亮面端板
   stripe: decalMaterial('decal-stripe-deep-blue', { color: 0x14215e, roughness: 0.25, clearcoat: 0.9 }),
   pearlDecal: decalMaterial('decal-pearl-white', { color: 0xf2f0ec, roughness: 0.3, clearcoat: 0.6 }),
   magentaPaint: namedMaterial('paint-magenta-gloss', { color: 0xd4006f, roughness: 0.18, clearcoat: 1.0, clearcoatRoughness: 0.04, side: THREE.DoubleSide }),
@@ -300,7 +300,7 @@ const compose = () => {
 
   // 尾翼、端板、鵝頸支柱、splitter（實心件；質量以表面積 × 壁厚近似，標 shell）
   const w = buildWingParts(AERO_DATA.wing);
-  // iter-49：尾翼漸層塗裝——中央珍珠白，往兩端漸變成紫、翼端洋紅（頂點色）
+  // 尾翼漸層塗裝——中央珍珠白，往兩端漸變成紫、翼端洋紅（頂點色）
   // 翼面側面三角形只在兩端有頂點，先沿 z 細分（每段 ≤ 2 mm）才能畫出漸層
   const wingGeo = splitAlongZ(w.wing.index ? w.wing.toNonIndexed() : w.wing, 2);
   {
@@ -323,9 +323,9 @@ const compose = () => {
     wingGeo.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
   }
   parts.push({ geometry: wingGeo, mat: 'wingGrad', solid: true, outline: true, name: 'wing' });
-  // iter-123：加大的端板改成洋紅亮面（評審建議漆黑，但白底＋藍＋黑是 HOMAGE_RESEARCH 第 3 節 B 的 Shining Scorpion 配色黑名單，改用本款第三色洋紅）
+  // 端板用洋紅亮面（本款第三色）：不漆黑，因為白底＋藍＋黑是 HOMAGE_RESEARCH 第 3 節 B 的 Shining Scorpion 配色黑名單
   parts.push({ geometry: w.endplates, mat: 'magentaPaint', solid: true, outline: true, name: 'wing-endplates' });
-  // 端板細節（iter-49）：外側面兩道斜切色條（iter-123 端板改洋紅後，色條改成深藍上、紫下）
+  // 端板細節：外側面兩道斜切色條（洋紅端板上，色條是深藍上、紫下）
   {
     const zOut = AERO_DATA.wing.span / 2 + AERO_DATA.wing.endplate.thickness + 0.08;
     const stripes = [];
@@ -343,7 +343,7 @@ const compose = () => {
     parts.push({ geometry: mergeGeos(stripes), mat: 'stripe', name: 'endplate-stripe-blue' });
     parts.push({ geometry: mergeGeos(stripes2), mat: 'purple', name: 'endplate-stripe-purple' });
   }
-  // iter-123：鵝頸支柱改成本檔的刀片立柱（封閉擠出體，實心件）；loft.js 的細桿 w.stays 不再使用
+  // 鵝頸支柱用本檔的刀片立柱（封閉擠出體，實心件），不用 loft.js 的細桿 w.stays
   parts.push({ geometry: buildBladeStays(AERO_DATA.wing.stays), mat: 'navy2', solid: true, outline: true, name: 'wing-stays' });
   // 尾翼中央的深藍條紋與兩側洋紅細線（翼面上表面貼紙帶，接續車身條紋）
   parts.push({ geometry: wingBand(AERO_DATA.wing, -STRIPE_HALF, STRIPE_HALF), mat: 'stripe', name: 'decal-wing-stripe' });
@@ -352,8 +352,8 @@ const compose = () => {
     mat: 'magenta',
     name: 'decal-wing-stripe-pin',
   });
-  // iter-35：splitter 往前伸到 x 74.5、加厚到 1.4 mm、半寬 27，前 3/4 看得到（仍在導輪 x 78 / 規則外框內）
-  // iter-49：寬大 splitter（概念圖）——半寬 27 → 33.5（比 wedge 鼻下板更寬，俯視輪廓和 wedge 拉開），前緣仍在 x 74.5；外緣離前導輪（中心 (71.5, ±42)、半徑 6.5）≥ 2.8 mm
+  // 寬大 splitter（概念圖）：往前伸到 x 74.5、厚 1.4 mm，前 3/4 看得到（仍在導輪 x 78 / 規則外框內）
+  // 半寬 33.5（比 wedge 鼻下板更寬，俯視輪廓和 wedge 拉開）；外緣離前導輪（中心 (71.5, ±42)、半徑 6.5）≥ 2.8 mm
   parts.push({ geometry: buildSplitter({ ...data.splitter, x: [56, 74.5], halfW: 33.5, thickness: 1.4, yBottom: 14.6 }), mat: 'navy', solid: true, outline: true, name: 'splitter' });
   // splitter 兩端的直立擋板（端板）與前緣洋紅色線
   {
@@ -369,12 +369,12 @@ const compose = () => {
     edge.translate(73.6, 15.9, 0);
     parts.push({ geometry: edge, mat: 'magenta', name: 'splitter-edge' });
   }
-  // 尾部裙板（iter-34）：尾段下緣往下延伸到 y 17.6（後導輪架最高約 16.8），封住從後方看進去的底盤
+  // 尾部裙板：尾段下緣往下延伸到 y 17.6（後導輪架最高約 16.8），封住從後方看進去的底盤
   parts.push({ geometry: buildTailValance(kit.surf, { xFrom: -55.5, yBottom: 17.6 }), mat: 'navy2', shell: true, name: 'tail-valance' });
 
   // ---- 貼紙 ----
   // 洋紅 → 紫漸層弧線：前輪拱後方往後上掃到後葉子板，再沿後葉子板頂面往尾部
-  // iter-35：一條連續的長弧線（側視 Catmull-Rom 中心線＋新月形寬度），從前輪拱後方一路掃到後葉子板頂、收尾在尾部
+  // 一條連續的長弧線（側視 Catmull-Rom 中心線＋新月形寬度），從前輪拱後方一路掃到後葉子板頂、收尾在尾部
   const arc = new THREE.CatmullRomCurve3(
     [
       [6.5, 15.4],
@@ -422,8 +422,8 @@ const compose = () => {
     name: 'decal-swoosh',
   });
 
-  // iter-123（第九階段，評審「加一條從鼻尖貫穿到尾翼的深藍寬賽車條紋」）：中線寬 11 mm 深藍條紋＋兩側 0.8 mm 洋紅細線，
-  // 鼻尖 → 引擎蓋 → （深藍煙燻座艙罩接續）→ 尾甲板 → 尾翼中央。原本引擎蓋的雙 V 形箭頭和條紋重疊，拿掉
+  // 從鼻尖貫穿到尾翼的賽車條紋：中線寬 11 mm 深藍條紋＋兩側 0.8 mm 洋紅細線，
+  // 鼻尖 → 引擎蓋 → （深藍煙燻座艙罩接續）→ 尾甲板 → 尾翼中央
   /** @type {(x: number, z: number) => number} 座艙罩外圍 0.6 mm 以外（> 0）；座艙罩 x 範圍以外 halfW = 0，直接回傳 1（不然中線 |z| < 0.4 會被挖掉） */
   const outsideCab = (x, z) => (kit.underCanopy(x, 0) + 0.2 <= 0 ? 1 : -kit.underCanopy(x, z) - 0.6);
   /** @type {KeepFn} */
@@ -433,7 +433,7 @@ const compose = () => {
   parts.push({ geometry: kit.decal(stripeKeep), mat: 'stripe', name: 'decal-racing-stripe' });
   parts.push({ geometry: kit.decal(pinKeep), mat: 'magenta', name: 'decal-racing-stripe-pin' });
 
-  // 號碼 88：鼻部（iter-123 落在深藍條紋上，改珍珠白字）、兩側（深藏青）
+  // 號碼 88：鼻部（落在深藍條紋上，用珍珠白字）、兩側（深藏青）
   parts.push({
     geometry: kit.decal(topDecal(sdNumber('88', { h: 5.4, w: 3.1, gap: 0.8 }), { x0: 56.8, yMin: 18 }), { offset: 0.12 }),
     mat: 'pearlDecal',
@@ -473,7 +473,7 @@ export const aeroWingBody = {
   id: 'body-aero-wing',
   category: 'body',
   style: 'race',
-  // 第六階段分組（shared/reference/BODY_RACE_RESEARCH.md）
+  // 比賽型分類（shared/reference/BODY_RACE_RESEARCH.md）
   raceType: 'big-wing',
   form: 'teardrop',
   roof: 'canopy',

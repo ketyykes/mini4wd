@@ -1,4 +1,4 @@
-// B13（iter-105）：導輪角度調整板（田宮 15373，ダウンスラスト）。導輪軸頂端往車頭方向傾 θ；
+// B13：導輪角度調整板（田宮 15373，ダウンスラスト）。導輪軸頂端往車頭方向傾 θ；
 // 沿牆前進時，導輪軸方向的滑動分量 v·sinθ 受滑動摩擦（spec.track.wallFriction）→ 把車往下壓；θ = 0 與沒裝相同
 import { test, expect, beforeAll } from 'vitest';
 import { assemble, loadConfig } from '../src/assembly.js';

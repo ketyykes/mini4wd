@@ -1,4 +1,4 @@
-// 鉸接甲板殼（body-hinge-deck，第六階段比賽型，raceType 'body-pivot'）：比賽場上「車殼提燈」（ボディ提灯）做法的寫實呈現——
+// 鉸接甲板殼（body-hinge-deck，比賽型，raceType 'body-pivot'）：比賽場上「車殼提燈」（ボディ提灯）做法的寫實呈現——
 // 窄而平的 0.4 mm PC 殼（中央縱向脊線＋短封閉座艙），前端兩側有外露的鉸接耳與樞軸銷，殼尾接一片外露的 1.5 mm FRP 板，板上用 2 支螺絲鎖一塊方形黃銅配重。
 // 四輪頂部完全外露（殼半寬 ≤ 26.5，輪胎內側在 |z| 25.25 起；輪胎段殼半寬 ≤ 23.5）。
 // 物理：本專案的車殼是剛體，不模擬擺動；鉸接只用外形、質量與重心呈現（BODY_RACE_RESEARCH 4.3、第 9 節；GOAL 物理要求）。
@@ -56,13 +56,13 @@ const T = monoTable([-46, -42, -36, -28, -20, -14, -8, 0, 6, 12, 18, 24, 30, 38,
   yLow: [24.0, 23.0, 21.5, 20.5, 20.0, 19.8, 19.6, 19.6, 19.6, 19.6, 19.6, 19.8, 19.0, 18.0, 17.0, 16.0, 15.5, 14.6, 14.0],
 });
 
-/** @type {number} 甲板外側斜面的額外落差（iter-70：肩稜比原表再低 1.4 mm，甲板外側成為一道斜切面） */
+/** @type {number} 甲板外側斜面的額外落差（肩稜比 T 表再低 1.4 mm，甲板外側成為一道斜切面） */
 const CHAMFER_DROP = 1.4;
 
 /**
  * 半剖面站位（每 2 mm 一站，8 點；點的意義同 fastbackCabin.js 的 cabinStations）。
- * iter-70（評審 iter-68「殼面平順泛用，和概念圖的折面造型差很多」）：第 4 點（甲板寬度 55% 處）改成幾乎和甲板內緣等高，
- * 之後到肩稜一口氣斜切下去（肩稜再低 CHAMFER_DROP），第 4 點設為硬稜 → 甲板左右各多一道從鼻端到殼尾的縱向折線
+ * 折面造型（依概念圖）：第 4 點（甲板寬度 55% 處）幾乎和甲板內緣等高，
+ * 之後到肩稜一口氣斜切下去（肩稜再低 CHAMFER_DROP），第 4 點設為硬稜 → 甲板左右各有一道從鼻端到殼尾的縱向折線
  * @type {{ x: number, pts: number[][] }[]}
  */
 const STATIONS = (() => {
@@ -198,8 +198,8 @@ const buildWeight = () => {
 };
 
 /**
- * 2 組 M2 沉頭螺絲（iter-70，評審：「配重頂上兩顆圓頭像積木凸點」）：頭部是倒錐（頂 Ø3.8 → 底 Ø2.0、高 1.0），
- * 頂面只比配重頂面高 0.05 mm（沉進配重的錐形沉孔）；桿＋板下六角螺帽同前。內六角孔另外做成黑色件（buildScrewSockets）
+ * 2 組 M2 沉頭螺絲（用圓頭螺絲的話，配重頂上兩顆圓頭像積木凸點）：頭部是倒錐（頂 Ø3.8 → 底 Ø2.0、高 1.0），
+ * 頂面只比配重頂面高 0.05 mm（沉進配重的錐形沉孔）；另有螺桿與板下六角螺帽。內六角孔另外做成黑色件（buildScrewSockets）
  * @type {() => THREE.BufferGeometry}
  */
 const buildScrews = () => {
@@ -233,19 +233,19 @@ const buildScrewSockets = () => {
   return mergeGeos([WEIGHT.z - WEIGHT.holeZ, WEIGHT.z + WEIGHT.holeZ].map((zc) => hexSocket(WEIGHT.x, yTop + 0.06, zc, 'y')));
 };
 
-/** @type {number} 樞軸中心 x（殼前端，前卡座之前；iter-70：58.5 → 59.5） */
+/** @type {number} 樞軸中心 x（殼前端，前卡座之前） */
 const PIVOT_X = 59.5;
-/** @type {number} 樞軸中心 y（iter-70：15.4 → 14.2，鉸接耳往下伸出側裙，側視看得到圓頭） */
+/** @type {number} 樞軸中心 y（鉸接耳往下伸出側裙，側視看得到圓頭） */
 const PIVOT_Y = 14.2;
 /** @type {number} 鉸接耳板厚（mm，ABS） */
 const LUG_T = 1.8;
-/** @type {number} 鉸接耳下端圓頭半徑（iter-70：2.4 → 3.6） */
+/** @type {number} 鉸接耳下端圓頭半徑 */
 const LUG_R = 3.6;
-/** @type {() => number} 鉸接耳中心面 |z|：貼在殼外側（iter-70：原本在側裙內側 hw − 0.9，從外面幾乎看不到） */
+/** @type {() => number} 鉸接耳中心面 |z|：貼在殼外側（放在側裙內側的話，從外面幾乎看不到） */
 const lugZ = () => T('hw', PIVOT_X) + LUG_T / 2 + 0.1;
 
 /**
- * 鉸接耳（左右各一片 1.8 mm ABS 立板，iter-70 移到殼外側並放大）：上緣貼著側裙外側往上蓋 2.2 mm，
+ * 鉸接耳（左右各一片 1.8 mm ABS 立板，貼在殼外側）：上緣貼著側裙外側往上蓋 2.2 mm，
  * 下端以 R3.6 圓頭包住樞軸（側視圓頭整個在側裙下方）
  * @type {() => THREE.BufferGeometry}
  */
@@ -321,7 +321,7 @@ export const hingeDeckBody = makePolyBody({
   id: 'body-hinge-deck',
   name: 'PC 鉸接甲板提燈殼',
   style: 'race',
-  // 第六階段分組（shared/reference/BODY_RACE_RESEARCH.md 4.3、7.2 (3)）
+  // 分組（shared/reference/BODY_RACE_RESEARCH.md 4.3、7.2 (3)）
   raceType: 'body-pivot',
   form: 'pivot-slab',
   roof: 'closed',
@@ -332,7 +332,7 @@ export const hingeDeckBody = makePolyBody({
   wallThickness_mm: 0.4,
   stations: STATIONS,
   tuck: 0.6,
-  // 平滑剖面；脊線根部（第 2 點）、甲板內緣（第 3 點）、甲板折線（第 4 點，iter-70）、肩稜（第 6 點）為銳利稜線
+  // 平滑剖面；脊線根部（第 2 點）、甲板內緣（第 3 點）、甲板折線（第 4 點）、肩稜（第 6 點）為銳利稜線
   hard: [2, 3, 4, 6],
   // 殼半寬在輪胎段 ≤ 23.5，不需要輪拱
   wheelArches: [],

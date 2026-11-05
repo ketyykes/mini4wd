@@ -1,4 +1,4 @@
-// iter-18：把輪胎外側面圓（26 mm）與車殼輪拱開口邊（bodyPoint u = 1）用擬合相機投影到 ref side-high，
+// 把輪胎外側面圓（26 mm）與車殼輪拱開口邊（bodyPoint u = 1）用擬合相機投影到 ref side-high，
 // 量「輪胎露出高度」：輪胎頂點到輪拱邊的像素差（推估：相機擬合 rms 4.3 px ≈ 0.75 mm）
 // 用法：node scripts/diag/overlay_wheel.mjs <輸出 png>
 import { createServer } from 'vite';

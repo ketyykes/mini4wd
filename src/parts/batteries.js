@@ -1,6 +1,6 @@
 // 電池組（2 顆 AA 串聯；SPEC 1.3）
 
-// iter-92: central inertia uses the existing outer dimensions and placed mass.
+// Central inertia uses the existing outer dimensions and placed mass.
 // Uniform internal density is an estimate; chemistry-specific layers are not measured.
 const INERTIA_SRC = '推估：按既有每顆質量與外徑／長度，視為沿車體x的均質圓柱；Ixx=mr²/2、Iyy=Izz=m(3r²+L²)/12。非電芯內部材料分布實測。';
 
@@ -35,7 +35,7 @@ export const batteryParts = [
       cellLength_mm: '推估：AA 通用長度 50.5 mm',
     },
   },
-  // ---- 第四階段（iter-54）：鹼性 AA 與高容量 NiMH（規則檢查只看類別 2 × AA，品牌不檢查，SPEC 1.1） ----
+  // ---- 鹼性 AA 與高容量 NiMH（規則檢查只看類別 2 × AA，品牌不檢查，SPEC 1.1） ----
   {
     id: 'battery-aa-alkaline',
     category: 'battery',

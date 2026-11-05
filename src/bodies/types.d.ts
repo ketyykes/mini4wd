@@ -6,7 +6,7 @@ export interface BodyMount extends Vec3 {
   id: string;
 }
 
-/** 神話體系代號（第八階段；清單與中文名稱見 mythSeries.js） */
+/** 神話體系代號（清單與中文名稱見 mythSeries.js） */
 export type MythSeries =
   | 'greek'
   | 'norse'
@@ -24,25 +24,25 @@ export type MythSeries =
 export interface BodyDef {
   id: string;
   category: 'body';
-  /** 'homage' = 致敬《爆走兄弟》風格；'race' = 常見比賽車殼型式；'myth' = 神話主題（第八階段）（GOAL「車殼」、SPEC P20） */
+  /** 'homage' = 致敬《爆走兄弟》風格；'race' = 常見比賽車殼型式；'myth' = 神話主題（GOAL「車殼」、SPEC P20） */
   style: 'homage' | 'race' | 'myth';
   /** 一句話主題 */
   theme: string;
-  /** 上線的階段（第四階段新致敬款為 4；P20 只把 phase 4 的 homage 算成新致敬款） */
+  /** 上線的階段（新致敬款為 4；P20 只把 phase 4 的 homage 算成新致敬款） */
   phase?: number;
-  /** 車頂型態（P20 第四階段：新致敬款兩兩比較用） */
+  /** 車頂型態（P20：新致敬款兩兩比較用） */
   roof?: 'closed' | 'canopy' | 'open-cockpit' | 'clear' | 'skeleton';
-  /** 尾翼型式（P20 第四階段：新致敬款兩兩比較用，例如 'none'、'twin-fin'、'forked'、'grille'、'high-wing'、'duck-tail'） */
+  /** 尾翼型式（P20：新致敬款兩兩比較用，例如 'none'、'twin-fin'、'forked'、'grille'、'high-wing'、'duck-tail'） */
   wing?: string;
-  /** 致敬哪一部作品（第六階段 P20）：'lg1' = 第一部、'lg2' = 續作 WGP；只有 style 'homage' 需要 */
+  /** 致敬哪一部作品（P20）：'lg1' = 第一部、'lg2' = 續作 WGP；只有 style 'homage' 需要 */
   homageSeries?: 'lg1' | 'lg2';
-  /** 比賽車殼型態代號（第六階段 P20，定義見 shared/reference/BODY_RACE_RESEARCH.md）；只有 style 'race' 需要 */
+  /** 比賽車殼型態代號（P20，定義見 shared/reference/BODY_RACE_RESEARCH.md）；只有 style 'race' 需要 */
   raceType?: string;
-  /** 神話體系（第八階段 P20）；只有 style 'myth' 需要 */
+  /** 神話體系（P20）；只有 style 'myth' 需要 */
   mythSeries?: MythSeries;
-  /** 神話主題代號（第八階段 P20，神話組內不可重複），例如 'trojan-horse'、'sleipnir'；只有 style 'myth' 需要 */
+  /** 神話主題代號（P20，神話組內不可重複），例如 'trojan-horse'、'sleipnir'；只有 style 'myth' 需要 */
   mythTheme?: string;
-  /** 車身型態代號（第六階段 P20：同組兩兩比較、每組至少 3 種），例如 'full-cowl'、'wedge'、'open-wheel' */
+  /** 車身型態代號（P20：同組兩兩比較、每組至少 3 種），例如 'full-cowl'、'wedge'、'open-wheel' */
   form?: string;
   name: string;
   /** 'ABS' | 'PC' 等，決定密度 */

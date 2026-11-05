@@ -1,5 +1,5 @@
 // 通用車殼放樣器：讀車殼設計資料（data/<id>.json）→ 外殼、內面、翻邊、封口、輪拱 / 開口 / 凹陷、座艙、尾翼、splitter、卡座
-// 資料來源：data/*.json 由 shared/design/<id>/sections.json 複製而來（車殼設計 subagent 以 shared/design/tools/body_sheets.py 產生），
+// 資料來源：data/*.json 由 shared/design/<id>/sections.json 複製而來（以 shared/design/tools/body_sheets.py 產生），
 //           app 是獨立 repo，所以複製一份自給自足；要改尺寸請改 shared/design 的尺寸表後重新產生、再複製過來。
 // 座標：x 向前、y 向上、z 向右，原點在前後軸中點的地面，單位 mm。
 //
@@ -217,11 +217,11 @@ export function sdNumber(text, { h, w, gap, slant = 0.18 }) {
       boxes.push([x0, x0 + w, h / 2 - 0.19 * h, h / 2]);
       extra.push(sdBar(x0 + w - 0.2 * w, h / 2 - 0.1 * h, x0 + 0.3 * w, -h / 2 - 0.05 * h, 0.34 * w));
     } else if (ch === '1') {
-      // 1（iter-50）：標準字形——偏右的直筆＋左上小斜旗，不加底座（iter-47 的底座版被看成字型錯誤）
+      // 1：標準字形——偏右的直筆＋左上小斜旗，不加底座（加底座會被看成字型錯誤）
       boxes.push([x0 + 0.45 * w, x0 + 0.75 * w, -h / 2, h / 2]);
       extra.push(sdBar(x0 + 0.6 * w, h / 2 - 0.07 * h, x0 + 0.15 * w, h / 2 - 0.3 * h, 0.24 * w));
     } else if (ch === '5') {
-      // 5（iter-47）：直角外框（不倒圓角，和圓滑的 S 區隔）、頂橫加長外伸、左上直筆和頂橫成直角、下半是開口朝左的方鉤
+      // 5：直角外框（不倒圓角，和圓滑的 S 區隔）、頂橫加長外伸、左上直筆和頂橫成直角、下半是開口朝左的方鉤
       boxes.push([x0, x0 + 1.08 * w, h / 2 - 0.17 * h, h / 2]);
       boxes.push([x0, x0 + 0.3 * w, 0, h / 2]);
       boxes.push([x0, x0 + w, -0.08 * h, 0.08 * h]);
@@ -299,7 +299,7 @@ export function createBodySurface(data, mode, step = 0.5, bump = null, extra = {
   const xMin = sx[0];
   const xMax = sx[sx.length - 1];
   const xs = subdivide(sx, step);
-  /** @type {number} 側裙下緣往內收的量（mm，iter-35） */
+  /** @type {number} 側裙下緣往內收的量（mm） */
   const tuck = extra.tuck ?? 0;
   /** @type {(t: number) => number} 側壁參數 t（0 = 肩部、1 = 下緣）對應的內收量：下 65% 以二次曲線往內收 */
   const tuckAt = (t) => {
@@ -343,7 +343,7 @@ export function createBodySurface(data, mode, step = 0.5, bump = null, extra = {
     };
   };
 
-  // 效能（iter-47）：同一個 x 會被連續查詢很多次（網格逐行、法線差分、裁切二分法），快取最近一次結果（數值完全相同）
+  // 效能：同一個 x 會被連續查詢很多次（網格逐行、法線差分、裁切二分法），快取最近一次結果（數值完全相同）
   let ctrlX = NaN;
   /** @type {any} */
   let ctrlV = null;
@@ -504,7 +504,7 @@ export function createBodySurface(data, mode, step = 0.5, bump = null, extra = {
 }
 
 /**
- * 多點折線剖面曲面（iter-38，body-wedge 用）：每站給同樣點數的半剖面 pts（z 不遞減，最後一段為側壁），
+ * 多點折線剖面曲面：每站給同樣點數的半剖面 pts（z 不遞減，最後一段為側壁），
  * 每段一個面板（稜線銳利），站間單調 Hermite 內插；最後一段可往內收 tuck。
  * @type {(stations: { x: number, pts: number[][] }[], opt?: { step?: number, tuck?: number }) => LoftSurface & { ctrl: (x: number) => any, topY: (x: number, z: number) => number }}
  */
@@ -625,8 +625,8 @@ const topYCache = new WeakMap();
 const TOPY_N = 64;
 
 /**
- * surfaceTopY 的加速版（iter-47 效能）：先用快取的 64 段 z(s) 取樣表找到 |z| 所在的小區間，
- * 再在區間內用 Illinois 法求根（收斂到 |z(s) − |z|| < 1e-10 mm，和原本二分 26 次的結果差異 < 1e-6 mm）
+ * surfaceTopY 的加速版：先用快取的 64 段 z(s) 取樣表找到 |z| 所在的小區間，
+ * 再在區間內用 Illinois 法求根（收斂到 |z(s) − |z|| < 1e-10 mm，和參考實作 surfaceTopYReference 二分 26 次的結果差異 < 1e-6 mm）
  * @type {(surf: LoftSurface, x: number, z: number) => number}
  */
 function fastTopY(surf, x, z) {
@@ -653,7 +653,7 @@ function fastTopY(surf, x, z) {
   }
   const tab = c.tabs[k];
   const az = Math.abs(z);
-  // 找第一個 z(s_j) ≥ |z| 的取樣點（原本的二分法同樣假設 z(s) 單調）
+  // 找第一個 z(s_j) ≥ |z| 的取樣點（參考實作的二分法同樣假設 z(s) 單調）
   let j = 0;
   while (j < TOPY_N && tab[j] < az) {
     j++;
@@ -661,7 +661,7 @@ function fastTopY(surf, x, z) {
   if (j === 0) {
     surf.eval(x, 0, o);
     if (o[1] >= az) {
-      // 和原本相同：|z| 在中線處時二分會收斂到 s ≈ 2^-26
+      // 和參考實作相同：|z| 在中線處時二分會收斂到 s ≈ 2^-26
       let lo = 0;
       let hi = 1 / TOPY_N;
       for (let it = 0; it < 20; it++) {
@@ -715,7 +715,7 @@ function fastTopY(surf, x, z) {
 }
 
 /**
- * 原本的 surfaceTopY 實作（保留給驗證測試比對）
+ * surfaceTopY 的參考實作（二分法，保留給驗證測試比對）
  * @type {(surf: LoftSurface, x: number, z: number) => number}
  */
 export function surfaceTopYReference(surf, x, z) {
@@ -761,7 +761,7 @@ export function createCanopySurface(canopy, body, smooth, step = 0.5) {
   const at = (x) => {
     const { k, t, h } = bracket(sx, x);
     const o = {};
-    // iter-36：梯形罩也用 Hermite 沿 x 平滑（只保留平頂與斜窗交界的稜線），消除站位處的 low-poly 折面
+    // 梯形罩也用 Hermite 沿 x 平滑（只保留平頂與斜窗交界的稜線），消除站位處的 low-poly 折面
     if (smooth || canopy.section === 'trapezoid') {
       const hb = hermiteBasis(t);
       for (const key of keys) {
@@ -796,7 +796,7 @@ export function createCanopySurface(canopy, body, smooth, step = 0.5) {
       let z;
       let y;
       if (trap) {
-        // 低平梯形罩（iter-35）：水平平頂（頂寬 0.55 × 底寬）＋兩側斜窗，平頂與斜窗交界是銳利稜線（面板邊界）
+        // 低平梯形罩：水平平頂（頂寬 0.55 × 底寬）＋兩側斜窗，平頂與斜窗交界是銳利稜線（面板邊界）
         const roofY = surfaceTopY(body, x, 0) - 0.1 + rise;
         if (u <= 0.4) {
           z = 0.55 * c.halfW * (u / 0.4);
@@ -898,7 +898,7 @@ function getGrid(surf) {
  */
 export function buildRegion(surf, fns, opt = {}) {
   const offset = opt.offset ?? 0;
-  /** @type {number} 裁切邊界二分次數（預設 14；iter-47 效能選項，呼叫端可降低） */
+  /** @type {number} 裁切邊界二分次數（預設 14；效能選項，呼叫端可降低） */
   const bisectIters = opt.bisect ?? 14;
   const grid = getGrid(surf);
   const nf = fns.length;
@@ -1195,7 +1195,7 @@ export function buildCap(surf, xEnd, dir, inset = 0, clipY = null) {
   });
   // 去除重複點
   let pts = contour.filter((p, i) => i === 0 || p.distanceTo(contour[i - 1]) > 1e-6);
-  // iter-110：封口只取 yMin ≤ y ≤ yMax 的一段（Sutherland–Hodgman 對水平半平面裁切），讓封口能照側面分色線分段上色
+  // 封口只取 yMin ≤ y ≤ yMax 的一段（Sutherland–Hodgman 對水平半平面裁切），讓封口能照側面分色線分段上色
   if (clipY) {
     for (const [bound, keepAbove] of [[clipY.yMin, true], [clipY.yMax, false]]) {
       if (bound === undefined) continue;
@@ -1255,7 +1255,7 @@ export function featureSd(o, sideZMin = 20) {
     return o.sd;
   }
   if (o.shape === 'poly') {
-    // 任意凸多邊形（iter-38）：view 'side' 為 (x, y)、'top' 為 (x, |z|)
+    // 任意凸多邊形：view 'side' 為 (x, y)、'top' 為 (x, |z|)
     const poly = sdConvexPolygon(o.pts);
     if (o.view === 'top') {
       return (x, y, z) => poly(x, Math.abs(z));
@@ -1357,7 +1357,7 @@ export function buildWingParts(wing) {
   const exTE = Math.min(wing.xLE, wing.xTE);
   const ex0 = exTE;
   const ex1 = exTE + ep.length;
-  // iter-35：端板改成前低後高的後掠板（下緣斜切），側視不再是一大塊矩形
+  // 端板是前低後高的後掠板（下緣斜切），側視才不會是一大塊矩形
   const yTopEp = ep.yBottom + ep.height;
   const epShape = new THREE.Shape([
     new THREE.Vector2(ex0, ep.yBottom + 2.5),
@@ -1387,7 +1387,7 @@ export function buildWingParts(wing) {
   const [bx, by] = st.base;
   const [tx, ty] = st.top;
   // 控制點：先幾乎垂直往上，越過前緣上方後往後彎，從翼面上方落到 (tx, ty)
-  // iter-35：鵝頸弧度加大，明顯高過翼面再往後下彎、從翼面上方吊住
+  // 鵝頸弧度要大：明顯高過翼面再往後下彎、從翼面上方吊住
   const ctrl = [
     new THREE.Vector3(bx, by - 0.6, 0),
     new THREE.Vector3(bx - 0.4, by + 7, 0),
@@ -1402,7 +1402,7 @@ export function buildWingParts(wing) {
   const [secZ, secN] = st.section;
   const staysGeos = [];
   for (const zc of [-st.z, st.z]) {
-    // iter-36：支柱改細改扁（z 向厚 1 mm、沿流向寬約 2.5 → 1.8 mm 的倒角扁斷面），原設計斷面 secZ × secN 只當上限
+    // 支柱是細扁的倒角斷面（z 向厚 1 mm、沿流向寬約 2.5 → 1.8 mm），設計資料的斷面 secZ × secN 只當上限
     staysGeos.push(sweepRect(curve, 64, Math.min(secZ / 2, 0.5), (t) => Math.min(secN / 2, lerp(1.25, 0.9, t)), zc));
   }
   return { wing: wingGeo, endplates, stays: mergeGeos(staysGeos) };
@@ -1603,7 +1603,7 @@ export function mergeGeos(geos) {
 // ---------------------------------------------------------------------------
 
 /**
- * 底盤側框禁入區（iter-33 由 chassis 模型量測：x ±28.9、|z| ≤ 38.8、y ≤ 9.4 的側框上緣）。
+ * 底盤側框禁入區（由 chassis 模型量測：x ±28.9、|z| ≤ 38.8、y ≤ 9.4 的側框上緣）。
  * 車殼側裙下緣在這一段往上讓開到 y = 9.9（留 0.5 mm），兩端圓角 R1.5。
  * @type {{ x: number[], yTop: number, zFrom: number, r: number }}
  */
@@ -1760,7 +1760,7 @@ export function makeLoftKit(data, opt) {
         inner: inner.geometry,
         rim,
         capFront: buildCap(surf, surf.xMax, 1),
-        /** iter-110：前封口依 y 分段（polyBody 的 capFrontBands 用） @type {(clipY: { yMin?: number, yMax?: number }) => THREE.BufferGeometry} */
+        /** 前封口依 y 分段（polyBody 的 capFrontBands 用） @type {(clipY: { yMin?: number, yMax?: number }) => THREE.BufferGeometry} */
         capFrontBand: (clipY) => buildCap(surf, surf.xMax, 1, 0, clipY),
         capRear: buildCap(surf, surf.xMin, -1),
         capFrontIn: buildCap(surf, surf.xMax, 1, t),

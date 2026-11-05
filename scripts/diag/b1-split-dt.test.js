@@ -1,4 +1,4 @@
-// B1 診斷（iter-101）：牆接觸（自訂共用求解）與地板／輪胎（Rapier）分步 → 步長收斂測試
+// B1 診斷：牆接觸（自訂共用求解）與地板／輪胎（Rapier）分步 → 步長收斂測試
 // npx vitest run --config scripts/diag/vitest.diag.config.js scripts/diag/b1-split-dt.test.js --silent=false
 import { test, beforeAll } from 'vitest';
 import { assemble, loadConfig } from '../../src/assembly.js';

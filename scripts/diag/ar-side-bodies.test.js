@@ -1,4 +1,4 @@
-// AR 側制振器 15459 × 全部車殼（iter-111）：MA（default）與 VZ（vz-demo）各裝一次，列出制振器與車殼的最小間隙（負值 = 穿入）
+// AR 側制振器 15459 × 全部車殼：MA（default）與 VZ（vz-demo）各裝一次，列出制振器與車殼的最小間隙（負值 = 穿入）
 import { test } from 'vitest';
 import { assemble, loadConfig } from '../../src/assembly.js';
 import { validateAssembly } from '../../src/regulation.js';

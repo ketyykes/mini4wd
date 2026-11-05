@@ -1,4 +1,4 @@
-// 車殼快速自檢（第四階段）：質量、外框、間隙、規則檢查（26 / 31 mm 輪）、和其他所有車殼的輪廓 IoU、新致敬款的型式差異
+// 車殼快速自檢：質量、外框、間隙、規則檢查（26 / 31 mm 輪）、和其他所有車殼的輪廓 IoU、致敬款（phase 4）的型式差異
 // 用法：npx vite-node scripts/body-check.mjs <body-id>[,<body-id>...]
 import { listBodies, getBody, bodyMassProps } from '../src/bodies/index.js';
 import { bodyIoU } from '../src/bodies/silhouette.js';

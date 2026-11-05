@@ -1,4 +1,4 @@
-// 三頭犬（body-cerberus-trihead，第八階段神話組・希臘；第十階段 iter-128 從頭重塑成 LG1 F2 擋泥板肌肉型）：
+// 三頭犬（body-cerberus-trihead，神話組・希臘；LG1 F2 擋泥板肌肉型）：
 // 三頭犬的「三」變成車身形狀——中央鼻錐最長（中間的犬吻，伸到 x 72），左右前擋泥板各往前伸出一個較短的犬吻量體（到 x 64），
 // 俯視是三根往前的吻部，中間最長；吻端只有亮面黑鼻墊與餘燼色眼縫，不做公仔狗頭。
 // 四輪擋泥板各自鼓起成肩 / 臀，中段收腰，中央一條隆起的直脊（不是 V 形）；座艙罩在中段、壓低的暗紅煙燻罩。
@@ -116,7 +116,7 @@ const meanderSd = (u, v, unit) => {
 
 /** @type {() => Record<string, THREE.Material>} */
 const materials = () => ({
-  // 黑釉：黑繪陶的半光澤黑（iter-113 改緞面 roughness 0.56：原 0.3 亮面在 Blender 出現大片波浪反光），赭紅陶土為霧面
+  // 黑釉：黑繪陶的半光澤黑（緞面 roughness 0.56：roughness 0.3 的亮面在 Blender 會出現大片波浪反光），赭紅陶土為霧面
   black: namedMaterial('paint-figure-black', { color: 0x141110, roughness: 0.56, clearcoat: 0.12, clearcoatRoughness: 0.4 }),
   black2: namedMaterial('paint-figure-black', { color: 0x141110, roughness: 0.56, clearcoat: 0.12, clearcoatRoughness: 0.4, side: THREE.DoubleSide }),
   clay: namedMaterial('paint-terracotta-clay', { color: 0xc0623a, roughness: 0.72, clearcoat: 0.0 }),
@@ -136,11 +136,11 @@ const materials = () => ({
   dBlack: decalMaterial('decal-figure-black', { color: 0x141110, roughness: 0.4 }),
   dRed: decalMaterial('decal-added-red', { color: 0x7e2220, roughness: 0.66 }),
   dWhite: decalMaterial('decal-added-white', { color: 0xeee6d6, roughness: 0.6 }),
-  // iter-121（材質與發光）：犬眼改成冥府餘燼色自發光（強度低，Blender 不過曝）
+  // 犬眼：冥府餘燼色自發光（強度低，Blender 不過曝）
   eyeGlow: namedMaterial('lamp-ember-eye', { color: 0xff8a3a, emissive: 0xd8501a, emissiveIntensity: 0.8, roughness: 0.3, clearcoat: 0.6 }),
-  // iter-121 第二版：側面進氣口內緣的餘燼色發光線（貼紙）
+  // 側面進氣口內緣的餘燼色發光線（貼紙）
   dEmber: decalMaterial('decal-ember-glow', { color: 0xff7a2a, emissive: 0xd8501a, emissiveIntensity: 0.8, roughness: 0.4 }),
-  // iter-124：進氣口凹口內面（比黑釉更暗的霧面黑）與口內導流柵（槍灰）
+  // 進氣口凹口內面（比黑釉更暗的霧面黑）與口內導流柵（槍灰）
   dVoid: decalMaterial('decal-intake-void', { color: 0x040303, roughness: 0.95 }),
   dLouver: decalMaterial('decal-intake-louver', { color: 0x55504c, roughness: 0.45 }),
   tail: namedMaterial('lamp-red', { color: 0xd0142a, emissive: 0x900010, emissiveIntensity: 0.6, roughness: 0.1, clearcoat: 1.0 }),

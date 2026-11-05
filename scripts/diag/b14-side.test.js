@@ -1,4 +1,4 @@
-// B14（iter-108）診斷：高速 VZ＋AR 側制振器，哪些車殼不會和側制振器干涉
+// B14 診斷：高速 VZ＋AR 側制振器，哪些車殼不會和側制振器干涉
 import { test } from 'vitest';
 import { assemble, loadConfig } from '../../src/assembly.js';
 import { validateAssembly } from '../../src/regulation.js';

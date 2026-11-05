@@ -1,12 +1,12 @@
-// 聖甲蟲凱布利推日（body-khepri-scarab，第八階段神話組・埃及；第十階段 iter-128 從頭重塑成 LG1 F2 擋泥板肌肉型）：
+// 聖甲蟲凱布利推日（body-khepri-scarab，神話組・埃及；LG1 F2 擋泥板肌肉型）：
 // 甲蟲本身變成車身——兩片鞘翅（elytra）＝左右分開的後擋泥板大量體，中間留一道鞘翅縫，縫底立一條金色脊線（中央隆起脊）；
 // 前胸背板（pronotum）＝左右前擋泥板量體；兩者之間是明顯收腰（俯視 ±45 → ±30.5，側視肩線下凹），量體集中在四個角。
-// 頭盾（clypeus）＝金色扁鏟鼻（鼻尖不超過第九階段 x 76 的殼鼻）；前腳＝前擋泥板兩側的鋸齒金色分流片（甲蟲前脛節的齒）。
-// 大件 1 個：推動的太陽圓盤——iter-129 改成往後躺、貼近後甲板的圓形鴨尾翼（金框＋紅玉髓盤心，後緣上翹），盤下金色龍骨埋進鞘翅縫。
-// iter-129（評審修正）：收腰凹槽填平，兩片鞘翅在中央以金色縫線相合；收腰上方加金色不透明小座艙；前胸恢復綠松石彩陶色。
+// 頭盾（clypeus）＝金色扁鏟鼻（鼻尖 x 76）；前腳＝前擋泥板兩側的鋸齒金色分流片（甲蟲前脛節的齒）。
+// 大件 1 個：推動的太陽圓盤——往後躺、貼近後甲板的圓形鴨尾翼（金框＋紅玉髓盤心，後緣上翹），盤下金色龍骨埋進鞘翅縫。
+// 收腰段頂面填平（不留凹槽），兩片鞘翅在中央以金色縫線相合；收腰上方是金色不透明小座艙；前胸是綠松石彩陶色。
 // 設計：shared/design/body-khepri-scarab/DESIGN.md（「第十階段重塑（iter-128）」節；典故與文物對應 MYTH_RESEARCH 埃及節 E1、E2、E3、E7、E8；
 // 黑名單 E10 Blue Beetle、Victory Magnum 鍬形蟲：不用 V 形引擎蓋、沒有大顎）。
-// 剖面為本檔站位產生器（推估）；塗裝全為自創：青金石珍珠藍鞘翅與前胸、金色頭盾與脊、紅玉髓盤心、玄武岩黑下車身；
+// 剖面為本檔站位產生器（推估）；塗裝全為自創：青金石珍珠藍鞘翅、綠松石彩陶前胸、金色頭盾與脊、紅玉髓盤心、玄武岩黑下車身；
 // 不含任何廠商 / 作品名稱、商標、文字或神的人臉。
 import * as THREE from 'three';
 import { makePolyBody, flatPlate } from './polyBody.js';
@@ -71,14 +71,14 @@ const ARCHES = [
   { x: -40, y: 13, radius: 17.5, cutZFrom: 22 },
 ];
 
-/** @type {number} 分區界線：前胸（綠松石）後緣 x（iter-129） */
+/** @type {number} 分區界線：前胸（綠松石）後緣 x */
 const X_PRONOTUM = 23;
-/** @type {{ x: number, rx: number, ry: number, rz: number }} 座艙罩（iter-129：收腰上方的金色不透明小罩） */
+/** @type {{ x: number, rx: number, ry: number, rz: number }} 座艙罩（收腰上方的金色不透明小罩） */
 const COCKPIT = { x: 6, rx: 10.5, ry: 5.2, rz: 6.8 };
 /** @type {number} 分區界線：頭盾後緣 x */
 const X_HEAD = 58;
 
-/** @type {{ x: number, y: number, r: number, thick: number, lean: number }} 太陽圓盤（iter-129：往後躺的圓形鴨尾翼，盤面朝上、後緣上翹 lean 弧度） */
+/** @type {{ x: number, y: number, r: number, thick: number, lean: number }} 太陽圓盤（往後躺的圓形鴨尾翼，盤面朝上、後緣上翹 lean 弧度） */
 const DISC = { x: -55, y: 37.6, r: 10.8, thick: 2, lean: 0.28 };
 /**
  * 由半剖面折線反查某高度的殼外表面 z（剖面點 z 由中線往外遞增、y 由上往下遞減）
@@ -141,15 +141,15 @@ export function buildProfileLiner(arch, zFrom, profileFn, inset = 1.2) {
 
 /** @type {() => Record<string, THREE.Material>} */
 const materials = () => ({
-  // 青金石珍珠漆（亮面清漆＋微金屬）：鞘翅與前胸量體
+  // 青金石珍珠漆（亮面清漆＋微金屬）：鞘翅量體
   lapis: namedMaterial('paint-lapis-pearl', { color: 0x1f4f96, roughness: 0.26, metalness: 0.35, clearcoat: 1.0, clearcoatRoughness: 0.06 }),
   // 玄武岩黑：收腰與側裙（霧面）
   basalt: namedMaterial('paint-basalt-black', { color: 0x1c1e23, roughness: 0.66 }),
-  // iter-129：彩陶綠松石前胸（亮面釉，評審「青綠前胸沒了」）
+  // 彩陶綠松石前胸（亮面釉）
   faience: namedMaterial('paint-faience-turquoise', { color: 0x2f9e98, roughness: 0.34, clearcoat: 0.6 }),
   // 真金屬金（名稱含 -brass → Blender metallic）
   gold: namedMaterial('trim-gold-brass', { color: 0xc9a227, metalness: 0.82, roughness: 0.32, clearcoat: 0.3 }),
-  // 座艙罩：金色不透明（評審建議；名稱含 -brass → Blender 金屬）
+  // 座艙罩：金色不透明（名稱含 -brass → Blender 金屬）
   cockpitGold: namedMaterial('trim-gold-canopy-brass', { color: 0xd4ad3a, metalness: 0.8, roughness: 0.22, clearcoat: 0.6 }),
   gold2: namedMaterial('trim-gold-brass', { color: 0xc9a227, metalness: 0.82, roughness: 0.32, clearcoat: 0.3, side: THREE.DoubleSide }),
   // 紅玉髓：拋光寶石（亮面，只用在盤心）
@@ -222,9 +222,9 @@ export const khepriScarabBody = makePolyBody({
     { mat: 'gold', keep: (x, y, z) => Math.min(0.9 - Math.abs(z), x + 63) },
     // 肩線以下的側裙：玄武岩黑
     { mat: 'basalt', keep: (x, y) => P.yA(x) - 0.12 - y },
-    // 收腰段頂面：玄武岩黑（讓四角的青金石量體分開）
+    // 前胸（X_PRONOTUM 以前）：綠松石彩陶
     { mat: 'faience', keep: (x) => x - X_PRONOTUM },
-    // 鞘翅、前胸：青金石藍
+    // 鞘翅與收腰段頂面：青金石藍
     { mat: 'lapis', keep: () => 1 },
   ],
   mats: { inner: 'inner', edge: 'edge', cap: 'basalt', mount: 'mount' },
@@ -239,7 +239,7 @@ export const khepriScarabBody = makePolyBody({
       shell: true,
       name: 'arch-liners',
     });
-    // 太陽圓盤（大件，iter-129 改成往後躺的圓形鴨尾翼）：金盤（20 段）貼在後甲板上方、後緣往上翹 lean 弧度；
+    // 太陽圓盤（大件，往後躺的圓形鴨尾翼）：金盤（20 段）貼在後甲板上方、後緣往上翹 lean 弧度；
     // 上下兩面紅玉髓盤心、金色圓環盤緣；盤下一片金色根部龍骨埋進鞘翅縫，讓盤從殼面長出來
     /** @type {(g: THREE.BufferGeometry) => THREE.BufferGeometry} 盤軸（y）往前傾 lean（盤面後緣上翹），再移到後甲板 */
     const placeDisc = (g) => {
@@ -262,7 +262,7 @@ export const khepriScarabBody = makePolyBody({
       keel.translate(0.8, -DISC.thick / 2 - 3.1, 0);
       parts.push({ geometry: placeDisc(keel), mat: 'gold', solid: true, outline: true, name: 'sun-disc-keel' });
     }
-    // 座艙（iter-129）：收腰正上方一個小的金色不透明座艙罩（橢球，下半埋進殼內）
+    // 座艙：收腰正上方一個小的金色不透明座艙罩（橢球，下半埋進殼內）
     {
       const dome = new THREE.SphereGeometry(1, 16, 10);
       dome.scale(COCKPIT.rx, COCKPIT.ry, COCKPIT.rz);

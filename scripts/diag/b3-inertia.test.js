@@ -1,4 +1,4 @@
-// iter-96 診斷（B3）：列出各 slot 對整車慣性（對整車重心，g·mm²）的貢獻，含零件自身張量
+// B3 診斷：列出各 slot 對整車慣性（對整車重心，g·mm²）的貢獻，含零件自身張量
 // npx vitest run --config scripts/diag/vitest.diag.config.js scripts/diag/b3-inertia.test.js --silent=false
 import { test } from 'vitest';
 import { assemble, loadConfig } from '../../src/assembly.js';

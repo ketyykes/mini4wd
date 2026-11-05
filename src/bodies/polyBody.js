@@ -1,4 +1,4 @@
-// 多點折線剖面車殼的共用組裝流程（iter-46 起的新車殼用）：站位表 → 外殼塗裝分區、內面、厚度面、封口、凹陷、座艙、卡座吊耳
+// 多點折線剖面車殼的共用組裝流程：站位表 → 外殼塗裝分區、內面、厚度面、封口、凹陷、座艙、卡座吊耳
 // 每款車殼只要提供站位表、輪拱、塗裝分區、材質與額外零件（鰭片、尾翼、貼紙），其餘交給這裡。
 import * as THREE from 'three';
 import { getPart } from '../parts/index.js';
@@ -12,16 +12,16 @@ import { makeLoftKit, createPolySurface, cachedBuild, buildRegion, buildMountTab
  * @typedef {object} PolyBodyConfig
  * @property {string} id
  * @property {string} name
- * @property {'homage' | 'race' | 'myth'} style 致敬《爆走兄弟》風格 / 常見比賽車殼型式 / 神話主題（第八階段）
+ * @property {'homage' | 'race' | 'myth'} style 致敬《爆走兄弟》風格 / 常見比賽車殼型式 / 神話主題
  * @property {string} theme 一句話主題
- * @property {number} [phase] 上線階段（第四階段新致敬款 = 4）
+ * @property {number} [phase] 上線階段（新致敬款 = 4）
  * @property {import('./types').BodyDef['roof']} [roof] 車頂型態
  * @property {string} [wing] 尾翼型式
- * @property {import('./types').BodyDef['homageSeries']} [homageSeries] 致敬哪一部作品（第六階段）
- * @property {string} [raceType] 比賽車殼型態代號（第六階段）
- * @property {string} [form] 車身型態代號（第六階段）
- * @property {import('./types').MythSeries} [mythSeries] 神話體系（第八階段）
- * @property {string} [mythTheme] 神話主題代號（第八階段）
+ * @property {import('./types').BodyDef['homageSeries']} [homageSeries] 致敬哪一部作品
+ * @property {string} [raceType] 比賽車殼型態代號
+ * @property {string} [form] 車身型態代號
+ * @property {import('./types').MythSeries} [mythSeries] 神話體系
+ * @property {string} [mythTheme] 神話主題代號
  * @property {'ABS' | 'PC'} material
  * @property {number} density_g_cm3
  * @property {number} wallThickness_mm
@@ -35,7 +35,7 @@ import { makeLoftKit, createPolySurface, cachedBuild, buildRegion, buildMountTab
  * @property {any} [canopy] 座艙泡站位（同 sections.json 的 canopy 格式），null = 無
  * @property {number} [sideZMin] 側視開口 / 凹陷只作用在 |z| ≥ sideZMin
  * @property {(kit: any) => { mat: string, keep: KeepFn }[]} zones 外表面塗裝分區（依序取第一個符合的區）
- * @property {{ yMin?: number, mat: string }[]} [capFrontBands] 前封口分段上色（由上往下，每段到下一段的 yMin；iter-110）
+ * @property {{ yMin?: number, mat: string }[]} [capFrontBands] 前封口分段上色（由上往下，每段到下一段的 yMin）
  * @property {{ outer?: string, inner: string, edge: string, cap: string, recess?: string, recessWall?: string, glass?: string, cockpit?: string, mount: string }} mats 結構件用的材質鍵
  * @property {() => Record<string, THREE.Material>} materials
  * @property {(kit: any) => BodyPart[]} [extras] 鰭片、尾翼、貼紙、燈具等
@@ -74,7 +74,7 @@ const hermite = (t) => {
 };
 
 /**
- * 平滑多點剖面曲面（iter-47，body-fork 用；不影響 loft.js 的 createPolySurface）：
+ * 平滑多點剖面曲面（不影響 loft.js 的 createPolySurface）：
  * - 剖面：只有 hard 列出的點是銳利稜線（面板邊界），其餘點用 Catmull-Rom（張力 0.85）平滑通過 → 反光連續、不像低多邊形
  * - 沿 x：中央差分斜率的 Hermite（不做單調限制，站位處不會出現平台與折痕）
  * @type {(stations: { x: number, pts: number[][] }[], opt: { step?: number, tuck?: number, hard: number[] }) => any}
@@ -277,7 +277,7 @@ export function sweepEllipse(pts, n, radius, seg = 16) {
       pos.push(a.x, a.y, a.z, d.x, d.y, d.z, c.x, c.y, c.z, a.x, a.y, a.z, c.x, c.y, c.z, b.x, b.y, b.z);
     }
   }
-  // 端蓋繞向（iter-49 修正）：起點蓋朝後、終點蓋朝前，和側面一致（封閉網格才能用散度定理算體積）
+  // 端蓋繞向：起點蓋朝後、終點蓋朝前，和側面一致（封閉網格才能用散度定理算體積）
   for (const [ring, flip] of [
     [rings[0], false],
     [rings[n], true],
@@ -335,7 +335,7 @@ export function airfoilFin(root, tip, thick, zc, tiltDeg, nc = 16, ns = 10, opt 
         const b = P(i + 1, j, side);
         const c = P(i + 1, j + 1, side);
         const d = P(i, j + 1, side);
-        // iter-49 修正：側面繞向改為朝外（原本朝內，和封蓋不一致）
+        // 側面繞向朝外，和封蓋一致
         if (side < 0) {
           pos.push(...a, ...b, ...c, ...a, ...c, ...d);
         } else {
@@ -344,7 +344,7 @@ export function airfoilFin(root, tip, thick, zc, tiltDeg, nc = 16, ns = 10, opt 
       }
     }
   }
-  // 鰭頂與鰭根封面（iter-49 修正：兩端繞向相反，封閉網格才能用散度定理算體積）
+  // 鰭頂與鰭根封面（兩端繞向相反，封閉網格才能用散度定理算體積）
   for (const j of [0, ns]) {
     for (let i = 0; i < nc; i++) {
       const a = P(i, j, -1);
@@ -405,12 +405,12 @@ export function makePolyBody(cfg) {
       parts.push({ geometry: kit.outer([cab]), mat: cfg.mats.cockpit ?? cfg.mats.inner, shell: true, name: 'shell-cockpit' });
     }
     const st = kit.structure();
-    // innerSkipRecess（iter-51 新增選項，預設關閉＝原行為）：內面避開凹陷，Blender 雙面算圖時內面不會擋在凹腔前面
+    // innerSkipRecess（選項，預設關閉）：內面避開凹陷，Blender 雙面算圖時內面不會擋在凹腔前面
     const innerGeo = cfg.innerSkipRecess ? buildRegion(surf, [...kit.holes, kit.notRecess], { offset: -kit.t }).geometry : st.inner;
     parts.push({ geometry: innerGeo, mat: cfg.mats.inner, name: 'shell-inner' });
     parts.push({ geometry: st.rim, mat: cfg.mats.edge, name: 'shell-edge' });
     if (cfg.capFrontBands) {
-      // iter-110：前封口照側面分色線分段上色（由上往下：各段 yMin，最後一段到底）
+      // 前封口照側面分色線分段上色（由上往下：各段 yMin，最後一段到底）
       cfg.capFrontBands.forEach((band, i) => {
         const yMax = i === 0 ? undefined : cfg.capFrontBands[i - 1].yMin;
         parts.push({ geometry: st.capFrontBand({ yMin: band.yMin, yMax }), mat: band.mat, shell: true, name: `cap-front-${i}` });

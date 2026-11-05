@@ -1,7 +1,7 @@
-// 獅鷲（body-griffin-vane，第六階段 LG2 致敬款）：高姿態全罩、四個高聳大輪拱（31 mm 輪為造型重點）、往下勾的鷹勾鼻、
+// 獅鷲（body-griffin-vane，LG2 致敬款）：高姿態全罩、四個高聳大輪拱（31 mm 輪為造型重點）、往下勾的鷹勾鼻、
 // 中線一列鋸齒「頸羽脊」、不透明珍珠白面罩座艙、左右後擋泥板頂上各一組四片羽片小翼（可調下壓力的外露機能件，沒有中央尾翼）。
 // 設計：shared/design/body-griffin-vane/DESIGN.md（HOMAGE_RESEARCH 第 6 節 LG2 語彙、和劇中車 / 市售車殼的差異）。剖面為本檔站位產生器（推估）。
-// 塗裝全為自創：深皇家紫金屬漆（iter-123 前為薰衣草紫）＋珍珠白＋金、兩道平行金色儀仗飾帶、金色羽片尖端、號碼「36」；不含任何廠商 / 作品名稱、商標、隊徽、國旗或角色圖像。
+// 塗裝全為自創：深皇家紫金屬漆＋珍珠白＋金、兩道平行金色儀仗飾帶、金色羽片尖端、號碼「36」；不含任何廠商 / 作品名稱、商標、隊徽、國旗或角色圖像。
 import * as THREE from 'three';
 import { makePolyBody, finPlate, sweepEllipse } from './polyBody.js';
 import { namedMaterial, decalMaterial, sdNumber, sdBar, sdRoundRect, sdConvexPolygon, sideDecal, mergeGeos, lerp, smoothstep } from './loft.js';
@@ -81,18 +81,18 @@ const faceEll = (x, z) => Math.hypot((x - FACE.cx) / FACE.a, z / FACE.b);
 
 /** @type {() => Record<string, THREE.Material>} */
 const materials = () => ({
-  // iter-123（第九階段，評審「淡紫＋白太柔，缺對比」）：薰衣草紫 0x9a78d8 → 深皇家紫金屬漆（名稱含 metallic → Blender 金屬漆類）
+  // 深皇家紫金屬漆（名稱含 metallic → Blender 金屬漆類）：和珍珠白拉開對比（淡紫＋白太柔）
   lavender: namedMaterial('paint-royal-violet-metallic', { color: 0x3c1874, roughness: 0.26, metalness: 0.45, clearcoat: 1.0, clearcoatRoughness: 0.05 }),
   lavender2: namedMaterial('paint-royal-violet-metallic', { color: 0x3c1874, roughness: 0.26, metalness: 0.45, clearcoat: 1.0, side: THREE.DoubleSide }),
   pearl: namedMaterial('paint-pearl-white', { color: 0xf5f1f7, roughness: 0.2, clearcoat: 1.0, sheen: 0.6, sheenColor: 0xe6d8ff }),
   pearl2: namedMaterial('paint-pearl-white', { color: 0xf5f1f7, roughness: 0.2, clearcoat: 1.0, side: THREE.DoubleSide }),
   gold: namedMaterial('metal-gold', { color: 0xd8aa45, roughness: 0.28, metalness: 0.85, clearcoat: 0.6 }),
   gold2: namedMaterial('metal-gold', { color: 0xd8aa45, roughness: 0.28, metalness: 0.85, clearcoat: 0.6, side: THREE.DoubleSide }),
-  // iter-123：深紫羽片 0x3a2560 → 近黑紫（車身改深紫後，羽片仍要和車身分得開）
+  // 羽片用近黑紫（車身是深紫，羽片要和車身分得開）
   violet: namedMaterial('paint-deep-violet', { color: 0x1e0c36, roughness: 0.3, clearcoat: 0.8 }),
   violet2: namedMaterial('paint-deep-violet', { color: 0x1e0c36, roughness: 0.3, clearcoat: 0.8, side: THREE.DoubleSide }),
   inner: namedMaterial('shell-inner-dark', { color: 0x1d1a22, roughness: 0.85, side: THREE.BackSide }),
-  // iter-69：切口厚度面改珍珠白（輪拱邊緣和白飾邊連成一圈，不再露出紫色碎邊）
+  // 切口厚度面用珍珠白（輪拱邊緣和白飾邊連成一圈，不露出紫色碎邊）
   edge: namedMaterial('shell-edge-pearl', { color: 0xe9e4ee, roughness: 0.4, side: THREE.DoubleSide }),
   recess: namedMaterial('plastic-gill-black', { color: 0x07060a, roughness: 0.9, side: THREE.DoubleSide }),
   recessWall: namedMaterial('paint-deep-violet', { color: 0x3a2560, roughness: 0.4, side: THREE.DoubleSide }),
@@ -132,7 +132,7 @@ const featherOutline = (x0, y0, angDeg, len, w) => {
 };
 
 /**
- * iter-123：羽片在 70% 長度處分成根部件與尖端件（外形和 featherOutline 相同，分件線兩側共用端點）
+ * 羽片在 70% 長度處分成根部件與尖端件（外形和 featherOutline 相同，分件線兩側共用端點）
  * @type {(x0: number, y0: number, angDeg: number, len: number, w: number) => { base: number[][], tip: number[][] }}
  */
 const featherSplit = (x0, y0, angDeg, len, w) => {
@@ -226,7 +226,7 @@ export const griffinVaneBody = makePolyBody({
   ],
   recesses: [
     // 前輪後方的「羽狀側鰓」：三道往後上斜、由短到長的平行四邊形凹槽（V10）
-    // iter-71：三道整體往後移 1.5 mm（第一道原本離前輪拱圓只有 0.6 mm，在輪拱後端露出一顆黑點）
+    // 三道的位置要離前輪拱圓夠遠：只離 0.6 mm 時會在輪拱後端露出一顆黑點
     { id: '羽鰓-1', view: 'side', shape: 'poly', pts: [[18, 15], [20.5, 15], [17, 22.5], [14.5, 22.5]], depth: 1.8 },
     { id: '羽鰓-2', view: 'side', shape: 'poly', pts: [[13, 14], [15.5, 14], [11.5, 24], [9, 24]], depth: 1.8 },
     { id: '羽鰓-3', view: 'side', shape: 'poly', pts: [[8, 13], [10.5, 13], [6, 25.5], [3.5, 25.5]], depth: 1.8 },
@@ -240,9 +240,9 @@ export const griffinVaneBody = makePolyBody({
     { mat: 'pearl', keep: (x, y, z) => (y > 30 ? 1 - faceEll(x, z) : -1) },
     // 珍珠白鷹頭（鼻部到鋸齒羽毛領）
     { mat: 'pearl', keep: (x, y, z) => headKeep(x, z) },
-    // 珍珠白下半車身（獅身腹部）：分色線在金色飾帶下方 3.2 mm，跟著飾帶從鼻側上掃到後擋泥板
-    // iter-69：輪拱圓外 3 mm 內一律珍珠白（白飾邊和白色下身連成一片，分色線不再從輪拱邊上穿過而破碎）
-    // iter-123：分色線 SASH − 3.2 → SASH − 2.5，貼齊下金線的下緣（珍珠白｜金｜深紫｜金｜深紫 的高對比分割，中間不再夾一條細紫縫）
+    // 珍珠白下半車身（獅身腹部）：分色線在金色飾帶下方 2.5 mm（SASH − 2.5），貼齊下金線的下緣，跟著飾帶從鼻側上掃到後擋泥板
+    //（珍珠白｜金｜深紫｜金｜深紫 的高對比分割，中間不夾細紫縫）
+    // 輪拱圓外 3 mm 內一律珍珠白（白飾邊和白色下身連成一片，分色線不會從輪拱邊上穿過而破碎）
     { mat: 'pearl', keep: (x, y, z) => (Math.abs(z) > 20 ? Math.max(SASH(x) - 2.5 - y, Math.abs(z) > 22 ? 3 - archRingDist(x, y) : -1) : -1) },
     { mat: 'lavender', keep: () => 1 },
   ],
@@ -279,9 +279,8 @@ export const griffinVaneBody = makePolyBody({
     // 擋泥板羽片小翼（L2-1 外露機能件）：左右後擋泥板頂各四片，往後上扇形展開、往外 32° 傾，兩組不相連、沒有中央主翼
     /** @type {Record<string, THREE.BufferGeometry[]>} */
     const vanes = { pearl: [], violet: [], gold: [] };
-    // iter-69：羽片放大（長 19–22 → 25–29、寬 4.4–4.8 → 6.0–6.4）並加厚（0.9 → 1.0 mm；26 / 31 mm 整車都要 ≤ 135 g，輪拱內襯深度 2.6 → 1.0 mm 抵銷加重），讓「有翼」的意象撐得起來
-    // iter-104（評審 iter-72「羽翼仍比概念圖小」）：每側 4 → 5 片，長 25–29 → 27–35、寬 6.0–6.4 → 6.8–7.8，扇形張角 6–33° → 8–48°；
-    // 厚度 1.0 → 0.8 mm 抵銷部分加重（推估）。整車：26 mm 輪 131.3 g、31 mm 輪 135.3 g（略超 SPEC 1.12 的推估範圍 105–135 g，規則只要求 ≥ 90 g；同 dartfrog 31 mm 輪 138.4 g 的處理）
+    // 每側 5 片羽片：長 27–35、寬 6.8–7.8、扇形張角 8–48°，夠大才撐得起「有翼」的意象（對照概念圖）
+    // 厚 0.8 mm、輪拱內襯深度 1.0 mm，用來抵銷羽片的重量（推估）。整車：26 mm 輪 131.3 g、31 mm 輪 135.3 g（略超 SPEC 1.12 的推估範圍 105–135 g，規則只要求 ≥ 90 g；同 dartfrog 31 mm 輪 138.4 g 的處理）
     const FEATHERS = [
       { x0: -23, ang: 8, len: 30, w: 7.2, mat: 'pearl' },
       { x0: -27, ang: 18, len: 34, w: 7.6, mat: 'violet' },
@@ -293,7 +292,7 @@ export const griffinVaneBody = makePolyBody({
       FEATHERS.forEach((f, i) => {
         const zc = sg * (31 + i * 0.8);
         const y0 = top(f.x0, zc) - 0.7;
-        // iter-123（評審「翼片尖端漆金」）：每片羽片在 70% 長度處分件，尖端 30% 換成金色件（同一外傾支點，兩件密接）
+        // 每片羽片在 70% 長度處分件，尖端 30% 是金色件（同一外傾支點，兩件密接）
         const { base, tip } = featherSplit(f.x0, y0, f.ang, f.len, f.w);
         const yPivot = Math.min(...featherOutline(f.x0, y0, f.ang, f.len, f.w).map((q) => q[1]));
         vanes[f.mat].push(finPlateAt(base, zc, 0.8, -sg * 32, yPivot));
@@ -308,7 +307,7 @@ export const griffinVaneBody = makePolyBody({
     const knuckles = [];
     for (const sg of [-1, 1]) {
       const g = new THREE.SphereGeometry(1, 18, 10);
-      // iter-104：羽座跟著 5 片羽根（x −23 → −39）加長、置中到 x −31
+      // 羽座涵蓋 5 片羽根（x −23 → −39），置中在 x −31
       g.scale(8.6, 1.7, 2.8);
       g.rotateZ(-0.2);
       g.translate(-31, top(-31, sg * 32.6) + 0.2, sg * 32.6);
@@ -343,8 +342,8 @@ export const griffinVaneBody = makePolyBody({
       shell: true,
       name: 'arch-liners',
     });
-    // 輪拱外緣珍珠白飾邊（強調高聳大輪拱）
-    // iter-71：拿掉輪拱白飾邊貼紙——珍珠白塗裝區已涵蓋輪拱圓外 3 mm，同色貼紙疊在漆面上會 z-fighting，形成白紫碎點
+    // 輪拱外緣珍珠白飾邊（強調高聳大輪拱）：由珍珠白塗裝區涵蓋（輪拱圓外 3 mm，見 zones），
+    // 不另貼白飾邊貼紙——同色貼紙疊在漆面上會 z-fighting，形成白紫碎點
 
     // 兩道平行金色「儀仗飾帶」：從鼻側起，越過前擋泥板上掃，沿腰線到後擋泥板羽座
     const sash = SASH;
@@ -352,7 +351,7 @@ export const griffinVaneBody = makePolyBody({
     const sashSd = (u, v) => {
       const d1 = Math.abs(v - sash(u)) - 0.45;
       const d2 = Math.abs(v - sash(u) + 2.1) - 0.45;
-      // iter-69：飾帶在輪拱白飾邊外 0.8 mm 處乾淨收尾（舊版直接越過輪拱邊，留下金色碎片）
+      // 飾帶在輪拱白飾邊外 0.8 mm 處乾淨收尾（直接越過輪拱邊會留下金色碎片）
       return Math.max(Math.min(d1, d2), u - 66, -46 - u, 2.6 - archRingDist(u, v));
     };
     parts.push({
@@ -372,14 +371,14 @@ export const griffinVaneBody = makePolyBody({
     const numSd = sdNumber('36', { h: 5.6, w: 3.0, gap: 0.8 });
     parts.push({
       geometry: kit.decal(sideDecal((u, v) => Math.max(plateSd(u, v), -numSd(u, v)), { x0: -60.5, y0: 26, zMin: 26 }), { offset: 0.1 }),
-      // iter-123：車身改深紫後，號碼板改珍珠白底、號碼深紫
+      // 車身是深紫，號碼板用珍珠白底、號碼深紫
       mat: 'dPearl',
       name: 'decal-number-plate',
-      // iter-71：號碼板墊高到 0.1、號碼 0.15（原本號碼板和肌肉線、飾帶同為 0.06，下緣交疊處 z-fighting 出白紫碎點）
+      // 號碼板墊高到 0.1、號碼 0.15（號碼板若和肌肉線、飾帶同為 0.06，下緣交疊處會 z-fighting 出白紫碎點）
     });
     parts.push({ geometry: kit.decal(sideDecal(numSd, { x0: -60.5, y0: 26, zMin: 26 }), { offset: 0.15 }), mat: 'dViolet', name: 'decal-number' });
     // 鷹勾喙（上喙）：從鼻樑隆起、越過鼻尖往前下勾的金色實心件
-    // iter-123：喙尖更往下勾（x 82 → 80.2、尖端往下 0.6 mm），車殼外框長 154.6 → 153（立體橋卡橋上限，見 SPEC 1.14a）
+    // 喙尖往下勾、只伸到 x 80.2，車殼外框長 153（立體橋卡橋上限，見 SPEC 1.14a）
     const beakPath = [
       [62, 23.6, 0],
       [70, 23.2, 0],
@@ -417,7 +416,7 @@ export const griffinVaneBody = makePolyBody({
     /** @type {(u: number, v: number) => number} */
     const haunch = (u, v) => {
       const yy = 27 + 0.004 * (u + 40) ** 2;
-      // iter-71：後端收在 x −51.5（原本 −58 會伸進號碼板，在號碼板前緣露出一小段深紫碎線）
+      // 後端收在 x −51.5（到 −58 會伸進號碼板，在號碼板前緣露出一小段碎線）
       return Math.max(Math.abs(v - yy) - 0.35, u + 22, -51.5 - u);
     };
     parts.push({
@@ -425,7 +424,7 @@ export const griffinVaneBody = makePolyBody({
         kit.decal(sideDecal(haunch, { x0: 0, y0: 0, zMin: 40, side: 1 })),
         kit.decal(sideDecal((u, v) => haunch(-u, v), { x0: 0, y0: 0, zMin: 40, side: -1 })),
       ]),
-      // iter-123：深紫車身上改成金色肌肉線
+      // 深紫車身上用金色肌肉線
       mat: 'dGold',
       name: 'decal-haunch-line',
     });

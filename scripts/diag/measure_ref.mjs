@@ -1,5 +1,5 @@
-// iter-12：以 fit_ref_camera.mjs 擬合出的相機（θ 25.75°、φ 1°、d 700 mm、rms 4.3 px）反推參考照 ref side-high 特徵點的 3D 位置
-// （iter-11 版用 θ 23°、d 410 mm 的未擬合相機，透視過強，近遠側導輪殘差達 25 px，已淘汰）
+// 以 fit_ref_camera.mjs 擬合出的相機（θ 25.75°、φ 1°、d 700 mm、rms 4.3 px）反推參考照 ref side-high 特徵點的 3D 位置
+// （不用 θ 23°、d 410 mm 的未擬合相機：透視過強，近遠側導輪殘差達 25 px）
 // 給定參考照像素 (u, v) 與假設的一個座標（z 或 y），解出另外兩個（推估：像素為目視量測，±2 px ≈ ±0.4 mm）
 // 用法：node measure_ref.mjs '[["名稱", u, v, "z", -38]]'（"z" 表示固定 z 解 x,y；"y" 表示固定 y 解 x,z）
 import * as THREE from 'three';

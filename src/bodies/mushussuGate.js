@@ -1,8 +1,8 @@
-// 伊什塔爾城門的穆修胡修（body-mushussu-gate，第八階段神話組・美索不達米亞）：iter-115 依評審「方塊城牆、不像比賽用車殼」改成一台低矮流線車殼——
-// 楔形鼻端、座艙段的低駝峰、車尾收尾、前後輪上方微鼓的翼子板與 R17.5 輪拱，側裙一路包到底盤側框（不露電池管）；
-// 城門的語彙全部移到表面：青金石藍釉磚（錯縫磚縫）、側牆上下兩道黃釉磚邊框（黑細線）、肩線上兩列白瓣金心的玫瑰花飾帶、
+// 伊什塔爾城門的穆修胡修（body-mushussu-gate，神話組・美索不達米亞）：一台低矮流線的比賽用車殼（不做方塊城牆）——
+// 楔形的細長頸鼻、座艙段的低駝峰、車尾收尾、前後輪上方微鼓的翼子板與 R17.5 輪拱，側裙一路包到底盤側框（不露電池管）；
+// 城門的語彙全部移到表面：青金石藍釉磚（錯縫磚縫）、側牆上下兩道黃釉磚邊框（黑細線）、車頂中線一列白瓣金心的玫瑰花飾賽車條紋、
 // 側牆中段的黃釉穆修胡修浮雕（鱗片、頭上的角與冠、獅爪前腳、鷹爪後腳、往上捲的蝎尾；實體件凸出 0.9 mm）、
-// 車頂中線黃黑磚遊行大道、輪拱黃釉拱框；城垛只留在車尾尾翼上緣的一排兩階小齒（crenel-tail）。
+// 頸鼻頂面的黃釉蛇首與一對金色導流角、輪拱黃釉拱框；城垛只留在車尾後掠雙層翼兩側的階梯城垛形端板（crenel-tail）。
 // 設計：shared/design/body-mushussu-gate/DESIGN.md（典故與文物對應 MYTH_RESEARCH 第 4 節 M1–M5；黑名單 4-3、第 9 節 Dragon Jr. / Beat-Magnum）。剖面為本檔站位產生器（推估）。
 // 配色取自 M2 / 4-2（青金石釉藍、黃釉、黑白金邊框與玫瑰花飾）；圖形全部自繪；不做龍頭車身、不放龍形駕駛、不做紅龍徽章、玫瑰花飾只用圓瓣（不做放射閃電）；不含任何文字。
 import * as THREE from 'three';
@@ -16,17 +16,17 @@ import { buildArchWell, chassisBlockedNearArch } from './kitsuneNinetail.js';
 
 /** @type {number} 車尾封口 x */
 const X_REAR = -72;
-/** @type {number} 車頭（鼻端封口）x；iter-121：60 → 74（往前伸出細長的頸鼻） */
+/** @type {number} 車頭（鼻端封口）x（往前伸出細長的頸鼻） */
 const X_FRONT = 74;
 /** @type {number[]} 站位參數表（x 由後到前，前後軸 x = ±40） */
 const XS = [-72, -68, -60, -50, -40, -28, -14, 0, 14, 28, 40, 48, 55, 60, 66, 70, 74];
 /** @type {Record<string, (x: number) => number>} */
 const P = {
-  // 俯視半寬（肩稜線）：前後輪上方微鼓的翼子板 44、腰 41；短鼻（輪胎前緣往前 7 mm，鼻端 22）、長尾（後軸往後 32 mm 的長尾段收到 22，尾翼架在上面）
-  // iter-121（第九階段）：前輪拱之後收成細長的頸鼻（穆修胡修的長頸蛇首，x 60 → 74 半寬 22 → 6.5）
+  // 俯視半寬（肩稜線）：前後輪上方微鼓的翼子板 44、腰 41；長尾（後軸往後 32 mm 的長尾段收到 22，尾翼架在上面）；
+  // 前輪拱之後收成細長的頸鼻（穆修胡修的長頸蛇首，x 60 → 74 半寬 22 → 6.5）
   hw: monoCurve(XS, [22, 28, 33.5, 40, 44, 42.5, 41.5, 41, 41.5, 42.5, 44, 40.5, 31, 22, 13.5, 9.5, 6.5]),
-  // 中線殼頂：座艙段低駝峰 37.8（x 0），往前一路下斜成楔形鼻端（21），往後緩降成長尾（25）
-  // iter-121：駝峰 37.8 → 34.6，車頭到座艙是一條連續斜面，一路下到頸鼻尖 15.4（LG1 低尖鼻 V3）
+  // 中線殼頂：座艙段低駝峰 34.6（x 0），往後緩降成長尾（25）；
+  // 車頭到座艙是一條連續斜面，一路下到頸鼻尖 15.4（LG1 低尖鼻 V3）
   yTop: monoCurve(XS, [25, 26.5, 28.4, 30, 31.2, 32.9, 34.2, 34.6, 33.9, 32, 29.8, 27.3, 24.6, 22.4, 19.6, 17.6, 15.4]),
   // 肩稜線（頂面與側牆交界，銳利）：輪上 30、腰 28.5（R17.5 輪拱頂 30.5 切進肩線，俯視在四個輪位留下缺口，同 kitsune 做法）
   yS: monoCurve(XS, [22.5, 24, 26.2, 28.4, 30, 29.5, 28.5, 28.5, 28.8, 29.6, 29.4, 26.6, 23.2, 20.6, 17.8, 16.2, 14.4]),
@@ -103,7 +103,7 @@ const capsule = (u, v, ax, ay, bx, by, r) => {
 };
 
 /**
- * 穆修胡修側身（iter-114 照伊什塔爾城門釉磚浮雕重畫，M1 / M2）：水平細長鱗身、往前上斜的 S 形長頸、
+ * 穆修胡修側身（照伊什塔爾城門釉磚浮雕畫，M1 / M2）：水平細長鱗身、往前上斜的 S 形長頸、
  * 水平蛇頭＋往後的直角＋頭後捲起的冠、分岔蛇信；前足獅腿（一前一後的步態、圓掌）、後足鷹腿（粗腿、細脛、三爪）；
  * 長尾先水平往後、尾端才往上捲成蝎尾鉤刺。u 往車頭、v 往上，腳底 v = 0；未縮放時長約 34、高約 17 mm
  * @type {number[][]} [ax, ay, bx, by, r]
@@ -230,7 +230,7 @@ const materials = () => ({
  * @type {(sg: number) => THREE.BufferGeometry}
  */
 const buildBeastRelief = (sg) => {
-  /** @type {number} 浮雕凸起高度（評審建議 0.6–1 mm） */
+  /** @type {number} 浮雕凸起高度（取 0.6–1 mm 之間） */
   const RELIEF_H = 0.9;
   /** @type {THREE.BufferGeometry[]} */
   const geos = [];
@@ -241,7 +241,7 @@ const buildBeastRelief = (sg) => {
     const x1 = BEAST.x0 + bx * BEAST.s;
     const y1 = BEAST.y0 + by * BEAST.s;
     const len = Math.hypot(x1 - x0, y1 - y0);
-    // iter-121：低分段（cap 3、徑向 10；原本 4 × 14）
+    // 低分段（cap 3、徑向 10）
     const g = new THREE.CapsuleGeometry(r, len, 3, 10);
     // 膠囊預設沿 y 軸 → 轉到線段方向
     g.rotateZ(Math.atan2(y1 - y0, x1 - x0) - Math.PI / 2);
@@ -255,7 +255,7 @@ const buildBeastRelief = (sg) => {
 };
 
 /**
- * 穆修胡修的鱗片（iter-115 評審「做回有鱗片」）：在浮雕軀幹、長頸、尾根（膠囊半徑 ≥ 0.9）的表面排一層小圓鱗（扁球，凸出約 0.25 mm），
+ * 穆修胡修的鱗片：在浮雕軀幹、長頸、尾根（膠囊半徑 ≥ 0.9）的表面排一層小圓鱗（扁球，凸出約 0.25 mm），
  * 沿每段每 0.9 mm 一列、上下兩排錯開，像釉磚浮雕上刻出的鱗紋
  * @type {(sg: number) => THREE.BufferGeometry}
  */
@@ -283,7 +283,7 @@ const buildBeastScales = (sg) => {
         const o = off * r + (i % 2 === 0 ? 0 : 0.12 * r);
         const x = lerp(x0, x1, q) + nx * o;
         const y = lerp(y0, y1, q) + ny * o;
-        // iter-121：低分段（6 × 4；原本 8 × 6）
+        // 低分段（6 × 4）
         const g = new THREE.SphereGeometry(0.36, 6, 4);
         g.scale(1, 1, 0.55);
         g.translate(x, y, sg * (wallZ(x, y) + top - 0.05));
@@ -294,7 +294,7 @@ const buildBeastScales = (sg) => {
   return mergeGeos(geos);
 };
 
-/** @type {{ yMain: number, yFlap: number, thick: number, half: number }} 尾翼（crenel-tail，iter-121 後掠雙層翼）：主翼底 y 32.4、厚 1.4；副翼底 y 34.6；半翼展 24（端板外緣 25.2） */
+/** @type {{ yMain: number, yFlap: number, thick: number, half: number }} 尾翼（crenel-tail，後掠雙層翼）：主翼底 y 32.4、厚 1.4；副翼底 y 34.6；半翼展 24（端板外緣 25.2） */
 const WING = { yMain: 32.4, yFlap: 34.6, thick: 1.4, half: 24 };
 
 export const mushussuGateBody = makePolyBody({
@@ -377,7 +377,7 @@ export const mushussuGateBody = makePolyBody({
       name: 'decal-wall-band-lines',
     });
 
-    // iter-121：肩線上原本的兩列玫瑰花飾帶移到車頂中線當貫穿全車的賽車條紋（見下方），肩線只留一道黃釉細邊（沿肩稜線內側 0.3 → 1.5 mm）
+    // 肩線只留一道黃釉細邊（沿肩稜線內側 0.3 → 1.5 mm）；玫瑰花飾在車頂中線當貫穿全車的賽車條紋（見下方）
     parts.push({
       geometry: kit.decal((x, y, z) => {
         if (y < P.yS(x) + 0.05 || x < X_REAR + 2 || x > 58 || archDist(x, y) < 0.8) {
@@ -404,7 +404,7 @@ export const mushussuGateBody = makePolyBody({
       mat: 'dJoint',
       name: 'decal-brick-joints',
     });
-    // 車頂磚縫（花飾帶與遊行大道之間）
+    // 車頂磚縫（肩線細邊與中線花飾條紋之間）
     parts.push({
       geometry: kit.decal((x, y, z) => {
         const az = Math.abs(z);
@@ -442,7 +442,7 @@ export const mushussuGateBody = makePolyBody({
       parts.push({ geometry: mergeGeos(eyes), mat: 'eye', solid: true, name: 'mushussu-eyes' });
     }
 
-    // iter-121：車頂中線的玫瑰花飾賽車條紋（M2 花飾帶改成 V12 / V13 配置：從頸鼻上的蛇首一路往後貫穿到車尾）——
+    // 車頂中線的玫瑰花飾賽車條紋（M2 花飾帶採 V12 / V13 配置：從頸鼻上的蛇首一路往後貫穿到車尾）——
     // 深藍底（|z| < 3.3）＋一列白瓣金心玫瑰花飾（每 6.2 mm 一朵）＋兩側黃釉邊（3.3 → 4.5）＋黑細線（4.5 → 5.1）
     /** @type {(x: number, y: number) => boolean} 車頂中線帶（肩線以上；蛇首後緣 x 57 到車尾） */
     const onStripe = (x, y) => y > P.yS(x) + 0.5 && x > X_REAR + 1.5 && x < 57.5;
@@ -475,7 +475,7 @@ export const mushussuGateBody = makePolyBody({
       name: 'decal-rosette-cores',
     });
 
-    // iter-121：頸鼻頂面的穆修胡修蛇首（黃釉、黑描邊、黑眼；M1 的細長蛇首，只做平面圖形，不做立體龍頭）
+    // 頸鼻頂面的穆修胡修蛇首（黃釉、黑描邊、黑眼；M1 的細長蛇首，只做平面圖形，不做立體龍頭）
     /** @type {(x: number, z: number) => number} 蛇首輪廓距離（正值 = 外）：x 57 → 鼻尖，半寬為殼半寬的 0.62 */
     const headSd = (x, z) => Math.max(57 - x, Math.abs(z) - 0.62 * P.hw(x));
     /** @type {(x: number, y: number) => boolean} 頸鼻頂面 */
@@ -498,7 +498,7 @@ export const mushussuGateBody = makePolyBody({
       name: 'decal-snake-eyes',
     });
 
-    // iter-121：蛇首的一對直角（M1：頭上往後的直角）做成頸鼻頂面往後上方掃的導流角（實體件、金屬金）：角根在 x 66、往後掃到 x 52，
+    // 蛇首的一對直角（M1：頭上往後的直角）做成頸鼻頂面往後上方掃的導流角（實體件、金屬金）：角根在 x 66、往後掃到 x 52，
     // 根粗 R1.1 → 角尖 R0.6（直徑 ≥ 1.2）；低分段（12 × 6）
     {
       /** @type {THREE.BufferGeometry[]} */
@@ -521,8 +521,8 @@ export const mushussuGateBody = makePolyBody({
       parts.push({ geometry: mergeGeos(horns), mat: 'gold2', solid: true, outline: true, name: 'snout-horns' });
     }
 
-    // 車尾尾翼（crenel-tail，iter-121 改款）：後掠雙層翼——主翼板（黃釉）＋上後方的副翼（藍釉）＋兩側階梯城垛形端板（泥磚色，往車尾一階階升高）；
-    // 原本的一排 9 個城垛齒拿掉，城垛語彙集中到端板；兩片藍釉支柱從車尾頂面立起接主翼
+    // 車尾尾翼（crenel-tail）：後掠雙層翼——主翼板（黃釉）＋上後方的副翼（藍釉）＋兩側階梯城垛形端板（泥磚色，往車尾一階階升高）；
+    // 城垛語彙集中在端板；兩片藍釉支柱從車尾頂面立起接主翼
     {
       const { half, thick } = WING;
       /** @type {(outline: number[][], y0: number, t: number) => THREE.BufferGeometry} 平面 (x, z) 的翼板，沿 y 擠出厚度 t */

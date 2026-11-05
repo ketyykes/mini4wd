@@ -17,10 +17,10 @@ export const chassisParts = [
     motorLayout: 'dual-shaft',
     motorPosition: 'mid',
     mass_g: 24.4,
-    /** 底盤本體質心（底盤座標）：iter-96 起由 3D 模型 ABS 底盤網格的體積權重推導（見 inertiaPerMass_mm2） */
+    /** 底盤本體質心（底盤座標）：由 3D 模型 ABS 底盤網格的體積權重推導（見 inertiaPerMass_mm2） */
     com_mm: { x: -0.1801481302498697, y: 6.573273507557011, z: -0.2144887294876264 },
     /**
-     * 底盤本體（未切保桿）對自身質心、每 g 的慣性張量（mm²；乘質量 g → g·mm²）。iter-96（B3）：取代「整個外框實心方塊」。
+     * 底盤本體（未切保桿）對自身質心、每 g 的慣性張量（mm²；乘質量 g → g·mm²）。B3：不用「整個外框實心方塊」近似，
      * 由 model.js 底盤本體 ABS 網格（abs-chassis-gunmetal）體積積分；網格有重疊、比實物厚，只當分布權重，總質量用實測 mass_g。
      * 一致性測試 P14_component_tensors（tests/inertia.test.js）由模型重算比對
      */
@@ -66,7 +66,7 @@ export const chassisParts = [
       ballastMounts: '推估：配重常見貼在前後保桿下方或底盤上方；本專案提供前、中、後三處',
     },
   },
-  // B14（iter-107）：第二款底盤——後置單軸馬達＋傳動軸四驅（結構參考 Tamiya VZ）。來源與推估依據見 shared/reference/VZ_RESEARCH.md（以下 [VZ x.x] 指該檔節次）
+  // B14：第二款底盤——後置單軸馬達＋傳動軸四驅（結構參考 Tamiya VZ）。來源與推估依據見 shared/reference/VZ_RESEARCH.md（以下 [VZ x.x] 指該檔節次）
   {
     id: 'chassis-vz',
     category: 'chassis',
@@ -100,7 +100,7 @@ export const chassisParts = [
     /** 側壁（外緣立壁）：[x0, x1, 外緣 |z|]，厚 1.4、高 8.5 mm，立在底板上；3D 模型與側制振器干涉檢查共用 */
     sideWalls_mm: [[27, 55, 23.5], [-24, 24, 27], [-50, -27, 26.5]],
     sideWallHeight_mm: 8.5,
-    /** 側制振器座（AR 側制振器 15459）：外掛式，側板底面與底盤底面齊平、從中段側壁外側伸出（iter-111） */
+    /** 側制振器座（AR 側制振器 15459）：外掛式，側板底面與底盤底面齊平、從中段側壁外側伸出 */
     sideDamperMount: { x_mm: 0, z_mm: 44, y_mm: 2.5, spacer_mm: 0, plateInnerZ_mm: 27.2, plateLength_mm: 19 },
     bumperBottomY_mm: 5.4,
     bumperRollerX_mm: 71.5,

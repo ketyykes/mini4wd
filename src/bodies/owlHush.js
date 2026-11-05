@@ -1,5 +1,5 @@
-// 夜梟靜翼策略型（body-owl-hush，第四階段致敬《爆走兄弟》風格新款）：俯視寬 U 形的圓「臉盤」鼻、淚滴形快背全罩車身、
-// 大型圓形深煙燻泡泡座艙、座艙後方兩撮短耳羽、車尾低位寬翼（iter-123：iter-125：2 片後掠層疊羽片、圓頭羽尖＋羽軸稜、無端板、兩支短支柱、翼頂不高於座艙頂）。
+// 夜梟靜翼策略型（body-owl-hush，致敬《爆走兄弟》風格）：俯視寬 U 形的圓「臉盤」鼻、淚滴形快背全罩車身、
+// 大型圓形深煙燻泡泡座艙、座艙後方兩撮短耳羽、車尾低位寬翼（2 片後掠層疊羽片、圓頭羽尖＋羽軸稜、無端板、兩支短支柱、翼頂不高於座艙頂）。
 // 設計：shared/design/body-owl-hush/DESIGN.md（角色、致敬語彙、和劇中車 / 市售車殼的差異）。
 // 剖面由本檔的站位函式產生（推估，依 HOMAGE_RESEARCH 第 4 節與外框 / 輪胎間隙掃描）。
 // 塗裝全為自創：可可棕＋燕麥米＋琥珀、人字羽紋、號碼「23」；不含任何廠商 / 作品名稱、商標或角色圖像。
@@ -103,14 +103,13 @@ const EYE_Z = 14;
 const EYE_R = 4.9;
 
 /**
- * iter-125（第九階段，評審 iter-123：「大圓眼改成細長眼後，貓頭鷹臉變弱」）：眼窩恢復成俯視大圓形
- * （半徑 4.4 → 4.9，比基準再大一圈），回傳值 < 0 = 在眼窩內
+ * 眼窩：俯視大圓形（半徑 4.9；大圓眼才撐得起貓頭鷹臉，細長眼會讓臉變弱），回傳值 < 0 = 在眼窩內
  * @type {(x: number, y: number, z: number) => number}
  */
 const eyeSd = (x, y, z) => Math.hypot(x - EYE_X, Math.abs(z) - EYE_Z) - EYE_R;
 
 /**
- * iter-125：眼周羽框（凸出的深可可細稜）＝眼窩外圈上後半的 1.5 mm 環＋從眼窩外後緣往後外斜拉出的細長眼尾羽稜
+ * 眼周羽框（凸出的深可可細稜）＝眼窩外圈上後半的 1.5 mm 環＋從眼窩外後緣往後外斜拉出的細長眼尾羽稜
  * （俯視：(57.2, |z| 17.6) → (47.5, |z| 22.8)、寬 1.5 → 0.6 收尖），回傳值 > 0 = 在羽框內
  * @type {(x: number, y: number, z: number) => number}
  */
@@ -135,7 +134,7 @@ const splitY = (x) => 17 + 0.075 * (60 - x);
 
 /** @type {() => Record<string, THREE.Material>} */
 const materials = () => ({
-  // iter-123（第九階段）：可可棕改成帶金屬珠光的亮面漆（metalness 0.2 → 0.45、亮面清漆），和霧面燕麥米、深棕尾段拉開材質對比
+  // 可可棕是帶金屬珠光的亮面漆（metalness 0.45、亮面清漆），和霧面燕麥米、深棕尾段拉開材質對比
   cocoa: namedMaterial('paint-cocoa-brown', { color: 0x65412a, roughness: 0.2, metalness: 0.45, clearcoat: 1.0, clearcoatRoughness: 0.04 }),
   cocoa2: namedMaterial('paint-cocoa-brown', { color: 0x65412a, roughness: 0.2, metalness: 0.45, clearcoat: 1.0, side: THREE.DoubleSide }),
   oat: namedMaterial('paint-oatmeal', { color: 0xe2d2b0, roughness: 0.3, clearcoat: 0.8, clearcoatRoughness: 0.08 }),
@@ -160,7 +159,7 @@ const materials = () => ({
 });
 
 /**
- * 人字羽紋（iter-62，取代 iter-55 的疊羽紋——評審：Y 形分枝弧像魚鱗 / 樹枝）：概念圖那種粗、尖端朝前的 V 形羽紋，
+ * 人字羽紋：概念圖那種粗、尖端朝前的 V 形羽紋，
  * 每側一列沿 x 每 P mm 一道，V 尖在 |z| = zc，兩臂往外後掠（斜率 a），臂寬由 V 尖的 w 收到臂端的 0.45 w（羽尖收尖）。
  * 回傳值 ≥ 0 = 在羽紋內
  * @type {(P: number, zc: number, span: number, a: number, w: number) => (x: number, az: number) => number}
@@ -232,7 +231,7 @@ const liftSurface = (o) => {
 };
 
 /**
- * 輪拱內襯（iter-55）：輪拱切口內側的半圓環擋板（側視半徑 r0–r1、輪心上方 0°–180°），沿 z 厚 thick，
+ * 輪拱內襯：輪拱切口內側的半圓環擋板（側視半徑 r0–r1、輪心上方 0°–180°），沿 z 厚 thick，
  * 擋住從側面經輪胎與拱緣間隙看進殼內的空腔
  * @type {(x0: number, r0: number, r1: number, z0: number, thick: number) => THREE.BufferGeometry}
  */
@@ -258,7 +257,7 @@ export const owlHushBody = makePolyBody({
   name: '夜梟靜翼策略型',
   style: 'homage',
   phase: 4,
-  // 第六階段分組（shared/design/HOMAGE_RESEARCH.md 第 6 節）
+  // 分組（shared/design/HOMAGE_RESEARCH.md 第 6 節）
   homageSeries: 'lg1',
   form: 'teardrop',
   roof: 'canopy',
@@ -290,7 +289,7 @@ export const owlHushBody = makePolyBody({
       return out;
     })(),
   },
-  // iter-55：眼窩（俯視圓形、深 1.3 mm），槽底放琥珀燈片，上緣加凸出的眉骨
+  // 眼窩（俯視圓形、深 1.3 mm），槽底放琥珀燈片，上緣加凸出的眉骨
   recesses: [{ id: '眼窩 ×2', view: 'top', shape: 'fn', sd: eyeSd, depth: 1.3 }],
   innerSkipRecess: true,
   sideZMin: 28,
@@ -299,7 +298,7 @@ export const owlHushBody = makePolyBody({
     { mat: 'oat', keep: (x, y) => splitY(x) - y },
     // 燕麥米：臉盤（鼻端中央 U 形面）
     { mat: 'oat', keep: (x, y, z) => Math.min(x - 56 - 0.012 * z * z, 24 - Math.abs(z)) },
-    // iter-123（第九階段塗裝：三色分割）：快背後段＋後輪擋泥板頂的深可可「收攏尾羽」，前緣是尖端朝前的箭形（中線 x −14、|z| 30 退到 x −32），
+    // 三色分割塗裝：快背後段＋後輪擋泥板頂的深可可「收攏尾羽」，前緣是尖端朝前的箭形（中線 x −14、|z| 30 退到 x −32），
     // 大面積棕色切成珍珠可可（前）／深可可（後）兩段，配燕麥米下半＝三色
     { mat: 'brow', keep: (x, y, z) => -14 - x - 0.6 * Math.abs(z) },
     { mat: 'cocoa', keep: () => 1 },
@@ -309,7 +308,7 @@ export const owlHushBody = makePolyBody({
   extras: (kit) => {
     const parts = [];
     const top = (x) => kit.surf.topY(x, 0);
-    // 人字羽紋（iter-62，燕麥米，頂面 |z| 15.5–29.5；座艙底與臉盤除外）——每 11 mm 一道粗 V（尖端寬 4.4 mm），尖端朝前、兩臂往外後掠；
+    // 人字羽紋（燕麥米，頂面 |z| 15.5–29.5；座艙底與臉盤除外）——每 11 mm 一道粗 V（尖端寬 4.4 mm），尖端朝前、兩臂往外後掠；
     // 不延伸到擋泥板外側斜面（V 的外臂翻過稜線後側視像肋骨）
     const scales = featherChevrons(11, 22.5, 7, 0.95, 4.4);
     parts.push({
@@ -339,10 +338,10 @@ export const owlHushBody = makePolyBody({
     const drv = buildDriver(10, kit.innerYAt(10) + kit.t, 1.25);
     parts.push({ geometry: drv.body, mat: 'driver', solid: true, name: 'cockpit-driver' });
     parts.push({ geometry: drv.helmet, mat: 'helmet', solid: true, name: 'cockpit-helmet' });
-    // 一對琥珀色大圓「眼」燈（V14，iter-55 改成凹入的燈；iter-125 恢復圓眼並放大到半徑 4.9）：眼窩槽底的琥珀燈片（自發光）
+    // 一對琥珀色大圓「眼」燈（V14，凹入的燈、半徑 4.9）：眼窩槽底的琥珀燈片（自發光）
     const lamp = buildRegion(kit.surf, [...kit.holes, (x, y, z) => -eyeSd(x, y, z)], { offset: -1.3 + 0.08 });
     parts.push({ geometry: lamp.geometry, mat: 'eye', name: 'lamp-eyes' });
-    // iter-125：眼周羽框＝眼窩上後半圈的深可可凸稜（高 0.6 mm）＋往後外斜拉出的細長眼尾羽稜（炫砲用，眼本身仍是大圓）
+    // 眼周羽框＝眼窩上後半圈的深可可凸稜（高 0.6 mm）＋往後外斜拉出的細長眼尾羽稜（炫砲用，眼本身仍是大圓）
     const browReg = buildRegion(kit.surf, [...kit.holes, eyeFrame], { offset: 0.6 });
     parts.push({ geometry: browReg.geometry, mat: 'brow', name: 'eye-brow' });
     parts.push({ geometry: buildRim(browReg, 0, 0.6), mat: 'brow2', name: 'eye-brow-wall' });
@@ -363,7 +362,7 @@ export const owlHushBody = makePolyBody({
       solid: true,
       name: 'beak',
     });
-    // 耳羽（iter-55 放大）：座艙後方左右兩撮三角凸起，高出殼面約 5.6 mm、往後掠、往外傾 10°，根部埋入殼面，側視看得到
+    // 耳羽：座艙後方左右兩撮三角凸起，高出殼面約 5.6 mm、往後掠、往外傾 10°，根部埋入殼面，側視看得到
     const tufts = [];
     for (const sg of [-1, 1]) {
       const zc = sg * 11;
@@ -390,8 +389,8 @@ export const owlHushBody = makePolyBody({
       solid: true,
       name: 'arch-liners',
     });
-    // 低位寬翼（V6 過彎型＝寬翼、V7 翼頂不高於座艙頂）——iter-125（第九階段，評審 iter-123：「側視三層錯開像疊起來的木板」「3 層讀成多段翼」）：
-    // 收成 2 片後掠層疊羽片（像收攏的貓頭鷹初級飛羽），不加端板：
+    // 低位寬翼（V6 過彎型＝寬翼、V7 翼頂不高於座艙頂）：
+    // 2 片後掠層疊羽片（像收攏的貓頭鷹初級飛羽；疊到 3 層時側視像疊起來的木板、會讀成多段翼），不加端板：
     // - 下片長（半展 46.5，琥珀）、上片短（半展 33，燕麥米＋深可可羽尖），上片前緣疊在下片上、片間無縫；
     // - 兩片後緣都是圓頭羽尖（下片每側 3 枚、上片每側 2.5 枚，上片羽尖落在下片兩枚羽尖之間），羽尖之間有 V 形缺口；
     // - 羽尖往下彎 1.2 mm（初級飛羽的下垂羽端）、上片攻角比下片多 4°（往後微張）→ 側視是兩片張開、後緣下垂的羽片，不是平行木板；

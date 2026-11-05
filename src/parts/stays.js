@@ -1,6 +1,6 @@
 // 導輪架（前 / 後）：決定導輪安裝位置（底盤座標，mm）
 // rollerX_mm 為導輪軸到前後軸中點的距離（正值，後導輪架放在 −x）；rollerZ_mm 為導輪軸到車中線的距離
-// 第三階段：FRP / 碳纖板導輪架。板件外形（plate.outline）同時用於質量、干涉檢查、3D 模型（plateGeom.js）
+// FRP / 碳纖板導輪架：板件外形（plate.outline）同時用於質量、干涉檢查、3D 模型（plateGeom.js）
 // 相容性：features 列出這個導輪架提供的安裝點（例如煞車海綿座、後制振器座），選配零件的 compat.requires 要對得上
 import { symmetricOutline, holeRow, plateMass } from './plateGeom.js';
 
@@ -39,8 +39,8 @@ const plateHoles = (sx, outline, rollerX, rollerZ, mountX, rows) => {
 };
 
 // ---- 前導輪板：橫跨車頭的窄長條（深約 10 mm）＋往後鎖在保桿下方的中央舌片（ref_aero-avante-ar 的 FRP 前寬板）----
-// B10（iter-109）：中央舌片在車殼卡榫柱（x ±52／−50、3.2 × 6.4 mm，底盤 3D 模型）處開缺口 [52, 54.2] × [−3.8, 3.8]，
-// 原本舌片壓在柱子底部 0.6 mm（底盤網格干涉診斷 scripts/diag/b10-chassis-mesh.test.js）；缺口尺寸 = 柱子外框＋0.3 mm（推估）
+// B10：中央舌片在車殼卡榫柱（x ±52／−50、3.2 × 6.4 mm，底盤 3D 模型）處開缺口 [52, 54.2] × [−3.8, 3.8]，
+// 不開缺口時舌片會壓進柱子底部 0.6 mm（底盤網格干涉診斷 scripts/diag/b10-chassis-mesh.test.js）；缺口尺寸 = 柱子外框＋0.3 mm（推估）
 const POST_NOTCH_X = 54.2;
 const POST_NOTCH_Z = 3.8;
 const FRONT_FRP_OUTLINE = symmetricOutline(
@@ -84,7 +84,7 @@ const REAR_CARBON_HOLES = plateHoles(-1, REAR_CARBON_OUTLINE, 72, 44.5, 57, [
 ]);
 const REAR_CARBON_T = 1.5;
 
-// ---- 前寬滑動保桿（第五階段 iter-61，TW10 / [T15469]）：2 mm 鋁滑動板（裝前導輪）＋樹脂滑軌（鎖在前保桿下方）＋左右對頂的彈簧 ----
+// ---- 前寬滑動保桿（TW10 / [T15469]）：2 mm 鋁滑動板（裝前導輪）＋樹脂滑軌（鎖在前保桿下方）＋左右對頂的彈簧 ----
 // 滑動板只能相對底盤左右（車身 z）滑動 ±2.5 mm；牆對前導輪的力先經過彈簧再傳到車身（sim.js sliderSpringImpulse / sliderContactImpulses）
 const RHO_ALU = 2.7;
 const RHO_POM = 1.41;
@@ -108,7 +108,7 @@ const railMass = (rail) => ((rail.xMax_mm - rail.xMin_mm) * 2 * rail.halfZ_mm * 
 /** 彈簧、螺絲、擋片等小五金（固定在底盤側，推估） */
 const SLIDE_HARDWARE_G = 1.9;
 
-// ---- 後寬滑動保桿（第五階段 iter-64，TW11 / [T15467]；碳纖板 TW13 / [T15549]）：與前款同構造，整組鏡射到車尾 ----
+// ---- 後寬滑動保桿（TW11 / [T15467]；碳纖板 TW13 / [T15549]）：與前款同構造，整組鏡射到車尾 ----
 // 導輪孔位與高度同 stay-rear-frp（x = −71.5、z = ±42.5，上下兩層導輪 10 / 18 mm）；滑動板外形、滑軌、彈簧座相對導輪孔的位置同前款（推估）
 const REAR_SLIDE_ROLLER_X = 71.5;
 /** 前款外形以導輪孔 x = 74 為準，後款整組平移到 |x| = 71.5（沿用前款外形，左右對稱，推估） */
@@ -333,7 +333,7 @@ export const stayParts = [
       brakeMount: '推估：後保桿中央橋接板下緣（model.js 保桿下緣 y = 5.4 mm）',
     },
   },
-  // B14（iter-107）：VZ 後導輪架（螺絲固定的分件，單層導輪）
+  // B14：VZ 後導輪架（螺絲固定的分件，單層導輪）
   {
     id: 'stay-rear-vz',
     category: 'stay-rear',
@@ -370,7 +370,7 @@ export const stayParts = [
     features: ['rear-brake-mount', 'rear-damper-mount'],
     brakeMount: { xMin_mm: 70, xMax_mm: 83, halfZ_mm: 7, y_mm: BUMPER_BOTTOM_Y - REAR_FRP_T },
     damperMount: { x_mm: -79, z_mm: 0, y_mm: BUMPER_BOTTOM_Y },
-    /** 後配重座：板尾舌片上方（配重 @rear 時鎖在板面上，iter-50；推估位置，與後制振器座同一處，兩者擇一） */
+    /** 後配重座：板尾舌片上方（配重 @rear 時鎖在板面上；推估位置，與後制振器座同一處，兩者擇一） */
     ballastMount: { x_mm: -78, z_mm: 0, y_mm: BUMPER_BOTTOM_Y },
     src: {
       rollerZ_mm: '推估：19 mm 導輪時外緣跨距 104 mm（< 105）',
@@ -399,7 +399,7 @@ export const stayParts = [
     features: ['rear-brake-mount', 'rear-damper-mount'],
     brakeMount: { xMin_mm: 70, xMax_mm: 83, halfZ_mm: 7, y_mm: BUMPER_BOTTOM_Y - REAR_CARBON_T },
     damperMount: { x_mm: -79, z_mm: 0, y_mm: BUMPER_BOTTOM_Y },
-    /** 後配重座：板尾舌片上方（配重 @rear 時鎖在板面上，iter-50；推估位置，與後制振器座同一處，兩者擇一） */
+    /** 後配重座：板尾舌片上方（配重 @rear 時鎖在板面上；推估位置，與後制振器座同一處，兩者擇一） */
     ballastMount: { x_mm: -78, z_mm: 0, y_mm: BUMPER_BOTTOM_Y },
     src: {
       rollerZ_mm: '推估：寬板；13 mm 導輪外緣跨距 102 mm，19 mm 導輪 108 mm 超過規則（由 WIDTH 擋下）',
@@ -425,7 +425,7 @@ export const stayParts = [
     springColor: 0xc8ccd2,
     springSrc: '推估（W 節）：硬（銀）k ≈ 2 N/mm、預壓 2 N——滿行程力約 7 N，與轉彎側向力同量級（「只有很用力才滑、出彎立刻回彈」）',
   }),
-  // iter-63：滑動保桿換 HG 碳纖前寬板 2 mm（15548）＋硬彈簧
+  // 滑動保桿換 HG 碳纖前寬板 2 mm（15548）＋硬彈簧
   slidePart({
     id: 'stay-front-slide-hard-carbon',
     name: '前寬滑動保桿・碳纖板＋硬彈簧（HG 碳纖前寬板 2 mm＋樹脂滑軌，銀色彈簧）',
@@ -435,7 +435,7 @@ export const stayParts = [
     springSrc: '同 stay-front-slide-hard（推估，W 節）',
     carbonPlate: true,
   }),
-  // iter-64：後寬滑動保桿（15467，TW11）＋碳纖後寬板款（15549，TW13＋TW11）；彈簧同前款（AO-1046 [T10321] 前後共用）
+  // 後寬滑動保桿（15467，TW11）＋碳纖後寬板款（15549，TW13＋TW11）；彈簧同前款（AO-1046 [T10321] 前後共用）
   slidePart({
     end: 'rear',
     id: 'stay-rear-slide-soft',

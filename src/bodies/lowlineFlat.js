@@ -1,4 +1,4 @@
-// 低平寬殼（body-lowline-flat，第六階段比賽型，raceType 'low-flat'）：比賽場上「低くワイドなフォルム」低重心殼的寫實呈現——
+// 低平寬殼（body-lowline-flat，比賽型，raceType 'low-flat'）：比賽場上「低くワイドなフォルム」低重心殼的寫實呈現——
 // 全組最低（甲板 y 約 25，最高點是擋風片頂約 29）、最長（150）、最寬（半寬 46）；平面是等寬的圓角長方形，鼻端兩角大圓角；
 // 四輪葉子板頂部開口（甲板上的圓角長方形開口＋外緣葉子板邊條，31 mm 大徑輪胎頂會從開口露出）；小型開放座艙＋低擋風片；車尾平直斷面、無尾翼；側裙下緣是直線。
 // 比賽做法：0.5 mm 真空成形 PC 透明殼，從內側噴漆（shared/reference/BODY_RACE_RESEARCH.md 4.4、7.2 (4)）。
@@ -11,33 +11,33 @@ import { monoTable } from './fastbackCabin.js';
 
 /** @typedef {import('./loft.js').KeepFn} KeepFn */
 
-/** @type {number} 車尾 x（iter-70：−75 → −71，車尾往內收、不蓋在後導輪正上方） */
+/** @type {number} 車尾 x（車尾往內收，不蓋在後導輪正上方） */
 const X_TAIL = -71;
-/** @type {number} 鼻端 x（iter-70：75 → 72，鼻部收斂成圓鼻、不蓋在前導輪正上方） */
+/** @type {number} 鼻端 x（鼻部收斂成圓鼻，不蓋在前導輪正上方） */
 const X_NOSE = 72;
 
 /**
  * 縱向控制表（推估）：
- * - yC：甲板中線。尾端 24.8 → 座艙段 25.6 → 前甲板 25.0（前齒輪箱 y ≤ 21.4 上方留 ≥ 3 mm）→ 鼻端斜降到 17
+ * - yC：甲板中線。尾端 24.8 → 座艙段 25.6 → 前甲板 25.0（前齒輪箱 y ≤ 21.4 上方留 ≥ 3 mm）→ 鼻端緩降到 21.0
  * - hw / ySh：最寬處與肩稜；yLow：側裙下緣（中段 y 10.5 一直線；後輪後方抬高，避開後上導輪頂 20.5）
- * iter-70（評審 iter-68「等寬長方形平板、前後看不出方向、像托盤」）：平面改成
+ * 平面有方向性（等寬長方形平板前後看不出方向、像托盤）：
  * 鼻端圓鼻（x 56 → 72 半寬 44.5 → 21，鼻尖收在前導輪 |z| 36 以內）、車尾收斂（x −62 → −71 半寬 44 → 33）、
  * 前葉子板 46、前後輪之間 44、後葉子板 45（後段略窄於前段，和 halo-orbit 的寬後段拉開俯視 IoU）——仍是全組最寬（92）最低的平甲板，但看得出車頭和車尾
  */
 const T = monoTable([-71, -69, -66, -62, -58, -52, -44, -30, -14, 0, 14, 30, 44, 52, 58, 62, 66, 69, 72], {
-  // iter-106（評審 iter-73／103／104 三輪「鼻端厚圓紅邊」）：原本鼻端最後 10 mm 甲板急降 6 mm（23.0 → 17.0，約 31° 斜坡），整片紅色，正面看就是一道厚圓紅邊。
-  // 改成側面同一套做法延伸到鼻端：甲板只緩降（x 58 → 72：23.9 / 23.0 / 21.4 / 19.6 / 17.0 → 24.2 / 23.7 / 23.0 / 22.2 / 21.0），肩稜貼著甲板（ySh 往上），
-  // 紅色只剩甲板＋1.1 mm 薄唇，唇下到側裙下緣（yLow 不變）全是石墨灰下巴（分色線 splitY 跟著 ySh）→ 正面讀成「薄紅殼蓋在深色底身上」
+  // 鼻端沿用側面同一套做法：甲板只緩降（x 58 → 72：24.2 / 23.7 / 23.0 / 22.2 / 21.0），肩稜貼著甲板，
+  // 紅色只有甲板＋1.1 mm 薄唇，唇下到側裙下緣全是石墨灰下巴（分色線 splitY 跟著 ySh）→ 正面讀成「薄紅殼蓋在深色底身上」；
+  // 甲板在鼻端最後 10 mm 急降（約 31° 斜坡）的話，整片紅色斜坡從正面看是一道厚圓紅邊
   yC: [24.8, 25.3, 25.5, 25.6, 25.6, 25.6, 25.6, 25.6, 25.6, 25.6, 25.6, 25.4, 25.0, 24.6, 24.2, 23.7, 23.0, 22.2, 21.0],
   hw: [33, 38, 41.5, 44, 45, 45, 45, 44.5, 44, 44, 44.5, 45.5, 46, 46, 44.5, 41.5, 36, 30, 21],
   ySh: [22.8, 23.2, 23.4, 23.4, 23.4, 23.4, 23.4, 23.4, 23.4, 23.4, 23.4, 23.2, 22.8, 22.4, 22.1, 21.7, 21.2, 20.6, 19.8],
-  // iter-103（評審 iter-73「鼻端正面仍厚」）：鼻段側裙下緣往上收（x 58 → 69：13.0 / 13.5 / 14.0 / 14.5 → 13.6 / 15.0 / 16.6 / 16.4），鼻端只剩薄唇＋窄裙；離前導輪頂 12.5 的間隙變大
+  // 鼻段側裙下緣往上收（x 58 → 69：13.6 / 15.0 / 16.6 / 16.4），鼻端正面只有薄唇＋窄裙，不顯厚；離前導輪頂 12.5 也留出間隙
   yLow: [22.2, 22.2, 22.0, 21.6, 16.0, 11.5, 10.5, 10.5, 10.5, 10.5, 10.5, 10.5, 10.5, 11.5, 13.6, 15.0, 16.6, 16.4, 15.0],
 });
 
-/** @type {number} 外緣薄唇的厚度（iter-73，肩稜往下 1.1 mm 就往內收） */
+/** @type {number} 外緣薄唇的厚度（肩稜往下 1.1 mm 就往內收） */
 const LIP_T = 1.1;
-/** @type {number} 側面號碼圓底中心高度（iter-73：19.8 → 16.4，落在內收側裙的垂直段） */
+/** @type {number} 側面號碼圓底中心高度（落在內收側裙的垂直段） */
 const ROUNDEL_Y = 16.4;
 
 /** @type {number[]} 前後輪軸 x */
@@ -61,7 +61,7 @@ const fenderFactor = (x) => {
 };
 
 /**
- * 甲板中段起伏係數（iter-103，評審 iter-73「甲板中段仍平」）：前後輪之間 1，靠近輪軸、鼻端、車尾漸減到 0
+ * 甲板中段起伏係數（讓甲板中段不是一片平板）：前後輪之間 1，靠近輪軸、鼻端、車尾漸減到 0
  * @type {(x: number) => number}
  */
 const deckFactor = (x) => {
@@ -96,9 +96,9 @@ const STATIONS = (() => {
     const zCr = Math.min(31, 0.7 * hw);
     const zOut = hw - 1.6;
     const yCr = yC - 0.4 + FENDER_RISE * f;
-    // iter-73（評審 iter-72「鼻、尾、側緣都是厚而方的邊，像托盤」）：外緣改成薄唇＋下沿內收倒角——
+    // 外緣是薄唇＋下沿內收倒角（鼻、尾、側緣若是厚而方的邊會像托盤）——
     // 唇口只比肩稜低 LIP_T（側視 1.1 mm 厚的薄邊），唇下側裙往內收 tuckIn（最多 2.6 mm）再垂直往下，
-    // 唇下形成一道陰影線；俯視最外緣仍是 hw（俯視輪廓不變）
+    // 唇下形成一道陰影線；俯視最外緣仍是 hw（不影響俯視輪廓）
     const yLip = Math.max(ySh - LIP_T, yLow + 0.3);
     const tuckIn = Math.min(2.6, 0.06 * hw);
     const yChamfer = Math.max(yLip - 1.6, yLow + 0.2);
@@ -139,7 +139,7 @@ const COCKPIT = {
 };
 
 /**
- * 鼻端頭燈凹槽（iter-103，評審 iter-73「鼻端白色燈片太平」）：俯視細長圓角梯形，深 0.9 mm，槽內放透明燈片
+ * 鼻端頭燈凹槽（讓燈片有深度，不是貼平的白片）：俯視細長圓角梯形，深 0.9 mm，槽內放透明燈片
  * @type {{ id: string, view: 'top', shape: 'poly', pts: number[][], depth: number }[]}
  */
 const HEADLAMP_RECESSES = [1, -1].map((sg) => ({
@@ -151,10 +151,10 @@ const HEADLAMP_RECESSES = [1, -1].map((sg) => ({
 }));
 
 /**
- * 側裙分色：石墨灰下身 / 深紅上身的分色線（直線，y 17.2；鼻端與尾端沿外形收）
+ * 側裙分色：石墨灰下身 / 深紅上身的分色線（在薄唇正下方，跟著肩稜 ySh 走）
  * @type {(x: number) => number}
  */
-// iter-73：分色線從 y 17.2 抬到薄唇正下方——深紅只留甲板＋薄唇，唇下內收的側裙整段石墨灰，讀成「薄殼蓋在深色底身上」
+// 深紅只留甲板＋薄唇，唇下內收的側裙整段石墨灰，讀成「薄殼蓋在深色底身上」
 const splitY = (x) => T('ySh', x) - LIP_T - 0.3;
 
 /**
@@ -172,7 +172,7 @@ const buildWindscreen = (x0, y0) => {
     pth.quadraticCurveTo(-hwT - 0.6, dy + h * 0.9, -hwB, dy);
     return pth;
   };
-  // iter-70（評審：擋風片只是一條細片）：高 6.4 → 9.6、底寬 21 → 22
+  // 高 9.6、底寬 22（太矮會只是一條細片）
   const outer = outline(11, 9.2, 9.6, 0);
   outer.holes.push(outline(10, 8.2, 8.4, 0.6));
   /** @type {(g: THREE.BufferGeometry) => THREE.BufferGeometry} shape 在 (z, y) 平面 → x 為厚度方向，再往後傾 */
@@ -213,7 +213,7 @@ export const lowlineFlatBody = makePolyBody({
   id: 'body-lowline-flat',
   name: 'PC 低平寬開放座艙殼',
   style: 'race',
-  // 第六階段分組（shared/reference/BODY_RACE_RESEARCH.md 4.4、7.2 (4)）
+  // 比賽型分類（shared/reference/BODY_RACE_RESEARCH.md 4.4、7.2 (4)）
   raceType: 'low-flat',
   form: 'low-wide',
   roof: 'open-cockpit',
@@ -224,7 +224,7 @@ export const lowlineFlatBody = makePolyBody({
   wallThickness_mm: 0.5,
   stations: STATIONS,
   tuck: 0.8,
-  // 平滑剖面；肩稜（第 6 點）、薄唇下緣（第 7 點）、內收倒角底（第 8 點）為銳利稜線（iter-73）
+  // 平滑剖面；肩稜（第 6 點）、薄唇下緣（第 7 點）、內收倒角底（第 8 點）為銳利稜線
   hard: [6, 7, 8],
   // 葉子板頂開口（俯視圓角長方形，x 輪軸 ±13.8、|z| 21.5–37.2、圓角 R3）＋側面輪拱（R17.6、只開到 y 21.2）：
   // 甲板外緣 |z| 37.2–46 留一條葉子板邊條跨過輪胎（離 31 mm 輪胎外側 34.75 有 2.45 mm），31 mm 輪胎頂從甲板開口露出
@@ -252,9 +252,8 @@ export const lowlineFlatBody = makePolyBody({
     { mat: 'red', keep: () => 1 },
   ],
   mats: { inner: 'inner', edge: 'edge', cap: 'graphite2', recess: 'tub', recessWall: 'tubWall', mount: 'mount' },
-  // iter-110（評審 iter-106「黑色鼻面兩端是垂直切口，沒有繞到側面；正面紅黑分界沒有白線」）：
-  // 前封口原本整片石墨灰（從甲板頂到底），側面卻只有分色線以下是灰 → 鼻角變成垂直切口。
-  // 改成照側面同一條分色線分段：上段深紅（薄唇）、白色細線（同側面 decal-side-pinstripe 的 y 範圍）、下段石墨灰下巴
+  // 前封口照側面同一條分色線分段：上段深紅（薄唇）、白色細線（同側面 decal-side-pinstripe 的 y 範圍）、下段石墨灰下巴；
+  // 前封口整片石墨灰的話，側面只有分色線以下是灰，鼻角會變成垂直切口，正面紅黑分界也沒有白線
   capFrontBands: [
     { yMin: splitY(72) + 0.4, mat: 'red' },
     { yMin: splitY(72) - 0.2, mat: 'whiteDecal' },
@@ -267,7 +266,7 @@ export const lowlineFlatBody = makePolyBody({
     const ws = buildWindscreen(13.2, T('yC', 13) - 0.6);
     parts.push({ geometry: ws.glass, mat: 'glass', solid: true, outline: true, renderOrder: 3, name: 'windscreen' });
     parts.push({ geometry: ws.frame, mat: 'frame', solid: true, outline: true, name: 'windscreen-frame' });
-    // 座艙圍邊（iter-70，評審：座艙太小、幾乎看不見）：沿座艙槽外緣 0.9 mm 一圈黑色橢圓斷面圍邊（高 1.3 mm）
+    // 座艙圍邊（座艙小，加圍邊才看得見）：沿座艙槽外緣 0.9 mm 一圈黑色橢圓斷面圍邊（高 1.3 mm）
     /** @type {number[][]} */
     const rimPts = [];
     const half = COCKPIT.pts.slice(0, -1);
@@ -296,11 +295,11 @@ export const lowlineFlatBody = makePolyBody({
       name: 'decal-twin-pinstripes',
     });
     // 側面白色細分色線（沿石墨灰 / 深紅分色線）
-    // iter-110（評審 iter-110「白線在鼻角斷開」）：原本只畫 |z| ≥ 30，鼻端半寬收到 21–30 mm 那段沒有線 →
-    // 改成只排除離側緣 5 mm 以內以外的區域（分色線所在的側裙離側緣 ≤ 2.6 mm），一路畫到鼻端，接上前封口的白線
+    // 只畫離側緣 5 mm 以內的區域（分色線所在的側裙離側緣 ≤ 2.6 mm），一路畫到鼻端，接上前封口的白線；
+    // 用固定的 |z| ≥ 30 篩選的話，鼻端半寬收到 21–30 mm 那段沒有線，白線會在鼻角斷開
     parts.push({ geometry: kit.decal((x, y, z) => (Math.abs(z) < T('hw', x) - 5 ? -1 : 0.3 - Math.abs(y - splitY(x) - 0.1))), mat: 'whiteDecal', name: 'decal-side-pinstripe' });
-    // iter-73：側面號碼圓底下移到唇下內收側裙的垂直段（y 16.4），不跨過倒角折線
-    // 號碼 42（iter-70：88 和 aero-wing 重號 → 42）：側面白色圓形號碼底＋黑字（前後輪拱之間）；前甲板黑字（雙細線外側）
+    // 側面號碼圓底放在唇下內收側裙的垂直段（y 16.4），不跨過倒角折線
+    // 號碼 42（不用 88，避免和 aero-wing 重號）：側面白色圓形號碼底＋黑字（前後輪拱之間）；前甲板黑字（雙細線外側）
     const roundel = (u, v) => Math.hypot(u, v) - 3.4;
     parts.push({ geometry: kit.decal(sideDecal(roundel, { x0: 0, y0: ROUNDEL_Y, zMin: 30 })), mat: 'whiteDecal', name: 'decal-number-roundel' });
     parts.push({
@@ -317,7 +316,7 @@ export const lowlineFlatBody = makePolyBody({
       mat: 'whiteDecal',
       name: 'decal-number-plate-top',
     });
-    // 鼻端頭燈（iter-103）：凹槽裡的透明燈片（槽底往上 0.35 mm，沿鼻端斜面傾斜），槽壁深色 → 看得出深度
+    // 鼻端頭燈：凹槽裡的透明燈片（槽底往上 0.35 mm，沿鼻端斜面傾斜），槽壁深色 → 看得出深度
     const lens = [1, -1].map((sg) => {
       const x0 = 66.4;
       const z0 = sg * 21;

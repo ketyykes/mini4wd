@@ -1,4 +1,4 @@
-// 第三階段：新零件的物理效果（P17）與干涉 / 安裝相容性（P18），定義見 SPEC.md 第 2 部分與 GOAL.md「驗證標準」
+// 新零件的物理效果（P17）與干涉 / 安裝相容性（P18），定義見 SPEC.md 第 2 部分與 GOAL.md「驗證標準」
 // 容許誤差寫在本檔並附理由，不得為通過而放寬。
 // 所有替換只透過組裝設定（configs/*.json 或 slot 覆寫），模擬與規則檢查都用 src/ 的同一套程式（網頁也用這一套）。
 import { describe, test, expect, beforeAll } from 'vitest';
@@ -212,9 +212,9 @@ describe('P17 新零件的物理效果（只透過組裝設定替換）', () => 
     expect(ra.minUp).toBeGreaterThan(0.8);
     // 接觸剛性較大 → 同樣的壓入量法向力較大 → 摩擦功較多（PARTS_RESEARCH AE 節已預期差異很小）
     expect(ra.spongeWork).toBeGreaterThan(rb.spongeWork);
-    // 坡底後速度：iter-87 查證後由「碳纖 ≤ FRP」改為「差異 < 0.05%」。理由：碳纖架整車重 0.28 g（138.67 vs 138.39 g），
+    // 坡底後速度：期望值是「差異 < 0.05%」而不是「碳纖 ≤ FRP」（查證紀錄：ITERATION_LOG iter-87）。理由：碳纖架整車重 0.28 g（138.67 vs 138.39 g），
     // 空氣阻力造成的減速度小約 0.2%，和海綿多做的約 0.3 mJ 負功同數量級，方向不定——舊模型（L3 之前）把初速改成 2.48 / 2.49 / 2.51 / 2.52 m/s，
-    // 4 組都是碳纖較快（+0.11–0.29 mm/s），原斷言只在剛好 2.5 m/s 時成立（ITERATION_LOG iter-87）
+    // 4 組都是碳纖較快（+0.11–0.29 mm/s），「碳纖 ≤ FRP」只在剛好 2.5 m/s 時成立
     expect(Math.abs(ra.vAfter - rb.vAfter) / rb.vAfter).toBeLessThan(0.0005);
   }, 180000);
 
@@ -263,7 +263,7 @@ describe('P17 新零件的物理效果（只透過組裝設定替換）', () => 
     expect(carbon.partsBySlot.frontStay.slide.plateMass_g / alu.partsBySlot.frontStay.slide.plateMass_g).toBeCloseTo(1.6 / 2.7, 9);
     expect(Math.abs(alu.slider.mass_g - carbon.slider.mass_g - dPlate)).toBeLessThan(1e-9);
     expect(Math.abs(alu.mass_g - carbon.mass_g - dPlate)).toBeLessThan(1e-9);
-    // 撞牆角度同 P17_slide_bumper 的 5°、2.5 m/s（iter-86 稽核 M1：原本 10° 的擺法已插進對側牆）
+    // 撞牆角度同 P17_slide_bumper 的 5°、2.5 m/s（稽核 M1：10° 的擺法會插進對側牆；查證紀錄：ITERATION_LOG iter-86）
     const rF = slideWallImpact(frpAsm, 5, 2.5);
     const rA = slideWallImpact(alu, 5, 2.5);
     const rC = slideWallImpact(carbon, 5, 2.5);
@@ -332,9 +332,9 @@ describe('P17 新零件的物理效果（只透過組裝設定替換）', () => 
     const rubberMu05 = corner({ rollers: { base: 'roller-19-rubber', wallFriction: 0.05 } });
     const plasticMu05 = corner({ rollers: { base: 'roller-19-plastic-ring', wallFriction: 0.05 } });
     console.log(`[P17] 4 s 前進距離 / 彎道平均速度：塑膠環 ${f3(plastic.dist)} m / ${f3(plastic.arcV)}、鋁 19 ${f3(alu.dist)} / ${f3(alu.arcV)}、橡膠環 ${f3(rubber.dist)} / ${f3(rubber.arcV)}；對照 μ=0.05：橡膠環款 ${f3(rubberMu05.dist)} / ${f3(rubberMu05.arcV)}、塑膠環款 ${f3(plasticMu05.dist)} / ${f3(plasticMu05.arcV)}`);
-    // iter-105（B13）：μ 改成實測（[M4S-R]：19mm 塑膠環碟形 0.0031、HG 19mm 鋁 0.002675；橡膠環推估 0.00535）。
-    // 實測下三款的 μ 只差約 0.003，彎道速度差 < 0.2%，主要來自導輪質量與尺寸不同（塑膠環 > 鋁 > 橡膠環的彎道速度仍成立，但 4 s 距離不再單調），
-    // 原本「塑膠環 < 鋁 < 橡膠環」的跨款排序來自舊推估（0.03 / 0.05 / 0.10）。改成控制變因：同一顆導輪只換 μ，μ 越小過彎越快、走得越遠
+    // B13：μ 用實測值（[M4S-R]：19mm 塑膠環碟形 0.0031、HG 19mm 鋁 0.002675；橡膠環推估 0.00535）。
+    // 實測下三款的 μ 只差約 0.003，彎道速度差 < 0.2%，主要來自導輪質量與尺寸不同（塑膠環 > 鋁 > 橡膠環的彎道速度仍成立，但 4 s 距離不單調），
+    // 所以期望值不是「塑膠環 < 鋁 < 橡膠環」的跨款排序（那來自舊推估 0.03 / 0.05 / 0.10），而是控制變因：同一顆導輪只換 μ，μ 越小過彎越快、走得越遠（查證紀錄：ITERATION_LOG iter-105）
     const rubberAtPlasticMu = corner({ rollers: { base: 'roller-19-rubber', wallFriction: getPart('roller-19-plastic-ring').wallFriction } });
     expect(getPart('roller-19-rubber').wallFriction).toBeGreaterThan(getPart('roller-19-plastic-ring').wallFriction);
     // 橡膠環的煞車效果：同一顆橡膠環導輪，μ 換成塑膠環的值就變快
@@ -363,7 +363,7 @@ describe('P17 新零件的物理效果（只透過組裝設定替換）', () => 
     expect(w({ rollers: 'roller-17-alu' })).toBeGreaterThan(w({}));
     expect(w({ rollers: 'roller-17-alu' })).toBeLessThan(w({ rollers: 'roller-19' }));
 
-    // iter-64：另外兩款塑膠環導輪（同 μ 0.03）：17 mm 塑膠環外框同 17 mm 全鋁；19 mm 碟形塑膠環與 19 mm 塑膠環同直徑同 μ、較輕 → 過彎不比鋁 19 mm 慢
+    // 另外兩款塑膠環導輪（同 μ 0.03）：17 mm 塑膠環外框同 17 mm 全鋁；19 mm 碟形塑膠環與 19 mm 塑膠環同直徑同 μ、較輕 → 過彎不比鋁 19 mm 慢
     expect(w({ rollers: 'roller-17-plastic-ring' })).toBe(w({ rollers: 'roller-17-alu' }));
     const dish = corner({ rollers: 'roller-19-plastic-ring-dish' });
     console.log(`[P17] 19 mm 碟形塑膠環：4 s 前進 ${f3(dish.dist)} m、彎道均速 ${f3(dish.arcV)} m/s`);
@@ -372,7 +372,7 @@ describe('P17 新零件的物理效果（只透過組裝設定替換）', () => 
   }, 180000);
 
   test('P17_phase5_motor_tire_damper 第五階段（台灣買得到）：Rev-Tuned 2 PRO 高轉速低扭力；31 mm 低摩擦胎直線同標準 31 mm、過彎側滑損失較小；MA 側制振器組只有配重會滑動', () => {
-    // 不裝 iter-55 會變動的致敬車殼：用比賽型 pc-box（31 mm 輪合法）
+    // 不裝致敬車殼：用比賽型 pc-box（31 mm 輪合法）
     const base = { body: 'body-pc-box' };
     /** @type {(over: Record<string, any>) => any} */
     const A = (over) => {
@@ -425,13 +425,12 @@ describe('P17 新零件的物理效果（只透過組裝設定替換）', () => 
     expect(Math.abs(s31lf - s31) / s31).toBeLessThan(0.005);
     expect(d31lf).toBeGreaterThan(d31);
 
-    // iter-90: displayed 35×6.5×1.5 mm FRP plates + four hollow Al spacers.
     // Only the two brass weights move; hardware stays fixed on the chassis.
     const noD = assemble(cfg({ body: null }));
     const d32 = assemble(cfg({ body: null, massDamper: 'damper-side-square-32' }));
     const movable = d32.movable.reduce((sum, m) => sum + m.mass_g, 0);
     console.log(`[P17] 側制振器組：總重 ${f3(noD.mass_g)} → ${f3(d32.mass_g)} g，可滑動 ${f3(movable)} g（${d32.movable.length} 顆）`);
-    // iter-111 外掛式：側板 19 mm 長、z 36.4 → 47.25（配重中心 44＋3.25），不用墊管；座墊長同側板
+    // 外掛式側座：側板 19 mm 長、z 36.4 → 47.25（配重中心 44＋3.25），不用墊管；座墊長同側板（查證紀錄：ITERATION_LOG iter-111）
     const plateMass = 19 * (44 + 3.25 - 36.4) * 1.5 * 1.85 / 1000;
     const padMass = 19 * 6 * 1 * 0.12 / 1000;
     expect(Math.abs(d32.mass_g - noD.mass_g - 2 * (8.3 + plateMass + padMass))).toBeLessThan(1e-6);
@@ -516,10 +515,10 @@ describe('P17 新零件的物理效果（只透過組裝設定替換）', () => 
     for (const [name, over, opt] of /** @type {[string, any, { sumVy?: boolean }?][]} */ ([
       ['後制振器', { rearStay: 'stay-rear-frp', massDamper: 'damper-rear-cylinder' }],
       ['側制振器', { massDamper: 'damper-side-square' }],
-      // 第五階段（iter-58）：MA 側制振器組 6×6×32 mm（FRP 側板固定在底盤，只有黃銅方塊滑動）；不裝車殼（側制振器與多數車殼干涉，見 P18）
+      // MA 側制振器組 6×6×32 mm（FRP 側板固定在底盤，只有黃銅方塊滑動）；不裝車殼（側制振器與多數車殼干涉，見 P18）
       ['MA 側制振器組 32 mm', { massDamper: 'damper-side-square-32', body: null }],
-      // 第七階段（iter-75）：8×8×14 側制振器、球頭連桿擺動式（擺動剛體；不裝車殼）。重型 8.8 g 另見 P17_heavy_damper
-      // iter-83：8×8×14 的 Σ|v_y| 在落下高度 60–140 mm 掃描中可滑動 / 鎖死 3 勝 4 負（平手，iter-75 那次是剛好有利的高度），
+      // 8×8×14 側制振器、球頭連桿擺動式（擺動剛體；不裝車殼）。重型 8.8 g 另見 P17_heavy_damper
+      // 8×8×14 的 Σ|v_y| 在落下高度 60–140 mm 掃描中可滑動 / 鎖死 3 勝 4 負（平手，單一高度的結果只是剛好有利或不利），
       // 彈起（0.374–0.378 vs 0.501–0.511 mm）與滯空（6.5–6.8 vs 11.3–12.5 ms）7 個高度都穩定 → 這款不比 Σ|v_y|（理由見 ITERATION_LOG iter-83）
       ['側制振器 8×8×14', { massDamper: 'damper-square-8x8x14', body: null }, { sumVy: false }],
       ['側制振器 8×8×32（iter-80）', { massDamper: 'damper-square-8x8x32', body: null }],
@@ -553,7 +552,7 @@ describe('P17 新零件的物理效果（只透過組裝設定替換）', () => 
   }, 120000);
 
   test('P17_heavy_damper 重型制振器 8.8 g（行程 3 mm，推估）：可滑動時彈跳滯空比鎖死短、質量守恆、斷電滑行動能不增；第一個彈跳峰值不要求較低（見說明）', () => {
-    // 說明（iter-75 實測，ITERATION_LOG 記錄）：8.8 g 配重在 3 mm 行程內晚一步落回座墊、把車體再往上推一次，
+    // 說明（實測；查證紀錄：ITERATION_LOG iter-75）：8.8 g 配重在 3 mm 行程內晚一步落回座墊、把車體再往上推一次，
     // 以「系統質心」量的第一個彈跳峰值反而比鎖死高（0.532 vs 0.494 mm），換 1–5 mm 行程結果不單調；這是模型結果，不調參數去配合。
     // 這裡只檢查物理上一定成立的性質：質量守恆、滯空較短（落地後配重的衝量讓車輪較快回到地面）、能量不增
     const over = { rearStay: 'stay-rear-frp', massDamper: 'damper-heavy' };
@@ -1012,9 +1011,9 @@ describe('P17 新零件的物理效果（只透過組裝設定替換）', () => 
   }, 300000);
 
   test('P17_coast_energy 斷電滑行時整車總機械能單調不增（含制振器、擺動式制振器、煞車海綿、前後滑動保桿、單向輪的組裝）', () => {
-    // iter-86 稽核 L7：原本只量動能（位能與動能互換的起伏要靠容許值吸收）、初速時沒設傳動系 ω、沒有滑動保桿組裝 →
-    // 改量總機械能（動能＋重力位能＋射線輪 / 制振器座墊 / 滑動保桿 / 煞車海綿的彈簧位能，見 carMechanicalEnergy），
-    // 傳動系 ω = v / r（起始時輪子與車速一致，不會先有一次非彈性耦合），並加入 p5-taiwan、p7-parts、前後軟滑動保桿
+    // 稽核 L7（查證紀錄：ITERATION_LOG iter-86）：只量動能的話，位能與動能互換的起伏要靠容許值吸收 →
+    // 量總機械能（動能＋重力位能＋射線輪 / 制振器座墊 / 滑動保桿 / 煞車海綿的彈簧位能，見 carMechanicalEnergy），
+    // 初速時傳動系 ω = v / r（起始時輪子與車速一致，不會先有一次非彈性耦合），組裝包含 p5-taiwan、p7-parts、前後軟滑動保桿
     // 容許值：相鄰兩步總機械能增加量 ≤ 1e-7 J（約初始能量 0.5 J 的 2×10⁻⁷）。
     // 理由：稽核 A 量到靜置後給初速的情境四組都是 0.000 µJ；真的「自己加速」（例如阻力方向錯誤）會是每步 1e-4 J 以上，遠大於此值
     const TOL_J = 1e-7;
@@ -1079,12 +1078,12 @@ describe('P17 新零件的物理效果（只透過組裝設定替換）', () => 
 });
 
 // ---------------------------------------------------------------------------
-// P17（第四階段 iter-54）：傳動系轉動慣量、新馬達、電池、輪胎 / 輪框、低電阻端子、中空輪軸
+// P17：傳動系轉動慣量、新馬達、電池、輪胎 / 輪框、低電阻端子、中空輪軸
 // ---------------------------------------------------------------------------
 
 /**
  * 解析對照：沿直線的一維縱向運動 (m + J/r²)·dv/dt = F_q(v) − 空氣阻力，F_q 用與模擬相同的 longitudinalForce（同一套動力鏈程式），
- * 以 RK4 積分到 t 秒（電池不放電，同 launch()）。J = 0 時就是第三階段的準靜態模型
+ * 以 RK4 積分到 t 秒（電池不放電，同 launch()）。J = 0 時就是準靜態模型
  * @type {(asm: any, seconds: number, J: number) => number}
  */
 function launchTheory(asm, seconds, J) {
@@ -1122,7 +1121,7 @@ describe('P17 第四階段零件的物理效果（只透過組裝設定替換）
     const a40 = assemble(cfg({ gear: 'gear-4.0' }));
     expect(a40.spec.spin.reflected_gmm2.motor / sp.reflected_gmm2.motor).toBeCloseTo((4.0 / 3.5) ** 2, 9);
 
-    // 起步 0.3 s：模擬速度與 (m + J/r²) 的解析解比較（容許 3%：射線輪的接地彈簧與前後輪載重轉移造成的差異，第三階段 P01 量到 < 1%）；
+    // 起步 0.3 s：模擬速度與 (m + J/r²) 的解析解比較（容許 3%：射線輪的接地彈簧與前後輪載重轉移造成的差異，P01 量到 < 1%）；
     // 並且要比 J = 0 的解析解更接近模擬（確認轉動慣量確實進入模擬，不是只算了數字）
     const T = 0.3;
     const simV = launch(asm, T).vEnd;
@@ -1282,7 +1281,7 @@ describe('P17 第四階段零件的物理效果（只透過組裝設定替換）
 });
 
 /**
- * 側傾貼牆測試（第四階段穩定零件）：直線賽道上把車體繞前進軸（x）往右牆（+z）側傾 rollDeg、車頭往牆偏 5°（像彎道中前導輪先貼牆，後導輪離牆約 12 mm），
+ * 側傾貼牆測試（穩定零件）：直線賽道上把車體繞前進軸（x）往右牆（+z）側傾 rollDeg、車頭往牆偏 5°（像彎道中前導輪先貼牆，後導輪離牆約 12 mm），
  * 抬高到右側車輪剛好不陷入地面，橫向擺到「導輪 / 穩定零件最外緣」離牆面 0.3 mm，再給 0.3 m/s 的朝牆速度，跑 30 ms（斷電）。
  * 回傳穩定零件的接觸步數與最大法向力、導輪是否碰牆
  * @type {(asm: any, rollDeg: number) => { stabSteps: number, stabMaxN: number, rollerHit: boolean }}
@@ -1470,7 +1469,7 @@ describe('P17 第四階段接觸零件（穩定零件、錐形導輪）', () => 
         r.tiers = r.tiers.map((tier) => ({ ...tier, wallFriction: 0 }));
       }
       const vy0 = car.chassis.linvel().y;
-      // iter-105（B13）：導輪軸向（上下）滑動摩擦用 spec.track.wallFriction，這個案例只看幾何法向 → 一起歸零
+      // B13：導輪軸向（上下）滑動摩擦用 spec.track.wallFriction，這個案例只看幾何法向 → 一起歸零
       const axial0 = spec.track.wallFriction;
       spec.track.wallFriction = 0;
       try {
@@ -1688,7 +1687,7 @@ function expectedClearanceCodes(asm) {
   if (asm.optional.ballast) {
     items.push({ group: 'ballast', solid: asm.optional.ballast.solid });
   }
-  // 第四階段：穩定零件（前導輪上方的圓柱）
+  // 穩定零件（前導輪上方的圓柱）
   for (const st of asm.optional.stabilizers ?? []) {
     items.push({ group: 'stabilizer', solid: st.solid });
   }
@@ -1829,7 +1828,7 @@ function slotOptions() {
 }
 
 const CLEARANCE_RE = /_CLEARANCE$/;
-// B14（iter-107）：新增 CHASSIS_COMPAT（零件只適用某些底盤，parts/chassisCompat.js）
+// B14：CHASSIS_COMPAT（零件只適用某些底盤，parts/chassisCompat.js）
 const COMPAT_CODES = new Set(['GEAR_CHASSIS', 'MOUNT_COMPAT', 'MOTOR_CLASS', 'CHASSIS_COMPAT']);
 
 describe('P18 干涉與安裝相容性', () => {
@@ -1857,13 +1856,13 @@ describe('P18 干涉與安裝相容性', () => {
       { over: { rearStay: 'stay-rear-frp', frontStay: 'stay-front-frp', rollers: 'roller-19', massDamper: 'damper-rear-cylinder' }, codes: ['LENGTH'] },
       // FRP 後導輪板的臂靠近後輪：換 31 mm 大徑輪會碰到（車殼是否也干涉依車殼輪拱而定，只要求包含 STAY_TIRE_CLEARANCE）
       { over: { rearStay: 'stay-rear-frp', wheels: 'wheel-31-large' }, contains: 'STAY_TIRE_CLEARANCE' },
-      // ---- 第四階段（iter-54）----
+      // ---- 疊片加厚端子、31 mm 拱形胎、穩定零件、錐形導輪 ----
       { over: { switch: 'switch-double-terminal' }, codes: ['TERMINAL_MOD'] },
       { over: { rearStay: 'stay-rear-frp', wheels: 'wheel-31-arched' }, contains: 'STAY_TIRE_CLEARANCE' },
       { over: { stabilizer: 'stabilizer-head-17', body: null }, codes: ['STABILIZER_ROLLER_SIZE'] },
       { over: { rollers: 'roller-13-tapered', body: null }, codes: ['ROLLER_TAPER_MOUNT'] },
       { over: { stabilizer: 'stabilizer-head-17', rollers: 'roller-19', body: 'body-aero-wing' }, codes: ['STABILIZER_BODY_CLEARANCE'] },
-      // ---- 第五階段（iter-56）：前後導輪分開選 ----
+      // ---- 前後導輪分開選 ----
       { over: { frontRollers: 'roller-19-tapered', rearRollers: 'roller-13-alu', frontStay: 'stay-front-frp', rearStay: 'stay-rear-frp' }, codes: ['LENGTH'] },
       { over: { frontRollers: 'roller-19-tapered', rearRollers: 'roller-13-alu' }, codes: ['ROLLER_TAPER_MOUNT'] },
       { over: { rearRollers: 'roller-13-tapered', frontStay: 'stay-front-frp' }, codes: ['ROLLER_TAPER_MOUNT'] },
@@ -1872,17 +1871,17 @@ describe('P18 干涉與安裝相容性', () => {
       { over: { stabilizer: 'stabilizer-head-17', frontRollers: 'roller-13', rearRollers: 'roller-19', body: null }, codes: ['STABILIZER_ROLLER_SIZE'] },
       // 舊欄位 rollers 視為前後同款
       { over: { rollers: 'roller-19-tapered' }, codes: ['ROLLER_TAPER_MOUNT'] },
-      // ---- 第五階段（iter-57）：台灣買得到的導輪 ----
+      // ---- 台灣買得到的導輪 ----
       { over: { stabilizer: 'stabilizer-head-17', frontRollers: 'roller-17-alu', body: null }, codes: ['STABILIZER_ROLLER_SIZE'] },
       { over: { rearStay: 'stay-rear-carbon-wide', rearRollers: 'roller-19-rubber' }, codes: ['WIDTH'] },
-      // ---- 第五階段（iter-58）----
-      // 側制振器加長到 60 mm（自訂）→ 伸進前 / 後輪的輪胎外側禁裝區（官方 Sec.3 腳註）且碰到輪胎
-      // iter-111 外掛式側座：配重在輪胎外側面外 6.75 mm，加長只進禁裝區、不碰輪胎
+      // ---- 側制振器 ----
+      // 側制振器加長到 60 mm（自訂）→ 伸進前 / 後輪的輪胎外側禁裝區（官方 Sec.3 腳註）
+      // 外掛式側座：配重在輪胎外側面外 6.75 mm，加長只進禁裝區、不碰輪胎（查證紀錄：ITERATION_LOG iter-111）
       { over: { massDamper: { base: 'damper-side-square-32', length_mm: 60 }, body: null }, codes: ['SIDE_PART_TIRE_ZONE'] },
-      // iter-111 外掛式側座（配重在側壁外、貼近底盤底面）：aero-wing 側裙已不碰；改用側裙最寬的 halo-orbit（14 mm 款在 aero-wing 仍合法，見下方合法對照）
+      // 外掛式側座（配重在側壁外、貼近底盤底面）碰不到 aero-wing 的側裙，所以用側裙最寬的 halo-orbit 檢查（14 mm 款在 aero-wing 合法，見下方合法對照；查證紀錄：ITERATION_LOG iter-111）
       { over: { massDamper: 'damper-side-square-32', body: 'body-halo-orbit' }, codes: ['DAMPER_BODY_CLEARANCE'] },
       { over: { massDamper: 'damper-side-square', body: 'body-halo-orbit' }, codes: ['DAMPER_BODY_CLEARANCE'] },
-      // ---- 第七階段（iter-75）：新制振器 ----
+      // ---- 制振器（球頭連桿、重型、8×8×14）----
       // 球頭連桿、重型制振器要裝在後導輪板的制振器座（標準塑膠後架沒有）
       { over: { massDamper: 'damper-balllink-square' }, codes: ['MOUNT_COMPAT'] },
       { over: { massDamper: 'damper-heavy' }, codes: ['MOUNT_COMPAT'] },
@@ -1890,21 +1889,21 @@ describe('P18 干涉與安裝相容性', () => {
       { over: { rearStay: 'stay-rear-frp', massDamper: 'damper-balllink-square', ballast: 'ballast-hex-1g@rear' }, codes: ['BALLAST_DAMPER_CLEARANCE'] },
       // 擺動掃過的範圍碰到 mantis 車殼尾部
       { over: { rearStay: 'stay-rear-frp', massDamper: 'damper-balllink-square', body: 'body-mantis-scythe' }, codes: ['DAMPER_BODY_CLEARANCE'] },
-      // 8×8 方塊比 6×6 寬 2 mm、高 2 mm → 碰到 halo-orbit 車殼側裙（iter-111 外掛式座後 owl-hush 裝得下；6×6×14 在 aero-wing 合法，見合法對照）
+      // 8×8 方塊比 6×6 寬 2 mm、高 2 mm → 碰到 halo-orbit 車殼側裙（外掛式側座在 owl-hush 裝得下；6×6×14 在 aero-wing 合法，見合法對照；查證紀錄：ITERATION_LOG iter-111）
       { over: { massDamper: 'damper-square-8x8x14', body: 'body-halo-orbit' }, codes: ['DAMPER_BODY_CLEARANCE'] },
-      // ---- 第七階段（iter-76）：雙層導輪、31 mm 新輪胎 ----
+      // ---- 雙層導輪、31 mm 輪胎 ----
       { over: { rearRollers: 'roller-13-12-alu-double' }, codes: ['ROLLER_ROLLER_CLEARANCE'] },
       { over: { frontRollers: 'roller-19-19-plastic-double', body: 'body-owl-hush' }, codes: ['BODY_ROLLER_CLEARANCE'] },
       { over: { wheels: 'wheel-31-hard-slick', body: 'body-owl-hush' }, codes: ['BODY_TIRE_CLEARANCE'] },
       { over: { rearStay: 'stay-rear-frp', wheels: 'wheel-31-sponge-lowrebound', body: 'body-pc-box' }, contains: 'STAY_TIRE_CLEARANCE' },
-      // ---- 第七階段（iter-78）：穩定頭 φ11 / φ15（推估規則：穩定頭直徑 < 前導輪直徑）、三種摩擦海綿 ----
+      // ---- 穩定頭 φ11 / φ15（推估規則：穩定頭直徑 < 前導輪直徑）、三種摩擦海綿 ----
       { over: { stabilizer: 'stabilizer-head-15', frontRollers: 'roller-13', body: null }, codes: ['STABILIZER_ROLLER_SIZE'] },
       { over: { stabilizer: 'stabilizer-head-15', frontRollers: 'roller-13-12-alu-double', body: null }, codes: ['STABILIZER_ROLLER_SIZE'] },
       { over: { stabilizer: 'stabilizer-head-11', frontRollers: 'roller-9-bearing', body: null }, codes: ['STABILIZER_ROLLER_SIZE'] },
       { over: { stabilizer: 'stabilizer-head-15', frontRollers: 'roller-19' }, codes: ['STABILIZER_BODY_CLEARANCE'] },
       { over: { rearStay: 'stay-rear-frp', brakeSponge: 'sponge-3type-a' }, codes: ['GROUND_CLEARANCE'] },
-      // ---- 第七階段（iter-80）：制振器 4 款 ----
-      // iter-111 外掛式側座後，預設車殼 owl-hush 裝得下 8×8×32；改用側裙最寬的 halo-orbit 檢查車殼干涉
+      // ---- 制振器（8×8×32、樽型細、AR 側）----
+      // 外掛式側座在預設車殼 owl-hush 裝得下 8×8×32，所以用側裙最寬的 halo-orbit 檢查車殼干涉（查證紀錄：ITERATION_LOG iter-111）
       { over: { massDamper: 'damper-square-8x8x32', body: 'body-halo-orbit' }, codes: ['DAMPER_BODY_CLEARANCE'] },
       { over: { massDamper: 'damper-slim' }, codes: ['MOUNT_COMPAT'] },
       { over: { massDamper: 'damper-ar-side', body: 'body-pc-box' }, codes: ['DAMPER_BODY_CLEARANCE'] },
@@ -2031,7 +2030,7 @@ describe('P18 干涉與安裝相容性', () => {
 });
 
 // ---------------------------------------------------------------------------
-// 稽核 L7（iter-86）：整車總機械能（平地，地板頂面 y = 0）
+// 稽核 L7：整車總機械能（平地，地板頂面 y = 0）
 // ---------------------------------------------------------------------------
 
 // carMechanicalEnergy 的完整定義見 tests/helpers/drop.js。
@@ -2052,13 +2051,13 @@ function setAllVelocity(car, v) {
 }
 
 // ---------------------------------------------------------------------------
-// 第五階段 iter-61：前寬滑動保桿（TW10 / 15469）——滑動板＋前導輪是相對車體左右滑動的剛體（彈簧＋預壓＋阻尼，行程端點硬止擋）
+// 前寬滑動保桿（TW10 / 15469）——滑動板＋前導輪是相對車體左右滑動的剛體（彈簧＋預壓＋阻尼，行程端點硬止擋）
 // ---------------------------------------------------------------------------
 
 /**
  * 撞直牆：直線賽道上，車頭朝 +z 側牆偏 psi 度、以速度 V（沿車頭方向，傳動系 ω·r = V）斷電滑行，右前導輪離牆面 1 mm 起步，跑 0.1 s。
  * 量測：車體剛體的峰值側向（世界 z）力 m_車體·|Δv_z|/dt、能量 E = 動能（車體＋滑動板＋制振器＋傳動系）＋滑動保桿彈簧位能
- * 稽核 M1（iter-86）：車道淨寬 115 mm，車身（導輪外緣）斜放超過約 6° 就會同時插進對側牆（10° 時左後導輪已在牆內 7.88 mm），
+ * 稽核 M1（查證紀錄：ITERATION_LOG iter-86）：車道淨寬 115 mm，車身（導輪外緣）斜放超過約 6° 就會同時插進對側牆（10° 時左後導輪已在牆內 7.88 mm），
  * Rapier 的深穿透修正會讓量到的力與能量混入初始重疊 → 角度只取 ≤ 6°，並檢查擺好姿勢時整車都在牆內（pen0 < 0）
  * @type {(asm: any, psiDeg: number, V: number) => { peakF: number, E0: number, Emax: number, Eend: number, uMax: number, springMax: number, dampingWork: number, pen0: number }}
  */
@@ -2106,8 +2105,8 @@ function slideWallImpact(asm, psiDeg, V) {
   for (let i = 0; i < 0.1 / dt; i++) {
     sim.stepCar(env, car);
     const vzNow = car.chassis.linvel().z;
-    // iter-105（B13）：只計「前撞階段」（後導輪還沒碰牆之前）的峰值——要比的是前保桿吸收前導輪撞擊；
-    // 車頭擦牆後車身偏轉、後導輪再撞牆的第二次撞擊和前保桿種類無直接關係（診斷：μ 改實測後軟保桿 6° 4 m/s 的整段峰值出現在只有 RR / RUR 接觸的那一步）
+    // B13（查證紀錄：ITERATION_LOG iter-105）：只計「前撞階段」（後導輪還沒碰牆之前）的峰值——要比的是前保桿吸收前導輪撞擊；
+    // 車頭擦牆後車身偏轉、後導輪再撞牆的第二次撞擊和前保桿種類無直接關係（診斷：μ 用實測值時軟保桿 6° 4 m/s 的整段峰值出現在只有 RR / RUR 接觸的那一步）
     const rearHit = sim.rollerWallContacts(env, car).some((c) => c.roller.startsWith('R'));
     frontPhase = frontPhase && !rearHit;
     const f = (m * Math.abs(vzNow - vz)) / dt;
@@ -2140,7 +2139,7 @@ describe('P17 / P18 / P11 第五階段前寬滑動保桿（iter-61）', () => {
     expect(Math.abs(soft.rigid.mass_g + soft.slider.mass_g - soft.mass_g)).toBeLessThan(1e-9);
     expect(frpAsm.slider).toBe(null);
 
-    // (1)(2) 撞直牆：兩種角度 / 速度（輕擦牆、較快正撞）。iter-86 稽核 M1：原本 10° / 20° 的擺法已插進對側牆，改成 5° / 6°（同 PHYSICS_AUDIT 第 2 節 C）
+    // (1)(2) 撞直牆：兩種角度 / 速度（輕擦牆、較快正撞）。稽核 M1：角度取 5° / 6°，因為 10° / 20° 的擺法會插進對側牆（同 PHYSICS_AUDIT 第 2 節 C；查證紀錄：ITERATION_LOG iter-86）
     for (const [psi, V] of [[5, 2.5], [6, 4]]) {
       const rF = slideWallImpact(frpAsm, psi, V);
       for (const [name, a] of [['軟（金）', soft], ['硬（銀）', hard]]) {
@@ -2277,7 +2276,7 @@ describe('P17 / P18 / P11 第五階段前寬滑動保桿（iter-61）', () => {
 });
 
 // ---------------------------------------------------------------------------
-// 第五階段 iter-64：後寬滑動保桿（TW11 / 15467；碳纖後寬板 TW13 / 15549）——後滑動板＋後導輪是相對車體左右滑動的剛體；
+// 後寬滑動保桿（TW11 / 15467；碳纖後寬板 TW13 / 15549）——後滑動板＋後導輪是相對車體左右滑動的剛體；
 // 前後都裝時是兩個獨立的滑動剛體（sim.js sliderSystem 的 6 + n 自由度）
 // ---------------------------------------------------------------------------
 
@@ -2528,7 +2527,7 @@ describe('P17 / P18 第五階段後寬滑動保桿（iter-64）', () => {
 });
 
 // ---------------------------------------------------------------------------
-// iter-95（FINAL_REPORT B8）：橡膠煞車（15413，端面單點接觸）、AR 煞車組斜面架（15458）
+// B8：橡膠煞車（15413，端面單點接觸）、AR 煞車組斜面架（15458）
 // ---------------------------------------------------------------------------
 
 /**

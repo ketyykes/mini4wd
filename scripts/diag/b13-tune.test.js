@@ -1,4 +1,4 @@
-// B13（iter-105）：導輪 μ 改實測後，p5-taiwan / p7-demo 在換道橋頂飛出。像實車一樣換零件調校，找出 8 組起跑擾動都跑完的設定
+// B13：導輪 μ 改實測後，p5-taiwan / p7-demo 在換道橋頂飛出。像實車一樣換零件調校，找出 8 組起跑擾動都跑完的設定
 import { test, beforeAll } from 'vitest';
 import { assemble, loadConfig } from '../../src/assembly.js';
 import { validateAssembly } from '../../src/regulation.js';
@@ -36,7 +36,7 @@ const run8 = (cfg, thrust = null, perSlot = null) => {
 };
 const VARIANTS = JSON.parse(process.env.B13_VARIANTS ?? '[]');
 test('tune', () => {
-  // 第 4 欄：導輪軸向滑動摩擦（spec.track.wallFriction）敏感度（2026-10-29 驗證下推角）
+  // 第 4 欄：導輪軸向滑動摩擦（spec.track.wallFriction）敏感度（驗證下推角）
   const mu0 = spec.track.wallFriction;
   for (const [name, over, thrust = null, mu = mu0] of VARIANTS) {
     const perSlot = typeof mu === 'object' ? mu : null;

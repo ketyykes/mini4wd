@@ -98,8 +98,8 @@ export function validateAssembly(asm) {
     fail('LENGTH', `全長 ${f1(size.x)} mm，規則須 < ${r.maxLength_mm} mm`);
   }
   if (!(size.z < r.maxWidth_mm)) {
-    // 滑動保桿（iter-61）：外框取滑動板在行程端點時的最大範圍（推估規則：官方條文沒寫可動零件怎麼量，取較保守的量法）
-    // iter-64：前 / 後滑動保桿各自的行程端點
+    // 滑動保桿：外框取滑動板在行程端點時的最大範圍（推估規則：官方條文沒寫可動零件怎麼量，取較保守的量法）
+    // 前 / 後滑動保桿各自的行程端點
     const sliders = asm.sliders ?? (asm.slider ? [asm.slider] : []);
     const slideNote = sliders.length > 0 ? `（含${sliders.map((sl) => `${sl.slot === 'frontStay' ? '前' : '後'}滑動保桿行程端點 ±${sl.stroke_mm} mm`).join('、')} 的外框，推估規則）` : '';
     fail('WIDTH', `全寬 ${f1(size.z)} mm${slideNote}，規則須 < ${r.maxWidth_mm} mm`);
@@ -136,13 +136,13 @@ export function validateAssembly(asm) {
   if (b.size !== r.batterySize || b.cells !== r.batteryCells) {
     fail('BATTERY', `電池須為 ${r.batteryCells} 顆 ${r.batterySize}；目前 ${b.cells} 顆 ${b.size}`);
   }
-  // 第四階段：端子只能用套件或 Grade-Up 端子，疊加（double-plated）或焊接禁止（PARTS_RESEARCH [REG6] Sec.6-5）
+  // 端子只能用套件或 Grade-Up 端子，疊加（double-plated）或焊接禁止（PARTS_RESEARCH [REG6] Sec.6-5）
   const sw = p.switch;
   if ((sw.terminalLayers ?? 1) > 1 || sw.terminalSoldered) {
     fail('TERMINAL_MOD', `${sw.name}：端子疊了 ${sw.terminalLayers ?? 1} 片${sw.terminalSoldered ? '且有焊接' : ''}；規則只允許套件或 Grade-Up 端子，疊加或焊接端子禁止（Tamiya 規則 Sec.6-5）`);
   }
-  // 第四階段：穩定零件只能配指定直徑的前導輪（17 mm 穩定頭 ↔ 19 mm 導輪）；穩定零件外徑不得 ≥ 導輪外徑（否則它變成主要接觸面，等於換了導輪）
-  // iter-56：穩定零件裝在前導輪正上方（同一支螺絲），所以看的是前導輪（frontRollers）
+  // 穩定零件只能配指定直徑的前導輪（17 mm 穩定頭 ↔ 19 mm 導輪）；穩定零件外徑不得 ≥ 導輪外徑（否則它變成主要接觸面，等於換了導輪）
+  // 穩定零件裝在前導輪正上方（同一支螺絲），所以看的是前導輪（frontRollers）
   const stab = p.stabilizer;
   if (stab) {
     const rd = p.frontRollers.diameter_mm;
@@ -153,39 +153,39 @@ export function validateAssembly(asm) {
       fail('STABILIZER_ROLLER_SIZE', `（推估規則，非官方條文）${stab.name} 外徑 ${stab.diameter_mm} mm ≥ 前導輪 ${rd} mm，會取代前導輪成為碰牆面`);
     }
   }
-  // 第四階段：錐形導輪要鎖在 FRP / 碳纖導輪板（有 plate 的導輪架）上；塑膠一體保桿 / 標準後導輪架擋下。
+  // 錐形導輪要鎖在 FRP / 碳纖導輪板（有 plate 的導輪架）上；塑膠一體保桿 / 標準後導輪架擋下。
   // ※ 這是推估規則，不是官方條文：Tamiya 官方規則沒有限制錐形導輪的安裝方式。依據是 PARTS_RESEARCH 第四階段 T 節
   //   [T95436] 官方商品說明（錐面在導輪下方、騎上牆頂時才把車推回車道）與 [FTAP]「tapered underside…mounted underneath the stay」：
   //   錐面要朝下、用螺絲＋墊片鎖在平板上才有作用；塑膠一體保桿 / 標準後導輪架的導輪座是固定的凸台，推估裝不上或錐面方向不對。
-  // iter-56：前後導輪分開選 → 前 / 後各自檢查：前導輪是錐形才看前導輪架、後導輪是錐形才看後導輪架；兩端都不合時合併成一筆違規
+  // 前後導輪分開選 → 前 / 後各自檢查：前導輪是錐形才看前導輪架、後導輪是錐形才看後導輪架；兩端都不合時合併成一筆違規
   /** @type {[string, string, string][]} [導輪 slot, 導輪架 slot, 中文] */
   const taperEnds = [['frontRollers', 'frontStay', '前'], ['rearRollers', 'rearStay', '後']];
   const badTaper = taperEnds.filter(([rs, ss]) => p[rs].taper && !p[ss].plate).map(([rs, ss, label]) => `${label}導輪 ${p[rs].name} 裝在 ${p[ss].name}`);
   if (badTaper.length > 0) {
     fail('ROLLER_TAPER_MOUNT', `（推估規則，非官方條文）錐形導輪必須用螺絲＋墊片鎖在 FRP / 碳纖導輪板、錐面朝下才有作用；${badTaper.join('、')}，不是導輪板`);
   }
-  // 第五階段（iter-58）：官方規則 [REG6] Sec.3 腳註——「前輪中心 → 前輪後緣」「後輪中心 → 後輪前緣」這兩段，輪胎外側不可裝零件
+  // 官方規則 [REG6] Sec.3 腳註——「前輪中心 → 前輪後緣」「後輪中心 → 後輪前緣」這兩段，輪胎外側不可裝零件
   // （PARTS_RESEARCH 第五階段 AD 節；官方條文，非推估）。目前會裝在底盤側面的零件只有側制振器：以它的行程掃掠範圍（swept）檢查
   const sideZone = sidePartTireZone(asm);
   if (sideZone) {
     fail('SIDE_PART_TIRE_ZONE', sideZone);
   }
   // SPEC 1.14：車殼與輪胎 / 導輪間隙必須 ≥ 1 mm。兩個實體零件不能重疊（< 0 mm 是互相穿透，0–1 mm 是會摩擦的干涉），
-  // 這種組合實際上裝不起來或輪胎會磨車殼 → 判為違規（2026-10-21 使用者要求：零件替換要符合物理，原本只是警告）
+  // 這種組合實際上裝不起來或輪胎會磨車殼 → 判為違規（零件替換要符合物理）
   if (asm.fit && asm.fit.tire_mm < 1) {
     fail('BODY_TIRE_CLEARANCE', `車殼 ${asm.body.id} 與輪胎間隙 ${asm.fit.tire_mm.toFixed(2)} mm（須 ≥ 1 mm；${asm.fit.tire_mm < 0 ? '輪胎穿進車殼' : '輪胎會磨到車殼'}），這款車殼的輪拱不適合 ${p.wheels.diameter_mm} mm 輪胎${asm.body.archCut ? '' : '（可勾選「切輪拱」剪掉干涉的殼面）'}`);
   }
   if (asm.fit && asm.fit.roller_mm < 1) {
     fail('BODY_ROLLER_CLEARANCE', `車殼 ${asm.body.id} 與導輪間隙 ${asm.fit.roller_mm.toFixed(2)} mm（須 ≥ 1 mm）`);
   }
-  // ---- 第三階段：安裝相容性 ----
+  // ---- 安裝相容性 ----
   // 齒輪組只適用特定底盤配置（SPEC 1.5：4.2 / 5:1 等只有單軸底盤有對應零件）
   const g = p.gear;
   const layouts = g.compat?.chassisLayouts;
   if (layouts && !layouts.includes(p.chassis.motorLayout)) {
     fail('GEAR_CHASSIS', `齒輪組 ${g.name} 只適用 ${layouts.join('、')} 底盤，裝不上 ${p.chassis.name}（${p.chassis.motorLayout}）`);
   }
-  // B14（iter-107）：零件只能裝在某些底盤（parts/chassisCompat.js，官方「シャーシ一覧」）
+  // B14：零件只能裝在某些底盤（parts/chassisCompat.js，官方「シャーシ一覧」）
   for (const [slot, part] of Object.entries(p)) {
     const only = part?.compat?.chassis;
     // 覆寫欄位的自訂零件 id 是「base+custom」，以 base 判斷是哪一款底盤
@@ -202,7 +202,7 @@ export function validateAssembly(asm) {
       fail('MOUNT_COMPAT', `${part.name} 需要安裝點「${missing.map((f) => FEATURE_NAMES[f] ?? f).join('、')}」，目前的底盤 / 導輪架沒有（slot ${slot}）`);
     }
   }
-  // B13（iter-105）：導輪角度調整板（15373）「FRPなどとシャーシに間に挟み込んで」→ 該端導輪架要是板狀（有 plate），原廠塑膠保桿裝不上
+  // B13：導輪角度調整板（15373）「FRPなどとシャーシに間に挟み込んで」→ 該端導輪架要是板狀（有 plate），原廠塑膠保桿裝不上
   for (const [slot, stay] of [['frontRollerAngle', 'frontStay'], ['rearRollerAngle', 'rearStay']]) {
     if (p[slot] && !p[stay]?.plate) {
       fail('ROLLER_ANGLE_MOUNT', `${p[slot].name} 要夾在板狀導輪架與底盤之間，${p[stay]?.name ?? stay} 不是板狀導輪架（slot ${slot}）`);
@@ -213,7 +213,7 @@ export function validateAssembly(asm) {
     fail('MOUNT_COMPAT', `${bal.name} 不能裝在「${bal.mount}」，可用的安裝點：${(bal.mountPoints ?? []).join('、')}`);
   }
 
-  // ---- 第三階段：實體干涉（間隙 < 1 mm）。零件兩兩之間與零件–車殼，代碼形如 STAY_TIRE_CLEARANCE ----
+  // ---- 實體干涉（間隙 < 1 mm）。零件兩兩之間與零件–車殼，代碼形如 STAY_TIRE_CLEARANCE ----
   for (const it of asm.interference ?? []) {
     if (it.gap_mm < 1) {
       const [ga, gb] = it.code.replace('_CLEARANCE', '').split('_');

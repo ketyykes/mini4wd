@@ -119,7 +119,7 @@ function expectedAssemblyTensor(asm, parts, com) {
       const b = asm.partsBySlot.battery;
       accumulate(matrix(cellVolumeTensor(m, b.cellDiameter_mm / 2, b.cellLength_mm)));
     }
-    // iter-96（B3）：底盤與其他零件自帶中心張量（各自的正確性另見 P14_component_tensors），這裡只驗證「每件只計一次」
+    // B3：底盤與其他零件自帶中心張量（各自的正確性另見 P14_component_tensors），這裡只驗證「每件只計一次」
     if (part.slot !== 'battery' && part.inertia_gmm2) accumulate(matrix(part.inertia_gmm2));
     if (part.slot === 'body') accumulate(matrix(bodyMassProps(asm.body.def).inertia_gmm2));
   }
@@ -162,7 +162,7 @@ test('P14_battery_scaling 電池長度平方影響橫向慣性，質量／重心
     expect(doubled.inertiaTensor_kgm2[k] - a.inertiaTensor_kgm2[k]).toBeCloseTo(k === 'yy' || k === 'zz' ? delta : 0, 13);
   }
   // Wheel diameter lifts every part equally; central inertia is translation invariant.
-  // iter-96（B3）：輪子帶自身張量後，輪徑變大本身會加大輪子慣性 → 整車差值只能是四顆輪子自身張量的差
+  // B3（查證紀錄：ITERATION_LOG iter-96）：輪子帶自身張量，輪徑變大本身會加大輪子慣性 → 整車差值只能是四顆輪子自身張量的差
   const lifted = assemble({ ...config, wheels: { base: a.partsBySlot.wheels.id, diameter_mm: a.partsBySlot.wheels.diameter_mm + 2 } });
   expect(lifted.com_mm.y - a.com_mm.y).toBeCloseTo(1, 12);
   const ownWheels = (asm) => asm.parts.filter((q) => q.slot === 'wheels').reduce((t, q) => addTensor(t, q.inertia_gmm2), { xx: 0, yy: 0, zz: 0, xy: 0, xz: 0, yz: 0 });
