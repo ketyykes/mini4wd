@@ -113,8 +113,8 @@ const profile = (x) => {
   ];
 };
 
-/** @type {{ x: number, pts: number[][] }[]} 車尾外張段每 1.1 mm 一站，其餘每 2 mm */
-const STATIONS = [...buildStations(-63, -52, 1.1, profile).slice(0, -1), ...buildStations(-52, 66, 2, profile)];
+/** @type {{ x: number, pts: number[][] }[]} 車尾外張段每 1 mm 一站，其餘每 2 mm（站位落在 0.5 mm 的殼面格線上，不多切出細長格） */
+const STATIONS = [...buildStations(-63, -52, 1, profile).slice(0, -1), ...buildStations(-52, 66, 2, profile)];
 
 /** @type {{ x: number, y: number, radius: number, cutZFrom: number }[]} 前後輪拱（R17.5：31 mm 輪胎半徑 15.5 + 2 mm） */
 const ARCHES = [
