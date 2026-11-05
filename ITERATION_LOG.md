@@ -3916,3 +3916,26 @@
 - IoU 風險：
   - trojan × mantis 俯視已經是 0.843。
   - 北歐 F1 款之後會互相靠近；tanngrisnir 這輪先量。
+
+## iter-128 結果（12:10–13:40）
+- 4 組各交 2 款，合併後先修了兩對俯視 IoU：
+  - trojan × tanngrisnir 0.864 → 由 tanngrisnir 收平面，降到 0.831。
+  - cerberus × yaga 0.857、mushussu × yaga 0.8495 → 由 yaga 收鼻段與翼展，降到 0.830、0.825。
+  - 修完後全部 35 款最大俯視 IoU 0.8425（aero-wing × mantis，原本就有的配對）。
+- 評審（`shared/reviews/iter-128/REVIEW.md`）：
+  - 本輪 8 / 7 / 8 / 7.5 / 7.5 / 7 / 8 = 7.57，對照 7.57。比例、炫砲度變好；辨識度、完成度變差。
+  - 逐款判定：
+
+    | 判定 | 車款 | 處理 |
+    | --- | --- | --- |
+    | 更炫、無差 | minotaur、trojan、cerberus | **保留** |
+    | 更炫但有差 | khepri（辨識度、完成度）、tanngrisnir（辨識度、完成度） | iter-129 修 |
+    | 持平或不算重塑 | mushussu、yaga、gundestrup | iter-129 修 |
+
+  - 評審另提醒：希臘 3 款都是陶土橘配收腰，在陣容圖上像三兄弟。
+- 計分 13:22–13:41：**19/20**。
+  - P18_pairwise 跑到 605 s，超過 600 s 逾時；第九階段最終是 287 s，iter-126 在高負載下是 428 s。
+  - 計分期間的負載：15 分鐘平均 12.6（同時有 subagent 在跑 body-check 和預覽）。
+  - 計分途中誤合併了 khepri 的 iter-129 修正，所以這次分數只能當參考。
+  - P16_collision_patches 76.1 s，比第九階段基準的 66.7 s 多 14%。
+  - 結論：先單獨重跑 P18_pairwise，確認是負載還是新車殼變慢；不延長逾時。
