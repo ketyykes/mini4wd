@@ -4,7 +4,7 @@
 //     尾翼的翼端板是階梯金字塔的側影，上下兩片翼面各站在一階上；
 // (2) 層疊的羽 → 翼片：尾翼的兩層翼面、車身兩側各 3 片往後掠的短翼片（和車身同色）；
 // (3) 紋樣與配色：立板上連續帶狀的階梯回紋（xicalcoliuhqui，不做四向旋轉單元）、頂面的綠松石馬賽克小片；深翡翠金屬綠（主色）＋綠松石＋海菊蛤紅＋金；
-// (4) 黑曜石鰭刀（全車唯一的刃）：每側一片從車身側面接到前輪擋泥板後緣、再往後收尖的黑曜石色薄刃；鼻端一對亮金色細縫頭燈。
+// (4) 鼻端一對亮金色細縫頭燈；座艙罩是黑曜石色。車身上沒有黑色的附加板片，綠松石立板從鼻端連到車尾。
 // 細頸（前輪外露，上方有擋泥板）、中段黑曜石色座艙罩。
 // 設計：shared/design/body-quetzal-serpent/DESIGN.md（典故與文物對應 MYTH_RESEARCH 第 8 節 A1、A2、A6、A7；黑名單 8-3）。剖面為本檔站位產生器（推估）。
 // 不做鷹＋蛇＋仙人掌組合、不用國旗色排列、不做骷髏 / 人祭圖像、不畫神像人臉；不含任何文字。
@@ -201,8 +201,6 @@ const materials = () => ({
   red2: namedMaterial('paint-spondylus-red', { color: 0xc2452d, roughness: 0.6, clearcoat: 0.1, side: THREE.DoubleSide }),
   // 真金屬：尾翼翼端板（Blender 依 -brass 結尾換成金屬）
   gold: namedMaterial('trim-gold-brass', { color: 0xd9b24a, roughness: 0.3, metalness: 0.8, clearcoat: 0.3, side: THREE.DoubleSide }),
-  // 黑曜石鰭刀：黑色亮面漆（不要鏡面：roughness 太低在算圖裡會像黑玻璃）
-  obsidian: namedMaterial('paint-obsidian-black', { color: 0x1c1c22, roughness: 0.34, clearcoat: 0.6, clearcoatRoughness: 0.2, side: THREE.DoubleSide }),
   // 細縫頭燈：亮金色，低強度自發光（深色殼上的亮色頭燈）
   lamp: namedMaterial('lamp-slit-gold', { color: 0xffcf4a, emissive: 0xffc640, emissiveIntensity: 0.55, roughness: 0.2, clearcoat: 0.8 }),
   inner: namedMaterial('shell-inner-dark', { color: 0x15201c, roughness: 0.85, side: THREE.BackSide }),
@@ -344,23 +342,6 @@ const buildWingPlane = (p) =>
     1.6,
   );
 
-/** @type {number} 黑曜石鰭刀底面高（厚 1.4；在座艙平台稜線 27.8 之下、26 mm 前輪胎頂之上） */
-const BLADE_Y = 26.2;
-/**
- * @type {number[][]} 黑曜石鰭刀俯視外形 (x, z)（右側，左側鏡射）：根部埋進座艙平台前段的立板（|z| 15.5），
- * 斜向外接到前輪擋泥板後緣（x 33、|z| 27–35.5，壓在擋泥板後端下方），再沿車側往後收成一個尖（x 4）
- */
-const BLADE_PLAN = [
-  [26, 15.5],
-  [33, 27],
-  [33, 35.5],
-  [20, 34],
-  [4, 31],
-  [16, 28.5],
-  [22, 22],
-  [20, 15.5],
-];
-
 export const quetzalSerpentBody = makePolyBody({
   id: 'body-quetzal-serpent',
   name: '羽蛇',
@@ -371,7 +352,7 @@ export const quetzalSerpentBody = makePolyBody({
   form: 'step-pyramid',
   roof: 'canopy',
   wing: 'terrace-wing',
-  theme: '特奧蒂瓦坎羽蛇神殿的階梯金字塔，不做蛇頭：頂面由車尾往鼻尖一階一階下降的平台（鼻端與座艙後兩道階面貼金）、側面是立板＋斜坡兩階，立板上一道連續的階梯回紋；尾翼是階梯金字塔側影的金色翼端板＋上下兩層翼面，車身兩側各 3 片後掠的短翼片；深翡翠金屬綠配綠松石、海菊蛤紅與金，從車身接到擋泥板後緣的一對黑曜石鰭刀、鼻端一對亮金色細縫頭燈；細頸露出前輪、黑曜石色座艙罩',
+  theme: '特奧蒂瓦坎羽蛇神殿的階梯金字塔，不做蛇頭：頂面由車尾往鼻尖一階一階下降的平台（鼻端與座艙後兩道階面貼金）、側面是立板＋斜坡兩階，立板上一道連續的階梯回紋；尾翼是階梯金字塔側影的金色翼端板＋上下兩層翼面，車身兩側各 3 片後掠的短翼片；深翡翠金屬綠配綠松石、海菊蛤紅與金，鼻端一對亮金色細縫頭燈；細頸露出前輪、黑曜石色座艙罩',
   material: 'ABS',
   density_g_cm3: 1.05,
   wallThickness_mm: 0.8,
@@ -426,14 +407,6 @@ export const quetzalSerpentBody = makePolyBody({
     // 前輪擋泥板＋接到細頸的斜撐
     parts.push({ geometry: mergeGeos([buildFender(1), buildFender(-1)]), mat: 'green2', solid: true, outline: true, name: 'front-fenders' });
     parts.push({ geometry: mergeGeos([buildFenderStay(1), buildFenderStay(-1)]), mat: 'green2', solid: true, outline: true, name: 'front-fender-stays' });
-    // 黑曜石鰭刀：每側一片水平薄刃（厚 1.4），根部埋進車身立板、前端接在擋泥板後緣下方，往後收尖
-    parts.push({
-      geometry: mergeGeos([1, -1].map((sg) => flatPlate(BLADE_PLAN.map(([x, z]) => [x, sg * z]), BLADE_Y, 1.4))),
-      mat: 'obsidian',
-      solid: true,
-      outline: true,
-      name: 'obsidian-fin-blades',
-    });
 
     // 階梯尾翼：金色翼端板（階梯金字塔側影）＋兩層翼面（下層海菊蛤紅、上層金屬綠），翼端板底邊埋進殼面
     parts.push({
@@ -540,7 +513,7 @@ export const quetzalSerpentBody = makePolyBody({
     density_g_cm3: 'SPEC 1.14：ABS 約 1.05 g/cm³（推估）',
     wallThickness_mm: '推估：射出 ABS 殼 0.8 mm（同其他款）',
     geometry: '本檔站位產生器 P＋topY / ridgeY / tableroY（推估）：外框長 149.7（車尾翼端板 x −70.7 → 鼻尖 x 79.0，≤ 153）；頂面平台由後到前 34 → 31 → 28 → 25.4 → 22.8（車尾另降一階到 31），階面長 1.6；座艙罩頂 38.5、尾翼頂 46（全車最高）；細頸半寬 14.5（26 mm 前輪內側面 25.25 之內）；後輪拱 R15.5（26 mm 輪半徑 13 + 2.5，只支援 26 mm 輪）',
-    wing: '尾翼翼端板（|z| 20、厚 1.6，三階的階梯側影，頂 46）、兩層翼面（厚 1.6，頂面 42 / 46）、側翼片每側 3 片（厚 1.2）、黑曜石鰭刀（水平薄板厚 1.4，底面 y 26.2，根部埋進立板、前端接擋泥板後緣）、前輪擋泥板與斜撐、腹側裙板：ABS 實心件（推估），質量 = 封閉體積 × 1.05 g/cm³；根部埋進殼面或相接的零件',
+    wing: '尾翼翼端板（|z| 20、厚 1.6，三階的階梯側影，頂 46）、兩層翼面（厚 1.6，頂面 42 / 46）、側翼片每側 3 片（厚 1.2）、前輪擋泥板與斜撐、腹側裙板：ABS 實心件（推估），質量 = 封閉體積 × 1.05 g/cm³；根部埋進殼面或相接的零件',
     myth: '階梯金字塔（六層 talud-tablero）、藍底彩繪、黑曜石嵌片：MYTH_RESEARCH A2（特奧蒂瓦坎羽蛇神殿）；綠咬鵑羽：A1；綠松石 / 海菊蛤紅 / 螺貝白：A6（大英博物館雙頭蛇）；階梯回紋：A7',
     mounts: '對齊 chassis-midship 的車殼安裝點（SPEC 1.14）',
   },
