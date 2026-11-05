@@ -1,13 +1,11 @@
-// 八足神駒斯雷普尼爾（body-sleipnir-stride，神話組・北歐）：修長、低伏的奔馬身——
-// 前低後高的楔形（車尾 28、鼻端 24.5）、臀與肩隆起；不做背脊升起的細長馬頸（車頭中央會像布料擠壓的折痕）；
-// 引擎蓋中線是往前伸的馬頸＋馬頭隆起（頸頂 41.2、額頭 41.4，比兩側引擎蓋高約 6 mm，鼻樑往前下到鼻端 29），車頭是寬平切鼻，
-// 馬頸與馬頭塗炭灰，和引擎蓋分開；頸頂一對往後貼的耳朵、額前白斑、兩側杏仁眼、鼻端兩個鼻孔、青銅籠頭與韁繩；
-// 座艙罩在中段；耳後沿頸脊一列往後飄的銀色鬃片排到座艙前，座艙後方的背脊再接一道往後升高的銀鬃冠（mane-crest，尾翼，三片束成一束，尾端不超出車尾），
-// 鬃冠後方一片俯視扇形、後緣鬃尖鋸齒的貼身尾翼（翼頂比座艙罩頂高約 0.6 mm）。
-// 兩側車身在前後輪之間各有 8 條立體浮雕腿：同一步態週期的 8 個連續相位（前後組錯開半個週期），襯在深灰凹槽底襯貼紙上；
-// 上段（前臂 / 小腿）粗、腕 / 飛節與球節有關節、管骨細、蹄是青銅楔形；腿沿側壁凸出約 0.95 mm，蹄不碰輪拱與輪胎。
-// 配色：上半身是珍珠銀白 → 金屬銀 → 風暴灰 → 槍鐵深灰的前上斜分段漸層（亮面）、下半身與馬頭炭灰（霧面）、腿珍珠銀白 / 淺銀灰＋青銅蹄、鬃是銀（金屬）、Urnes 風格銀色交織帶；
-// 肩線下一道兩股絞繩紋（深色刻線，0.6 mm；不用 Tjängvide 那種像 Valknut 的編織帶、不用任何盧恩）。沒有翅膀（避開天馬意象）、不放騎士。
+// 八足神駒斯雷普尼爾（body-sleipnir-stride，神話組・北歐）：不做馬頭、耳、眼、腿與蹄，「八足」用「八」的重複表現——
+// 兩側車身在前後輪之間各 4 道往後上方掃的銀色刀形飾條（共 8 道，一道比一道長、一道比一道斜，像連續攝影的步伐節奏），
+// 襯在深灰梭形凹槽底襯上；車尾貼身尾翼的後緣是 8 個鋸齒尖。
+// 車身是修長、低伏的刀形：前低後高（鼻端 24.5、車尾 28），前後輪上方各一處隆起，鼻段是低而薄的寬平刀口鼻（側視像刀尖）；
+// 鬃 → 鋸齒背鰭：引擎蓋中線一列往後梳的銀色鋸齒（停在座艙罩前），座艙後方的背脊再接一道往後升高的鋸齒冠，接到尾翼。
+// 配色：上半身是珍珠銀白 → 金屬銀 → 風暴灰 → 槍鐵深灰的前上斜分段漸層（亮面）、下半身炭灰（霧面）、飾條與背鰭是銀（金屬）；
+// 紋樣：兩側肩上一條 Urnes 風格銀色交織帶、肩線下一道兩股絞繩紋（深色刻線，0.6 mm；不用 Tjängvide 那種像 Valknut 的編織帶、不用任何盧恩）、
+// 引擎蓋上從鼻尖往後掃到座艙前的一對青銅細線。沒有翅膀（避開天馬意象）、不放騎士。
 // 四個 R17.5 輪拱＋輪拱內襯：31 mm 大輪不切輪拱也能裝。
 // 設計：shared/design/body-sleipnir-stride/DESIGN.md（MYTH_RESEARCH N9、N10、N11、N12：《散文埃達》灰色八足馬、哥特蘭圖像石）。
 // 剖面為本檔站位產生器（推估）；塗裝全為自創，不含任何文字、號碼或商標。
@@ -23,30 +21,26 @@ import { buildArchWell, chassisBlockedNearArch } from './kitsuneNinetail.js';
 const XS = [-74, -68, -62, -56, -48, -40, -28, -14, 0, 14, 28, 40, 48, 56, 62, 68, 72, 76];
 /** @type {Record<string, (x: number) => number>} */
 const P = {
-  // 背 / 引擎蓋兩側（頸根外）高度：後輪上方的臀部隆起 35.8、腰背凹 32.4、前輪上方的肩部隆起 35.8，車尾低伏 28、鼻端 24.5（前低後高的楔形）
+  // 背 / 引擎蓋高度：後輪上方隆起 35.8、腰背凹 32.4、前輪上方隆起 35.8，車尾低伏 28、鼻端 24.5（前低後高的楔形）
   yD: monoCurve(XS, [28, 30, 31.6, 34, 35.6, 35.8, 33.6, 32.4, 32.6, 32.8, 33.8, 35.6, 35.8, 35, 33, 29.8, 27.4, 24.5]),
-  // 中線頂：x < 14 是背上細脊（背 + 1.2～1.8）；x 14 起是往前伸的馬頸＋馬頭（側視讀得出馬頭輪廓）——
-  // 頸脊從座艙前往前升到耳後的頸頂（x 48，41.2）、額頭（x 56，41.4，比兩側引擎蓋高 6.4 mm）、鼻樑平直地往前下衝（x 68，36.6）、口鼻收到鼻端 29；頂高 ≤ 49
-  // （升到 51.6 的細長馬頸從前方看像布料擠壓的折痕；馬臉只高出 4.6 mm 時側視看不出馬頭）
-  yN: monoCurve(XS, [29.2, 31.2, 33, 35.6, 37.4, 37.6, 35.2, 33.8, 34, 34.4, 36.4, 39.2, 41.2, 41.4, 39.6, 36.6, 33.4, 29]),
-  // 背脊 / 馬頸 / 馬頭半寬（頸 5.3 → 6.6 較窄，頭在額頭最寬 9.4、往鼻端收到 4.4：頸和頭分得開）
-  nw: monoCurve(XS, [2.4, 2.6, 2.8, 3, 3, 3, 3, 3, 3, 3.4, 5.3, 6.6, 8, 9.4, 8.6, 7.2, 5.8, 4.4]),
-  // 半寬（俯視馬形）：後輪上方的臀部（47.4）→ 收細的腰腹（36.8，剛好蓋住底盤側面）→ 前輪上方的肩部（47.4）→ 收成馬頭；車尾 x −56 起收窄（35，後導輪處 < 35.5）
-  // 臀 / 肩 47.4：車殼外框含擋泥唇半寬 ≤ 48.0；鼻段是較緩的連續收窄，收到寬平切的鼻（鼻端半寬 21：LG1 V3 的平切鼻＋中央馬頭脊），
-  // 俯視和 lowline-flat / owl-hush / tortoise-dome / dartfrog-hop 拉開（俯視輪廓 IoU）
+  // 中線頂：全長一道細脊（背 + 1.2～1.8），往鼻端收平（鼻端只高 0.4）
+  yN: monoCurve(XS, [29.2, 31.2, 33, 35.6, 37.4, 37.6, 35.2, 33.8, 34, 34.4, 35.4, 37.2, 37.4, 36.4, 34.2, 30.6, 28, 24.9]),
+  // 細脊半寬
+  nw: monoCurve(XS, [2.4, 2.6, 2.8, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 2.8, 2.4, 2]),
+  // 半寬：後輪上方（47.4）→ 收細的腰（36.8，剛好蓋住底盤側面）→ 前輪上方（47.4）→ 連續收窄到寬平切的鼻（鼻端半寬 21）；車尾 x −56 起收窄（35，後導輪處 < 35.5）；
+  // 47.4：車殼外框含擋泥唇半寬 ≤ 48.0；鼻端收尖會讓俯視輪廓和其他款的 IoU 超過門檻，所以維持寬平鼻
   hw: monoCurve(XS, [17, 20, 22.5, 35, 47.4, 47.4, 36.8, 36.8, 36.8, 36.8, 36.8, 44.4, 47.4, 46.5, 43, 36, 29, 21]),
   // 側裙下緣：中段 13.6（蓋住底盤側面上半，底盤側框 9.4 以上）；車尾抬高到後上導輪頂（20.5）之上；車頭逐步抬高
   yLow: monoCurve(XS, [22.6, 22, 20.4, 15.5, 13.4, 13.2, 13.6, 13.6, 13.6, 13.6, 13.6, 13.2, 13.4, 14, 14.8, 17, 18.2, 19.2]),
 };
 
-/** @type {(x: number) => number} 臀 / 肩隆起係數（半寬 37 → 47.5 對應 0 → 1） */
+/** @type {(x: number) => number} 輪上隆起係數（半寬 37 → 47.5 對應 0 → 1） */
 const podAt = (x) => Math.min(1, Math.max(0, (P.hw(x) - 37) / 10.5));
-/** @type {(x: number) => number} 側面腰線（上半身漸層漆與下半身炭灰的分界、側壁頂）：臀 / 肩隆起處往下多 2.5 mm（圓鼓的葉子板） */
+/** @type {(x: number) => number} 側面腰線（上半身漸層漆與下半身炭灰的分界、側壁頂）：輪上隆起處往下多 2.5 mm（圓鼓的葉子板） */
 const ySideAt = (x) => P.yD(x) - 6.5 - 2.5 * podAt(x);
 
 /**
- * 半剖面 9 點：中線頂 → 脊 / 馬臉頂 → 脊 / 馬臉側 → 融進背 / 引擎蓋 → 背肩 → 肩外圓 → 腰線（銳利）→ 側壁 → 側裙下緣（內收）
- * 馬臉段是圓潤隆起（沒有脊 / 頸側稜的銳利稜線）
+ * 半剖面 9 點：中線頂 → 細脊頂 → 細脊側 → 融進背 / 引擎蓋 → 背肩 → 肩外圓 → 腰線（銳利）→ 側壁 → 側裙下緣（內收）
  * @type {(x: number) => number[][]}
  */
 const profile = (x) => {
@@ -71,8 +65,8 @@ const profile = (x) => {
   ];
 };
 
-// 馬頸與馬頭段每 0.5 mm 一站（曲率大），其餘每 2 mm
-const STATIONS = [...buildStations(-74, 24, 2, profile).slice(0, -1), ...buildStations(24, 76, 0.5, profile)];
+/** @type {{ x: number, pts: number[][] }[]} 站位表（每 2 mm 一站） */
+const STATIONS = buildStations(-74, 76, 2, profile);
 
 /** @type {{ x: number, y: number, radius: number }[]} 前後輪拱圓（側視，31 mm 輪胎半徑 15.5 + 2 mm） */
 const ARCHES = [
@@ -108,67 +102,6 @@ const CANOPY = {
     }
     return out;
   })(),
-};
-
-/**
- * 八條腿是「奔跑相位」——同一個步態週期的 8 個連續相位
- * （像連續攝影的殘影）：前組 4 條由「往前伸 → 著地 → 撐住 → 往後推」依序擺動，後組 4 條比前組晚半個週期，
- * 前後錯開；每條腿由腿根往下三段（上段粗、關節、細管骨、蹄），角度由相位算出，
- * 上段擺角 θ（0 = 垂直向下、正 = 往前），前腳下段在腿往後時折向後（腕關節屈曲）、後腳飛節往後凸。
- * @type {(x0: number, theta: number, fold: number, front: boolean) => number[][]}
- */
-const legPose = (x0, theta, fold, front) => {
-  const r = (d) => (d * Math.PI) / 180;
-  /** @type {number[]} 三段長度：上段、管骨、繫部 */
-  const L = front ? [5.0, 4.3, 1.8] : [4.6, 4.5, 1.8];
-  const a1 = r(theta);
-  // 前腳：腕關節往後折（下段角 = θ − fold）；後腳：飛節往後凸（下段角 = θ + fold 之後再往前收）
-  const a2 = front ? r(theta - fold) : r(theta + fold * 0.6);
-  const a3 = front ? r(theta - fold * 0.4) : r(theta - fold * 0.3);
-  const p0 = [x0, 25];
-  const p1 = [p0[0] + L[0] * Math.sin(a1), p0[1] - L[0] * Math.cos(a1)];
-  const p2 = [p1[0] + L[1] * Math.sin(a2), p1[1] - L[1] * Math.cos(a2)];
-  const p3 = [p2[0] + L[2] * Math.sin(a3), p2[1] - L[2] * Math.cos(a3)];
-  return [p0, p1, p2, p3];
-};
-/**
- * 8 個相位（腿根 x、上段擺角、下段折角、近 / 遠側）：前組腿根 x 12.2 → 3.6、後組 −1.8 → −11.8；
- * 腿根不等距（間距 2.6 / 4.2 / 1.8、3.4 / 2.0 / 4.6），兩兩成對錯開，小尺寸下才不會像一排等距字形；
- * 前組擺角由前伸 +46° 依序擺到後推 −30°，後組錯開半個週期（由 +20° 擺到 −44°）
- * @type {{ pts: number[][], dir: number, near: boolean }[]}
- */
-const LEGS = [
-  { x0: 12.2, th: 46, fold: 10, front: true, near: true },
-  { x0: 9.6, th: 22, fold: 34, front: true, near: false },
-  { x0: 5.4, th: -6, fold: 52, front: true, near: true },
-  { x0: 3.6, th: -30, fold: 18, front: true, near: false },
-  { x0: -1.8, th: 20, fold: 16, front: false, near: false },
-  { x0: -5.2, th: -4, fold: 30, front: false, near: true },
-  { x0: -7.2, th: -26, fold: 34, front: false, near: false },
-  { x0: -11.8, th: -44, fold: 20, front: false, near: true },
-].map((l) => {
-  const pts = legPose(l.x0, l.th, l.fold, l.front);
-  const last = pts[pts.length - 1];
-  const prev = pts[pts.length - 2];
-  return { pts, dir: last[0] >= prev[0] - 0.3 ? 1 : -1, near: l.near };
-});
-
-/**
- * 折線每 step mm 插點（讓 Catmull-Rom 掃掠幾乎走直線段，腿骨是直的、關節處才轉折，不會像彎爪）
- * @type {(pts: number[][], step: number) => number[][]}
- */
-const densify = (pts, step) => {
-  /** @type {number[][]} */
-  const out = [pts[0]];
-  for (let i = 1; i < pts.length; i++) {
-    const [ax, ay] = pts[i - 1];
-    const [bx, by] = pts[i];
-    const n = Math.max(1, Math.ceil(Math.hypot(bx - ax, by - ay) / step));
-    for (let k = 1; k <= n; k++) {
-      out.push([lerp(ax, bx, k / n), lerp(ay, by, k / n)]);
-    }
-  }
-  return out;
 };
 
 /** @type {(x: number, z: number) => boolean} 側壁（腰線以下的垂直面與內收下緣） */
@@ -270,30 +203,24 @@ const knotSd = (x, y, z) => {
 
 /** @type {() => Record<string, THREE.Material>} */
 const materials = () => ({
-  // 上半身深灰（亮面：少數亮面部位；灰白配色沒有北歐感，用深灰與銀）
+  // 上半身深灰（亮面）
   grey: namedMaterial('paint-storm-grey', { color: 0x737a83, roughness: 0.34, metalness: 0.3, clearcoat: 0.8, clearcoatRoughness: 0.1 }),
   // 漸層：珍珠銀白（車頭）、金屬銀、槍鐵深灰（車尾）——珍珠 / 金屬漆（paint- 且 roughness ≤ 0.5 → Blender 亮面漆）
   pearl: namedMaterial('paint-pearl-silverwhite', { color: 0xe2e5ea, roughness: 0.26, metalness: 0.25, clearcoat: 1.0, clearcoatRoughness: 0.05 }),
   silver2: namedMaterial('paint-metallic-silver', { color: 0xaab0b8, roughness: 0.3, metalness: 0.4, clearcoat: 0.9, clearcoatRoughness: 0.08 }),
   gunmetal: namedMaterial('paint-gunmetal-deep', { color: 0x3c424a, roughness: 0.36, metalness: 0.35, clearcoat: 0.7, clearcoatRoughness: 0.12 }),
-  // 炭灰（下半身、口鼻，霧面）
+  // 炭灰（下半身，霧面）
   slate: namedMaterial('paint-charcoal-slate', { color: 0x2c3138, roughness: 0.62, clearcoat: 0.05 }),
   slate2: namedMaterial('paint-charcoal-slate', { color: 0x2c3138, roughness: 0.62, clearcoat: 0.05, side: THREE.DoubleSide }),
-  // 腿：近側珍珠銀白、遠側淺銀灰，襯在深灰凹槽底襯上加強對比；蹄用青銅
-  leg: namedMaterial('paint-leg-pearl', { color: 0xe6e9ed, roughness: 0.3, metalness: 0.2, clearcoat: 0.8 }),
-  legFar: namedMaterial('paint-leg-greylight', { color: 0xa9afb6, roughness: 0.4, metalness: 0.2, clearcoat: 0.5 }),
-  // 腿部底襯：深灰淺凹槽＋上緣陰影帶＋銀色細邊
+  // 飾條底襯：深灰淺凹槽＋上緣陰影帶＋銀色細邊
   dBacking: decalMaterial('decal-relief-groove', { color: 0x23282f, roughness: 0.6 }),
   dGrooveShade: decalMaterial('decal-relief-groove-shade', { color: 0x14171b, roughness: 0.7 }),
   dGrooveEdge: decalMaterial('decal-groove-edge-silver', { color: 0xc9cdd2, roughness: 0.28, metalness: 0.65 }),
-  // 籠頭與韁繩（真金屬：名稱含 -brass）
-  bronze: namedMaterial('trim-bronze-brass', { color: 0xa8763e, roughness: 0.32, metalness: 0.8, clearcoat: 0.2 }),
-  dBronze: decalMaterial('decal-bridle-bronze', { color: 0xb07c40, roughness: 0.35, metalness: 0.7 }),
+  // 引擎蓋上的青銅細線
+  dBronze: decalMaterial('decal-pinstripe-bronze', { color: 0xb07c40, roughness: 0.35, metalness: 0.7 }),
   // 交織帶：銀色貼紙
   dKnot: decalMaterial('decal-interlace-silver', { color: 0xd4d7da, roughness: 0.3, metalness: 0.65 }),
-  // 馬眼 / 鼻孔：深色亮面（眼是全車少數亮面）
-  eye: namedMaterial('paint-eye-gloss-black', { color: 0x101114, roughness: 0.15, clearcoat: 1.0 }),
-  // 銀鬃（真金屬：名稱含 -steel）
+  // 刀形飾條、鋸齒背鰭、尾翼（真金屬：名稱含 -steel）
   silver: namedMaterial('trim-silver-steel', { color: 0xc4c8cc, roughness: 0.3, metalness: 0.78, clearcoat: 0.2, side: THREE.DoubleSide }),
   inner: namedMaterial('shell-inner-dark', { color: 0x1a1d22, roughness: 0.85, side: THREE.BackSide }),
   edge: namedMaterial('shell-edge-slate', { color: 0x2b3442, roughness: 0.6, side: THREE.DoubleSide }),
@@ -365,7 +292,7 @@ const buildLiner = (kit, arch) => {
 };
 
 /**
- * 一束鬃（側視多邊形）：鬃根在中線頂 x = a（根部往下埋 1 mm），往後順梳成細長刀形，鬃尖在 (a − len, 中線頂 + h)，上緣微拱
+ * 一片鋸齒（側視多邊形）：根在中線頂 x = a（根部往下埋 1 mm），往後順梳成細長刀形，尖端在 (a − len, 中線頂 + h)，上緣微拱
  * @type {(a: number, len: number, h: number) => number[][]}
  */
 const maneStrand = (a, len, h) => [
@@ -378,7 +305,7 @@ const maneStrand = (a, len, h) => [
 ];
 
 /**
- * 一列鬃束（沿中線頂從 x1 往後到 x0，每 step 一束，彼此交疊）
+ * 一列鋸齒（沿中線頂從 x1 往後到 x0，每 step 一片，彼此交疊）
  * @type {(x1: number, x0: number, step: number, len: number, h: (x: number) => number, zc: number, thick: number, tiltDeg: number) => THREE.BufferGeometry}
  */
 const maneRow = (x1, x0, step, len, h, zc, thick, tiltDeg) => {
@@ -390,83 +317,39 @@ const maneRow = (x1, x0, step, len, h, zc, thick, tiltDeg) => {
   return mergeGeos(geos);
 };
 
-/**
- * 側壁外表面的 |z|（腰線以下）：垂直段 = 半寬，側壁中段以下往內收 1.4 mm 到側裙下緣（和 profile 的最後兩點一致，近似）
- * @type {(x: number, y: number) => number}
- */
-const sideWallZ = (x, y) => {
-  const hw = P.hw(x);
-  const yS = ySideAt(x);
-  const yLow = Math.min(P.yLow(x), yS - 2);
-  const yMid = lerp(yS, yLow, 0.45);
-  if (y >= yMid) {
-    return hw;
-  }
-  return hw - 1.4 * Math.min(1, (yMid - y) / Math.max(0.5, yMid - yLow));
-};
+/** @type {number} 每側刀形飾條數（左右共 8 道＝八足） */
+const STRAKES_PER_SIDE = 4;
 
 /**
- * 浮雕管（八條腿）：沿側視折線 [x, y] 掃掠扁橢圓斷面——斷面在「切線 ⟂ 平面」內，寬 w(t)（側視看到的腿粗）、
- * 厚 d(t)（往車外凸），中心 |z| = zAt(x, y)；首尾封蓋成封閉網格，最後依有號體積統一繞向朝外（質量用散度定理）
- * @type {(pts: number[][], n: number, w: (t: number) => number, d: (t: number) => number, zAt: (x: number, y: number) => number, sg: number, seg?: number) => THREE.BufferGeometry}
+ * 第 i 道刀形飾條的側視外形 (x, y)（i = 0 最前）：下端寬 3、往後上方收成一個尖；越後面的越長、越斜
+ * （下端 x 17 → −10、每 9 mm 一道；尖端高 22.6 → 25.6，都在腰線 26 以下、離前後輪拱 ≥ 4 mm）
+ * @type {(i: number) => number[][]}
  */
-const reliefTube = (pts, n, w, d, zAt, sg, seg = 12) => {
-  const curve = new THREE.CatmullRomCurve3(pts.map(([x, y]) => new THREE.Vector3(x, y, 0)), false, 'centripetal');
-  /** @type {THREE.Vector3[][]} */
-  const rings = [];
-  for (let i = 0; i <= n; i++) {
-    const t = i / n;
-    const c = curve.getPointAt(t);
-    const tg = curve.getTangentAt(t);
-    const nx = -tg.y;
-    const ny = tg.x;
-    const zc = sg * zAt(c.x, c.y);
-    /** @type {THREE.Vector3[]} */
-    const ring = [];
-    for (let k = 0; k < seg; k++) {
-      const a = (2 * Math.PI * k) / seg;
-      ring.push(new THREE.Vector3(c.x + nx * Math.cos(a) * w(t), c.y + ny * Math.cos(a) * w(t), zc + sg * Math.sin(a) * d(t)));
-    }
-    rings.push(ring);
-  }
-  /** @type {THREE.Vector3[][]} 三角形 */
-  const tris = [];
-  for (let i = 0; i < n; i++) {
-    for (let k = 0; k < seg; k++) {
-      const a = rings[i][k];
-      const b = rings[i][(k + 1) % seg];
-      const c = rings[i + 1][(k + 1) % seg];
-      const e = rings[i + 1][k];
-      tris.push([a, e, c], [a, c, b]);
-    }
-  }
-  for (const [ring, flip] of [[rings[0], false], [rings[n], true]]) {
-    const cen = ring.reduce((acc, p) => acc.add(p), new THREE.Vector3()).multiplyScalar(1 / seg);
-    for (let k = 0; k < seg; k++) {
-      const a = ring[k];
-      const b = ring[(k + 1) % seg];
-      tris.push(flip ? [cen, b, a] : [cen, a, b]);
-    }
-  }
-  // 有號體積 < 0 → 整體翻轉繞向
-  let vol = 0;
-  for (const [a, b, c] of tris) {
-    vol += a.dot(new THREE.Vector3().crossVectors(b, c)) / 6;
-  }
-  /** @type {number[]} */
-  const pos = [];
-  for (const [a, b, c] of tris) {
-    if (vol >= 0) {
-      pos.push(a.x, a.y, a.z, b.x, b.y, b.z, c.x, c.y, c.z);
-    } else {
-      pos.push(a.x, a.y, a.z, c.x, c.y, c.z, b.x, b.y, b.z);
-    }
-  }
-  const g = new THREE.BufferGeometry();
-  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
-  g.computeVertexNormals();
-  return g;
+const strakeOutline = (i) => {
+  const x0 = 17 - 9 * i;
+  return [
+    [x0 + 1.4, 14.8],
+    [x0 - 6 - 0.9 * i, 22.6 + i],
+    [x0 - 3.4, 17.4],
+    [x0 - 1.6, 14.8],
+  ];
 };
+
+/** @type {number[][]} 貼身尾翼俯視外形 [x, z]（右半，左右鏡射）：前緣圓弧、後緣每半邊 4 個鋸齒尖（共 8 個） */
+const TAIL_WING_HALF = [
+  [-58, 0],
+  [-58.5, 7.5],
+  [-61, 14.5],
+  [-64.5, 19],
+  [-72.4, 20.5],
+  [-69.8, 17.6],
+  [-73, 15],
+  [-70.2, 12.2],
+  [-73.4, 9.4],
+  [-70.4, 6.4],
+  [-73.6, 3.6],
+  [-71, 0],
+];
 
 /** @type {import('./polyBody.js').PolyBodyConfig & { mythSeries: string, mythTheme: string }} 車殼設定 */
 const CONFIG = {
@@ -479,12 +362,12 @@ const CONFIG = {
   form: 'strider',
   roof: 'canopy',
   wing: 'mane-crest',
-  theme: '修長低伏的奔馬身：引擎蓋中線往前伸的炭灰馬頸與馬頭（頸頂立耳、額前白斑、杏仁眼、鼻孔、青銅籠頭）、中段低座艙罩、往後飄的頸鬃與鬃冠尾翼；兩側前後輪之間各 8 條「奔跑相位」立體浮雕腿（同一步態週期的 8 個連續姿勢，前後組錯開，青銅蹄）、珍珠銀白到槍鐵深灰的斜分段漸層上身＋炭灰下身',
+  theme: '八足神駒用「八」的重複表現，不做馬頭與腿：修長低伏的刀形車身、低而薄的寬平刀口鼻，兩側前後輪之間各 4 道往後上方掃的銀色刀形飾條（共 8 道，一道比一道長）、引擎蓋與背脊上往後梳的銀色鋸齒背鰭、後緣 8 個鋸齒尖的貼身尾翼；珍珠銀白到槍鐵深灰的斜分段漸層上身＋炭灰下身，肩上一條銀色交織帶，引擎蓋上一對從鼻尖往後掃的青銅細線',
   material: 'ABS',
   density_g_cm3: 1.05,
   wallThickness_mm: 0.8,
   stations: STATIONS,
-  // 平滑剖面：只有腰線（6）是銳利稜線（沒有脊 / 頸側稜，馬臉是圓潤隆起）
+  // 平滑剖面：只有腰線（6）是銳利稜線
   hard: [6],
   wheelArches: [
     { x: 40, y: 13, radius: 17.5, cutZFrom: 30 },
@@ -495,11 +378,7 @@ const CONFIG = {
   openings: [{ id: '座艙罩底開口', shape: 'fn', sd: (x, y, z) => (y < 30 ? 10 : Math.abs(z) - (canopyHalfW(x) - 0.8)) }],
   sideZMin: 30,
   zones: () => [
-    // 口鼻炭灰（從鼻尖到籠頭鼻帶前 x 69，深色口鼻是灰馬的特徵）
-    { mat: 'slate', keep: (x) => x - 69 },
-    // 馬頸與馬頭隆起（x 26 起、中線兩側到隆起邊緣）塗炭灰，在亮灰引擎蓋上讀得出一顆往前伸的馬頭
-    { mat: 'slate', keep: (x, y, z) => Math.min(x - 26, P.nw(x) + 1.4 - Math.abs(z)) },
-    // 下半身（腰線以下）深藍灰
+    // 下半身（腰線以下）炭灰
     { mat: 'slate', keep: (x, y) => (isLower(x, y) ? 1 : -1) },
     // 塗裝：上半身由車頭珍珠銀白 → 金屬銀 → 風暴灰 → 車尾槍鐵深灰的四段漸層，
     // 分段線往前上斜（x − 0.9·(y − 30)），像被風拉出的速度斜紋
@@ -514,18 +393,17 @@ const CONFIG = {
     /** @type {BodyPart[]} */
     const parts = [];
 
-    // ── 頸鬃：從兩耳之間沿中線（x 46 → 17）每 3.2 mm 一束、彼此交疊的細長刀形鬃，往後順梳 9.5 mm，鬃高 2.0–2.8 mm（厚 1.3，根部埋進殼面 1 mm），停在座艙罩前 ──
+    // ── 引擎蓋鋸齒背鰭：沿中線（x 46 → 17）每 3.2 mm 一片、彼此交疊的細長刀形，往後順梳 9.5 mm，高 2.0–2.8 mm（厚 1.3，根部埋進殼面 1 mm），停在座艙罩前 ──
     parts.push({
-      // 鬃束拉長、壓低，讀成被風往後梳的鬃
       geometry: maneRow(46, 17, 3.2, 9.5, (x) => lerp(2.0, 2.8, (x - 17) / 29), 0, 1.3, 0),
       mat: 'silver',
       solid: true,
       outline: true,
-      name: 'neck-mane',
+      name: 'hood-saw-fin',
     });
-    // ── 鬃冠尾翼（mane-crest）：座艙後方背脊（x −34 → −72）三列交疊的長鬃束（中列 + 兩側外傾 16° 的短列），往後越來越高（中列最高約 8.6 mm），鬃尖往後順梳、不超出車尾 ──
+    // ── 鋸齒冠（mane-crest）：座艙後方背脊（x −34 → −72）三列交疊的長刀形（中列 + 兩側外傾 16° 的短列），往後越來越高（中列最高約 8.6 mm），尖端往後順梳、不超出車尾 ──
     {
-      /** @type {(x: number) => number} 鬃冠高度：前端 1.4 → x −62 起 8.6（鬃束拉長往後飄） */
+      /** @type {(x: number) => number} 鋸齒冠高度：前端 1.4 → x −62 起 8.6 */
       const crestH = (x) => lerp(1.4, 8.6, Math.pow(Math.min(1, (-34 - x) / 28), 1.2));
       parts.push({
         geometry: mergeGeos([
@@ -538,12 +416,10 @@ const CONFIG = {
         outline: true,
         name: 'mane-crest-wing',
       });
-      // 鬃冠往後拉成貼身尾翼——俯視是往後散開的鬃束扇形（後緣 5 個鬃尖鋸齒），厚 1.2，
-      // 翼面 y 39.6 → 40.8（翼頂比座艙罩頂約 40.2 高 0.6 mm，V7），中央壓在鬃冠尖上
+      // 貼身尾翼——俯視是往後散開的扇形（後緣 8 個鋸齒尖），厚 1.2，
+      // 翼面 y 39.6 → 40.8（翼頂比座艙罩頂約 40.2 高 0.6 mm，V7），中央壓在鋸齒冠尖上
       {
-        /** @type {number[][]} 俯視外形 [x, z]（右半，左右鏡射） */
-        const half = [[-58, 0], [-58.5, 7.5], [-61, 14.5], [-64.5, 19], [-72.4, 20.5], [-69.6, 15.5], [-73.2, 10.5], [-70.2, 5.5], [-73.6, 0]];
-        const pts = [...half, ...half.slice(1, -1).reverse().map(([x, z]) => [x, -z])];
+        const pts = [...TAIL_WING_HALF, ...TAIL_WING_HALF.slice(1, -1).reverse().map(([x, z]) => [x, -z])];
         const shape = new THREE.Shape(pts.map(([x, z]) => new THREE.Vector2(x, -z)));
         const wing = new THREE.ExtrudeGeometry(shape, { depth: 1.2, bevelEnabled: false });
         // (X, Y, Z) → (X, Z, −Y)：形狀平面轉成水平，厚度朝上
@@ -552,139 +428,35 @@ const CONFIG = {
         wing.translate(58, 0, 0);
         wing.rotateZ((-2 * Math.PI) / 180);
         wing.translate(-58, 39.6, 0);
-        parts.push({ geometry: wing, mat: 'silver', solid: true, outline: true, name: 'mane-tail-wing' });
+        parts.push({ geometry: wing, mat: 'silver', solid: true, outline: true, name: 'saw-tail-wing' });
       }
     }
 
-    // ── 八條腿（每側 8 條立體浮雕腿，前後各 4 條＝各兩對）：扁橢圓斷面沿腿線掃掠（上段半寬 2.3 → 腕 / 飛節 0.95 → 管骨 0.62 mm），近側珍珠銀白、遠側淺銀灰，膝 / 跗與球節是關節球，蹄是青銅楔形 ──
+    // ── 八道刀形飾條（每側 4 道）：直立薄板（厚 1.6）貼在兩輪之間的側壁上，外面比側壁凸出約 0.9 mm ──
     {
+      /** @type {number} 飾條中心 |z|：兩輪之間側壁半寬 36.8 */
+      const zc = 36.9;
       /** @type {THREE.BufferGeometry[]} */
-      const legs = [];
-      /** @type {THREE.BufferGeometry[]} */
-      const hooves = [];
-      /** @type {THREE.BufferGeometry[]} */
-      const legsFar = [];
+      const strakes = [];
       for (const sg of [-1, 1]) {
-        for (const leg of LEGS) {
-          // 近側腿凸出約 0.95 mm、遠側腿約 0.5 mm（中心比近側多往內 0.25），兩條一對看得出前後層次
-          const zOff = leg.near ? 0.2 : 0.45;
-          const out = leg.near ? legs : legsFar;
-          // 上段（前臂 / 小腿肌肉）半寬 2.3 → 腕 / 飛節 0.95 → 管骨 0.62，讀得出粗大腿到細腿的收細；
-          // 相鄰腿根的肌肉彼此重疊，前 4 條合成一塊肩胸、後 4 條合成一塊臀部
-          out.push(reliefTube(densify(leg.pts, 0.5), 28, (t) => (t < 0.4 ? 0.95 + 1.35 * (1 - t / 0.4) ** 1.6 : lerp(0.95, 0.62, (t - 0.4) / 0.6)), () => (leg.near ? 1.15 : 0.95), (x, y) => sideWallZ(x, y) - zOff, sg));
-          // 關節：膝 / 跗（第 2 點）、球節（第 3 點）
-          for (const [k, r] of [[1, 1.0], [2, 0.85]]) {
-            const [jx, jy] = leg.pts[k];
-            const j = new THREE.SphereGeometry(1, 12, 8);
-            j.scale(r, r, leg.near ? 1.05 : 0.9);
-            j.translate(jx, jy, sg * (sideWallZ(jx, jy) - zOff));
-            out.push(j.toNonIndexed());
-          }
-          // 蹄：側視梯形（底寬 2.9、高 2.0，前緣斜），厚 1.8；青銅色（蹄鐵），在深色下半身上看得出每條腿的腳尖
-          const [hx, hy] = leg.pts[leg.pts.length - 1];
-          const d = leg.dir;
-          const hoofPts = [
-            [hx - 1.2 * d, hy - 1.1],
-            [hx + 1.7 * d, hy - 1.1],
-            [hx + 0.8 * d, hy + 0.9],
-            [hx - 1.0 * d, hy + 0.9],
-          ];
-          hooves.push(finPlate(d > 0 ? hoofPts : hoofPts.reverse(), sg * (sideWallZ(hx, hy) - zOff), 1.8));
+        for (let i = 0; i < STRAKES_PER_SIDE; i++) {
+          strakes.push(finPlate(strakeOutline(i), sg * zc, 1.6));
         }
       }
-      parts.push({ geometry: mergeGeos(legsFar), mat: 'legFar', solid: true, outline: true, name: 'eight-legs-far' });
-      parts.push({ geometry: mergeGeos(legs), mat: 'leg', solid: true, outline: true, name: 'eight-legs' });
-      parts.push({ geometry: mergeGeos(hooves), mat: 'bronze', solid: true, outline: true, name: 'hooves' });
+      parts.push({ geometry: mergeGeos(strakes), mat: 'silver', solid: true, outline: true, name: 'eight-strakes' });
     }
 
-    // ── 馬耳：馬臉後端一對往後微傾的立耳（側視葉形，厚 1.6 mm、0.2 mm 倒角，外張 10°），耳根埋進殼面 1 mm ──
-    {
-      /** @type {THREE.BufferGeometry[]} */
-      const ears = [];
-      for (const sg of [-1, 1]) {
-        // 耳朵在頸頂（x 48.5）；奔馳時耳朵往後貼（尖端往後上，高 5.4），頂高 ≤ 49
-        const ex = 48.5;
-        const ez = 3.6;
-        const y0 = kit.surf.topY(ex, ez) - 1;
-        const pts = [
-          [ex + 1.9, y0],
-          [ex + 1.5, y0 + 2.8],
-          [ex - 2.8, y0 + 5.4],
-          [ex - 1.4, y0 + 2.4],
-          [ex - 1.7, y0],
-        ];
-        ears.push(finPlate(pts, sg * ez, 1.6, sg * 10));
-      }
-      parts.push({ geometry: mergeGeos(ears), mat: 'slate', solid: true, outline: true, name: 'horse-ears' });
-    }
-    // ── 馬眼與鼻孔（貼紙）：馬臉兩側杏仁眼（長 4.4、寬 2.0，外眼角往後上挑）；鼻端兩個斜橢圓鼻孔 ──
+    // ── 青銅細線（貼紙 0.9 mm）：引擎蓋上一對從鼻尖往後掃到座艙罩前的細線，往後漸漸分開 ──
     parts.push({
       geometry: kit.decal((x, y, z) => {
-        if (y < P.yD(x) - 0.3) {
+        if (x < 10.5 || x > 74 || y < P.yD(x) - 3) {
           return -1;
         }
-        const az = Math.abs(z);
-        // 眼睛在馬頭隆起的額頭兩側斜面（x 57.5、|z| 8.6），側視看得到
-        const u = (x - 57.5) * Math.cos(0.35) + (az - 8.6) * Math.sin(0.35);
-        const v = -(x - 57.5) * Math.sin(0.35) + (az - 8.6) * Math.cos(0.35);
-        return 1 - Math.hypot(u / 2.2, v / 1.0);
-      }, { offset: 0.1 }),
-      mat: 'eye',
-      name: 'decal-horse-eyes',
-    });
-    parts.push({
-      geometry: kit.decal((x, y, z) => {
-        const az = Math.abs(z);
-        // 鼻孔（1.1 × 0.75）往鼻端外側斜開
-        const u = (x - 74) * Math.cos(0.5) - (az - 2.5) * Math.sin(0.5);
-        const v = (x - 74) * Math.sin(0.5) + (az - 2.5) * Math.cos(0.5);
-        return 1 - Math.hypot(u / 1.1, v / 0.75);
-      }, { offset: 0.1 }),
-      mat: 'eye',
-      name: 'decal-nostrils',
-    });
-    // ── 額前白斑（石灰岩色貼紙）：沿馬頭中線從額頭（寬 3.4）往鼻樑收細（寬 1.6）到鼻孔前，從正面看得出馬臉中線 ──
-    parts.push({
-      geometry: kit.decal((x, y, z) => {
-        if (x < 52 || x > 72.6 || y < P.yN(x) - 2.5) {
-          return -1;
-        }
-        const half = x < 56 ? lerp(0.6, 1.7, (x - 52) / 4) : lerp(1.7, 0.8, (x - 56) / 16.6);
-        return Math.min(half - Math.abs(z), 72.6 - x);
-      }, { offset: 0.08 }),
-      mat: 'dStone',
-      name: 'decal-face-blaze',
-    });
-
-    // ── 籠頭（青銅貼紙 0.8–0.9 mm）：鼻帶（x 69.4 繞口鼻）、額帶（x 51.8，兩耳前）、頰帶（鼻帶 → 額帶外端，從眼睛下方經過）──
-    parts.push({
-      geometry: kit.decal((x, y, z) => {
-        if (y < P.yD(x) - 1.5) {
-          return -1;
-        }
-        const az = Math.abs(z);
-        const nose = Math.min(0.45 - Math.abs(x - 69.4), P.nw(x) + 2.2 - az);
-        const brow = Math.min(0.42 - Math.abs(x - 51.8), 11.2 - az);
-        // 頰帶：(69.4, 8.8) → (51.8, 10.8) 線段（從眼睛下方經過）
-        const t = Math.min(1, Math.max(0, (69.4 - x) / 17.6));
-        const cheek = 0.42 - Math.hypot(x - lerp(69.4, 51.8, t), az - lerp(8.8, 10.8, t));
-        return Math.max(nose, brow, cheek);
+        return 0.45 - Math.abs(Math.abs(z) - Math.min(13.5, 0.42 * P.hw(x)));
       }, { offset: 0.12 }),
       mat: 'dBronze',
-      name: 'decal-bridle',
+      name: 'decal-hood-pinstripes',
     });
-    // ── 韁繩（實體青銅細繩 Ø1.3 mm，下緣埋進殼面 0.2 mm）：從鼻帶兩側沿馬臉、引擎蓋往後拉到座艙罩前 ──
-    {
-      /** @type {number[][]} 韁繩路徑 [x, |z|] */
-      const path = [[69.4, 9.2], [65, 10.4], [60, 12.6], [54, 13.8], [44, 14.2], [32, 14], [20, 13.4], [10.5, 12.8]];
-      /** @type {THREE.BufferGeometry[]} */
-      const reins = [];
-      for (const sg of [-1, 1]) {
-        const pts = path.map(([x, az]) => [x, kit.surf.topY(x, az) + 0.45, sg * az]);
-        reins.push(sweepEllipse(pts, 60, () => [0.65, 0.65], 10));
-      }
-      parts.push({ geometry: mergeGeos(reins), mat: 'bronze', solid: true, outline: true, name: 'reins' });
-    }
 
     // 輪拱內襯（前後，31 mm 大輪拱）
     parts.push({ geometry: mergeGeos(ARCHES.map((a) => buildLiner(kit, a))), mat: 'liner', shell: true, name: 'arch-liners' });
@@ -717,7 +489,7 @@ const CONFIG = {
     }
 
     // ── 貼紙 ──
-    // 腿部底襯：跟著腰線與輪拱走的淺凹槽（沒有邊框的硬邊黑方塊在側視會像車身開洞、和底盤連成一片）：
+    // 飾條底襯：跟著腰線與輪拱走的淺凹槽（沒有邊框的硬邊黑方塊在側視會像車身開洞、和底盤連成一片）：
     // 上緣沿腰線下 0.8、下緣中段在側裙上 0.8 並往前後兩端往上收、前後端沿輪拱外 2.0 mm
     // 收成圓角尖端（側視是一條梭形），角落用 smooth max 倒圓（半徑 2.4）；槽內深灰（不是純黑）、上緣內側一道陰影帶像腰線下的凹階，
     // 外圍一圈 0.55 mm 銀色細邊，把槽和下方黑色底盤分開
@@ -750,7 +522,7 @@ const CONFIG = {
       mat: 'dGrooveEdge',
       name: 'decal-relief-groove-edge',
     });
-    // Urnes 風格交織帶：上半身兩側各一條，從車尾沿肩走到馬臉前（避開背脊、座艙與腰線以下）
+    // Urnes 風格交織帶：上半身兩側各一條，從車尾沿肩走到前輪上方（避開背脊、座艙與腰線以下）
     parts.push({
       geometry: kit.decal((x, y, z) => (!isLower(x, y) && Math.abs(z) > P.nw(x) + 1.4 && kit.underCanopy(x, z) < 0 ? knotSd(x, y, z) : -1)),
       mat: 'dKnot',
@@ -774,13 +546,13 @@ const CONFIG = {
       mat: 'dIncise',
       name: 'decal-cable-band',
     });
-    // 圖像石框線：側壁下緣上方一道石灰岩色細線（0.7 mm），避開輪拱與腿
+    // 圖像石框線：側壁下緣上方一道石灰岩色細線（0.7 mm），避開輪拱與飾條
     parts.push({
       geometry: kit.decal((x, y, z) => {
         if (!onSide(x, z)) {
           return -1;
         }
-        // 前後輪之間是浮雕腿，框線只留在前後懸（不從腿中間穿過）
+        // 前後輪之間是刀形飾條，框線只留在前後懸（不從飾條中間穿過）
         return Math.min(0.35 - Math.abs(y - (P.yLow(x) + 3.2)), archRingDist(x, y) - 1.4, x + 64, 66 - x, Math.abs(x) - 23);
       }),
       mat: 'dStone',
@@ -791,11 +563,11 @@ const CONFIG = {
   src: {
     density_g_cm3: 'SPEC 1.14：ABS 約 1.05 g/cm³（推估）',
     wallThickness_mm: '推估：射出 ABS 殼 0.8 mm（同其他車殼）',
-    geometry: '本檔站位產生器 P（推估）：殼 x −74 → 76（鬃冠後的扇形尾翼尖 −73.6，不超出車尾）、背 28（車尾）→ 臀 35.8 / 腰 32.4 / 肩 35.8、馬頭額頭 41.4、頸頂 41.2、座艙罩頂約 40；半寬：臀與肩 47.4、腰 36.8（蓋住輪胎與底盤側面）；SPEC 1.14a 車殼外框長 ≤ 153 mm、半寬 ≤ 48.0',
+    geometry: '本檔站位產生器 P（推估）：殼 x −74 → 76（扇形尾翼尖 −73.6，不超出車尾）、背 28（車尾）→ 後輪上 35.8 / 腰 32.4 / 前輪上 35.8 → 鼻端 24.5、中線細脊高 1.2–1.8、座艙罩頂約 40；半寬：前後輪上方 47.4、腰 36.8（蓋住輪胎與底盤側面）、鼻端 21（寬平刀口鼻）；SPEC 1.14a 車殼外框長 ≤ 153 mm、半寬 ≤ 48.0',
     wheelArches: '前後 R17.5（31 mm 輪胎半徑 15.5 + 2 mm，同 zeppelin / griffin / trojan），cutZFrom 30；輪拱內襯從側壁內面往內 3.5 mm；深藍灰擋泥唇 R0.55',
-    legs: '八條腿：《散文埃達》「he has eight feet」（MYTH_RESEARCH N12）、哥特蘭圖像石的八足馬（N9、N10、N11）；每側 8 條立體浮雕腿，是同一步態週期的 8 個連續相位（前組 4 條、後組 4 條，錯開半個週期）：扁橢圓斷面的實心 ABS 掃掠件（上段半寬 2.3 → 腕 / 飛節 0.95 → 管骨 0.62，近側外凸約 0.95 mm、遠側約 0.5 mm）＋關節球＋厚 1.8 mm 青銅楔形蹄；蹄底 y 約 13.0–15.6（高於底盤側框 9.4），位置與姿勢自創',
-    mane: '頸鬃與鬃冠尾翼為實心 ABS 刀形鬃束板（厚 1.1–1.3 mm，鬃束彼此交疊處體積重複計入，偏保守），質量 = 封閉體積 × 1.05 g/cm³（推估）',
-    color: '灰色：原典「grey foal with eight legs」（N12）；珍珠銀白到槍鐵深灰的分段漸層、炭灰下身與馬頭、銀鬃、珍珠銀白 / 淺銀灰腿、青銅蹄為自創',
+    strakes: '八足：《散文埃達》「he has eight feet」（MYTH_RESEARCH N12）、哥特蘭圖像石的八足馬（N9、N10、N11）；改用「八」的重複——每側 4 道刀形飾條（厚 1.6 mm 的實心 ABS 直立薄板，下端 y 14.8、尖端 y 22.6–25.6，外凸約 0.9 mm）與後緣 8 個鋸齒尖的尾翼，形狀與位置自創',
+    mane: '引擎蓋鋸齒背鰭、鋸齒冠與貼身尾翼為實心 ABS 刀形板（厚 1.1–1.3 mm，彼此交疊處體積重複計入，偏保守），質量 = 封閉體積 × 1.05 g/cm³（推估）',
+    color: '灰色：原典「grey foal with eight legs」（N12）；珍珠銀白到槍鐵深灰的分段漸層、炭灰下身、銀色飾條與背鰭、青銅細線為自創',
     mounts: '對齊 chassis-midship 的車殼安裝點（SPEC 1.14）',
   },
 };
