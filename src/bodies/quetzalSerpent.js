@@ -197,7 +197,6 @@ const materials = () => ({
   green: namedMaterial('paint-quetzal-green-metallic', { color: 0x168a5a, roughness: 0.28, metalness: 0.45, clearcoat: 0.9, clearcoatRoughness: 0.08 }),
   green2: namedMaterial('paint-quetzal-green-metallic', { color: 0x168a5a, roughness: 0.28, metalness: 0.45, clearcoat: 0.9, clearcoatRoughness: 0.08, side: THREE.DoubleSide }),
   turq: namedMaterial('paint-turquoise-mosaic', { color: 0x2bb3a3, roughness: 0.62, clearcoat: 0.1 }),
-  turq2: namedMaterial('paint-turquoise-mosaic', { color: 0x2bb3a3, roughness: 0.62, clearcoat: 0.1, side: THREE.DoubleSide }),
   red: namedMaterial('paint-spondylus-red', { color: 0xc2452d, roughness: 0.6, clearcoat: 0.1 }),
   red2: namedMaterial('paint-spondylus-red', { color: 0xc2452d, roughness: 0.6, clearcoat: 0.1, side: THREE.DoubleSide }),
   // 真金屬：尾翼翼端板與側翼片（Blender 依 -brass 結尾換成金屬）
@@ -419,7 +418,7 @@ export const quetzalSerpentBody = makePolyBody({
     parts.push({ geometry: buildLiner({ x: -40, y: 13, radius: 15.5 }, 3.5), mat: 'liner', shell: true, name: 'arch-liners' });
     // 前輪擋泥板＋接到細頸的斜撐
     parts.push({ geometry: mergeGeos([buildFender(1), buildFender(-1)]), mat: 'green2', solid: true, outline: true, name: 'front-fenders' });
-    parts.push({ geometry: mergeGeos([buildFenderStay(1), buildFenderStay(-1)]), mat: 'turq2', solid: true, outline: true, name: 'front-fender-stays' });
+    parts.push({ geometry: mergeGeos([buildFenderStay(1), buildFenderStay(-1)]), mat: 'green2', solid: true, outline: true, name: 'front-fender-stays' });
     // 黑曜石鰭刀：擋泥板後緣往後伸的一對直立薄刃（在擋泥板寬度中央）
     const bladeZ = (FENDER.z0 + FENDER.z1) / 2;
     parts.push({
@@ -529,7 +528,7 @@ export const quetzalSerpentBody = makePolyBody({
   src: {
     density_g_cm3: 'SPEC 1.14：ABS 約 1.05 g/cm³（推估）',
     wallThickness_mm: '推估：射出 ABS 殼 0.8 mm（同其他款）',
-    geometry: '本檔站位產生器 P＋topY / ridgeY / tableroY（推估）：外框長 149（車尾翼端板 x −70.5 → 鼻尖 x 78.5，≤ 153）；頂面平台由後到前 34 → 31 → 28 → 25.4 → 22.8（車尾另降一階到 31），階面長 1.6；座艙罩頂 38.5、尾翼頂 46（全車最高）；細頸半寬 14.5（26 mm 前輪內側面 25.25 之內）；後輪拱 R15.5（26 mm 輪半徑 13 + 2.5，只支援 26 mm 輪）',
+    geometry: '本檔站位產生器 P＋topY / ridgeY / tableroY（推估）：外框長 149.7（車尾翼端板 x −70.7 → 鼻尖 x 79.0，≤ 153）；頂面平台由後到前 34 → 31 → 28 → 25.4 → 22.8（車尾另降一階到 31），階面長 1.6；座艙罩頂 38.5、尾翼頂 46（全車最高）；細頸半寬 14.5（26 mm 前輪內側面 25.25 之內）；後輪拱 R15.5（26 mm 輪半徑 13 + 2.5，只支援 26 mm 輪）',
     wing: '尾翼翼端板（|z| 20、厚 1.6，三階的階梯側影，頂 46）、兩層翼面（厚 1.6，頂面 42 / 46）、側翼片每側 3 片（厚 1.2）、黑曜石鰭刀（厚 1.4，接在擋泥板後緣）、前輪擋泥板與斜撐、腹側裙板：ABS 實心件（推估），質量 = 封閉體積 × 1.05 g/cm³；根部埋進殼面或相接的零件',
     myth: '階梯金字塔（六層 talud-tablero）、藍底彩繪、黑曜石嵌片：MYTH_RESEARCH A2（特奧蒂瓦坎羽蛇神殿）；綠咬鵑羽：A1；綠松石 / 海菊蛤紅 / 螺貝白：A6（大英博物館雙頭蛇）；階梯回紋：A7',
     mounts: '對齊 chassis-midship 的車殼安裝點（SPEC 1.14）',
