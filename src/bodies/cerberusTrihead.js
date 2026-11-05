@@ -1,65 +1,59 @@
-// 三頭犬（body-cerberus-trihead，第八階段神話組・希臘）：低趴、肩部寬厚的全罩，車頭從同一個寬肩長出三顆犬頭
-// （iter-113：顱＋額段＋方口吻＋微張下顎、鼻墊、眉骨與白眼點、往後豎的三角耳＋陶土色內耳；中間頭略前略大，
-// 兩側往外偏 12°；中空射出件，頸根埋進引擎蓋）、中後段暗紅煙燻座艙罩、
-// 車尾一條往上彎再往後的蛇形尾鰭（實體件，扁平斷面，尾端一個小蛇頭）。
-// 設計：shared/design/body-cerberus-trihead/DESIGN.md（MYTH_RESEARCH G3–G5、G12：羅浮宮 E 701 卡厄瑞水罐、《書庫》2.122 的「三個犬頭、蛇尾、背上蛇頭」、黑繪技法）。
-// iter-121（第九階段炫砲化）：車身壓低成前低後高的楔形、三頭排成中間最前的箭頭隊形降到鼻端當前保桿（嘴張開往前衝、耳朵後貼），
-// 輪拱後緣加獅爪（黑趾墊＋白爪尖）、犬眼改餘燼色自發光、蛇尾鰭壓低貼背往後平飄。
-// iter-121 第二版：車尾加貼身微拱寬尾翼（翼展 ±30）＋蛇頭剪影端板（餘燼色眼），蛇尾改當尾翼中央支柱；前輪後方側面進氣口（黑口＋餘燼色發光內緣）；
-// 側面黑 / 赭紅改成從鼻尖往後上掃的斜向分割（白色細線）；三頭再往前下壓、前段再低 1.2–1.7 mm。
-// iter-127：拿掉架高薄翼與高端板，改成根部埋進車尾殼面、往後上揚的蛇尾翼（鴨尾式，頂 34.8 ≤ 座艙罩頂 35.7），翼尖接低矮蛇頭側片；蛇尾改成貼背的脊。
-// iter-124（評審修正）：輪拱後緣的趾墊貼紙拿掉（斜分割線只剩乾淨直線），改成每個輪拱後緣 3 片實體爪形導流片（黑釉＋白爪尖）；
-// 進氣口加霧面黑凹口內面＋槍灰導流柵＋陶土色刻線框，往後移 3 mm。
-// 塗裝：黑繪陶風格——赭紅陶土（霧面）＋半光澤黑釉（緞面，iter-113）、刻線（露出陶土色的細線）、白 / 深紅加彩、前胸項圈與回紋飾帶；全為自創，不含任何文字或商標。
+// 三頭犬（body-cerberus-trihead，第八階段神話組・希臘；第十階段 iter-128 從頭重塑成 LG1 F2 擋泥板肌肉型）：
+// 三頭犬的「三」變成車身形狀——中央鼻錐最長（中間的犬吻，伸到 x 72），左右前擋泥板各往前伸出一個較短的犬吻量體（到 x 64），
+// 俯視是三根往前的吻部，中間最長；吻端只有亮面黑鼻墊與餘燼色眼縫，不做公仔狗頭。
+// 四輪擋泥板各自鼓起成肩 / 臀，中段收腰，中央一條隆起的直脊（不是 V 形）；座艙罩在中段、壓低的暗紅煙燻罩。
+// 大件：蛇尾——從座艙後方沿背脊往後、在車尾往右側甩出的貼身蛇尾擴散器唇（扁平斷面、尾端收成楔形蛇頭），全車最低的尾部、沒有架高翼。
+// 設計：shared/design/body-cerberus-trihead/DESIGN.md（「第十階段重塑（iter-128）」節；MYTH_RESEARCH G3–G5、G12：羅浮宮 E 701 卡厄瑞水罐、
+// 《書庫》2.122 的「三個犬頭、蛇尾」、黑繪技法）。
+// 塗裝：黑繪陶風格——赭紅陶土（霧面）車身＋半光澤黑釉的四個擋泥板量體與三個犬吻、刻線、白 / 深紅加彩、回紋飾帶；
+// 不用 Black Saber 的黑＋紅灰＋金座艙組合，也沒有架高尾翼與端板；全為自創，不含任何文字或商標。
 import * as THREE from 'three';
-import { makePolyBody, sweepEllipse, finPlate } from './polyBody.js';
+import { makePolyBody, sweepEllipse } from './polyBody.js';
 import { namedMaterial, decalMaterial, sideDecal, mergeGeos, lerp } from './loft.js';
 import { monoCurve, buildStations, smoothNormals } from './gazelleLeap.js';
 
 /** @typedef {import('./loft.js').BodyPart} BodyPart */
 
 /** 站位參數表（x 由後到前，前後軸 x = ±40） */
-const XS = [-71, -66, -58, -48, -40, -28, -14, 0, 14, 28, 40, 48, 53, 56];
+const XS = [-65, -61, -55, -48, -40, -30, -18, -4, 10, 24, 34, 42, 50, 56, 62, 68, 72];
 /** @type {Record<string, (x: number) => number>} */
 const P = {
-  // 中線頂：低趴（最高 32），車尾往下收；前段引擎蓋往前下斜（兩肩高於中線），三個犬頭從斜面上長出
-  // iter-121（第九階段，姿態）：中段壓低 2.6 mm（29.4）、只在前後輪上方留 30.4 的肩與臀（輪胎間隙），
-  // 前輪之後往前急降成連續斜面到鼻端 20.5（原 23.6），三顆犬頭從鼻端長出當前保桿
-  yC: monoCurve(XS, [25.4, 27.4, 28.9, 30, 30.4, 29.8, 29.4, 29.4, 29.6, 30, 30.4, 26.8, 22.4, 18.8]),
-  // 側肩稜線（iter-113：一律低於中線頂 ≥ 0.8，頂面是單純外凸的拱，不再有高於中線的肩肌隆起 → 消除波浪反光）
-  yE: monoCurve(XS, [22.4, 24.6, 27.4, 29.2, 29.6, 28.4, 26.4, 26.2, 26.8, 28.6, 29.4, 25.6, 21, 17.2]),
-  // 半寬（俯視楔形）：肩部最寬厚（46.5，前輪上方），往後一路收窄成細瘦的後半身（後輪上方 32，後輪外側露出），車尾 27
-  // iter-121：肩寬 48.2 → 47.6（外框半寬含貼紙 ≤ 48.0）
-  hw: monoCurve(XS, [24.5, 26, 27.6, 28.6, 29, 29.4, 30.2, 32.4, 37.6, 45, 47.6, 46.2, 41, 33.5]),
+  // 半寬：後擋泥板（臀）±43.8、收腰 ±28（x −18 ~ −4）、前擋泥板（肩）±44（前寬後窄的猛獸胸）；前擋泥板在 x 44 後急收，只留中央犬吻往前伸到 ±4
+  hw: monoCurve(XS, [25, 34, 41.5, 43.6, 43.8, 39.5, 28.5, 28, 33, 40.5, 44, 43.6, 24, 12, 9.5, 7.2, 4.5]),
+  // 中央直脊頂
+  yC: monoCurve(XS, [26.5, 28, 29.6, 30.4, 30.6, 30.2, 29.6, 29.4, 29.6, 30.2, 30.8, 30.4, 28.4, 25.4, 22.6, 20.2, 18.6]),
+  // 擋泥板拱頂（在 0.76 半寬處）：前後輪上方鼓起，比中央脊高 → 四個角的量體
+  yF: monoCurve(XS, [25, 28, 31.6, 33.4, 33.6, 32, 28.8, 28, 28.6, 31.6, 33.8, 34, 32, 25, 22, 19.6, 18.2]),
+  // 肩線（拱頂外側銳利稜線）：擋泥板處高、收腰處低
+  yE: monoCurve(XS, [22.5, 25, 29, 30.8, 31, 29, 24.6, 23.4, 24, 28.6, 31.2, 31.4, 29, 22.6, 20, 18.4, 17.4]),
   // 側壁下緣
-  yLow: monoCurve(XS, [19, 17.2, 14.5, 13, 12.6, 12.5, 12.5, 12.5, 12.5, 12.5, 12.6, 13.4, 14.2, 14.4]),
+  yLow: monoCurve(XS, [19, 17, 14.4, 13, 12.6, 12.5, 12.5, 12.5, 12.5, 12.5, 12.6, 13, 13.8, 14.6, 15.2, 15.6, 16]),
 };
 
 /**
- * 半剖面 7 點：中線頂 → 頂拱三點（單調往外降，外凸、無起伏）→ 肩稜（銳利）→ 側壁 → 側壁下緣（內收）
- * iter-113：原本的「肩肌隆起」點高於中線，殼面起伏造成 Blender 黑釉大片波浪反光，改成單純的外凸頂拱
+ * 半剖面 8 點：中央直脊（3 點）→ 擋泥板拱頂（2 點）→ 肩稜（銳利）→ 側壁 → 側壁下緣（內收）
  * @type {(x: number) => number[][]}
  */
 const profile = (x) => {
   const yC = P.yC(x);
-  const yE = Math.min(P.yE(x), yC - 0.8);
+  const yF = P.yF(x);
+  const yE = P.yE(x);
   const hw = P.hw(x);
   const yLow = P.yLow(x);
-  const rise = yC - yE;
-  /** @type {(u: number) => number} 頂拱：u = |z| / hw，y = yE + rise·(1 − u^2.4) */
-  const crown = (u) => yE + rise * (1 - u ** 2.4);
+  const yValley = Math.min(yC - 1.1, yF - 0.4);
   return [
     [0, yC],
-    [0.38 * hw, crown(0.38)],
-    [0.7 * hw, crown(0.7)],
-    [hw - 2.4, crown((hw - 2.4) / hw)],
+    [0.06 * hw, yC - 0.3],
+    [0.14 * hw, yValley],
+    [0.45 * hw, lerp(yValley, yF, 0.7)],
+    [0.76 * hw, yF],
     [hw, yE],
     [hw, lerp(yE, yLow, 0.55)],
-    [hw - 0.6, yLow],
+    [hw - 0.8, yLow],
   ];
 };
 
-const STATIONS = buildStations(-71, 56, 1.5, profile);
+const STATIONS = buildStations(-65, 72, 1.5, profile);
 
 /** @type {{ x: number, y: number, radius: number }[]} 前後輪拱圓（26 mm 輪胎半徑 13 + 2.2 mm） */
 const ARCHES = [
@@ -72,11 +66,11 @@ const archRingDist = (x, y) => Math.min(...ARCHES.map((a) => Math.hypot(x - a.x,
 /** @type {(x: number, z: number) => boolean} 側壁（肩稜以下） */
 const onSide = (x, z) => Math.abs(z) > P.hw(x) - 0.3;
 
-/** @type {(x: number) => number} iter-121 第二版：側面黑 / 赭紅斜向分割線高度（鼻尖 19.4 → 車尾 28.4，往後上掃） */
-const splitY = (x) => lerp(19.4, 28.4, Math.min(1, Math.max(0, (56 - x) / 127)));
+/** @type {(x: number, z: number) => boolean} 擋泥板量體（拱頂 0.3 半寬以外、前後輪 ±20 mm 內） */
+const onFender = (x, z) => Math.abs(z) > 0.34 * P.hw(x) && (Math.abs(x - 40) < 21 || Math.abs(x + 40) < 21 || x > 56);
 
-/** 回紋飾帶（側壁下段赭紅帶上的黑色回紋）：帶的上下緣高度 */
-const FRIEZE = { y0: 13.6, y1: 18.6 };
+/** 回紋飾帶（收腰段側壁上的黑色回紋）：帶的上下緣高度 */
+const FRIEZE = { y0: 14.2, y1: 19.2 };
 
 /**
  * 線段距離（膠囊）
@@ -188,287 +182,38 @@ const buildLiner = (arch, depth) => {
 };
 
 /**
- * 犬頭斷面（局部座標：x 沿頭往前、y 往上、z 橫向）：中心高度 yc、半寬 w、半高 h、超橢圓指數 p（2 = 橢圓，越大越方）
- * @typedef {{ x: number, yc: number, w: number, h: number, p: number }} HeadSection
- */
 
-/** @type {HeadSection[]} 上半顆頭（頸根 → 顱 → 額段（stop）→ 方口吻 → 鼻端）；口吻下緣 = 嘴線 */
-const HEAD_UPPER = [
-  { x: 0, yc: -1.2, w: 4.4, h: 3.0, p: 2 },
-  { x: 3.5, yc: 1.0, w: 5.0, h: 4.2, p: 2 },
-  { x: 7, yc: 2.7, w: 5.9, h: 5.0, p: 2.1 },
-  { x: 10, yc: 3.2, w: 6.2, h: 5.0, p: 2.2 },
-  { x: 12.8, yc: 2.9, w: 5.8, h: 4.4, p: 2.3 },
-  { x: 15, yc: 2.0, w: 4.8, h: 3.4, p: 2.5 },
-  { x: 16.8, yc: 1.3, w: 4.0, h: 2.8, p: 2.8 },
-  { x: 19.5, yc: 1.1, w: 3.7, h: 2.6, p: 2.9 },
-  { x: 22.5, yc: 0.95, w: 3.4, h: 2.4, p: 2.8 },
-  { x: 24.4, yc: 0.9, w: 3.0, h: 2.2, p: 2.5 },
-  { x: 25.4, yc: 0.9, w: 2.2, h: 1.7, p: 2.2 },
-  { x: 25.9, yc: 0.9, w: 1.0, h: 0.8, p: 2 },
-];
-/** @type {HeadSection[]} 下顎（iter-121：張大成往前衝的咬合姿態，前端往下約 15°，露出口內的深紅） */
-const HEAD_JAW = [
-  { x: 11.5, yc: -1.2, w: 4.2, h: 1.9, p: 2.2 },
-  { x: 15, yc: -2.3, w: 3.6, h: 1.5, p: 2.4 },
-  { x: 19, yc: -3.4, w: 3.0, h: 1.15, p: 2.4 },
-  { x: 22.2, yc: -4.3, w: 2.4, h: 0.95, p: 2.2 },
-  { x: 23.4, yc: -4.55, w: 1.4, h: 0.6, p: 2 },
-];
-/** @type {HeadSection[]} 口內（深紅加彩，夾在上下顎之間；iter-121 隨下顎張大加高） */
-const HEAD_MOUTH = [
-  { x: 15, yc: -1.8, w: 2.7, h: 1.0, p: 2.4 },
-  { x: 23.2, yc: -2.6, w: 2.2, h: 1.4, p: 2.4 },
-  { x: 23.8, yc: -2.6, w: 1.1, h: 0.6, p: 2 },
-];
-
-/**
- * 斷面線性內插（局部 x 處）
- * @type {(secs: HeadSection[], x: number) => HeadSection}
- */
-const sectionAt = (secs, x) => {
-  for (let i = 0; i < secs.length - 1; i++) {
-    const a = secs[i];
-    const b = secs[i + 1];
-    if (x <= b.x || i === secs.length - 2) {
-      const t = Math.max(0, Math.min(1, (x - a.x) / (b.x - a.x)));
-      return { x, yc: lerp(a.yc, b.yc, t), w: lerp(a.w, b.w, t), h: lerp(a.h, b.h, t), p: lerp(a.p, b.p, t) };
-    }
-  }
-  return secs[0];
-};
-
-/**
- * 超橢圓斷面環（局部 x 處的一圈頂點）
- * @type {(s: HeadSection, seg: number) => THREE.Vector3[]}
- */
-const sectionRing = (s, seg) => {
-  /** @type {THREE.Vector3[]} */
-  const ring = [];
-  const e = 2 / s.p;
-  for (let k = 0; k < seg; k++) {
-    const a = (2 * Math.PI * k) / seg;
-    const c = Math.cos(a);
-    const sn = Math.sin(a);
-    ring.push(new THREE.Vector3(s.x, s.yc + s.h * Math.sign(sn) * Math.abs(sn) ** e, s.w * Math.sign(c) * Math.abs(c) ** e));
-  }
-  return ring;
-};
-
-/**
- * 放樣網格累加器：側面（相鄰兩環）、端蓋（環＋中心）、環狀端面（外環＋內環）；inward = 反向繞（內腔面）
- * 繞向同 sweepEllipse：外法線朝外（散度定理算體積）
- */
-class LoftMesh {
-  constructor() {
-    /** @type {number[]} */
-    this.pos = [];
-  }
-
-  /** @type {(...vs: THREE.Vector3[]) => void} */
-  put(...vs) {
-    vs.forEach((v) => this.pos.push(v.x, v.y, v.z));
-  }
-
-  /** @type {(rings: THREE.Vector3[][], inward: boolean) => void} */
-  sides(rings, inward) {
-    const seg = rings[0].length;
-    for (let i = 0; i < rings.length - 1; i++) {
-      for (let k = 0; k < seg; k++) {
-        const a = rings[i][k];
-        const b = rings[i][(k + 1) % seg];
-        const c = rings[i + 1][(k + 1) % seg];
-        const d = rings[i + 1][k];
-        if (inward) {
-          this.put(a, c, d, a, b, c);
-        } else {
-          this.put(a, d, c, a, c, b);
-        }
-      }
-    }
-  }
-
-  /** @type {(ring: THREE.Vector3[], facingBack: boolean) => void} 端蓋：facingBack = 朝 −x（起點蓋） */
-  cap(ring, facingBack) {
-    const seg = ring.length;
-    const cx = ring.reduce((acc, p) => acc.clone().add(p), new THREE.Vector3()).multiplyScalar(1 / seg);
-    for (let k = 0; k < seg; k++) {
-      const a = ring[k];
-      const b = ring[(k + 1) % seg];
-      if (facingBack) {
-        this.put(cx, a, b);
-      } else {
-        this.put(cx, b, a);
-      }
-    }
-  }
-
-  /** @type {(outer: THREE.Vector3[], inner: THREE.Vector3[]) => void} 起點的環狀端面（朝 −x），外環與內環同點數 */
-  annulus(outer, inner) {
-    const seg = outer.length;
-    for (let k = 0; k < seg; k++) {
-      const a = outer[k];
-      const b = outer[(k + 1) % seg];
-      const ia = inner[k];
-      const ib = inner[(k + 1) % seg];
-      this.put(ia, a, b, ia, b, ib);
-    }
-  }
-
-  /** @type {() => THREE.BufferGeometry} */
-  geometry() {
-    const g = new THREE.BufferGeometry();
-    g.setAttribute('position', new THREE.Float32BufferAttribute(this.pos, 3));
-    return g;
-  }
-}
-
-/**
- * 沿 x 放樣超橢圓斷面的實心封閉件（兩端加蓋）
- * @type {(secs: HeadSection[], seg?: number) => THREE.BufferGeometry}
- */
-const loftSections = (secs, seg = 28) => {
-  const m = new LoftMesh();
-  const rings = secs.map((s) => sectionRing(s, seg));
-  m.sides(rings, false);
-  m.cap(rings[0], true);
-  m.cap(rings[rings.length - 1], false);
-  return m.geometry();
-};
-
-/**
- * 中空射出件（後端開口、壁厚 wall）：外形放樣＋往內縮 wall 的內腔面（到 x1 封底），後端用環狀端面把外、內面連成同一塊，
- * 質量計算（index.js closedVolume：同一連通塊的有號體積）= 外形體積 − 內腔體積
- * @type {(secs: HeadSection[], wall: number, x1: number, seg?: number) => THREE.BufferGeometry}
- */
-const hollowLoft = (secs, wall, x1, seg = 28) => {
-  const m = new LoftMesh();
-  const outer = secs.map((s) => sectionRing(s, seg));
-  /** @type {THREE.Vector3[][]} */
-  const inner = [];
-  const n = 12;
-  for (let i = 0; i <= n; i++) {
-    const sc = sectionAt(secs, lerp(secs[0].x, x1, i / n));
-    inner.push(sectionRing({ ...sc, w: sc.w - wall, h: sc.h - wall }, seg));
-  }
-  m.sides(outer, false);
-  m.cap(outer[outer.length - 1], false);
-  m.sides(inner, true);
-  // 內腔前端封底（法線朝內腔 = −x）
-  m.cap(inner[inner.length - 1], true);
-  m.annulus(outer[0], inner[0]);
-  return m.geometry();
-};
-
-/**
- * 立在 yz 平面、往後豎起的三角耳（局部：底邊中心在原點、厚度沿 x；lean = 往後傾角、splay = 往外張角；
- * inset > 0 時是內縮的內耳片，xOff = 沿厚度方向往前移，貼在耳朵前面）
- * @type {(w: number, h: number, thick: number, lean: number, splay: number, inset?: number, xOff?: number) => THREE.BufferGeometry}
- */
-const earPlate = (w, h, thick, lean, splay, inset = 0, xOff = 0) => {
-  const shape = new THREE.Shape([
-    new THREE.Vector2(-w / 2 + inset, inset * 0.7),
-    new THREE.Vector2(w / 2 - inset, inset * 0.7),
-    new THREE.Vector2(0, h - inset * 1.8),
-  ]);
-  const g = new THREE.ExtrudeGeometry(shape, { depth: thick, bevelEnabled: false });
-  // 形狀 (X, Y)、厚度沿 Z；rotateY(90°) 後 X → −z、Z → x
-  g.translate(0, 0, -thick / 2);
-  g.rotateY(Math.PI / 2);
-  g.translate(xOff, 0, 0);
-  g.rotateZ((lean * Math.PI) / 180);
-  g.rotateX((splay * Math.PI) / 180);
-  return g;
-};
-
-/**
- * 犬頭擺位：局部座標的頸根放在 (x, y, z)，往外偏航 yaw 度（正值 = 頭往 +z 偏）、俯仰 pitch 度（負值 = 鼻端往下壓）
- * @typedef {{ x: number, y: number, z: number, yaw: number, pitch: number, s: number }} HeadPose
- */
-/**
- * iter-121（第九階段）：三頭排成「中間最前」的箭頭隊形、整體降到鼻端高度（頸根 y 20.6–21.6，原 25.4–25.8），
- * 鼻端往下壓、嘴張開往前衝，三顆頭和楔形鼻端連成一體的前保桿；兩側頭退後 5 mm、外偏 16°（頸根 |z| 15，離前輪內側 ≥ 1 mm）
- * @type {HeadPose[]}
- */
-const HEADS = [
-  { x: 49.5, y: 19.8, z: 0, yaw: 0, pitch: -8, s: 1.12 },
-  { x: 44.5, y: 20.8, z: -15, yaw: -16, pitch: -6, s: 1.0 },
-  { x: 44.5, y: 20.8, z: 15, yaw: 16, pitch: -6, s: 1.0 },
-];
-/** @type {(pose: HeadPose) => THREE.Matrix4} 局部 → 車殼座標 */
-const headMatrix = (pose) =>
-  new THREE.Matrix4()
-    .makeTranslation(pose.x, pose.y, pose.z)
-    .multiply(new THREE.Matrix4().makeRotationY((-pose.yaw * Math.PI) / 180))
-    .multiply(new THREE.Matrix4().makeRotationZ((pose.pitch * Math.PI) / 180))
-    .multiply(new THREE.Matrix4().makeScale(pose.s, pose.s, pose.s));
-
-/** 蛇形尾鰭路徑（從座艙後方的背上順著往上彎、再往後微垂；根部沿背脊拉長融進殼面） */
-// iter-121：壓低成貼背的蛇形尾翼（頂 41.4 → 約 36），往後平飄，不再像提把
-// iter-121 第二版：蛇尾往後上升到尾翼下方，當尾翼的中央支柱，蛇頭從尾翼後緣下方探出
-// iter-127：蛇尾不再當尾翼的中央支柱，改成貼著背脊、沿蛇尾翼中線往後上揚的脊（頂 ≤ 座艙罩頂 35.8）
-const TAIL_PATH = [[-36, 29.2, 0], [-46, 29.6, 0], [-54, 30.2, 0], [-60, 31.4, 0], [-65, 32.7, 0], [-69.6, 33.9, 0]];
-
-/** @type {(x: number, z: number) => number} 殼頂面高度（頂拱公式，x 夾在殼長內） */
-const deckY = (x, z) => {
-  const xc = Math.max(-71, x);
-  const yC = P.yC(xc);
-  const yE = Math.min(P.yE(xc), yC - 0.8);
-  const u = Math.min(1, Math.abs(z) / P.hw(xc));
-  return yE + (yC - yE) * (1 - u ** 2.4);
-};
-
-/**
- * 等厚翼板：中面點 mid(u, v)（u ∈ [−1, 1] 展向、v ∈ [0, 1] 前緣 → 後緣），上下各偏 thick / 2，四周補側壁 → 封閉網格
- * @type {(o: { nU: number, nV: number, mid: (u: number, v: number) => number[], thick: number }) => THREE.BufferGeometry}
- */
-const bentPlate = (o) => {
-  /** @type {(i: number, j: number, sg: number) => number[]} */
-  const at = (i, j, sg) => {
-    const [x, y, z] = o.mid(lerp(-1, 1, i / o.nU), j / o.nV);
-    return [x, y + sg * 0.5 * o.thick, z];
-  };
-  /** @type {number[]} */
-  const pos = [];
-  /** @type {(a: number[], b: number[], c: number[], d: number[]) => void} */
-  const quad = (a, b, c, d) => pos.push(...a, ...b, ...c, ...a, ...c, ...d);
-  for (let i = 0; i < o.nU; i++) {
-    for (let j = 0; j < o.nV; j++) {
-      quad(at(i, j, 1), at(i, j + 1, 1), at(i + 1, j + 1, 1), at(i + 1, j, 1));
-      quad(at(i, j, -1), at(i + 1, j, -1), at(i + 1, j + 1, -1), at(i, j + 1, -1));
-    }
-    quad(at(i, 0, -1), at(i, 0, 1), at(i + 1, 0, 1), at(i + 1, 0, -1));
-    quad(at(i, o.nV, 1), at(i, o.nV, -1), at(i + 1, o.nV, -1), at(i + 1, o.nV, 1));
-  }
-  for (let j = 0; j < o.nV; j++) {
-    quad(at(0, j, 1), at(0, j, -1), at(0, j + 1, -1), at(0, j + 1, 1));
-    quad(at(o.nU, j, -1), at(o.nU, j, 1), at(o.nU, j + 1, 1), at(o.nU, j + 1, -1));
-  }
-  const g = new THREE.BufferGeometry();
-  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
-  g.computeVertexNormals();
-  return g;
-};
-
-/** 座艙罩（暗紅煙燻，中後段）：x 12 → −32 */
+/** 座艙罩（暗紅煙燻，收腰段正上方）：x 14 → −22 */
 const CANOPY = {
   section: 'ellipse',
   stations: (() => {
     /** @type {{ x: number, yBase: number, yTop: number, halfW: number }[]} */
     const out = [];
-    const n = 30;
+    const n = 24;
     for (let i = 0; i <= n; i++) {
       const u = i / n;
-      const x = lerp(12, -32, u);
-      const halfW = i === 0 || i === n ? 2.5 : 11.5 * Math.sin(Math.PI * u ** 0.9) ** 0.55;
-      const rise = 6.4 * Math.sin(Math.PI * u ** 0.75) ** 0.65;
+      const x = lerp(14, -22, u);
+      const halfW = i === 0 || i === n ? 2.2 : 9 * Math.sin(Math.PI * u ** 0.85) ** 0.55;
+      const rise = 5.2 * Math.sin(Math.PI * u ** 0.7) ** 0.6;
       out.push({ x, yBase: 0, yTop: rise, halfW });
     }
     return out;
   })(),
 };
 
-/** @type {import('./polyBody.js').PolyBodyConfig & { mythSeries: string, mythTheme: string }} 車殼設定（神話組欄位由下方匯出時補進 BodyDef） */
+/** @type {number[][]} 蛇尾中心線：座艙後方沿背脊往後，車尾往右側（+z）甩出、微微上翹（貼身擴散器唇） */
+const TAIL_PATH = [
+  [-24, 29.6, 0],
+  [-34, 30.2, 0.6],
+  [-44, 30.8, -1.8],
+  [-53, 30.6, -4.2],
+  [-58, 29.8, 0.5],
+  [-62, 28.8, 9],
+  [-65.2, 28.6, 19],
+  [-66.6, 29.4, 28],
+];
+
+/** @type {import('./polyBody.js').PolyBodyConfig & { mythSeries: string, mythTheme: string }} 車殼設定 */
 const CONFIG = {
   id: 'body-cerberus-trihead',
   name: '冥府三頭犬',
@@ -479,14 +224,14 @@ const CONFIG = {
   form: 'tri-snout',
   roof: 'canopy',
   wing: 'serpent-tail',
-  theme: '前低後高的楔形寬肩全罩、三顆犬頭排成中間最前的箭頭隊形當前保桿（張口往前衝、耳朵後貼、餘燼色發光眼）、輪拱後緣獅爪、中後段暗紅煙燻座艙罩、從車尾殼面長出、往後上揚的貼身蛇尾翼（翼尖收成蛇頭側片）；黑繪陶的赭紅＋緞面黑釉＋刻線',
+  theme: '三吻擋泥板肌肉車：中央鼻錐與左右前擋泥板各伸出一個犬吻（中間最長）、四輪擋泥板鼓成肩與臀、中段收腰、中央直脊；收腰上方壓低的暗紅煙燻座艙罩；從背脊往車尾右側甩出的貼身蛇尾擴散器唇；赭紅陶土車身＋黑釉量體＋回紋',
   material: 'ABS',
   density_g_cm3: 1.05,
   wallThickness_mm: 0.8,
   stations: STATIONS,
   tuck: 0.8,
-  // 平滑剖面：只有肩稜（4）是銳利稜線
-  hard: [4],
+  // 肩稜（5）是銳利稜線
+  hard: [5],
   wheelArches: [
     { x: 40, y: 13, radius: 15.2, cutZFrom: 23.8 },
     { x: -40, y: 13, radius: 15.2, cutZFrom: 23.8 },
@@ -494,238 +239,105 @@ const CONFIG = {
   canopy: CANOPY,
   sideZMin: 28,
   zones: () => [
-    // 黑釉：輪拱外 1.6 mm 一圈（側面赭紅底上的黑色輪拱框）
+    // 黑釉：輪拱外 1.6 mm 一圈
     { mat: 'black', keep: (x, y, z) => (onSide(x, z) ? 1.6 - archRingDist(x, y) : -1) },
-    // 赭紅陶土：側壁斜線以下（iter-121 第二版：由水平的整片側壁改成從鼻尖往後上掃的斜向分割，鼻端幾乎全黑、車尾整片赭紅）
-    { mat: 'clay', keep: (x, y, z) => (onSide(x, z) ? splitY(x) - y : -1) },
-    // 赭紅陶土：前胸（三個犬頭之間的頸根，像陶繪的底色從頸間露出；兩肩前緣維持黑釉）
-    { mat: 'clay', keep: (x, y, z) => Math.min(x - 54.5, 27 - Math.abs(z)) },
-    { mat: 'black', keep: () => 1 },
+    // 赭紅陶土：側壁
+    { mat: 'clay', keep: (x, y, z) => (onSide(x, z) ? 1 : -1) },
+    // 黑釉：四個擋泥板量體與中央犬吻（黑繪陶的「黑像」）
+    { mat: 'black', keep: (x, y, z) => (onFender(x, z) ? 1 : -1) },
+    { mat: 'black', keep: (x) => x - 54 },
+    // 赭紅陶土：收腰與中央脊兩側
+    { mat: 'clay', keep: () => 1 },
   ],
   mats: { inner: 'inner', edge: 'edge', cap: 'black', cockpit: 'cockpit', glass: 'glass', mount: 'mount' },
   materials,
   extras: (kit) => {
     /** @type {BodyPart[]} */
     const parts = [];
-    // ── 三個犬頭（實體件）：從同一個寬肩的前胸長出，頸根埋進引擎蓋；中間頭略前略大、兩側往外偏 12° ──
-    // 每顆頭：顱＋額段（stop）＋方口吻（上半顆）、微張的下顎、口內深紅、上犬齒（白）、鼻墊（亮面黑）、眉骨、白眼點、往後豎的三角耳（內耳陶土色）
-    /** @type {Record<string, THREE.BufferGeometry[]>} */
-    const g = { head: [], nose: [], eye: [], mouth: [], fang: [], ear: [], earIn: [] };
-    for (const pose of HEADS) {
-      const m = headMatrix(pose);
-      /** @type {(key: string, geo: THREE.BufferGeometry) => void} 局部幾何 → 車殼座標 */
-      const add = (key, geo) => g[key].push(geo.applyMatrix4(m));
-      // 上半顆頭做成壁厚 1.4 mm 的中空射出件（頸根到口吻中段），下顎實心
-      add('head', hollowLoft(HEAD_UPPER, 1.4, 21));
-      add('head', loftSections(HEAD_JAW, 20));
-      add('mouth', loftSections(HEAD_MOUTH, 16));
-      // 眉骨：額段上方一對隆起（讓眼睛藏在眉下）
-      const sb = sectionAt(HEAD_UPPER, 13.6);
+    // ── 左右犬吻（實體件）：從前擋泥板前緣往前伸的錐形吻部，根部埋進擋泥板，往前下收尖 ──
+    /** @type {THREE.BufferGeometry[]} */
+    const snouts = [];
+    /** @type {THREE.BufferGeometry[]} */
+    const noses = [];
+    /** @type {THREE.BufferGeometry[]} */
+    const eyes = [];
+    for (const sg of [-1, 1]) {
+      const pts = [
+        [46.5, 28.8, sg * 37.2],
+        [53, 26, sg * 38.4],
+        [59, 23, sg * 39.2],
+        [64.5, 20.2, sg * 39.4],
+      ];
+      snouts.push(sweepEllipse(pts, 14, (t) => [lerp(6, 2.4, t ** 0.9), lerp(3.8, 1.9, t ** 0.9)], 12));
+      const nose = new THREE.SphereGeometry(1.5, 12, 8);
+      nose.scale(1.2, 1, 1.3);
+      nose.translate(64.9, 20.5, sg * 39.4);
+      noses.push(nose);
+      const eye = new THREE.SphereGeometry(0.7, 10, 6);
+      eye.scale(2.4, 0.7, 0.8);
+      eye.translate(52, 28.4, sg * 34.6);
+      eyes.push(eye);
+    }
+    // 中央犬吻的鼻墊（殼鼻端）與一對眼縫
+    {
+      const nose = new THREE.SphereGeometry(1.7, 12, 8);
+      nose.scale(1.2, 1, 1.5);
+      nose.translate(71.6, 18.4, 0);
+      noses.push(nose);
       for (const sg of [-1, 1]) {
-        const brow = new THREE.SphereGeometry(1, 14, 10);
-        brow.scale(2.1, 1.1, 1.5);
-        brow.translate(13.6, sb.yc + 0.68 * sb.h, sg * 0.5 * sb.w);
-        add('head', brow);
-      }
-      // 眼點（白色加彩）：眉骨下、額段兩側的殼面上
-      const se = sectionAt(HEAD_UPPER, 15.4);
-      const ey = 0.42;
-      const ez = se.w * (1 - ey ** se.p) ** (1 / se.p);
-      for (const sg of [-1, 1]) {
-        const eye = new THREE.SphereGeometry(0.85, 12, 8);
-        eye.scale(1.1, 0.85, 0.6);
-        eye.translate(15.4, se.yc + ey * se.h, sg * (ez - 0.12));
-        add('eye', eye);
-      }
-      // 鼻墊：口吻前端上方一塊亮面黑
-      const nose = new THREE.SphereGeometry(1, 16, 10);
-      nose.scale(1.25, 1.2, 1.9);
-      nose.translate(25.5, 1.55, 0);
-      add('nose', nose);
-      // 上犬齒（白）：口吻前端兩側往下的短錐
-      for (const sg of [-1, 1]) {
-        const fang = new THREE.ConeGeometry(0.5, 2.2, 8);
-        fang.rotateX(Math.PI);
-        fang.translate(22.4, -1.9, sg * 1.9);
-        add('fang', fang);
-      }
-      // 三角耳：顱頂後方，iter-121 往後貼成 50°（衝刺時耳朵後壓）、往外張 14°；前面貼一片陶土色內耳
-      const sk = sectionAt(HEAD_UPPER, 8.6);
-      const kz = 0.55;
-      const ky = sk.h * (1 - kz ** sk.p) ** (1 / sk.p);
-      for (const sg of [-1, 1]) {
-        const ear = earPlate(4.6, 5.6, 1.3, 50, sg * 14);
-        ear.translate(8.6, sk.yc + ky - 0.7, sg * kz * sk.w);
-        add('ear', ear);
-        const inner = earPlate(4.6, 5.6, 0.45, 50, sg * 14, 1.0, 0.8);
-        inner.translate(8.6, sk.yc + ky - 0.7, sg * kz * sk.w);
-        add('earIn', inner);
+        const eye = new THREE.SphereGeometry(0.7, 10, 6);
+        eye.scale(2.4, 0.7, 0.8);
+        eye.translate(61.6, P.yC(61.6) - 0.6, sg * 5.6);
+        eyes.push(eye);
       }
     }
-    parts.push({ geometry: smoothNormals(mergeGeos(g.head)), mat: 'black2', solid: true, outline: true, name: 'dog-heads' });
-    parts.push({ geometry: mergeGeos(g.ear), mat: 'black2', solid: true, outline: true, name: 'dog-ears' });
-    parts.push({ geometry: mergeGeos(g.earIn), mat: 'clay2', solid: true, name: 'dog-ears-inner' });
-    parts.push({ geometry: mergeGeos(g.nose), mat: 'nose', solid: true, outline: true, name: 'dog-noses' });
-    parts.push({ geometry: mergeGeos(g.eye), mat: 'eyeGlow', solid: true, name: 'dog-eyes' });
-    parts.push({ geometry: smoothNormals(mergeGeos(g.mouth)), mat: 'addedRed', solid: true, name: 'dog-mouths' });
-    parts.push({ geometry: mergeGeos(g.fang), mat: 'addedWhite', solid: true, name: 'dog-fangs' });
+    parts.push({ geometry: smoothNormals(mergeGeos(snouts)), mat: 'black2', solid: true, outline: true, name: 'side-snouts' });
+    parts.push({ geometry: mergeGeos(noses), mat: 'nose', solid: true, outline: true, name: 'snout-nose-pads' });
+    parts.push({ geometry: mergeGeos(eyes), mat: 'eyeGlow', solid: true, name: 'snout-eye-slits' });
 
-    // ── 蛇形尾鰭（尾翼，實體件）：扁平斷面（左右 1.2、上下 3.4），從背上往上彎再往後；尾端蛇頭；尾下一片鰭膜連到背上 ──
+    // ── 蛇尾（大件）：扁平斷面（寬 4.4 → 2.4、高 1.8 → 1.2），沿背脊往後、在車尾往右甩，尾端楔形蛇頭 ──
     parts.push({
-      geometry: smoothNormals(sweepEllipse(TAIL_PATH, 40, (t) => [lerp(1.2, 0.85, t), lerp(1.8, 1.1, t)], 16)),
+      geometry: smoothNormals(sweepEllipse(TAIL_PATH, 40, (t) => [lerp(2.2, 1.3, t), lerp(1.0, 0.7, t)], 10)),
       mat: 'black2',
       solid: true,
       outline: true,
       name: 'serpent-tail',
     });
-    // iter-121 第二版：鰭膜拿掉（蛇尾改當尾翼中央支柱），省質量
     {
-      const g = new THREE.SphereGeometry(1, 18, 12);
-      g.scale(2.4, 1.5, 1.7);
-      g.rotateZ(0.12);
-      g.translate(-70.6, 33.7, 0);
-      parts.push({ geometry: g, mat: 'black2', solid: true, outline: true, name: 'serpent-head' });
-      const eye = new THREE.SphereGeometry(0.55, 10, 8);
-      eye.scale(1, 1, 0.6);
-      parts.push({
-        geometry: mergeGeos([-1, 1].map((sg) => eye.clone().translate(-71.2, 34.3, sg * 1.45))),
-        mat: 'addedWhite',
-        solid: true,
-        name: 'serpent-eyes',
-      });
+      const head = new THREE.ConeGeometry(2.6, 6.4, 4);
+      head.scale(1, 1, 0.45);
+      head.rotateZ(Math.PI / 2);
+      // 錐尖朝 −x → 再轉成朝蛇尾末端方向（往後外）
+      head.rotateY(-0.55);
+      head.translate(-66.2, 29.7, 30.4);
+      parts.push({ geometry: head, mat: 'black2', solid: true, outline: true, name: 'serpent-head' });
+      const eye = new THREE.SphereGeometry(0.55, 8, 6);
+      eye.translate(-65.6, 30.7, 31.6);
+      parts.push({ geometry: eye, mat: 'eyeGlow', solid: true, name: 'serpent-eye' });
     }
-    // 尾鰭上的赭紅刻線鱗紋（沿尾鰭兩側一列小環）：做成細薄環片
+    // 蛇尾鱗帶（陶土色細環，沿蛇尾每 6 mm 一道）：貼紙做不到 → 用薄環實體件（6 段）
     {
-      const curve = new THREE.CatmullRomCurve3(TAIL_PATH.map(([x, y, z]) => new THREE.Vector3(x, y, z)), false, 'centripetal');
       /** @type {THREE.BufferGeometry[]} */
       const bands = [];
-      for (const t of [0.22, 0.4, 0.58, 0.76]) {
-        const p = curve.getPointAt(t);
-        const tg = curve.getTangentAt(t);
-        const ring = new THREE.TorusGeometry(1, 0.2, 6, 28);
-        ring.scale(lerp(1.2, 0.85, t) + 0.1, lerp(1.8, 1.1, t) + 0.1, 1);
-        // 環面法線對齊尾鰭切線
-        ring.rotateY(Math.PI / 2);
-        ring.applyMatrix4(new THREE.Matrix4().makeRotationZ(Math.atan2(tg.y, tg.x)));
-        ring.translate(p.x, p.y, p.z);
-        bands.push(ring);
+      for (const k of [1, 2, 3, 4, 5]) {
+        const [x, y, z] = TAIL_PATH[k];
+        const r = new THREE.TorusGeometry(1.9, 0.32, 4, 10);
+        r.scale(1, 0.55, 1);
+        r.rotateY(Math.PI / 2);
+        r.translate(x, y, z);
+        bands.push(r);
       }
       parts.push({ geometry: mergeGeos(bands), mat: 'clay2', solid: true, name: 'serpent-bands' });
     }
-
-    // ── iter-127 蛇尾翼（評審「黑殼＋雙柱架高、帶端板的尾翼離 Black Saber 越來越近、有 GT 翼感」）──
-    //    拿掉架高的薄翼與高端板：翼板根部埋進車尾殼面（x −53，上表面低於殼面 0.1 mm），往後上揚成鴨尾，
-    //    後緣中央 −70.8 頂 34.8（座艙罩頂 35.8 以下）；展向跟著頂拱下垂，翼尖收窄往前掠，像一條壓扁的蛇尾；
-    //    翼尖往下接一片低矮的蛇頭剪影側片（吻尖朝後、餘燼色眼），下緣埋進車尾肩稜，和殼面連成一體
-    {
-      /** @type {(u: number) => number} 前緣 x */
-      const le = (u) => -53 - 2.5 * u * u;
-      /** @type {(u: number) => number} 後緣 x：中央最後、翼尖往前收（蛇尾尖形平面） */
-      const te = (u) => -70.8 + 3.6 * Math.abs(u) ** 1.6;
-      /** @type {(v: number) => number} 半翼展：根部 22.5 → 後緣 24.6 */
-      const span = (v) => lerp(22.5, 24.6, v);
-      /** @type {(u: number) => number} 後緣中面高度：中央 34.2 → 翼尖 31.6 */
-      const yTe = (u) => 34.2 - 2.6 * u * u;
-      parts.push({
-        geometry: bentPlate({
-          nU: 16,
-          nV: 6,
-          thick: 1.2,
-          mid: (u, v) => {
-            const x = lerp(le(u), te(u), v);
-            const z = u * span(v);
-            const yRoot = deckY(le(u), z) - 0.7;
-            return [x, lerp(yRoot, yTe(u), v ** 1.5), z];
-          },
-        }),
-        mat: 'black2',
-        solid: true,
-        outline: true,
-        name: 'serpent-tail-wing',
-      });
-      // 翼尖下方的蛇頭側片：上緣貼翼尖下表面、下緣埋進肩稜、後端是往後探的蛇吻
-      const zt = 24.0;
-      /** @type {number[][]} 側視輪廓（x, y） */
-      const head = [
-        [-60.5, deckY(-60.5, zt) - 0.6],
-        [-60.5, 30.8],
-        [-66.6, 31.6],
-        [-69.4, 30.6],
-        [-69.8, 29.4],
-        [-68.4, deckY(-68.4, zt) - 0.6],
-      ];
-      parts.push({
-        geometry: mergeGeos([finPlate(head, zt, 1.2), finPlate(head, -zt, 1.2)]),
-        mat: 'black2',
-        solid: true,
-        outline: true,
-        name: 'serpent-endplates',
-      });
-      // 蛇頭側片的眼（餘燼色發光小點，貼在側片外側）
-      const eye = new THREE.SphereGeometry(0.6, 10, 8);
-      eye.scale(1.2, 1, 0.5);
-      parts.push({
-        geometry: mergeGeos([-1, 1].map((sg) => eye.clone().translate(-67.4, 30.4, sg * (zt + 0.65)))),
-        mat: 'eyeGlow',
-        solid: true,
-        name: 'endplate-eyes',
-      });
-    }
-
-    // ── iter-121 第二版：前輪後方的側面進氣口（黑色凹口貼紙＋餘燼色發光內緣），平行四邊形往前上斜 ──
-    /** @type {(x: number, y: number) => number} 進氣口距離場（側視，負值 = 口內） */
-    const intake = (x, y) => {
-      // 斜邊：x − 0.5·(y − 19.8) 在 [9.5, 19.5]（iter-124：往後移 3 mm，讓出前輪拱後緣的爪形導流片）
-      const u = x - 0.5 * (y - 19.8);
-      return Math.max(Math.abs(u - 14.5) - 5, Math.abs(y - 22.6) - 2.8);
-    };
-    // iter-124：評審說 iter-121 的進氣口只看得到一圈橘框、裡面空白（黑口貼在黑釉上看不出來，白細線還從口中間穿過）。
-    // 改成：口內是比黑釉更暗的霧面黑（凹口內面）＋3 片平行斜邊的槍灰導流柵，口外一圈 0.5 mm 陶土色刻線框，
-    // 餘燼色發光只留在下緣內唇（像從凹口深處透出來的光）
-    /** @type {(x: number, y: number, z: number) => boolean} 進氣口貼紙取樣範圍 */
-    const nearIntake = (x, y, z) => Math.abs(z) > 28 && x < 30 && x > 5;
-    parts.push({
-      geometry: kit.decal((x, y, z) => (nearIntake(x, y, z) ? -intake(x, y) : -1), { offset: 0.12 }),
-      mat: 'dVoid',
-      name: 'decal-side-intake',
-    });
-    parts.push({
-      geometry: kit.decal((x, y, z) => (nearIntake(x, y, z) ? Math.min(intake(x, y) + 0.05, 0.55 - intake(x, y)) : -1), { offset: 0.12 }),
-      mat: 'dIncised',
-      name: 'decal-intake-frame',
-    });
-    parts.push({
-      geometry: kit.decal((x, y, z) => {
-        if (!nearIntake(x, y, z)) {
-          return -1;
-        }
-        const u = x - 0.5 * (y - 19.8);
-        const vanes = 0.35 - Math.min(...[12, 14.5, 17].map((uc) => Math.abs(u - uc)));
-        return Math.min(vanes, -intake(x, y) - 0.25, y - 20.6);
-      }, { offset: 0.18 }),
-      mat: 'dLouver',
-      name: 'decal-intake-louvers',
-    });
-    parts.push({
-      geometry: kit.decal((x, y, z) => (nearIntake(x, y, z) ? Math.min(-intake(x, y), 20.4 - y) : -1), { offset: 0.18 }),
-      mat: 'dEmber',
-      name: 'decal-intake-ember-edge',
-    });
-    // 斜向分割線上的白色細線（加彩，線寬 0.6，從鼻尖往後上掃到車尾）
-    parts.push({
-      geometry: kit.decal((x, y, z) => (onSide(x, z) && x < 55 && x > -69 ? Math.min(0.3 - Math.abs(y - splitY(x) - 0.5), intake(x, y) - 0.6) : -1), { offset: 0.14 }),
-      mat: 'dWhite',
-      name: 'decal-split-pinstripe',
-    });
 
     // 輪拱內襯（前後，R15.2）
     parts.push({ geometry: mergeGeos(ARCHES.map((a) => buildLiner(a, 2.2))), mat: 'liner', shell: true, name: 'arch-liners' });
 
     // ── 貼紙（黑繪陶紋樣）──
-    // 回紋飾帶：側壁下段赭紅帶上的黑色鉤形回紋（線寬 0.6 mm），帶上下各一條黑邊線
-    /** @type {(u: number, v: number) => number} u = 往前為正的 x、v = 高度 */
+    // 回紋飾帶：收腰段側壁的黑色鉤形回紋，帶上下各一條黑邊線
+    /** @type {(u: number, v: number) => number} */
     const frieze = (u, v) => {
-      if (archRingDist(u, v) < 2.4 || u > 52 || u < -64) {
+      if (archRingDist(u, v) < 2.4 || u > 22 || u < -22) {
         return 1;
       }
       const edgeLines = Math.min(Math.abs(v - FRIEZE.y0 + 0.2), Math.abs(v - FRIEZE.y1 - 0.2)) - 0.3;
@@ -734,145 +346,67 @@ const CONFIG = {
     };
     parts.push({
       geometry: mergeGeos([
-        kit.decal(sideDecal(frieze, { x0: 0, y0: 0, zMin: 28, side: 1 }), { offset: 0.1 }),
-        kit.decal(sideDecal((u, v) => frieze(-u, v), { x0: 0, y0: 0, zMin: 28, side: -1 }), { offset: 0.1 }),
+        kit.decal(sideDecal(frieze, { x0: 0, y0: 0, zMin: 26, side: 1 }), { offset: 0.1 }),
+        kit.decal(sideDecal((u, v) => frieze(-u, v), { x0: 0, y0: 0, zMin: 26, side: -1 }), { offset: 0.1 }),
       ]),
       mat: 'dBlack',
       name: 'decal-meander-frieze',
     });
-    // 頸部項圈帶（殼面）：前胸頸根處一道深紅寬帶＋白點列（陶繪加彩）
-    parts.push({ geometry: kit.decal((x) => 1.4 - Math.abs(x - 51), { offset: 0.1 }), mat: 'dRed', name: 'decal-collar-band' });
+    // 刻線：黑釉量體邊緣一道陶土色細線（黑繪陶的刻線，讓四個角的量體輪廓清楚）
+    parts.push({
+      geometry: kit.decal((x, y, z) => {
+        if (onSide(x, z) || x > 54) {
+          return -1;
+        }
+        return 0.32 - Math.abs(Math.abs(z) - 0.34 * P.hw(x) - 0.5);
+      }, { offset: 0.1 }),
+      mat: 'dIncised',
+      name: 'decal-incised-fender-line',
+    });
+    // 頸部項圈帶：三吻根部一道深紅寬帶＋白點列（陶繪加彩）
+    parts.push({ geometry: kit.decal((x, y, z) => Math.min(1.3 - Math.abs(x - 53), 0.34 * P.hw(x) + 0.3 - Math.abs(z)), { offset: 0.12 }), mat: 'dRed', name: 'decal-collar-band' });
     parts.push({
       geometry: kit.decal((x, y, z) => {
         const ph = ((Math.abs(z) % 3.2) + 3.2) % 3.2;
-        return 0.5 - Math.hypot(x - 51, Math.min(ph, 3.2 - ph));
+        return Math.min(0.5 - Math.hypot(x - 53, Math.min(ph, 3.2 - ph)), 0.34 * P.hw(x) - Math.abs(z));
       }, { offset: 0.16 }),
       mat: 'dWhite',
       name: 'decal-collar-dots',
     });
-    // 黑線（赭紅側壁上）：肋線（iter-121：肩 / 臀弧線拿掉，改由輪拱後緣的獅爪表現）
-    /** @type {(u: number, v: number) => number} */
-    const muscle = (u, v) => {
-      const ribs = Math.min(...[-14, -8, -2, 4].map((xr) => Math.max(Math.abs(u - xr - 0.35 * (v - 22)) - 0.3, Math.abs(v - 22.6) - 3.2)));
-      return Math.max(ribs, FRIEZE.y1 + 1.6 - v);
-    };
-    // ── iter-124 獅爪導流片（實體件，取代 iter-121 的趾墊貼紙）：iter-121 的黑趾墊壓在黑 / 赭紅斜分割線上，
-    // 評審說側視像撕開的油漆毛邊；改成前後輪拱後緣各 3 片沿輪拱往後下方彎的爪形導流片（射出件厚 1.3 mm、外凸 1.1 mm），
-    // 根部黑釉、爪尖白色加彩，像犬爪扣住車輪往後蹬；斜分割線本身不再有任何貼紙，只剩一條乾淨的直斜線＋白細線 ──
-    /** @type {number[]} 爪根所在角度（輪拱圓心起算，度；180° = 正後方），避開斜分割線 */
-    const CLAW_DEG = [132, 146, 160];
-    /**
-     * 單片爪（側視多邊形 [x, y]，取中心線 t ∈ [t0, t1] 一段）：根部在輪拱切口外 1.0 mm，
-     * 沿輪拱往後下方繞 12°、同時往外伸 3.6 mm，半寬 0.95 → 0.12 收成爪尖
-     * @type {(a: { x: number, y: number, radius: number }, deg: number, t0: number, t1: number) => number[][]}
-     */
-    const clawOutline = (a, deg, t0, t1) => {
-      /** @type {(t: number) => number[]} 中心線 */
-      const at = (t) => {
-        const ang = ((deg + 12 * t) * Math.PI) / 180;
-        const r = a.radius + 1.0 + 3.6 * t;
-        return [a.x + r * Math.cos(ang), a.y + r * Math.sin(ang)];
-      };
-      /** @type {(t: number) => number} 半寬 */
-      const half = (t) => lerp(0.95, 0.12, t ** 0.9);
-      const n = 5;
-      /** @type {number[][]} */
-      const outer = [];
-      /** @type {number[][]} */
-      const inner = [];
-      for (let i = 0; i <= n; i++) {
-        const t = lerp(t0, t1, i / n);
-        const [cx, cy] = at(t);
-        const [nx, ny] = at(Math.min(1, t + 0.01));
-        const [px, py] = at(Math.max(0, t - 0.01));
-        const tx = nx - px;
-        const ty = ny - py;
-        const l = Math.hypot(tx, ty);
-        outer.push([cx - (ty / l) * half(t), cy + (tx / l) * half(t)]);
-        inner.push([cx + (ty / l) * half(t), cy - (tx / l) * half(t)]);
-      }
-      return [...outer, ...inner.reverse()];
-    };
-    /** @type {(pts: number[][], side: number) => THREE.BufferGeometry} 側視多邊形擠出成貼在側壁上的爪片（厚 1.3 mm：內面埋進側壁 0.2 mm、外凸 1.1 mm；整車質量 ≤ 133 g 的餘裕很小） */
-    const clawPlate = (pts, side) => {
-      const shape = new THREE.Shape(pts.map(([x, y]) => new THREE.Vector2(side * x, y)));
-      const geo = new THREE.ExtrudeGeometry(shape, { depth: 1, bevelEnabled: false });
-      if (side < 0) {
-        // 繞 y 轉 180°（x 轉回原值、z 變負），不翻轉三角形方向
-        geo.rotateY(Math.PI);
-      }
-      const pos = geo.attributes.position;
-      for (let i = 0; i < pos.count; i++) {
-        const x = pos.getX(i);
-        pos.setZ(i, side * (P.hw(x) - 0.2 + 1.3 * Math.abs(pos.getZ(i))));
-      }
-      geo.computeVertexNormals();
-      return geo;
-    };
-    for (const [t0, t1, mat, name] of [[0, 0.72, 'black', 'lion-claw-strakes'], [0.72, 1, 'addedWhite', 'lion-claw-tips']]) {
-      /** @type {THREE.BufferGeometry[]} */
-      const geos = [];
-      for (const a of ARCHES) {
-        for (const deg of CLAW_DEG) {
-          for (const side of [-1, 1]) {
-            geos.push(clawPlate(clawOutline(a, deg, t0, t1), side));
-          }
-        }
-      }
-      parts.push({ geometry: mergeGeos(geos), mat, solid: true, outline: true, name });
+    // 側面兩層量體：收腰段側壁上緣的黑色進氣口（往前低、往後高）＋餘燼色內緣
+    for (const side of [-1, 1]) {
+      const opt = { x0: 0, y0: 0, zMin: 26, side };
+      /** @type {(u: number, v: number) => number} */
+      const intake = (u, v) => Math.max(-23 - u, u - 22, v - P.yE(u) + 0.6, lerp(20.8, 19.6, (u + 23) / 45) - v);
+      parts.push({ geometry: kit.decal(sideDecal(intake, opt), { offset: 0.14 }), mat: 'dVoid', name: `decal-side-intake-${side}` });
+      parts.push({
+        geometry: kit.decal(sideDecal((u, v) => Math.max(-23 - u, u - 22, Math.abs(v - lerp(20.8, 19.6, (u + 23) / 45) + 0.3) - 0.3), opt), { offset: 0.16 }),
+        mat: 'dEmber',
+        name: `decal-intake-ember-edge-${side}`,
+      });
     }
-    parts.push({
-      geometry: mergeGeos([
-        kit.decal(sideDecal(muscle, { x0: 0, y0: 0, zMin: 28, side: 1 }), { offset: 0.1 }),
-        kit.decal(sideDecal((u, v) => muscle(-u, v), { x0: 0, y0: 0, zMin: 28, side: -1 }), { offset: 0.1 }),
-      ]),
-      mat: 'dBlack',
-      name: 'decal-muscle-lines',
-    });
-    // 刻線：背上兩條波浪（蛇鬃——典籍說背上長滿蛇頭），從頸根沿座艙兩側到尾根
-    parts.push({
-      geometry: kit.decal((x, y, z) => {
-        if (x > 46 || x < -52 || y < 26) {
-          return -1;
-        }
-        const zc = 16.5 + 1.6 * Math.sin((x + 52) / 3.1);
-        return 0.32 - Math.abs(Math.abs(z) - zc);
-      }, { offset: 0.1 }),
-      mat: 'dIncised',
-      name: 'decal-incised-serpent-mane',
-    });
-    // 蛇鬃上的蛇頭點（白色加彩小點，每 12 mm 一顆）
-    parts.push({
-      geometry: kit.decal((x, y, z) => {
-        if (x > 44 || x < -48 || y < 26) {
-          return -1;
-        }
-        const ph = (((x + 48) % 12) + 12) % 12;
-        const xc = x - ph + 6;
-        const zc = 16.5 + 1.6 * Math.sin((xc + 52) / 3.1);
-        return 0.55 - Math.hypot(x - xc, Math.abs(z) - zc);
-      }, { offset: 0.16 }),
-      mat: 'dWhite',
-      name: 'decal-serpent-mane-dots',
-    });
-    // 尾燈：車尾封口上方兩段紅色細帶
-    parts.push({
-      geometry: kit.decal((x, y, z) => Math.min(-69.6 - x, 0.9 - Math.abs(y - 22.5), Math.abs(z) - 8, 22 - Math.abs(z))),
-      mat: 'tail',
-      name: 'lamp-tail',
-    });
+    // 尾燈：車尾左右一對細長紅燈（貼在尾端封口上方）
+    {
+      /** @type {THREE.BufferGeometry[]} */
+      const lamps = [];
+      for (const sg of [-1, 1]) {
+        const l = new THREE.BoxGeometry(0.8, 1.4, 9);
+        l.translate(-64.9, 22.4, sg * 13);
+        lamps.push(l);
+      }
+      parts.push({ geometry: mergeGeos(lamps), mat: 'tail', solid: true, name: 'lamp-tail' });
+    }
     return parts;
   },
   src: {
     density_g_cm3: 'SPEC 1.14：ABS 約 1.05 g/cm³（推估）',
-    wallThickness_mm: '推估：射出 ABS 殼 0.8 mm（同其他車殼）；座艙罩同厚度以殼面積計入質量',
-    geometry: '本檔站位產生器 P（推估）：iter-121 車殼外框長 150.8（蛇頭 x −71.8 → 中間犬頭鼻墊 79.0）、殼頂 29.4（前後輪上方 30.4）、鼻端 20.5、座艙罩頂約 36.8、蛇尾鰭頂約 36（iter-127：座艙罩頂 35.7、蛇尾翼頂 34.8、蛇頭 x −73.0）；俯視楔形：肩寬 95.2、後輪上方 58（後輪外側露出）；SPEC 1.14a 車殼外框長 ≤ 153 mm、半寬 ≤ 48.0',
-    wheelArches: '前後 R15.2（26 mm 輪胎半徑 13 + 2.2 mm，同 owl-hush / mantis-scythe），cutZFrom 23.8；只對應 26 mm 輪（低車身）',
-    snouts: '三顆犬頭的上半顆是壁厚 1.4 mm（× 縮放 1.04–1.12）、後端開口的中空射出件，下顎、耳、鼻墊、口內、眼、犬齒與蛇形尾鰭為實心 ABS 件；質量 = 封閉體積 × 1.05 g/cm³（推估）',
+    wallThickness_mm: '推估：射出 ABS 殼 0.8 mm（同其他車殼）',
+    geometry: '本檔站位產生器 P（推估，iter-128 從頭重塑）：殼長 137（−65 ~ 中央犬吻 72，鼻尖不超過第九階段 79.4）；擋泥板拱頂 33.6 / 34、中央直脊 30.8、收腰 28；寬：臀 ±45.5、肩 ±46.5、收腰 ±30',
+    wheelArches: '前後 R15.2（26 mm 輪胎半徑 13 + 2.2 mm）',
+    snouts: '左右犬吻：ABS 實心錐形件（橢圓斷面 11.2 × 8.8 → 4.4 × 3.8，推估），根部埋進前擋泥板 x 44，吻端 x 63.6；中央犬吻 = 殼鼻',
+    tail: '蛇尾：ABS 扁平斷面實體件（4.4 × 2 → 2.6 × 1.4，推估），貼背脊 y 29.6–30.8，車尾往右甩到 z 28；楔形蛇頭 4 段錐',
     mounts: '對齊 chassis-midship 的車殼安裝點（SPEC 1.14）',
   },
 };
 
-// makePolyBody 只複製既有欄位：神話組分組欄位（mythSeries / mythTheme）在這裡補進 BodyDef
-/** @type {import('./types').BodyDef & { mythSeries: string, mythTheme: string }} */
 export const cerberusTriheadBody = { ...makePolyBody(CONFIG), mythSeries: CONFIG.mythSeries, mythTheme: CONFIG.mythTheme };
