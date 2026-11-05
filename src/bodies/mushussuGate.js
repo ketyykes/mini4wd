@@ -1,18 +1,19 @@
 // 伊什塔爾城門的穆修胡修（body-mushussu-gate，第八階段神話組・美索不達米亞）。
 // iter-128（第十階段「從頭重塑」，LG1 家族 F4 暗器生物型）：整台車就是伊什塔爾城門釉磚上的蛇龍穆修胡修「低伏前竄」的姿態——
-// 鼻錐是貼地前伸的蛇首（頸部收窄、頭骨微鼓、琥珀發光蛇眼當頭燈），頭上一對直角往後掃過前擋泥板當前分流片（被風壓平、正在往後飛揚）；
-// 前輪上方是壓低的獅肩擋泥板、後輪上方是高高拱起的鷹腿後臀（前低後高 = 蹲伏要撲出去），兩輪之間只微收（44 → 41.5，蛇身）；
-// 側面一道肩線＋上層側壁往內收（tumblehome）＋腰線外凸的平台＋下層瀝青黑裙板，側視分成上下兩層量體（評審「厚平板」的解法）；
-// 下層裙板上，前輪後方是獅爪（3 支圓弧短爪）、後輪後方是鷹爪（3 前 1 後的鉤爪），都往後伸，像正在邁步；
-// 自創暗器：蛇尾末端往上後方揚起的一片「鰭刀」尾翼（金色刃緣＋黃釉刀身，彎月形，不是針、鉗、牙或蠍尾毒針）。
-// 釉磚語彙：深青金石藍霧面釉磚殼（錯縫磚縫）、背脊中線白瓣金心玫瑰花飾帶、腰線黃釉細邊、頭頂黃釉蛇首紋。
+// iter-129（評審：殼面沒變、邊緣下垂像毯子、浮雕不見、尾鰭像飾品）再重塑：
+// - 前 1/3：中央從 x 14 起往前壓低成一支長而低的黑藍蛇首鼻錐（夾在兩個獅肩前擋泥板之間，到吻尖 x 74 只剩 15.8 高、半寬 5.5），
+//   鼻端兩側各一盞細長亮金頭燈當蛇眼，鼻頂一支往後掠的單支金刀角。
+// - 斷面：平順的肩線（車尾 23 → 後臀 32.6 → 腰 30.6 → 前擋泥板 31.6，不再起伏下垂），肩下是幾乎直立的側壁，再往內收 2.4 mm 的瀝青黑裙板。
+// - 側壁腰段放回 iter-127 的黃釉龍蛇獸浮雕（同位置、同大小、鱗片與黑眼）；獅爪、鷹爪立板拿掉（浮雕本身有獅足與鷹爪）。
+// - 自創暗器：從後甲板中央脊線連續長出、往車尾漸升的金色鰭刀背鰭（根部沿脊線 36 mm 長，埋進殼面），刀尖往後上方勾起；不是針、鉗、牙或蠍尾毒針。
+// 釉磚語彙：深青金石藍霧面釉磚殼（錯縫磚縫）、背脊中線白瓣金心玫瑰花飾帶。
 // 設計：shared/design/body-mushussu-gate/DESIGN.md（典故與文物對應 MYTH_RESEARCH 第 4 節 M1–M5；黑名單 4-3、第 9 節 Dragon Jr. / Beat-Magnum；第十階段段落）。
 // 剖面為本檔站位產生器（推估）。圖形全部自繪；不做立體龍頭公仔、不放龍形駕駛、不做紅龍徽章、玫瑰花飾只用圓瓣（不做放射閃電）；不含任何文字。
 import * as THREE from 'three';
-import { makePolyBody, sweepEllipse, finPlate } from './polyBody.js';
+import { makePolyBody, finPlate } from './polyBody.js';
 import { namedMaterial, decalMaterial, mergeGeos, lerp } from './loft.js';
 import { monoCurve, buildStations } from './gazelleLeap.js';
-import { buildProfileLiner } from './khepriScarab.js';
+import { buildProfileLiner, profileZAtY } from './khepriScarab.js';
 import { buildArchWell, chassisBlockedNearArch } from './kitsuneNinetail.js';
 
 /** @typedef {import('./loft.js').BodyPart} BodyPart */
@@ -25,48 +26,56 @@ const X_FRONT = 74;
 const XS = [-72, -68, -60, -50, -40, -28, -14, 0, 14, 28, 40, 48, 54, 58, 62, 66, 70, 74];
 /** @type {Record<string, (x: number) => number>} */
 const P = {
-  // 腰線（上下兩層的分界、側視最寬處）的半寬：前後擋泥板 44、兩輪之間 41.5（俯視 IoU：比收腰版低，見 DESIGN 第十階段），
-  // 前擋泥板之後急收成細長蛇頸（x 58 半寬 14、x 62 半寬 11.4）再微鼓成蛇頭骨（x 66 半寬 12.4）→ 吻尖 5.5；車尾收成細長蛇尾（11）
-  hw: monoCurve(XS, [11, 18, 33, 42.5, 44, 43, 42, 41.5, 42, 43, 44, 34, 21, 14, 11.4, 12.4, 9.5, 5.5]),
-  // 背脊中線：前低後高的蹲伏姿態——前擋泥板 31.8、後臀最高 35.0（x −40），往車尾降成蛇尾 25.5；
-  // 車頭從獅肩往前下斜成蛇頸（x 62：19.6）、頭骨微隆（x 66：20.6）、吻尖 15.6（LG1 低尖鼻 V3）
-  yTop: monoCurve(XS, [25.5, 28, 31.8, 34.3, 35, 34.7, 34.1, 33.4, 32.8, 32.4, 31.8, 29.5, 26, 22, 19.6, 20.6, 18.6, 15.6]),
-  // 肩線（頂面與上層側壁的交界，銳利）：前輪上 31.2、腰 28.2、後輪上 32.7（R17.5 輪拱頂 30.5 之上）
-  yS: monoCurve(XS, [23.5, 26, 29.5, 32.1, 32.7, 31.3, 29.2, 28.2, 28.6, 30, 31.2, 28.2, 24.4, 20.6, 18.4, 19.2, 17.4, 14.8]),
-  // 腰線（上層側壁底、外凸平台）：約 20–22，車頭降到 13.8
-  yC: monoCurve(XS, [19.5, 19.5, 21, 22, 22, 21.5, 20.8, 20.4, 20.6, 21, 21.2, 20.4, 18.6, 16.8, 15.8, 16, 15, 13.8]),
-  // 下層裙板下緣（腰段 10.5，loft 自動讓開底盤側框）
+  // 側壁外表面半寬：前後擋泥板 45.2、兩輪之間 45（iter-129：裙板改成內收後側壁就是最寬處；中段不收腰、x 48 起急收成細蛇頸 27 → 12，
+  // 俯視 IoU 對 tortoise / halo / lowline 才降到 0.835 內），蛇頭 11.6、吻尖 5.2；車尾收成蛇尾 11
+  hw: monoCurve(XS, [11, 18, 33.5, 43.6, 45.2, 45, 45, 45, 45, 45, 45.2, 27, 15, 12, 10.6, 11.6, 9, 5.2]),
+  // 背脊中線：後臀最高 35.2，x 14 之後往前壓低成蛇首（x 40：25.8，吻尖 15.8）
+  yT: monoCurve(XS, [25.5, 28, 32, 34.5, 35.2, 34.8, 34, 33.2, 32.4, 28.5, 25.8, 24.4, 23, 21.8, 20.8, 19.8, 18.2, 15.8]),
+  // 肩線（銳利、平順）：車尾 23 → 後臀 32.6 → 腰 30.6 → 前擋泥板 31.6（R17.5 輪拱頂 30.5 之上）→ 蛇頭兩側 14.6
+  yS: monoCurve(XS, [23, 25.5, 29, 31.5, 32.6, 32, 31, 30.6, 30.6, 31, 31.6, 30.6, 27, 20.4, 19.4, 18.4, 16.6, 14.6]),
+  // 蛇首半寬（中央壓低的鼻錐在擋泥板之間的寬度）
+  head: monoCurve([14, 28, 40, 54, 62, 74], [15, 13, 13.5, 12, 9, 4]),
+  // 裙板下緣
   yLow: monoCurve(XS, [16, 15.5, 14.5, 12.5, 10.6, 10.5, 10.5, 10.5, 10.5, 10.5, 10.6, 11.5, 12.6, 13.2, 13.2, 13, 12.8, 12.8]),
 };
 
-/** @type {(h: number) => number} 上層側壁往內收的量（tumblehome；肩線比腰線內縮，最多 2.6 mm） */
-const tumble = (h) => Math.min(2.6, 0.2 * h);
-/** @type {(h: number) => number} 腰線平台往外凸的量（下層裙板比上層側壁外 1.2 mm） */
-const ledge = (h) => Math.min(1.2, 0.09 * h);
+/** @type {number} 上層側壁往內收的量（tumblehome：肩線比側壁內 1.6） */
+const TUMBLE = 1.6;
+/** @type {number} 裙板往內收的量 */
+const TUCK = 2.4;
+
+/** @type {(x: number) => number} 側壁與裙板之間的折線高度（中段 16.5；鼻端跟著降低） */
+const yK = (x) => Math.max(P.yLow(x) + 1.2, Math.min(16.5, P.yS(x) - 3));
+
+/** @type {(x: number) => number} 蛇首半寬（不超過殼半寬的 0.45） */
+const headW = (x) => Math.min(0.45 * P.hw(x), P.head(x));
 
 /**
- * 半剖面 9 點：背脊中線 → 微圓的頂面 → 肩線（銳利）→ 往外下斜的上層側壁（tumblehome）→ 腰線（銳利）→ 外凸平台（銳利）→ 直立的下層裙板 → 裙板下緣
+ * 半剖面 9 點：背脊 → 蛇首頂 → 蛇首側緣（前段是頭與擋泥板之間的淺溝）→ 擋泥板頂內緣 → 肩線（銳利）→ 側壁 → 側壁底折線（銳利）→ 內收裙板 → 裙板下緣
  * @type {(x: number) => number[][]}
  */
 const profile = (x) => {
-  const t = P.yTop(x);
+  const t = P.yT(x);
   const s = P.yS(x);
-  const c = P.yC(x);
-  const lo = P.yLow(x);
   const h = P.hw(x);
-  const hu = h - tumble(h);
-  const e = h + ledge(h);
-  const d = t - s;
+  const hu = h - TUMBLE;
+  const k = yK(x);
+  const lo = P.yLow(x);
+  const zh = headW(x);
+  const yF = s + 0.9;
+  const z3 = Math.min(zh + 4, hu - 0.6);
+  // 前段（中央比擋泥板低）頭側留一道淺溝；後段平滑拱面
+  const yV = t < yF ? t - 0.6 : lerp(t, yF, 0.55);
   return [
     [0, t],
-    [0.33 * hu, t - 0.12 * d],
-    [0.66 * hu, t - 0.45 * d],
+    [0.55 * zh, t - 0.25],
+    [zh, yV],
+    [z3, t < yF ? yF : lerp(t, yF, 0.85)],
     [hu, s],
-    [h - 0.35 * tumble(h), lerp(s, c, 0.62)],
-    [h, c],
-    [e, c - 0.5],
-    [e, lerp(c - 0.5, lo, 0.5)],
-    [e + 0.3, lo],
+    [h, lerp(s, k, 0.45)],
+    [h, k],
+    [h - TUCK, lerp(k, lo, 0.6)],
+    [h - TUCK + 0.3, lo],
   ];
 };
 
@@ -81,11 +90,88 @@ const ARCHES = [
 /** @type {(x: number, y: number) => number} 側視到最近輪拱圓周的距離（正值 = 在輪拱切口外） */
 const archDist = (x, y) => Math.min(...ARCHES.map((a) => Math.hypot(x - a.x, y - a.y) - a.radius));
 
-/** @type {(x: number) => number} 下層裙板外表面 |z| */
-const skirtZ = (x) => P.hw(x) + ledge(P.hw(x));
+/** @type {(x: number, y: number) => number} 側壁外表面在 (x, y) 的 |z| */
+const wallZ = (x, y) => profileZAtY(profile(x), y);
 
-/** @type {(x: number, y: number, z: number) => boolean} 上層側壁（肩線與腰線之間） */
-const onUpperWall = (x, y, z) => y < P.yS(x) - 0.1 && y > P.yC(x) + 0.1 && Math.abs(z) > P.hw(x) - tumble(P.hw(x)) - 0.3 && x > X_REAR + 1.5 && x < X_FRONT - 1.5;
+/** @type {(x: number, y: number, z: number) => boolean} 側壁（肩線與裙板折線之間） */
+const onSideWall = (x, y, z) => y < P.yS(x) - 0.1 && y > yK(x) + 0.1 && Math.abs(z) > P.hw(x) - TUMBLE - 0.3 && x > X_REAR + 1.5 && x < X_FRONT - 1.5;
+
+/** @type {{ x0: number, y0: number, s: number }} 龍蛇獸浮雕的位置與縮放（iter-127 原位置：腰段側壁中段，側視；腳底 y0） */
+const BEAST = { x0: 0.6, y0: 13.9, s: 0.74 };
+
+/** @type {(u: number, v: number, ax: number, ay: number, bx: number, by: number, r: number) => number} 圓頭線段（膠囊）距離 */
+const capsule = (u, v, ax, ay, bx, by, r) => {
+  const dx = bx - ax;
+  const dy = by - ay;
+  const t = Math.max(0, Math.min(1, ((u - ax) * dx + (v - ay) * dy) / (dx * dx + dy * dy)));
+  return Math.hypot(u - ax - t * dx, v - ay - t * dy) - r;
+};
+
+/**
+ * 穆修胡修側身（iter-114 照伊什塔爾城門釉磚浮雕重畫，M1 / M2）：水平細長鱗身、往前上斜的 S 形長頸、
+ * 水平蛇頭＋往後的直角＋頭後捲起的冠、分岔蛇信；前足獅腿（一前一後的步態、圓掌）、後足鷹腿（粗腿、細脛、三爪）；
+ * 長尾先水平往後、尾端才往上捲成蝎尾鉤刺。u 往車頭、v 往上，腳底 v = 0；未縮放時長約 34、高約 17 mm
+ * @type {number[][]} [ax, ay, bx, by, r]
+ */
+const BEAST_SEGS = [
+  // 軀幹（細長、後粗前細）
+  [-8.4, 8.6, -1.0, 8.8, 2.0],
+  [-1.0, 8.8, 4.6, 9.4, 1.8],
+  // 長頸（往前上斜的 S 形）
+  [4.6, 9.8, 7.4, 12.0, 1.45],
+  [7.4, 12.0, 8.8, 13.8, 1.25],
+  // 蛇頭（水平、比頸粗）＋吻
+  [8.6, 14.2, 12.6, 14.0, 1.3],
+  [12.6, 14.0, 14.6, 13.5, 0.8],
+  // 頭上往後的直角、頭後捲起的冠
+  [10.0, 15.3, 6.6, 16.6, 0.5],
+  [9.0, 15.0, 7.9, 16.0, 0.42],
+  [7.9, 16.0, 7.3, 15.3, 0.34],
+  // 分岔蛇信
+  [14.6, 13.5, 16.2, 14.0, 0.3],
+  [14.6, 13.5, 16.1, 12.8, 0.3],
+  // 前足（獅）：前腳往前邁、後腳垂直；圓掌
+  [3.8, 8.0, 5.6, 3.6, 1.15],
+  [5.6, 3.6, 6.0, 1.0, 0.75],
+  [5.2, 0.75, 7.6, 0.75, 0.75],
+  [2.0, 8.0, 1.4, 3.6, 1.05],
+  [1.4, 3.6, 1.6, 1.0, 0.7],
+  [0.8, 0.7, 3.0, 0.7, 0.7],
+  // 後足（鷹）：粗腿、細脛、三爪（兩前一後）
+  [-6.0, 8.2, -4.9, 4.0, 1.35],
+  [-4.9, 4.0, -5.6, 1.4, 0.55],
+  [-5.6, 1.2, -3.2, 0.35, 0.45],
+  [-5.6, 1.2, -4.7, 0.1, 0.45],
+  [-5.6, 1.2, -7.6, 0.45, 0.45],
+  [-8.4, 8.0, -9.0, 4.0, 1.3],
+  [-9.0, 4.0, -9.6, 1.4, 0.5],
+  [-9.6, 1.2, -7.4, 0.35, 0.42],
+  [-9.6, 1.2, -8.8, 0.1, 0.42],
+  [-9.6, 1.2, -11.5, 0.45, 0.42],
+  // 長尾：水平往後 → 尾端往上捲 → 鉤狀蝎刺
+  [-10.2, 8.6, -14.0, 9.0, 1.15],
+  [-14.0, 9.0, -16.6, 10.6, 0.9],
+  [-16.6, 10.6, -17.4, 13.0, 0.68],
+  [-17.4, 13.0, -16.6, 14.6, 0.48],
+  [-16.6, 14.6, -15.4, 14.6, 0.34],
+];
+
+/** @type {(u: number, v: number) => number} 穆修胡修輪廓距離（未縮放座標） */
+const beastSdRaw = (u, v) => {
+  let d = Infinity;
+  for (const s of BEAST_SEGS) {
+    d = Math.min(d, capsule(u, v, s[0], s[1], s[2], s[3], s[4]));
+  }
+  return d;
+};
+
+/** @type {(x: number, y: number, z: number) => number} 穆修胡修在車殼側牆上的距離（只在腰段側牆） */
+const beastAt = (x, y, z) => {
+  if (Math.abs(z) < 30 || Math.abs(x) > 18) {
+    return 10;
+  }
+  return beastSdRaw((x - BEAST.x0) / BEAST.s, (y - BEAST.y0) / BEAST.s) * BEAST.s;
+};
 
 /**
  * 玫瑰花飾（M2：白瓣金心的圓瓣花，不做放射線）：中心圓 r 0.7、8 片圓瓣 r 0.62 繞半徑 1.42（直徑約 4.1）
@@ -129,10 +215,17 @@ const materials = () => ({
   // 真金屬金（-brass 結尾 → Blender metallic）：蛇角、鰭刀刃緣
   gold: namedMaterial('trim-gold-brass', { color: 0xd0a94e, roughness: 0.28, metalness: 0.82, clearcoat: 0.3 }),
   // 蛇眼頭燈：琥珀色自發光（lamp- 前綴 → Blender 保留發光；V14 / L1-6 深色殼配亮色頭燈）
-  eye: namedMaterial('lamp-mushussu-eye-amber', { color: 0xffc04a, emissive: 0xff9a10, emissiveIntensity: 0.9, roughness: 0.15, clearcoat: 1.0 }),
+  // iter-129：蛇眼頭燈改成亮金色自發光（lamp- 前綴 → Blender 保留發光）
+  eye: namedMaterial('lamp-mushussu-eye-gold', { color: 0xffd36a, emissive: 0xffb020, emissiveIntensity: 1.1, roughness: 0.12, clearcoat: 1.0 }),
+  // iter-129：蛇首（前 1/3 中央）黑藍釉
+  night: namedMaterial('paint-lapis-night', { color: 0x0b1733, roughness: 0.55, clearcoat: 0.2, clearcoatRoughness: 0.4 }),
+  // 浮雕眼睛（黑釉）
+  beastEye: namedMaterial('paint-black-glaze', { color: 0x161616, roughness: 0.3, clearcoat: 0.6 }),
   inner: namedMaterial('shell-inner-dark', { color: 0x131a26, roughness: 0.85, side: THREE.BackSide }),
   edge: namedMaterial('shell-edge-lapis', { color: 0x122c5e, roughness: 0.55, side: THREE.DoubleSide }),
   liner: namedMaterial('shell-wheelwell-navy', { color: 0x14284a, roughness: 0.75, side: THREE.DoubleSide }),
+  // 龍蛇獸鱗片（只比浮雕深一點的黃釉）
+  scale: namedMaterial('paint-yellow-glaze-scale', { color: 0xc99335, roughness: 0.48, clearcoat: 0.3 }),
   dJoint: decalMaterial('decal-brick-joint-navy', { color: 0x0d2250, roughness: 0.6 }),
   dYellow: decalMaterial('decal-yellow-glaze', { color: 0xd9a441, roughness: 0.4 }),
   dBlack: decalMaterial('decal-black-glaze', { color: 0x1a1a1a, roughness: 0.45 }),
@@ -143,40 +236,117 @@ const materials = () => ({
 });
 
 /**
- * 爪形分件（實體件，貼在下層裙板外表面、厚 1.2 mm）：一塊掌墊＋數支往後伸的爪，側視多邊形
- * @type {(claws: number[][][], pad: number[][]) => THREE.BufferGeometry} claws：每支爪的 (x, y) 多邊形；pad：掌墊多邊形
+ * 穆修胡修浮雕（實體件）：每段膠囊沿 z 壓扁成凸起 RELIEF_H 的半膠囊，中心貼在側牆外表面（內半埋進殼裡）
+ * @type {(sg: number) => THREE.BufferGeometry}
  */
-const buildPaw = (claws, pad) => {
+const buildBeastRelief = (sg) => {
+  /** @type {number} 浮雕凸起高度（評審建議 0.6–1 mm） */
+  const RELIEF_H = 0.9;
   /** @type {THREE.BufferGeometry[]} */
   const geos = [];
-  for (const sg of [-1, 1]) {
-    for (const poly of [pad, ...claws]) {
-      const xm = poly.reduce((s, p) => s + p[0], 0) / poly.length;
-      // 中心在裙板外表面外 0.45 mm → 內 0.15 mm 埋進殼面
-      geos.push(finPlate(poly, sg * (skirtZ(xm) + 0.45), 1.2));
-    }
+  for (const [ax, ay, bx, by, r0] of BEAST_SEGS) {
+    const r = r0 * BEAST.s;
+    const x0 = BEAST.x0 + ax * BEAST.s;
+    const y0 = BEAST.y0 + ay * BEAST.s;
+    const x1 = BEAST.x0 + bx * BEAST.s;
+    const y1 = BEAST.y0 + by * BEAST.s;
+    const len = Math.hypot(x1 - x0, y1 - y0);
+    // iter-121：低分段（cap 3、徑向 10；原本 4 × 14）
+    const g = new THREE.CapsuleGeometry(r, len, 3, 10);
+    // 膠囊預設沿 y 軸 → 轉到線段方向
+    g.rotateZ(Math.atan2(y1 - y0, x1 - x0) - Math.PI / 2);
+    g.scale(1, 1, Math.min(1, RELIEF_H / r));
+    const xm = (x0 + x1) / 2;
+    const ym = (y0 + y1) / 2;
+    g.translate(xm, ym, sg * (wallZ(xm, ym) - 0.05));
+    geos.push(g);
   }
   return mergeGeos(geos);
 };
 
 /**
- * 一支往後彎的爪（彎月形多邊形）：根部 (x0, y0)、往後伸長 len、往下彎 drop、根寬 w
- * @type {(x0: number, y0: number, len: number, drop: number, w: number) => number[][]}
+ * 穆修胡修的鱗片（iter-115 評審「做回有鱗片」）：在浮雕軀幹、長頸、尾根（膠囊半徑 ≥ 0.9）的表面排一層小圓鱗（扁球，凸出約 0.25 mm），
+ * 沿每段每 0.9 mm 一列、上下兩排錯開，像釉磚浮雕上刻出的鱗紋
+ * @type {(sg: number) => THREE.BufferGeometry}
  */
-const claw = (x0, y0, len, drop, w) => {
+const buildBeastScales = (sg) => {
+  /** @type {THREE.BufferGeometry[]} */
+  const geos = [];
+  /** @type {number} 浮雕外表面離牆面的高度（同 buildBeastRelief 的 RELIEF_H − 0.05） */
+  const top = 0.85;
+  for (const [ax, ay, bx, by, r0] of BEAST_SEGS) {
+    if (r0 < 0.9) {
+      continue;
+    }
+    const x0 = BEAST.x0 + ax * BEAST.s;
+    const y0 = BEAST.y0 + ay * BEAST.s;
+    const x1 = BEAST.x0 + bx * BEAST.s;
+    const y1 = BEAST.y0 + by * BEAST.s;
+    const len = Math.hypot(x1 - x0, y1 - y0);
+    const nx = -(y1 - y0) / len;
+    const ny = (x1 - x0) / len;
+    const r = r0 * BEAST.s;
+    const n = Math.max(1, Math.floor(len / 0.9));
+    for (let i = 0; i <= n; i++) {
+      const q = i / n;
+      for (const off of r > 1.1 ? [-0.42, 0.42] : [0]) {
+        const o = off * r + (i % 2 === 0 ? 0 : 0.12 * r);
+        const x = lerp(x0, x1, q) + nx * o;
+        const y = lerp(y0, y1, q) + ny * o;
+        // iter-121：低分段（6 × 4；原本 8 × 6）
+        const g = new THREE.SphereGeometry(0.36, 6, 4);
+        g.scale(1, 1, 0.55);
+        g.translate(x, y, sg * (wallZ(x, y) + top - 0.05));
+        geos.push(g);
+      }
+    }
+  }
+  return mergeGeos(geos);
+};
+
+
+/**
+ * 鼻頂單支刀角（中線立板，厚 1.2）：根部沿蛇首頂面 x 67 → 52 埋進殼面，刀身往後上掠，刀尖 x 39、比頭頂高 7.2
+ * @type {() => THREE.BufferGeometry}
+ */
+const buildBladeHorn = () =>
+  finPlate(
+    [
+      [67, P.yT(67) - 0.7],
+      [63, P.yT(63) + 1.6],
+      [55, P.yT(55) + 4.2],
+      [46, P.yT(46) + 6.4],
+      [39, P.yT(39) + 7.2],
+      [45, P.yT(45) + 3.6],
+      [52, P.yT(52) + 0.6],
+      [52, P.yT(52) - 0.7],
+    ],
+    0,
+    1.2,
+  );
+
+/**
+ * 自創暗器「脊線鰭刀」外形（中線立板）：從後甲板脊線 x −30 起和殼面一起長出、往車尾漸升，刀尖往後上方勾起；
+ * 底緣沿脊線埋進殼面 0.7 mm，不是立在甲板上的飾品
+ * @type {(inset: number) => number[][]} inset：往內縮的量（金刃 0、黃釉刀身 1.1）
+ */
+const finOutline = (inset) => {
   /** @type {number[][]} */
   const top = [];
   /** @type {number[][]} */
   const bot = [];
-  const n = 6;
+  const n = 12;
   for (let i = 0; i <= n; i++) {
     const u = i / n;
-    const x = x0 - len * u;
-    const yc = y0 - drop * u * u;
-    const hwid = (w / 2) * (1 - u) + 0.15;
-    top.push([x, yc + hwid]);
-    bot.push([x, yc - hwid]);
+    const x = lerp(-30, -71, u);
+    // 鰭高：從 0 平順長到車尾的 9.5，再加刀尖勾起
+    const hgt = 9.5 * u ** 1.6 - inset;
+    top.push([x, P.yT(x) + Math.max(0.15, hgt)]);
+    bot.push([x, P.yT(x) - 0.7]);
   }
+  // 刀尖：往後上方勾起（x −76、比尾端脊線高 13）
+  top.push([-76 + inset, P.yT(-71) + 13 - inset * 1.5]);
+  top.push([-73.5 + inset * 0.5, P.yT(-72) + 6]);
   return [...top, ...bot.reverse()];
 };
 
@@ -190,18 +360,20 @@ export const mushussuGateBody = makePolyBody({
   form: 'serpent-crouch',
   roof: 'closed',
   wing: 'fin-blade-tail',
-  theme: '伊什塔爾城門的蛇龍低伏前竄：貼地前伸的蛇首鼻錐（琥珀蛇眼頭燈）、往後掃的金色直角前分流片、壓低的獅肩前擋泥板與拱起的鷹腿後臀、微收的蛇身、肩線＋內收上層側壁＋瀝青黑下層裙板上的獅爪與鷹爪，蛇尾末端揚起金刃鰭刀尾翼',
+  theme: '伊什塔爾城門的蛇龍低伏前竄：兩個獅肩前擋泥板之間往前壓低成長而低的黑藍蛇首鼻錐（鼻端兩側亮金細長眼燈、鼻頂往後掠的單支金刀角），平順肩線＋直立側壁＋內收瀝青黑裙板，側壁腰段黃釉龍蛇獸浮雕，從後甲板脊線長出、往車尾漸升的金色鰭刀背鰭',
   material: 'ABS',
   density_g_cm3: 1.05,
   wallThickness_mm: 0.8,
   stations: STATIONS,
-  // 肩線、腰線、平台外緣是銳利稜線
-  hard: [3, 5, 6],
+  // 肩線、側壁底折線是銳利稜線
+  hard: [4, 6],
   wheelArches: ARCHES,
   sideZMin: 22,
   zones: () => [
-    // 下層裙板（腰線平台以下）：瀝青黑
-    { mat: 'bitumen', keep: (x, y) => P.yC(x) - 0.3 - y },
+    // 內收裙板：瀝青黑
+    { mat: 'bitumen', keep: (x, y) => yK(x) - 0.3 - y },
+    // 蛇首（x 16 起中央壓低的鼻錐）：黑藍；後緣做成往後指的箭形（中線 x 16、兩側 x 30），不是一條橫切的直線（iter-129：光柵圖上像一塊方塊）
+    { mat: 'night', keep: (x, y, z) => Math.min(x - 16 - (14 * Math.abs(z)) / (headW(x) + 1.2), headW(x) + 1.2 - Math.abs(z), y - P.yS(x) + 0.8) },
     { mat: 'lapis', keep: () => 1 },
   ],
   mats: { inner: 'inner', edge: 'edge', cap: 'lapis2', mount: 'mount' },
@@ -209,14 +381,12 @@ export const mushussuGateBody = makePolyBody({
   extras: (kit) => {
     /** @type {BodyPart[]} */
     const parts = [];
-    // 輪拱內襯（前後）＋輪胎內側環形擋板（kitsune-ninetail 的 buildArchWell）
     parts.push({ geometry: mergeGeos(ARCHES.map((a) => buildProfileLiner(a, 22.9, profile))), mat: 'liner', shell: true, name: 'arch-liners' });
     parts.push({ geometry: mergeGeos(ARCHES.map((a) => buildArchWell(a, 22.9, 12.3, 17.8, chassisBlockedNearArch))), mat: 'liner', shell: true, name: 'arch-wells' });
-
-    // 輪拱拱框：上層側壁上一道黃釉細框（城門拱的釉磚邊框）
+    // 輪拱拱框：側壁上一道黃釉細框（城門拱的釉磚邊框）
     parts.push({
       geometry: kit.decal((x, y, z) => {
-        if (!onUpperWall(x, y, z)) {
+        if (!onSideWall(x, y, z)) {
           return -1;
         }
         const d = archDist(x, y);
@@ -225,22 +395,22 @@ export const mushussuGateBody = makePolyBody({
       mat: 'dYellow',
       name: 'decal-arch-band',
     });
-    // 腰線黃釉細邊（腰線上方 0.3 → 1.3 mm，貫穿全車的速度線）
+    // 肩線下黃釉細邊（貫穿全車的速度線）
     parts.push({
       geometry: kit.decal((x, y, z) => {
-        if (!onUpperWall(x, y, z) || archDist(x, y) < 0.3 || x > 70) {
+        if (!onSideWall(x, y, z) || archDist(x, y) < 0.3 || x > 70) {
           return -1;
         }
-        const dy = y - P.yC(x);
-        return Math.min(dy - 0.3, 1.3 - dy);
+        const dy = P.yS(x) - y;
+        return Math.min(dy - 0.5, 1.4 - dy);
       }),
       mat: 'dYellow',
-      name: 'decal-waist-pinstripe',
+      name: 'decal-shoulder-pinstripe',
     });
-    // 上層側壁的錯縫磚縫（避開拱框與腰線細邊）
+    // 側壁錯縫磚縫（避開拱框、浮雕）
     parts.push({
       geometry: kit.decal((x, y, z) => {
-        if (!onUpperWall(x, y, z) || y < P.yC(x) + 1.9 || y > P.yS(x) - 0.5 || archDist(x, y) < 2 || x > 56) {
+        if (!onSideWall(x, y, z) || y > P.yS(x) - 1.9 || archDist(x, y) < 2 || x > 56 || beastAt(x, y, z) < 1.2) {
           return -1;
         }
         return brickJoint(x, y);
@@ -248,38 +418,44 @@ export const mushussuGateBody = makePolyBody({
       mat: 'dJoint',
       name: 'decal-brick-joints',
     });
-    // 頂面磚縫（背脊花飾帶兩側，像鱗片般沿車身排列的釉磚）
+    // 龍蛇獸：牆上黑色描邊＋黃釉浮雕實體件＋鱗片＋黑眼（iter-127 原樣放回）
     parts.push({
       geometry: kit.decal((x, y, z) => {
-        const az = Math.abs(z);
-        if (y < P.yS(x) + 0.1 || az < 6 || az > P.hw(x) - tumble(P.hw(x)) - 1 || x < X_REAR + 2 || x > 56) {
-          return -1;
-        }
-        return brickJoint(x, az + 1);
+        const d = beastAt(x, y, z);
+        return Math.min(0.55 - d, d + 0.1);
       }),
-      mat: 'dJoint',
-      name: 'decal-roof-joints',
+      mat: 'dBlack',
+      name: 'decal-mushussu-outline',
     });
-
-    // 背脊中線的玫瑰花飾帶（M2 花飾帶 → 蛇龍的背脊；V12 / V13 中線賽車條）：深藍底＋白瓣金心花飾＋黃釉邊＋黑細線，從頭後一路到蛇尾
-    /** @type {(x: number, y: number) => boolean} 背脊帶（肩線以上；頭後 x 57 到尾） */
-    const onStripe = (x, y) => y > P.yS(x) + 0.5 && x > X_REAR + 1.5 && x < 57.5;
+    parts.push({ geometry: mergeGeos([buildBeastRelief(1), buildBeastRelief(-1)]), mat: 'yellow', solid: true, outline: true, name: 'mushussu-relief' });
+    parts.push({ geometry: mergeGeos([buildBeastScales(1), buildBeastScales(-1)]), mat: 'scale', solid: true, name: 'mushussu-scales' });
+    {
+      const ex = BEAST.x0 + 11.4 * BEAST.s;
+      const ey = BEAST.y0 + 14.5 * BEAST.s;
+      /** @type {THREE.BufferGeometry[]} */
+      const eyes = [];
+      for (const sg of [-1, 1]) {
+        const e = new THREE.SphereGeometry(0.4, 12, 8);
+        e.scale(1, 1, 0.8);
+        e.translate(ex, ey, sg * (wallZ(ex, ey) + 0.85));
+        eyes.push(e);
+      }
+      parts.push({ geometry: mergeGeos(eyes), mat: 'beastEye', solid: true, name: 'mushussu-relief-eyes' });
+    }
+    // 背脊中線的玫瑰花飾帶（脊線鰭刀之前、蛇首之後：x −28 → 14）
+    /** @type {(x: number, y: number) => boolean} */
+    const onStripe = (x, y) => y > P.yS(x) + 0.5 && x > -28 && x < 14;
     parts.push({ geometry: kit.decal((x, y, z) => (onStripe(x, y) ? 3.3 - Math.abs(z) : -1)), mat: 'dNavy', name: 'decal-rosette-stripe-base' });
     parts.push({
       geometry: kit.decal((x, y, z) => (onStripe(x, y) ? Math.min(Math.abs(z) - 3.3, 4.5 - Math.abs(z)) : -1)),
       mat: 'dYellow',
       name: 'decal-rosette-stripe-borders',
     });
-    parts.push({
-      geometry: kit.decal((x, y, z) => (onStripe(x, y) ? Math.min(Math.abs(z) - 4.5, 5.1 - Math.abs(z)) : -1)),
-      mat: 'dBlack',
-      name: 'decal-rosette-stripe-lines',
-    });
     /** @type {number} 花飾間距 */
     const ROS_STEP = 6.2;
-    /** @type {(x: number, z: number) => { petal: number, core: number }} 最近的一朵玫瑰花飾（帶中線上） */
+    /** @type {(x: number, z: number) => { petal: number, core: number }} 最近的一朵玫瑰花飾 */
     const nearestRosette = (x, z) => {
-      const xc = Math.min(54, Math.max(-68, Math.round(x / ROS_STEP) * ROS_STEP));
+      const xc = Math.min(12.4, Math.max(-24.8, Math.round(x / ROS_STEP) * ROS_STEP));
       return rosetteSd(x - xc, z);
     };
     parts.push({
@@ -292,157 +468,51 @@ export const mushussuGateBody = makePolyBody({
       mat: 'dGold',
       name: 'decal-rosette-cores',
     });
-
-    // 蛇首頂面的黃釉紋（M1 的細長蛇首）＋黑描邊：頸後 x 57 到吻尖
-    /** @type {(x: number, z: number) => number} 蛇首紋輪廓距離（正值 = 外）：半寬為殼半寬的 0.55 */
-    const headSd = (x, z) => Math.max(57 - x, Math.abs(z) - 0.55 * P.hw(x));
-    /** @type {(x: number, y: number) => boolean} 頭頸頂面 */
-    const onSnout = (x, y) => x > 55 && y > P.yS(x) + 0.05;
-    parts.push({ geometry: kit.decal((x, y, z) => (onSnout(x, y) ? -headSd(x, z) : -1)), mat: 'dYellow', name: 'decal-snake-head' });
+    // 蛇首兩側的金色細邊（頭與擋泥板之間的淺溝旁）
     parts.push({
       geometry: kit.decal((x, y, z) => {
-        if (!onSnout(x, y)) {
+        if (x < 18 || x > 72) {
           return -1;
         }
-        const d = headSd(x, z);
-        return Math.min(d, 0.6 - d);
-      }),
-      mat: 'dBlack',
-      name: 'decal-snake-head-outline',
+        return 0.45 - Math.abs(Math.abs(z) - headW(x) - 0.4);
+      }, { offset: 0.12 }),
+      mat: 'dGold',
+      name: 'decal-head-gold-edge',
     });
-
-    // 蛇眼頭燈（實體件）：頭骨兩側上層側壁上的細長斜眼，往後上挑（x 63.5–68.5），半埋進殼面
+    // 蛇眼頭燈（實體件）：鼻端兩側的細長亮金眼燈，往後上挑，半埋進殼面
     {
       /** @type {THREE.BufferGeometry[]} */
       const eyes = [];
       for (const sg of [-1, 1]) {
-        const ex = 66;
-        const ey = lerp(P.yS(ex), P.yC(ex), 0.45);
-        const ez = P.hw(ex) - 0.6 * tumble(P.hw(ex));
+        const ex = 66.5;
+        const ey = P.yS(ex) - 0.9;
+        const ez = P.hw(ex) - 0.5;
         const g = new THREE.SphereGeometry(1, 14, 8);
-        g.scale(2.8, 0.9, 0.9);
-        g.rotateZ(-0.22);
-        g.rotateY(sg * 0.28);
+        g.scale(3.6, 0.75, 0.9);
+        g.rotateZ(-0.2);
+        g.rotateY(sg * 0.3);
         g.translate(ex, ey, sg * ez);
         eyes.push(g);
       }
       parts.push({ geometry: mergeGeos(eyes), mat: 'eye', solid: true, name: 'mushussu-eye-lamps' });
     }
-
-    // 大件 1：蛇首的一對直角（M1：頭上往後的直角）→ 往後掃過前擋泥板的前分流片（金屬金）：
-    // 角根在頭骨頂（x 64、|z| 4.5），往後外掃到前輪上方（x 43、|z| 24），貼著殼面略往上翹（像被迎風壓向後飛揚）；
-    // 斷面橫向扁（刀片狀分流片），根 2.6 × 1.3 → 尖 0.9 × 0.6 mm
-    {
-      /** @type {THREE.BufferGeometry[]} */
-      const horns = [];
-      for (const sg of [-1, 1]) {
-        /** @type {number[][]} */
-        const pts = [];
-        for (let i = 0; i <= 8; i++) {
-          const u = i / 8;
-          const x = lerp(64, 43, u);
-          const z = sg * lerp(4.5, 24, u ** 1.15);
-          const y = kit.surf.topY(x, z) - 0.5 + 1.0 + 2.6 * u ** 1.6;
-          pts.push([x, y, z]);
-        }
-        horns.push(sweepEllipse(pts, 16, (t) => [lerp(1.3, 0.45, t), lerp(0.65, 0.3, t)], 6));
-      }
-      parts.push({ geometry: mergeGeos(horns), mat: 'gold', solid: true, outline: true, name: 'horn-splitters' });
-    }
-
-    // 前段獅爪（下層裙板、前輪後方）：掌墊緊貼輪拱後緣，3 支圓弧短爪往後伸（邁步）；黃釉
-    {
-      const x0 = 21.5;
-      const pad = [[x0 + 1.2, 19.6], [x0 - 3.5, 19.4], [x0 - 4.5, 13.8], [x0 + 1.6, 12.6]];
-      const claws = [claw(x0 - 3.2, 18.4, 8.5, 1.0, 1.9), claw(x0 - 4, 16.2, 9.5, 1.4, 1.9), claw(x0 - 4, 13.9, 7.5, 1.1, 1.7)];
-      parts.push({ geometry: buildPaw(claws, pad), mat: 'yellow', solid: true, outline: true, name: 'lion-paw-claws' });
-    }
-    // 後段鷹爪（下層裙板、後輪後方）：3 支長鉤爪往後下彎＋1 支往前的後趾（鷹爪三前一後）；黃釉
-    {
-      const x0 = -58;
-      const pad = [[x0 + 1.4, 20.2], [x0 - 2.4, 20], [x0 - 2.8, 15.4], [x0 + 1.2, 14.6]];
-      const claws = [claw(x0 - 2.2, 19.2, 7.5, 2.4, 1.6), claw(x0 - 2.6, 17.2, 7.2, 2.2, 1.6), claw(x0 - 2.6, 15.6, 5.2, 0.9, 1.4)];
-      parts.push({ geometry: buildPaw(claws, pad), mat: 'yellow', solid: true, outline: true, name: 'eagle-talons' });
-    }
-
-    // 大件 2（自創暗器）：蛇尾末端的「鰭刀」尾翼——從尾背往後上方揚起的彎月形刀片（根部埋進尾背 4 mm 長的脊），
-    // 金屬金刃緣（外形）＋黃釉刀身（內縮 1.1 mm、較厚），刀尖往後上指（x −77、y 41），像甩尾時正要揮出的鰭刀
-    {
-      /** @type {(x: number) => number} 尾背中線（埋進 0.8 mm） */
-      const root = (x) => kit.surf.topY(x, 0) - 0.8;
-      /** @type {number[][]} 外形：前緣從尾背 x −52 彎月形掃到刀尖，後緣內凹回到尾尖 */
-      const blade = [
-        [-52, root(-52)],
-        [-58, root(-58) + 2.2],
-        [-64, 33.2],
-        [-69.5, 37.2],
-        [-74, 39.8],
-        [-77, 41],
-        [-75.2, 37.6],
-        [-73.6, 33.6],
-        [-72.6, 29.6],
-        [-71.4, root(-71.4)],
-        [-66, root(-66)],
-        [-60, root(-60)],
-      ];
-      parts.push({ geometry: finPlate(blade, 0, 1.0), mat: 'gold', solid: true, outline: true, name: 'tail-fin-blade-edge' });
-      /** @type {number[][]} 刀身（內縮）：較厚 1.7 mm，蓋住金刃中段，只露出前緣與刀尖的金刃 */
-      const core = [
-        [-55, root(-55)],
-        [-59.6, root(-59.6) + 1.6],
-        [-64.6, 31.8],
-        [-69.6, 35.6],
-        [-73.6, 37.9],
-        [-74.2, 36.6],
-        [-73, 33.2],
-        [-72.2, 29.6],
-        [-71.2, root(-71.2)],
-        [-62, root(-62)],
-      ];
-      parts.push({ geometry: finPlate(core, 0, 1.7), mat: 'yellow', solid: true, name: 'tail-fin-blade-core' });
-      // 鰭刀的橫刃：立刃根部往兩側展開的彎月形刀片（俯視兩端刀尖往後勾），貼在尾背上方、壓在後臀高度以下（正視被車身擋住，不增加正面面積）
-      /** @type {(outline: number[][], y0: number, t: number) => THREE.BufferGeometry} 平面 (x, z) 的刀片，沿 y 擠出厚度 t */
-      const plate = (outline, y0, t) => {
-        const shape = new THREE.Shape(outline.map(([x, z]) => new THREE.Vector2(x, z)));
-        const g = new THREE.ExtrudeGeometry(shape, { depth: t, bevelEnabled: false });
-        // 局部 (x, y, z) → 世界 (x, z, −y)：形狀平面躺平、擠出方向朝上
-        g.rotateX(-Math.PI / 2);
-        g.translate(0, y0, 0);
-        return g;
-      };
-      /** @type {(sz: number, k: number) => number[][]} 彎月形刀片外形：前緣中線 x −63 → 刀尖 (−77, ±sz)，後緣微往前弓（刀尖往後勾）回到中線 x −70.5；k 為內縮量 */
-      const crescent = (sz, k) => {
-        /** @type {number[][]} 半邊（z ≥ 0）：前緣由中線到刀尖，再由後緣回到中線 */
-        const half = [];
-        const n = 10;
-        const tipX = -77 + 1.4 * k;
-        for (let i = 0; i <= n; i++) {
-          const u = i / n;
-          half.push([lerp(-63 - k, tipX, u) + 3.2 * Math.sin(Math.PI * u) * (1 - 0.3 * u), sz * u]);
-        }
-        for (let i = n - 1; i >= 0; i--) {
-          const u = i / n;
-          half.push([lerp(-70.5 + k, tipX, u) + 1.2 * Math.sin(Math.PI * u), (sz - 0.6 * k) * u]);
-        }
-        // 左右對稱：半邊（中線 → 刀尖 → 中線）接上鏡射半邊（中線 → 負側刀尖 → 中線）
-        const mirror = half.slice(1, -1).map(([x, z]) => [x, -z]).reverse();
-        return [...half, ...mirror];
-      };
-      parts.push({ geometry: plate(crescent(31, 0), 32.4, 1.0), mat: 'gold', solid: true, outline: true, name: 'tail-blade-wing-edge' });
-      parts.push({ geometry: plate(crescent(28.5, 1.1), 32.2, 1.5), mat: 'yellow', solid: true, name: 'tail-blade-wing-core' });
-    }
+    // 鼻頂單支刀角
+    parts.push({ geometry: buildBladeHorn(), mat: 'gold', solid: true, outline: true, name: 'blade-horn' });
+    // 自創暗器：脊線鰭刀（金刃＋黃釉刀身）
+    parts.push({ geometry: finPlate(finOutline(0), 0, 1.0), mat: 'gold', solid: true, outline: true, name: 'spine-fin-blade-edge' });
+    parts.push({ geometry: finPlate(finOutline(1.1), 0, 1.6), mat: 'yellow', solid: true, name: 'spine-fin-blade-core' });
     return parts;
   },
   src: {
     density_g_cm3: 'SPEC 1.14：ABS 約 1.05 g/cm³（推估）',
     wallThickness_mm: '推估：射出 ABS 殼 0.8 mm（同其他款）',
     geometry:
-      '本檔站位產生器 P（推估，iter-128 第十階段重塑）：殼 x −72 → 74（吻尖不超過 iter-127）；腰線半寬 擋泥板 44、兩輪之間 41.5、x 48 起急收成蛇頸（x 58：14、x 62：11.4）、蛇頭 12.4、吻尖 5.5、蛇尾 11，下層裙板再外 1.2（外框半寬 ≤ 48.0，iter-113 擦牆教訓）；背脊 前擋泥板 31.8、後臀 35.0、吻尖 15.6、尾 25.5；肩線 28.2–32.7（R17.5 輪拱頂 30.5 之上）；上層側壁內收 2.6（tumblehome）；腰線 20–22；裙板下緣 10.5（包住電池管）',
+      '本檔站位產生器 P（推估，iter-129 再重塑）：殼 x −72 → 74（吻尖不超過 iter-127）；側壁半寬 擋泥板 45.2、兩輪之間 45、x 48 起急收成蛇頸（27 → 12）、蛇頭 11.6、吻尖 5.2、蛇尾 11（外框半寬 ≤ 48.0）；背脊 後臀 35.2、x 14 起往前壓低成蛇首（x 40：25.8、吻尖 15.8），蛇首半寬 13–15；肩線 23 → 32.6 → 30.6 → 31.6（R17.5 輪拱頂 30.5 之上）；肩線內收 1.6、側壁底折線 16.5、裙板內收 2.4、下緣 10.5',
     wheelArches: '前後 R17.5（31 mm 輪胎半徑 15.5 + 2 mm），不切輪拱可裝；輪拱內襯＋輪胎內側環形擋板（buildArchWell）',
-    horns: '前分流片蛇角：掃掠件 9 點 × 16 段 × 6 邊，斷面根 2.6 × 1.3 → 尖 0.9 × 0.6 mm（≥ 0.6 mm 射出薄件，推估）；ABS 實心件，質量 = 封閉體積 × 1.05 g/cm³',
-    claws: '獅爪 / 鷹爪：厚 1.2 mm 立板（貼在裙板外 0.45 mm、內 0.15 mm 埋進殼面），爪根寬 1.4–1.9 mm、尖端 0.3 mm（推估）',
-    tailBlade: '鰭刀尾翼：金刃外形厚 1.0、黃釉刀身厚 1.7 mm 的立板，根部埋進尾背 0.8 mm；刀尖 x −77、y 41（和 iter-127 尾翼後端 −77.1 相同，不加長外框）',
-    myth: '穆修胡修的長頸蛇首、頭上直角、前獅足後鷹爪、長尾（MYTH_RESEARCH M1）；伊什塔爾城門青金石藍釉磚、黃釉框、白瓣金心玫瑰花飾（M2、M3）。鰭刀尾翼為自創暗器（不是蠍尾毒針）',
+    horn: '鼻頂刀角：厚 1.2 mm 中線立板，根部沿蛇首頂面 x 52–67 埋進殼面 0.7 mm，刀尖 x 39、比頭頂高 7.2（推估）',
+    relief: '龍蛇獸浮雕：iter-127 原樣（32 段膠囊沿牆面法向壓扁成凸起 0.9 mm 的半膠囊實體件，縮放 0.74 → 長約 25、高約 12.6 mm；鱗片 R0.36 扁球）',
+    spineFin: '脊線鰭刀：金刃厚 1.0、黃釉刀身厚 1.6 mm 的中線立板，底緣沿脊線 x −30 → −71 埋進殼面 0.7 mm，高度從 0 平順長到 9.5、刀尖勾到 x −76（推估）',
+    myth: '穆修胡修的長頸蛇首、頭上的角、前獅足後鷹爪、長尾（MYTH_RESEARCH M1）；伊什塔爾城門青金石藍釉磚、黃釉、白瓣金心玫瑰花飾（M2、M3）。脊線鰭刀為自創暗器（不是蠍尾毒針）',
     mounts: '對齊 chassis-midship 的車殼安裝點（SPEC 1.14）',
   },
 });
