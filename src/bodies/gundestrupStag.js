@@ -5,7 +5,7 @@
 // 設計：shared/design/body-gundestrup-stag/DESIGN.md（典故與文物對應 MYTH_RESEARCH 第 5 節 C1、C2、C7、C8；黑名單 5-3、第 10 節）。剖面為本檔站位產生器（推估）。
 // 不畫神的人臉、不做盤腿坐像、不用三臂 triskele、不做圓內十字、不重現 Battersea 盾的琺瑯格；不做彩色發光鹿角；不含任何文字。
 import * as THREE from 'three';
-import { makePolyBody, sweepEllipse } from './polyBody.js';
+import { makePolyBody, sweepEllipse, finPlate } from './polyBody.js';
 import { namedMaterial, decalMaterial, mergeGeos, lerp } from './loft.js';
 import { monoCurve, buildStations, sdCircle } from './gazelleLeap.js';
 import { buildArchWell, chassisBlockedNearArch } from './kitsuneNinetail.js';
@@ -86,6 +86,20 @@ const ARCHES = [
   { x: 40, y: 13, radius: 17.5, cutZFrom: 32 },
   { x: -40, y: 13, radius: 17.5, cutZFrom: 32 },
 ];
+
+/**
+ * iter-128（第十階段 F3 半罩露輪）：前輪罩後半切開，切口是階梯形（和 yaga 的斜切不同）：
+ * x 24 → 32 只切到 y 22（輪胎後下緣露出），x 32 → 44 一路切到 y 40（翻過肩線，俯視看得到胎面）；只切 |z| ≥ 26（輪胎內側面 22.75 之外）。
+ * 負值 = 開口內
+ * @type {(x: number, y: number, z: number) => number}
+ */
+const frontStepCutSd = (x, y, z) => {
+  if (Math.abs(z) < 26) {
+    return 10;
+  }
+  const step = Math.min(Math.max(x - 32, y - 22), Math.max(32 - x, y - 40));
+  return Math.max(24 - x, x - 44, 12 - y, step);
+};
 
 /**
  * 輪拱內襯：輪拱切口後面的一段圓柱面（只取上半圈），z 從殼內面往內 depth（不小於 minZ）
@@ -257,37 +271,40 @@ const materials = () => ({
  * @type {AntlerDef} 右角
  */
 const ANTLER_R = {
+  // iter-128：鹿角根部移到後輪罩肩上（z 30），主幹貼著車身往後掃、幾乎水平（y 40 → 44.6），末端兼後翼右端板；分叉全部往後上方
   beam: [
-    [-25, 0, 8.5],
-    [-31, 39.5, 12.5],
-    [-41, 43.5, 17.5],
-    [-52, 46, 22.5],
-    [-61, 46.8, 25.5],
+    [-20, 0, 29],
+    [-30, 39.2, 34.5],
+    [-43, 41.4, 38],
+    [-56, 42.2, 39.5],
+    [-66, 42.6, 38.5],
   ],
   tines: [
-    [0.18, 1.5, 5.5, 2],
-    [0.4, -1.5, 4.5, 3.5],
-    [0.62, -3, 3.2, 4.5],
-    [0.84, -3.5, 1.4, 5],
+    [0.3, -4.5, 3.4, 1],
+    [0.52, -5, 2.6, 1.5],
+    [0.74, -4.5, 1.8, 0.8],
+    [0.9, -3.5, 1.2, -0.5],
   ],
 };
 /** @type {AntlerDef} 左角：3 個分叉，角度與長度都和右角不同（自然鹿角的不對稱） */
 const ANTLER_L = {
   beam: [
-    [-25, 0, 9.5],
-    [-32, 40, 14],
-    [-42.5, 44.2, 19],
-    [-53.5, 46.4, 24],
-    [-62, 47, 27.5],
+    [-21, 0, 29.5],
+    [-31.5, 39.4, 35],
+    [-44.5, 41.6, 38.6],
+    [-57, 42.4, 39.8],
+    [-66.5, 42.8, 39],
   ],
   tines: [
-    [0.22, 1, 5.8, 1.5],
-    [0.5, -2, 4, 4],
-    [0.76, -3.5, 2, 5.5],
+    [0.34, -4, 3.6, 1.2],
+    [0.6, -5.5, 2.4, 1.6],
+    [0.84, -4, 1.5, 0.4],
   ],
 };
+/** @type {{ le: number[], te: number[], thick: number, span: number }} iter-128：兩支鹿角之間的銀色後翼（單片大翼，鹿角是端板） */
+const STAG_WING = { le: [-47, 41.0], te: [-62, 41.8], thick: 1.0, span: 38.5 };
 /** @type {number} 分叉尖的高度上限（車殼頂高 ≤ 49） */
-const ANTLER_Y_MAX = 48.2;
+const ANTLER_Y_MAX = 47.4;
 
 export const gundestrupStagBody = makePolyBody({
   id: 'body-gundestrup-stag',
@@ -307,6 +324,7 @@ export const gundestrupStagBody = makePolyBody({
   // 平滑剖面，沒有銳利稜線（錘起的銀板）
   hard: [],
   wheelArches: ARCHES,
+  openings: [{ id: '前輪露出階梯切口', shape: 'fn', sd: frontStepCutSd }],
   canopy: {
     section: 'ellipse',
     // 中段座艙罩：x 12 → −22，最寬 11、最高 5.2（iter-121：7 → 5.2，罩頂約 39.2，小而低的有色座艙 V5）
@@ -340,7 +358,8 @@ export const gundestrupStagBody = makePolyBody({
 
     // 輪拱內襯：後輪在寬後腿下方（殼面離輪胎較遠，內襯較深），前輪較淺
     parts.push({
-      geometry: mergeGeos([buildLiner(ARCHES[0], 3, 35.6), buildLiner(ARCHES[1], 7, 35.6)]),
+      // iter-128：前輪罩已切開露輪，內襯只做後輪
+      geometry: buildLiner(ARCHES[1], 7, 35.6),
       mat: 'liner',
       shell: true,
       name: 'arch-liners',
@@ -357,7 +376,7 @@ export const gundestrupStagBody = makePolyBody({
     // 鹿角（實體件、外形件）：主幹銀、分叉的末段鍍金；角根埋進車頂 0.8 mm
     /** @type {(def: AntlerDef, sg: number) => { silver: THREE.BufferGeometry[], gold: THREE.BufferGeometry[] }} */
     const buildAntler = (def, sg) => {
-      const beamPts = def.beam.map(([x, y, z], i) => [x, i === 0 ? top(x) - 0.8 : y, sg * z]);
+      const beamPts = def.beam.map(([x, y, z], i) => [x, i === 0 ? kit.surf.topY(x, z) - 0.8 : y, sg * z]);
       const curve = new THREE.CatmullRomCurve3(
         beamPts.map(([x, y, z]) => new THREE.Vector3(x, y, z)),
         false,
@@ -416,6 +435,23 @@ export const gundestrupStagBody = makePolyBody({
     const left = buildAntler(ANTLER_L, -1);
     parts.push({ geometry: mergeGeos([...right.silver, ...left.silver]), mat: 'silver2', solid: true, outline: true, name: 'antlers' });
     parts.push({ geometry: mergeGeos([...right.gold, ...left.gold]), mat: 'gilt', solid: true, outline: true, name: 'antler-tips' });
+    // iter-128：鹿角之間的銀色後翼（弦 15、翼展 ±39，前緣低後緣高；兩端插進鹿角主幹）
+    {
+      const w = STAG_WING;
+      /** @type {number[][]} */
+      const up = [];
+      /** @type {number[][]} */
+      const lo = [];
+      for (let i = 0; i <= 10; i++) {
+        const q = i / 10;
+        const th = w.thick * (q < 0.3 ? 0.6 + (0.4 * q) / 0.3 : 1 - (0.7 * (q - 0.3)) / 0.7);
+        const x = lerp(w.le[0], w.te[0], q);
+        const y = lerp(w.le[1], w.te[1], q);
+        up.push([x, y + 0.6 * th]);
+        lo.push([x, y - 0.4 * th]);
+      }
+      parts.push({ geometry: finPlate([...up, ...lo.reverse()], 0, 2 * w.span), mat: 'silver2', solid: true, outline: true, name: 'stag-wing' });
+    }
 
     // 鹿吻外圍的扭絞 torc（C8）：沿 x 62 → 65 的殼面外 0.9 mm 繞過鹿吻上方，兩端在側裙下緣上方收成圓球頭；
     // 斷面半徑沿弧長週期起伏（14 個扭節），像扭絞金條
