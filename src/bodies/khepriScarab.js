@@ -2,15 +2,16 @@
 // 甲蟲本身變成車身——兩片鞘翅（elytra）＝左右分開的後擋泥板大量體，中間留一道鞘翅縫，縫底立一條金色脊線（中央隆起脊）；
 // 前胸背板（pronotum）＝左右前擋泥板量體；兩者之間是明顯收腰（俯視 ±45 → ±30.5，側視肩線下凹），量體集中在四個角。
 // 頭盾（clypeus）＝金色扁鏟鼻（鼻尖不超過第九階段 x 76 的殼鼻）；前腳＝前擋泥板兩側的鋸齒金色分流片（甲蟲前脛節的齒）。
-// 大件 1 個：推動的太陽圓盤——車尾立在鞘翅縫裡、往後仰的大金圓盤（紅玉髓盤心），兩支金色後腳從鞘翅尾端往後抓住盤緣＝正在推日。
+// 大件 1 個：推動的太陽圓盤——iter-129 改成往後躺、貼近後甲板的圓形鴨尾翼（金框＋紅玉髓盤心，後緣上翹），盤下金色龍骨埋進鞘翅縫。
+// iter-129（評審修正）：收腰凹槽填平，兩片鞘翅在中央以金色縫線相合；收腰上方加金色不透明小座艙；前胸恢復綠松石彩陶色。
 // 設計：shared/design/body-khepri-scarab/DESIGN.md（「第十階段重塑（iter-128）」節；典故與文物對應 MYTH_RESEARCH 埃及節 E1、E2、E3、E7、E8；
 // 黑名單 E10 Blue Beetle、Victory Magnum 鍬形蟲：不用 V 形引擎蓋、沒有大顎）。
 // 剖面為本檔站位產生器（推估）；塗裝全為自創：青金石珍珠藍鞘翅與前胸、金色頭盾與脊、紅玉髓盤心、玄武岩黑下車身；
 // 不含任何廠商 / 作品名稱、商標、文字或神的人臉。
 import * as THREE from 'three';
-import { makePolyBody, sweepEllipse, flatPlate } from './polyBody.js';
+import { makePolyBody, flatPlate } from './polyBody.js';
 import { namedMaterial, decalMaterial, sideDecal, mergeGeos, lerp } from './loft.js';
-import { monoCurve, buildStations, smoothNormals } from './gazelleLeap.js';
+import { monoCurve, buildStations } from './gazelleLeap.js';
 
 /** @typedef {import('./loft.js').BodyPart} BodyPart */
 
@@ -19,11 +20,11 @@ const XS = [-65, -60, -53, -46, -40, -32, -22, -12, -2, 8, 18, 28, 36, 42, 50, 5
 /** @type {Record<string, (x: number) => number>} */
 const P = {
   // 俯視半寬：後擋泥板（鞘翅）±45、收腰 ±30.5（x −2 ~ 8）、前擋泥板（前胸）±44；頭盾往前收成扁鏟（±9）
-  hw: monoCurve(XS, [18, 30, 40.5, 44, 44.4, 44.2, 41.5, 34, 26, 22.5, 23, 34.5, 41.4, 41.6, 36.5, 27.5, 19.5, 14, 11, 8]),
+  hw: monoCurve(XS, [18, 30, 40.5, 44, 44.4, 44.2, 41.5, 33.5, 24.5, 20.5, 21, 33.5, 41.4, 41.6, 35, 26.5, 19.5, 14, 11, 8]),
   // 中央脊線頂（鞘翅縫裡的金脊）：後段 34.5、收腰 30.6、前胸 32.8，往前降到頭盾 18
-  ySpine: monoCurve(XS, [27, 30.2, 32.8, 33.6, 33.8, 33.6, 33, 32.2, 31.2, 30.6, 30.8, 32, 32.8, 32.4, 30.2, 27.4, 24, 21, 19.4, 18]),
+  ySpine: monoCurve(XS, [27, 30.2, 32.8, 33.6, 33.8, 33.6, 33.2, 32.8, 32.6, 32.6, 32.8, 33, 33, 32.4, 30.2, 27.4, 24, 21, 19.4, 18]),
   // 擋泥板量體頂（每片鞘翅 / 前胸的拱頂）：後 40.4、收腰 30.2、前 35.6；頭盾 18
-  yF: monoCurve(XS, [27.2, 33.2, 37.2, 38.8, 39, 38.8, 37.6, 35.4, 32.4, 30.2, 30.6, 34.4, 36.2, 36, 34, 30.2, 25.4, 21.4, 19.6, 18.2]),
+  yF: monoCurve(XS, [27.2, 33.2, 37.2, 38.8, 39, 38.8, 37.6, 36, 34.2, 33.4, 33.6, 35, 36.2, 36, 34, 30.2, 25.4, 21.4, 19.6, 18.2]),
   // 肩線（拱頂外側的銳利稜線、側壁上緣）：擋泥板處高、收腰處低 → 側視看得到四個角的量體
   yA: monoCurve(XS, [24.5, 25.8, 26.6, 27, 27, 26.8, 26, 24.6, 22.6, 21.4, 22.4, 28.4, 31.2, 31.4, 29.4, 25, 20.6, 17.6, 16.6, 16]),
   // 側裙下緣
@@ -33,7 +34,7 @@ const P = {
 /** @type {number} 鞘翅縫半寬（脊線外側縫底的 z） */
 const SEAM_Z = 3.4;
 /** @type {number} 縫底比脊頂低多少（後段最深，往前變淺） */
-const seamDepth = (x) => lerp(1.2, 3.4, Math.min(1, Math.max(0, (40 - x) / 70)));
+const seamDepth = (x) => lerp(0.5, 0.9, Math.min(1, Math.max(0, (40 - x) / 70)));
 /** @type {number} 側裙下緣往內收（肩線挑出側裙＝下半內收 tumblehome） */
 const SKIRT_TUCK = 2.6;
 
@@ -70,11 +71,15 @@ const ARCHES = [
   { x: -40, y: 13, radius: 17.5, cutZFrom: 22 },
 ];
 
+/** @type {number} 分區界線：前胸（綠松石）後緣 x（iter-129） */
+const X_PRONOTUM = 23;
+/** @type {{ x: number, rx: number, ry: number, rz: number }} 座艙罩（iter-129：收腰上方的金色不透明小罩） */
+const COCKPIT = { x: 6, rx: 10.5, ry: 5.2, rz: 6.8 };
 /** @type {number} 分區界線：頭盾後緣 x */
 const X_HEAD = 58;
 
-/** @type {{ x: number, y: number, r: number, thick: number, lean: number }} 太陽圓盤（立在鞘翅縫、盤面朝後、頂部往後仰 lean 弧度） */
-const DISC = { x: -59, y: 33.6, r: 10.6, thick: 2.2, lean: 0.78 };
+/** @type {{ x: number, y: number, r: number, thick: number, lean: number }} 太陽圓盤（iter-129：往後躺的圓形鴨尾翼，盤面朝上、後緣上翹 lean 弧度） */
+const DISC = { x: -55, y: 37.6, r: 10.8, thick: 2, lean: 0.28 };
 /**
  * 由半剖面折線反查某高度的殼外表面 z（剖面點 z 由中線往外遞增、y 由上往下遞減）
  * @type {(pts: number[][], y: number) => number} 高於殼頂回傳 0，低於下緣回傳下緣 z
@@ -140,8 +145,12 @@ const materials = () => ({
   lapis: namedMaterial('paint-lapis-pearl', { color: 0x1f4f96, roughness: 0.26, metalness: 0.35, clearcoat: 1.0, clearcoatRoughness: 0.06 }),
   // 玄武岩黑：收腰與側裙（霧面）
   basalt: namedMaterial('paint-basalt-black', { color: 0x1c1e23, roughness: 0.66 }),
+  // iter-129：彩陶綠松石前胸（亮面釉，評審「青綠前胸沒了」）
+  faience: namedMaterial('paint-faience-turquoise', { color: 0x2f9e98, roughness: 0.34, clearcoat: 0.6 }),
   // 真金屬金（名稱含 -brass → Blender metallic）
   gold: namedMaterial('trim-gold-brass', { color: 0xc9a227, metalness: 0.82, roughness: 0.32, clearcoat: 0.3 }),
+  // 座艙罩：金色不透明（評審建議；名稱含 -brass → Blender 金屬）
+  cockpitGold: namedMaterial('trim-gold-canopy-brass', { color: 0xd4ad3a, metalness: 0.8, roughness: 0.22, clearcoat: 0.6 }),
   gold2: namedMaterial('trim-gold-brass', { color: 0xc9a227, metalness: 0.82, roughness: 0.32, clearcoat: 0.3, side: THREE.DoubleSide }),
   // 紅玉髓：拋光寶石（亮面，只用在盤心）
   carnelian: namedMaterial('paint-carnelian-red', { color: 0xb1342a, roughness: 0.28, clearcoat: 0.8, side: THREE.DoubleSide }),
@@ -197,7 +206,7 @@ export const khepriScarabBody = makePolyBody({
   form: 'scarab-dome',
   roof: 'closed',
   wing: 'sun-disc',
-  theme: '推日的聖甲蟲擋泥板肌肉車：兩片青金石鞘翅＝分開的後擋泥板大量體、中縫立金脊，前胸＝前擋泥板量體，中段深收腰；金色扁鏟頭盾鼻、鋸齒前腳分流片，車尾兩支金後腳推著往後仰的大金日盤',
+  theme: '推日的聖甲蟲擋泥板肌肉車：兩片青金石鞘翅＝分開的後擋泥板大量體、中央金縫線相合，綠松石前胸＝前擋泥板量體，中段深收腰上一個金色小座艙；金色扁鏟頭盾鼻、鋸齒前腳分流片，車尾往後躺的金框紅日盤鴨尾翼',
   material: 'ABS',
   density_g_cm3: 1.05,
   wallThickness_mm: 0.8,
@@ -210,11 +219,11 @@ export const khepriScarabBody = makePolyBody({
     // 頭盾：金（真金屬）
     { mat: 'gold', keep: (x, y) => Math.min(x - X_HEAD, y - (P.yA(x) + 0.25)) },
     // 中央脊（鞘翅縫裡的脊頂）：金
-    { mat: 'gold', keep: (x, y, z) => Math.min(SEAM_Z - 0.2 - Math.abs(z), x + 63) },
+    { mat: 'gold', keep: (x, y, z) => Math.min(0.9 - Math.abs(z), x + 63) },
     // 肩線以下的側裙：玄武岩黑
     { mat: 'basalt', keep: (x, y) => P.yA(x) - 0.12 - y },
     // 收腰段頂面：玄武岩黑（讓四角的青金石量體分開）
-    { mat: 'basalt', keep: (x) => Math.min(x + 1, 23 - x) },
+    { mat: 'faience', keep: (x) => x - X_PRONOTUM },
     // 鞘翅、前胸：青金石藍
     { mat: 'lapis', keep: () => 1 },
   ],
@@ -230,44 +239,35 @@ export const khepriScarabBody = makePolyBody({
       shell: true,
       name: 'arch-liners',
     });
-    // 太陽圓盤（大件）：金盤（20 段）立在鞘翅縫，頂部往後仰；前後兩面各一片紅玉髓盤心；金色圓環盤緣
-    /** @type {(g: THREE.BufferGeometry) => THREE.BufferGeometry} 盤軸（y）轉成朝後下，再移到車尾 */
+    // 太陽圓盤（大件，iter-129 改成往後躺的圓形鴨尾翼）：金盤（20 段）貼在後甲板上方、後緣往上翹 lean 弧度；
+    // 上下兩面紅玉髓盤心、金色圓環盤緣；盤下一片金色根部龍骨埋進鞘翅縫，讓盤從殼面長出來
+    /** @type {(g: THREE.BufferGeometry) => THREE.BufferGeometry} 盤軸（y）往前傾 lean（盤面後緣上翹），再移到後甲板 */
     const placeDisc = (g) => {
-      g.rotateZ(Math.PI / 2 + DISC.lean);
+      g.rotateZ(-DISC.lean);
       g.translate(DISC.x, DISC.y, 0);
       return g;
     };
     parts.push({ geometry: placeDisc(new THREE.CylinderGeometry(DISC.r, DISC.r, DISC.thick, 20)), mat: 'gold', solid: true, outline: true, name: 'sun-disc' });
     for (const s of [-1, 1]) {
-      const core = new THREE.CylinderGeometry(6.2, 6.2, 0.4, 20);
+      const core = new THREE.CylinderGeometry(6.6, 6.6, 0.4, 20);
       core.translate(0, s * (DISC.thick / 2 + 0.1), 0);
-      parts.push({ geometry: placeDisc(core), mat: 'carnelian', solid: true, name: `sun-disc-core-${s > 0 ? 'b' : 'f'}` });
+      parts.push({ geometry: placeDisc(core), mat: 'carnelian', solid: true, name: `sun-disc-core-${s > 0 ? 'top' : 'under'}` });
     }
     {
       const rim = new THREE.TorusGeometry(DISC.r, 0.85, 6, 24);
       rim.rotateX(Math.PI / 2);
       parts.push({ geometry: placeDisc(rim), mat: 'gold', solid: true, outline: true, name: 'sun-disc-rim' });
+      // 根部龍骨：盤下中央一片 2.4 mm 厚的金色鰭，下緣埋進鞘翅縫的殼面
+      const keel = new THREE.BoxGeometry(15, 6.4, 2.4);
+      keel.translate(0.8, -DISC.thick / 2 - 3.1, 0);
+      parts.push({ geometry: placeDisc(keel), mat: 'gold', solid: true, outline: true, name: 'sun-disc-keel' });
     }
-    // 金色後腳（推日）：從左右鞘翅尾端內側往後上伸、抓住日盤兩側盤緣（橢圓斷面 φ2.4 → φ1.6，前低後高＝蹬地推）
+    // 座艙（iter-129）：收腰正上方一個小的金色不透明座艙罩（橢球，下半埋進殼內）
     {
-      const c = Math.cos(DISC.lean);
-      const s = Math.sin(DISC.lean);
-      /** @type {THREE.BufferGeometry[]} */
-      const legs = [];
-      for (const sg of [-1, 1]) {
-        // 盤緣抓點：盤面局部（沿盤面「上」方向 0.25r、橫向 0.92r）
-        const up = -0.35 * DISC.r;
-        const gx = DISC.x - up * s;
-        const gy = DISC.y + up * c;
-        const pts = [
-          [-50, P.yF(-50) - 1.2, sg * 0.6 * P.hw(-50)],
-          [-55, P.yF(-55) + 0.2, sg * 0.56 * P.hw(-55)],
-          [gx + 1.2, gy + 0.6, sg * (DISC.r * 0.98)],
-          [gx - 0.4, gy, sg * (DISC.r * 0.86)],
-        ];
-        legs.push(sweepEllipse(pts, 12, (t) => [lerp(1.3, 0.85, t), lerp(1.1, 0.75, t)], 8));
-      }
-      parts.push({ geometry: smoothNormals(mergeGeos(legs)), mat: 'gold', solid: true, outline: true, name: 'hind-legs' });
+      const dome = new THREE.SphereGeometry(1, 16, 10);
+      dome.scale(COCKPIT.rx, COCKPIT.ry, COCKPIT.rz);
+      dome.translate(COCKPIT.x, P.ySpine(COCKPIT.x) - 0.8, 0);
+      parts.push({ geometry: dome, mat: 'cockpitGold', solid: true, outline: true, name: 'cockpit-dome' });
     }
     // 前腳分流片（左右）
     parts.push({ geometry: mergeGeos([-1, 1].map(buildForeleg)), mat: 'gold2', solid: true, outline: true, name: 'foreleg-splitters' });
@@ -348,9 +348,9 @@ export const khepriScarabBody = makePolyBody({
   src: {
     density_g_cm3: 'SPEC 1.14：ABS 約 1.05 g/cm³（推估）',
     wallThickness_mm: '推估：射出 ABS 殼 0.8 mm（同其他車殼）',
-    geometry: '本檔站位產生器 P（推估，iter-128 從頭重塑）：殼長 144（鞘翅尾端 −65 ~ 頭盾鼻 76，不超過第九階段鼻尖）；鞘翅量體頂 40.4、前胸量體頂 35.6、收腰 30.2；寬：鞘翅 ±45.2、前胸 ±44、收腰 ±30.5、頭盾 ±9',
+    geometry: '本檔站位產生器 P（推估，iter-128 從頭重塑）：殼長 144（鞘翅尾端 −65 ~ 頭盾鼻 76，不超過第九階段鼻尖）；鞘翅量體頂 40.4、前胸量體頂 35.6、收腰頂 33.4（iter-129 填平）；寬：鞘翅 ±44.4、前胸 ±41.6、收腰 ±20.5（iter-129）、頭盾 ±8',
     wheelArches: '前後 R17.5（31 mm 輪胎半徑 15.5 + 2 mm，同 zeppelin / griffin），可裝 26 / 31 mm 輪',
-    disc: 'iter-128 日盤移到車尾當大件：金色實心 ABS 電鍍盤 R10.5 × 2.2 mm（20 段）、頂部往後仰 29°，中心 x −60.5、y 36.4，下緣埋進鞘翅縫的脊；兩面紅玉髓盤心 R6.2；兩支金色後腳（橢圓斷面 φ2.6 → φ1.7）從鞘翅尾端抓住盤緣；質量 = 封閉體積 × 1.05 g/cm³（推估）',
+    disc: 'iter-129 日盤改成往後躺的圓形鴨尾翼：金色實心 ABS 電鍍盤 R10.8 × 2 mm（20 段）、後緣上翹 16°，中心 x −55、y 37.6；上下紅玉髓盤心 R6.6；盤下金色龍骨 15 × 6.4 × 2.4 mm 埋進鞘翅縫；座艙罩：金色實心橢球 21 × 10.4 × 13.6 mm（下半埋進殼內，推估）；質量 = 封閉體積 × 1.05 g/cm³（推估）',
     forelegs: '前腳分流片：ABS 電鍍件 1.4 mm 厚平板（推估），貼在前擋泥板側壁 x 55–67、y 17.2，外緣 3 枚齒，最多凸出側壁 2.4 mm',
     palette: '色碼取 MYTH_RESEARCH 3-2（推估）：金 #C9A227、青金石 #26619C、紅玉髓 #B1342A、綠松石 #3FB8AF（E2 Met 16.1.3 胸飾材質）',
     mounts: '對齊 chassis-midship 的車殼安裝點（SPEC 1.14）',
