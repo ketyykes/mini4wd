@@ -1,83 +1,74 @@
 // 索爾的山羊戰車（body-tanngrisnir-chariot，第八階段神話組・北歐）：《散文埃達》中索爾乘坐、由兩頭公山羊 Tanngrisnir 與 Tanngnjóstr 拉的戰車。
-// iter-120（第九階段「炫砲化＋LG1 低風阻車身」）：整台改成 LG1 風格的楔形全罩——車頭 18 往後一路升到座艙後 34.6 的連續斜面引擎蓋（原本是低平車轅甲板＋挽具溝＋中央車轅），
-// 前後輪上方是獨立隆起的擋泥板（輪上 32.3）、兩輪之間收腰（邊沿 27.6、半寬 31），俯視前窄（35.4）後寬（37.5）；
-// 兩頭山羊從前擋泥板頂長出、低頭往前下伸成左右兩支衝角鼻（吻尖 x 79.5，像正在拉車往前衝），羊角沿擋泥板往後掃成貼身導流角（頂 35.8，原本 47.5），琥珀發光羊眼；
-// 車斗收成只留 24 × 18 mm 小開口的有蓋低座艙，原本兩側高護欄＋立柱改成座艙後一支低矮後傾的 U 形鍛鐵防滾架（頂 40.2）；側面一條從車頭往後上升的暗紅＋青銅折線賽車條。
-// 沿用：橡木＋鍛鐵邊沿＋青銅鉚釘的材質分區、側面 10 輻戰車木輪浮雕（縮小）、車尾青銅折線紋、輪拱內襯與環形擋板。
-// 歷史：iter-114 軛井封成窄挽具溝；iter-115 車斗加蓋板、角改後掃；iter-116 開放座艙＋弧形護欄＋車尾斜面。
-// 設計：shared/design/body-tanngrisnir-chariot/DESIGN.md（典故 MYTH_RESEARCH N12、N16；車斗語彙 N3 Oseberg 四輪木車；黑名單 H6 不放雷神之鎚、不用盧恩）。
-// 塗裝全為自創：橡木棕（霧面）＋鍛鐵黑灰（緞面）＋青銅鉚釘與折線紋（金屬）＋少量暗紅；羊頭灰白、羊角象牙色。
-// 不畫人、不放鎚、不用盧恩字母或任何被挪用的符號，不含文字與商標。
+// iter-128（第十階段「從頭重塑」，LG1 家族 F1 刀鋒滑翔型）：整檔重寫。戰車不再是「木車斗＋兩隻羊頭擺件」，而是一把低平的刀——
+// - 側視：鼻尖細而低（x 72、y 17.6），一條幾乎筆直的刀背線往後緩升到車尾 31.2，只有座艙的小色罩凸出；尾端接一片貼身平板翼（V7、L1-10）。
+// - 斷面：上層是 tumblehome 內收的刀身＋銳利肩線，肩線下方往內切 2.6 mm 的陰影線，下層是深色裙板（上下兩層量體，解決「側壁一路蓋到底」）。
+// - 神話元素變成車身：左右前擋泥板就是兩頭山羊的頭（擋泥板前緣一對琥珀色眼形頭燈），
+//   兩支大山羊角從擋泥板頂長出、往後上掃再往下捲，像被風往後吹的側導流鰭（大件 1）；中央細長鼻＝戰車的車轅。
+// - 北歐交織紋（Urnes 風格的兩股交織帶，自繪曲線）做成從鼻尖到車尾的亮黃銅賽車條（大件 2：貫穿全車的速度線）。
+// 不用盧恩字母、不用雙閃電或任何被挪用的符號、不用雷紋（LG1 Spin 系語彙），不放鎚，不畫人，不含文字與商標。
+// 設計：shared/design/body-tanngrisnir-chariot/DESIGN.md（第十階段重塑一節）。
 import * as THREE from 'three';
-import { makePolyBody, sweepEllipse, finPlate } from './polyBody.js';
-import { namedMaterial, decalMaterial, mergeGeos, lerp, buildRegion, featureSd, sdRoundRect } from './loft.js';
+import { makePolyBody, sweepEllipse, flatPlate, finPlate } from './polyBody.js';
+import { namedMaterial, decalMaterial, mergeGeos, lerp } from './loft.js';
 import { monoCurve, buildStations } from './gazelleLeap.js';
 import { buildProfileLiner } from './khepriScarab.js';
 import { buildArchWell, chassisBlockedNearArch } from './kitsuneNinetail.js';
 
 /** @typedef {import('./loft.js').BodyPart} BodyPart */
 
-/** @type {number[]} 站位參數表（x 由後到前，前後軸 x = ±40）：車尾 −63.5、引擎蓋前緣 60（iter-120：原本 64，車頭前方讓給兩支羊頭衝角） */
-const XS = [-63.5, -62, -58, -54, -50, -40, -20, 0, 18, 24, 30, 36, 44, 50, 55, 58.5, 60];
-/** @type {number[]} 俯視半寬的站位（兩輪之間多兩個腰身控制點） */
-const XS_HW = [-63.5, -62, -58, -54, -50, -40, -26, -16, 0, 16, 26, 36, 44, 50, 55, 58.5, 60];
+/** @type {number} 車尾 x */
+const X_TAIL = -66;
+/** @type {number} 鼻尖 x（現行版羊頭吻尖 75.2 之內） */
+const X_NOSE = 72;
+
+/** @type {number[]} 站位控制點（x 由後到前，前後軸 x = ±40） */
+const XS = [X_TAIL, -62, -54, -40, -26, -12, 0, 12, 24, 34, 44, 52, 58, 64, 68, X_NOSE];
 /** @type {Record<string, (x: number) => number>} */
 const P = {
-  // 車斗邊沿 / 擋泥板頂面高度（iter-120 第九階段：LG1 楔形）：前後輪上方維持 32.3 的獨立擋泥板隆起（31 mm 輪拱頂 30.5 之上），
-  // 兩輪之間降到 27.6 成腰線（側視讀得出前後兩個擋泥板量體＋收腰，V1 / L1-2）；車頭擋泥板往前斜降到 23，車尾收成 28.6 的平尾（原本斜降到 21）
-  yR: monoCurve(XS, [28.6, 29, 30.5, 32, 32.4, 32.4, 28.6, 27.6, 28.2, 29, 31, 32.3, 32.3, 31, 28, 25, 23]),
-  // 中央（|z| < 18）高度：iter-120 改成從車頭 18 一路往後升的連續斜面引擎蓋（車頭到座艙沒有垂直面，V3），座艙後方最高 34.6，
-  // 車尾最後 4 mm 從 31.2 微微上翹到 31.8（鴨尾）；原本 x 30 前是低平的車轅甲板＋挽具溝、車斗段拱起到 36.6
-  yA: monoCurve(XS, [31.8, 31.2, 31.2, 32, 33, 34.4, 34.6, 33.6, 31.6, 30.4, 29, 27.6, 25.6, 23.5, 21.5, 19.5, 18]),
-  // 俯視半寬（iter-120b：改成「前寬後窄」的戰車平面，和前窄後寬的 yaga-hut 拉開俯視輪廓）：前擋泥板（羊的肩、拉車的前端）最寬 38，
-  // 兩輪之間 33.5，後輪上方收到 29（後輪胎外側露出，像戰車的外露車輪）、車斗往後收成 25 的窄尾；車頭收到 30.5
-  hw: monoCurve(XS_HW, [25, 25.8, 27.2, 28, 28.5, 29, 31.5, 33, 33.5, 34, 36.5, 38, 38, 37.4, 35.5, 33, 30.5]),
-  // 側壁下緣
-  yLow: monoCurve(XS, [18, 17, 16, 15.2, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15.2, 15.4, 15.6]),
+  // 中線高度（刀背）：鼻尖 17.6 → 前軸 25.5 → 座艙前 29.6 → 車尾 31.2，幾乎筆直的一條斜線（側視像刀）
+  yA: monoCurve(XS, [31.2, 31.2, 31, 30.6, 30.2, 29.9, 29.6, 28.6, 27.4, 26.4, 25.4, 24.2, 22.8, 21, 19.6, 17.6]),
+  // 擋泥板頂（上層刀身的最高稜）：前後輪上方 32.2（31 mm 輪拱頂 30.5 之上），兩輪之間 31.2 微收腰，鼻端降到 17.6
+  yF: monoCurve(XS, [30.6, 31.4, 32.2, 32.2, 31.6, 31.2, 31.2, 31.4, 31.8, 32.2, 32.2, 31.4, 29, 25, 21.6, 17.6]),
+  // 俯視半寬（肩線）：前擋泥板 34.6（兩頭羊的寬額），x 52 → 64 急收成兩個羊頭前額＋中間一支 5.5 ~ 9.5 mm 的細尖鼻（車轅）；兩輪之間收到 26.8（底盤中段側壁 |z| 27、頂 10.7，裙板下緣 15 在其上方）、後輪 35.8、車尾收成 26.5（後掠平板翼蓋過）
+  hw: monoCurve(XS, [26.5, 30.5, 35.4, 35.8, 29.5, 26.8, 26.8, 29, 33.4, 34.6, 34.6, 33.4, 23, 9.5, 7.5, 5.5]),
+  // 裙板下緣
+  yLow: monoCurve(XS, [17.4, 16.4, 15.2, 15, 15, 15, 15, 15, 15, 15, 15, 15.2, 15.6, 16.2, 16.6, 16.8]),
 };
 
-/** @type {number} 前擋泥板內緣（車轅甲板與擋泥板之間的內壁）|z| */
-const Z_FENDER = 22;
+/**
+ * 肩線高度：擋泥板頂往下 2.8（鼻端收到 0.8，鼻尖是一片薄刀）
+ * @type {(x: number) => number}
+ */
+const shoulderY = (x) => P.yF(x) - lerp(2.8, 0.8, Math.max(0, Math.min(1, (x - 56) / 16)));
 
 /**
- * 半剖面 8 點：中線 → 車轅甲板 → 擋泥板內壁 → 擋泥板頂內緣（銳利）→ 頂外緣 → 圓肩 → 側壁 → 側壁下緣
- * 車斗段 yA = yR，前 5 點都在同一高度（平頂，座艙凹槽另外挖）
+ * 半剖面 7 點：中線 → 刀背邊 → 擋泥板頂內緣（tumblehome 起點）→ 肩線（銳利）→ 肩下陰影線（銳利，往內切）→ 裙板 → 裙板下緣
  * @type {(x: number) => number[][]}
  */
 const profile = (x) => {
-  const yR = P.yR(x);
-  const yA0 = P.yA(x);
-  const hw = P.hw(x);
+  const yA = P.yA(x);
+  const yF = P.yF(x);
+  const w = P.hw(x);
   const lo = P.yLow(x);
-  // iter-115：蓋板段（中央比邊沿高）是一個平滑拱面，拱高 c；車轅甲板段（中央比擋泥板低）維持原本的凹形
-  const c = yA0 - yR;
-  if (c > 0) {
-    return [
-      [0, yA0],
-      [Z_FENDER - 4, yR + 0.55 * c],
-      [Z_FENDER - 1.6, yR + 0.3 * c],
-      [Z_FENDER + 0.6, yR + 0.12 * c],
-      [hw - 1.6, yR],
-      [hw, yR - 1.8],
-      [hw, lerp(yR - 1.8, lo, 0.6)],
-      [hw + 0.6, lo],
-    ];
-  }
-  const yA = yA0;
+  const yS = shoulderY(x);
+  // 鼻端斷面變薄，陰影線切口跟著縮小
+  const cut = lerp(2.6, 0.6, Math.max(0, Math.min(1, (x - 58) / 14)));
+  const ySkirt = Math.max(lo + 0.8, yS - 2.2);
+  // 擋泥板頂內緣 |z| 21.5（輪胎內側之外都在輪拱頂之上）；鼻端很窄時按比例往中線收
+  const zF = Math.max(w * 0.55, Math.min(21.5, w - 6.5));
   return [
     [0, yA],
-    [Z_FENDER - 4, yA],
-    [Z_FENDER - 1.6, lerp(yA, yR, 0.6)],
-    [Z_FENDER + 0.6, yR],
-    [hw - 1.6, yR],
-    [hw, yR - 1.8],
-    [hw, lerp(yR - 1.8, lo, 0.6)],
-    [hw + 0.6, lo],
+    [Math.max(zF * 0.5, zF - 3.5), lerp(yA, yF, 0.15)],
+    [zF, yF],
+    [w, yS],
+    [w - cut, ySkirt],
+    [w - cut + 0.5, lerp(ySkirt, lo, 0.6)],
+    [w - cut + 1.2, lo],
   ];
 };
 
-/** @type {{ x: number, pts: number[][] }[]} 背板段每 0.75 mm 一站（坡度大），其餘每 2 mm */
-const STATIONS = [...buildStations(-63.5, -50, 0.75, profile).slice(0, -1), ...buildStations(-50, 54, 2, profile).slice(0, -1), ...buildStations(54, 60, 1, profile)];
+/** @type {{ x: number, pts: number[][] }[]} 每 2 mm 一站，鼻端每 1 mm */
+const STATIONS = [...buildStations(X_TAIL, 60, 2, profile).slice(0, -1), ...buildStations(60, X_NOSE, 1, profile)];
 
 /** @type {{ x: number, y: number, radius: number, cutZFrom: number }[]} 前後輪拱（R17.5：31 mm 輪胎半徑 15.5 + 2 mm） */
 const ARCHES = [
@@ -85,256 +76,205 @@ const ARCHES = [
   { x: -40, y: 13, radius: 17.5, cutZFrom: 21 },
 ];
 
-/** @type {{ x0: number, x1: number, hz: number, r: number }} 戰車座艙（iter-120 收成有蓋低座艙：44 × 25 → 24 × 18 mm 的小開口，後方一支低矮後傾防滾架） */
-const SEAT = { x0: -30, x1: -6, hz: 9, r: 4 };
-
-/**
- * 戰車座艙凹槽（iter-115 取代原本整片開放的車斗甲板；iter-116 放大成 44 × 25 mm 的開放式座艙），深 4 mm，底是木條甲板
- * @type {any}
- */
-const DECK = {
-  id: '戰車座艙',
-  view: 'top',
-  shape: 'fn',
-  sd: (x, y, z) => sdRoundRect(x, Math.abs(z), SEAT.x0, SEAT.x1, -SEAT.hz, SEAT.hz, SEAT.r),
-  depth: 4,
-};
-
 /** @type {() => Record<string, THREE.Material>} */
 const materials = () => ({
-  // 橡木：霧面（paint- 且 roughness > 0.5 → Blender 緞面）
-  oak: namedMaterial('paint-oak-brown', { color: 0x7a5232, roughness: 0.68, clearcoat: 0.05 }),
-  oakDark: namedMaterial('paint-oak-dark', { color: 0x553621, roughness: 0.7, clearcoat: 0.05 }),
-  oakDark2: namedMaterial('paint-oak-dark', { color: 0x553621, roughness: 0.7, clearcoat: 0.05, side: THREE.DoubleSide }),
-  deck: namedMaterial('paint-oak-deck', { color: 0x6a4529, roughness: 0.72, side: THREE.DoubleSide }),
-  // 鍛鐵：緞面黑灰（車斗邊沿、座艙口）
-  iron: namedMaterial('paint-forged-iron', { color: 0x45484d, roughness: 0.55, clearcoat: 0.12, clearcoatRoughness: 0.5 }),
-  // 少量暗紅（背板頂面、前後封口）
-  red: namedMaterial('paint-oxblood-red', { color: 0x6e1f1a, roughness: 0.6, clearcoat: 0.08 }),
-  // 真金屬青銅（名稱含 -brass → Blender metallic）：鉚釘、折線紋、車轅頭
-  bronze: namedMaterial('trim-bronze-brass', { color: 0x9c6b3c, metalness: 0.8, roughness: 0.34, clearcoat: 0.2 }),
-  // 山羊：灰白頭頸（霧面）、象牙色羊角（微光澤）、灰色鬍鬚、琥珀色羊眼
-  goat: namedMaterial('paint-goat-greywhite', { color: 0xd6d2c8, roughness: 0.62, clearcoat: 0.05 }),
-  // iter-120b：羊角由象牙白改成深灰褐（白色長條被讀成獠牙 / 叉子；山羊角是帶節環的灰褐角質）
-  horn: namedMaterial('paint-horn-greybrown', { color: 0x6e5d48, roughness: 0.5, clearcoat: 0.25 }),
-  beard: namedMaterial('paint-goat-beard-grey', { color: 0x9d988e, roughness: 0.72 }),
-  // iter-120：羊眼改成琥珀色自發光（炫砲手法 5），lamp- 前綴 → Blender 保留發光
-  eye: namedMaterial('lamp-goat-eye-amber', { color: 0xffb340, emissive: 0xff8a00, emissiveIntensity: 0.6, roughness: 0.15, clearcoat: 1.0 }),
-  inner: namedMaterial('shell-inner-dark', { color: 0x1c1712, roughness: 0.85, side: THREE.BackSide }),
-  edge: namedMaterial('shell-edge-oak', { color: 0x4a3020, roughness: 0.7, side: THREE.DoubleSide }),
-  liner: namedMaterial('shell-wheelwell-iron', { color: 0x2e3034, roughness: 0.7, side: THREE.DoubleSide }),
-  // iter-120 側面賽車條紋：暗紅底帶＋青銅折線
-  dRed: decalMaterial('decal-oxblood-stripe', { color: 0x7a2018, roughness: 0.55, clearcoat: 0.15 }),
-  dSeam: decalMaterial('decal-oak-seam', { color: 0x2e1c10, roughness: 0.78 }),
-  dIron: decalMaterial('decal-iron-band', { color: 0x3f4247, roughness: 0.55, clearcoat: 0.12 }),
-  dBronze: decalMaterial('decal-bronze-zigzag', { color: 0xa8743f, metalness: 0.7, roughness: 0.35 }),
-  // iter-116 戰車輪浮雕：淺橡木輪輞與輻條
-  dWheel: decalMaterial('decal-oak-wheel', { color: 0xa47448, roughness: 0.66 }),
+  // 主色：風暴青灰（霧面偏緞面，paint- 且 roughness > 0.5）
+  slate: namedMaterial('paint-storm-slate', { color: 0x6a7884, roughness: 0.52, clearcoat: 0.25, clearcoatRoughness: 0.35 }),
+  // 下層裙板：鍛鐵黑（緞面）
+  iron: namedMaterial('paint-forged-iron', { color: 0x26282c, roughness: 0.58, clearcoat: 0.1, clearcoatRoughness: 0.5 }),
+  // 車尾封口
+  cap: namedMaterial('paint-forged-iron', { color: 0x26282c, roughness: 0.58, clearcoat: 0.1, clearcoatRoughness: 0.5 }),
+  // 山羊角：象牙到灰褐的角質（微光澤）
+  horn: namedMaterial('paint-goat-horn-ivory', { color: 0xe2d6b8, roughness: 0.4, clearcoat: 0.35 }),
+  hornTip: namedMaterial('paint-goat-horn-dark', { color: 0x5e4c38, roughness: 0.45, clearcoat: 0.3 }),
+  // 有色不透明小座艙罩（V5 / L1-9）：冰川藍亮面
+  canopy: namedMaterial('paint-canopy-glacier', { color: 0x6fb2d4, roughness: 0.18, clearcoat: 1.0, clearcoatRoughness: 0.08 }),
+  // 尾翼平板：黃銅（真金屬）
+  brass: namedMaterial('trim-gold-brass', { color: 0xd6a648, metalness: 0.85, roughness: 0.24, clearcoat: 0.3 }),
+  // 羊眼頭燈：琥珀色自發光（lamp- 前綴 → Blender 保留發光）
+  eye: namedMaterial('lamp-goat-eye-amber', { color: 0xffb340, emissive: 0xff8a00, emissiveIntensity: 0.9, roughness: 0.12, clearcoat: 1.0 }),
+  inner: namedMaterial('shell-inner-dark', { color: 0x16181b, roughness: 0.85, side: THREE.BackSide }),
+  edge: namedMaterial('shell-edge-slate', { color: 0x3a434b, roughness: 0.7, side: THREE.DoubleSide }),
+  liner: namedMaterial('shell-wheelwell-iron', { color: 0x202226, roughness: 0.7, side: THREE.DoubleSide }),
+  // 交織紋賽車條：亮黃銅（金屬貼紙）＋鍛鐵底帶
+  dBrass: decalMaterial('decal-interlace-brass', { color: 0xe0b050, metalness: 0.85, roughness: 0.2, clearcoat: 0.4 }),
+  dBand: decalMaterial('decal-iron-band', { color: 0x2a2d32, roughness: 0.5, clearcoat: 0.2 }),
+  // 肩線黃銅細線
+  dLine: decalMaterial('decal-shoulder-brass', { color: 0xd8a84a, metalness: 0.8, roughness: 0.25 }),
+  // 下層裙板進氣口（深色）
+  dIntake: decalMaterial('decal-intake-black', { color: 0x0c0d0f, roughness: 0.4, clearcoat: 0.3 }),
   mount: namedMaterial('abs-mount-black', { color: 0x222326, roughness: 0.6 }),
-  // iter-127（評審「最不炫 3 款」「平甲板中段仍空」）：引擎蓋中央的鍛銀賽車條（金屬，和全車木褐拉開）＋輪拱的雷光藍發光縫
-  dSilver: decalMaterial('decal-forged-silver', { color: 0xc9cdd3, metalness: 0.75, roughness: 0.28, clearcoat: 0.3 }),
-  dGlow: decalMaterial('decal-thunder-glow', { color: 0x58b4ff, emissive: 0x2f8cff, emissiveIntensity: 0.9, roughness: 0.3 }),
 });
 
 // ---------------------------------------------------------------------------
-// 山羊頭（實體件）
+// 山羊角（大件 1）：從前擋泥板頂長出，往後上掃、再往下往內捲，像被風往後吹的側導流鰭
 // ---------------------------------------------------------------------------
 
-/** @type {number} 羊頭中心 |z|（iter-120：從車轅兩側 14.5 移到左右前擋泥板頂上，擋泥板＝羊的肩） */
-const GOAT_Z = 28.5;
-
 /**
- * 山羊角斷面（iter-120b）：根粗尖細＋沿角 6 道節環（山羊角的橫稜；24 段掃掠、每道環 4 段看得出起伏），6 邊斷面
+ * 角的斷面：扁刀形（垂直厚、側向薄），根粗尖細，沿角 7 道節環（山羊角的橫稜）
  * @type {(t: number) => number[]}
  */
 const hornRad = (t) => {
-  const ridge = 1 + 0.14 * Math.cos(2 * Math.PI * 6 * t);
-  const r = lerp(1.75, 0.6, t ** 0.9) * ridge;
-  return [r * 1.05, r * 0.95];
+  const ridge = 1 + 0.12 * Math.cos(2 * Math.PI * 7 * t);
+  const taper = lerp(1, 0.22, t ** 0.85);
+  return [1.25 * taper * ridge, 2.6 * taper * ridge];
 };
 
 /**
- * 山羊角中心線（iter-120b，主 agent 看圖：原本沿擋泥板的兩對長直角讀成叉子 / 獠牙）：從頭頂往上長出、往後彎成一道彎刀弧，
- * 尖端往下收向擋泥板（頂約 39，仍貼近車身）；兩支角一支往外張、一支往內收
- * @type {(sg: number, zBase: number, spread: number) => number[][]} spread：往外張的方向（+1 = 遠離羊頭中心）
+ * 角的中心線（左右對稱，sg = ±1）：根部埋進擋泥板頂（x 31、y 31.2；和 31 mm 輪胎留 2 mm），往後上掃到頂約 37.2，再往下捲，尖端停在 x −9.5、y 33.4（懸空，不回接車身）
+ * @type {(sg: number) => number[][]}
  */
-const hornPath = (sg, zBase, spread) => {
-  const z = (dz) => sg * (zBase + spread * dz);
-  return [
-    [63.2, 33.2, z(0)],
-    [61.4, 36.2, z(0.25)],
-    [58.4, 38.2, z(0.6)],
-    [54.6, 38.4, z(1)],
-    [51.4, 37, z(1.35)],
-    [49.6, 34.8, z(1.6)],
-  ];
-};
+const hornPath = (sg) =>
+  [
+    [31, 31.2, 31.2],
+    [25.5, 34, 32],
+    [17, 36, 32.8],
+    [7, 37.2, 33.4],
+    [-2, 36.9, 33.6],
+    [-7.5, 35.3, 33.4],
+    [-9.5, 33.4, 32.8],
+  ].map(([x, y, z]) => [x, y, sg * z]);
 
-/**
- * 一頭山羊（iter-120b 重做頭部量體）：短頸從前擋泥板頂長出 → 明顯的頭骨（額頭）→ 往前下收的吻部 → 鼻頭，下巴一撮短鬍鬚，
- * 兩耳往後側貼、兩支節環彎角從頭頂往後掃；琥珀發光眼。整顆頭往前下伸（低頭拉車往前衝），仍貼在擋泥板上當衝角鼻
- * @type {(sg: number) => { head: THREE.BufferGeometry, horns: THREE.BufferGeometry, eyes: THREE.BufferGeometry, beard: THREE.BufferGeometry }}
- */
-const buildGoat = (sg) => {
-  const zc = sg * GOAT_Z;
-  /** @type {(r: number[], c: number[], rot: number) => THREE.BufferGeometry} 橢球（16 × 10 段） */
-  const ellipsoid = (r, c, rot) => {
-    const g = new THREE.SphereGeometry(1, 16, 10);
-    g.scale(r[0], r[1], r[2]);
-    g.rotateZ(rot);
-    g.translate(c[0], c[1], c[2] ?? zc);
-    return g;
-  };
-  // 短頸：根部埋進擋泥板頂
-  const neck = sweepEllipse(
-    [
-      [45, 31.6, zc],
-      [51, 32.4, zc],
-      [57, 32, zc],
-    ],
-    8,
-    (t) => [lerp(3.4, 3.2, t), lerp(3.0, 3.3, t)],
-    8,
-  );
-  // 頭骨（額頭）：頭部最大的量體，寬 7.6、高 7.2
-  const skull = ellipsoid([5.2, 3.6, 3.8], [62.4, 30.6], -0.3);
-  // 吻部：往前下收窄
-  const muzzle = ellipsoid([5, 2.4, 2.6], [68.8, 26.6], -0.5);
-  // 鼻頭
-  const nose = ellipsoid([1.9, 1.7, 2.1], [73.4, 23.7], -0.5);
-  // 兩耳：往後側貼的扁葉片（被風壓向後）
-  /** @type {THREE.BufferGeometry[]} */
-  const ears = [];
-  for (const side of [1, -1]) {
-    const ear = ellipsoid([2.4, 0.65, 1.2], [59.2, 32.4, zc + side * 3.9], 0.3);
-    ears.push(ear);
+/** @type {(sg: number) => { horn: THREE.BufferGeometry, tip: THREE.BufferGeometry, web: THREE.BufferGeometry }} 角身（象牙）＋角尖段（深灰褐） */
+const buildHorn = (sg) => {
+  const pts = hornPath(sg);
+  const all = sweepEllipse(pts, 56, hornRad, 8);
+  // 角尖段：用同一條中心線的最後 22% 另外掃一段略粗 0.06 mm 的深色套，讀出角尖顏色漸深
+  const curve = new THREE.CatmullRomCurve3(pts.map(([x, y, z]) => new THREE.Vector3(x, y, z)), false, 'centripetal');
+  const tipPts = [];
+  for (let i = 0; i <= 6; i++) {
+    const p = curve.getPointAt(0.78 + (0.22 * i) / 6);
+    tipPts.push([p.x, p.y, p.z]);
   }
-  const horns = [
-    sweepEllipse(hornPath(sg, GOAT_Z + 1.4, 1), 24, hornRad, 6),
-    sweepEllipse(hornPath(sg, GOAT_Z - 1.4, -1), 24, hornRad, 6),
-  ];
-  // 短山羊鬍：下巴往下、略往後的尖楔（厚 1.6，側視 4.5 mm 長）
-  const beard = finPlate(
+  const tip = sweepEllipse(tipPts, 14, (t) => hornRad(0.78 + 0.22 * t).map((r) => r + 0.06), 8);
+  // 角下方的導流鰭腹板：從角根到角身中段往下接到肩線（角＝鰭的前緣，角下不留空隙，不會讀成提把）
+  const web = finPlate(
     [
-      [69.6, 25.2],
-      [66.2, 25.6],
-      [66.4, 21.4],
-      [68.2, 23.2],
+      [31, 30.6],
+      [25.5, 33.4],
+      [21, 35],
+      [18, 35.5],
+      [22, shoulderY(22) - 0.6],
+      [30, shoulderY(30) - 0.6],
     ],
-    zc,
-    1.6,
+    sg * 32.3,
+    0.9,
   );
-  const eyes = [1, -1].map((side) => ellipsoid([1.2, 0.6, 0.6], [64.6, 31.0, zc + side * 3.25], -0.35));
-  return { head: mergeGeos([neck, skull, muzzle, nose, ...ears]), horns: mergeGeos(horns), eyes: mergeGeos(eyes), beard };
+  return { horn: all, tip, web };
 };
 
-/**
- * 單一條橫向折線（閃電形鋸齒）：中心線 y = y0 ± amp，週期 period，回傳到中心線的距離函式（以 z 為橫軸）
- * @type {(y0: number, amp: number, period: number) => (z: number, y: number) => number}
- */
-const zigzagDist = (y0, amp, period) => (z, y) => {
-  // 鋸齒中心線上離 z 最近的兩段折線
-  const k = Math.floor((z + 1000 * period) / period) - 1000;
-  let best = Infinity;
-  for (let j = k - 1; j <= k + 1; j++) {
-    const a = [j * period, y0 - amp];
-    const m = [j * period + period / 2, y0 + amp];
-    const b = [(j + 1) * period, y0 - amp];
-    for (const [p, q] of [
-      [a, m],
-      [m, b],
-    ]) {
-      const dx = q[0] - p[0];
-      const dy = q[1] - p[1];
-      const t = Math.max(0, Math.min(1, ((z - p[0]) * dx + (y - p[1]) * dy) / (dx * dx + dy * dy)));
-      best = Math.min(best, Math.hypot(z - p[0] - t * dx, y - p[1] - t * dy));
-    }
-  }
-  return best;
-};
+// ---------------------------------------------------------------------------
+// 北歐交織紋賽車條（大件 2）：兩股帶子沿 x 交織，交叉處一上一下輪替（Urnes 風格，自繪）
+// ---------------------------------------------------------------------------
 
-/** @type {number[]} 車斗側面鐵箍的 x（後軸之後 1 道、兩輪之間 2 道；iter-116 中間那道讓給戰車輪浮雕） */
-const BAND_X = [-58, -15, 15];
-/** @type {number} 鐵箍寬 */
-const BAND_W = 2.6;
-/** @type {number[]} 側面橡木板縫高度 */
-const SEAM_Y = [19.2, 23.6, 28];
-
-/** @type {{ x: number, y: number, r: number, spokes: number }} 側面戰車大木輪浮雕（iter-116；iter-120 配合收腰縮小 r 7.6 → 5.2）：兩輪之間的側板中央，10 根輻條（不做四輻十字輪） */
-const RELIEF_WHEEL = { x: 0, y: 20.6, r: 5.2, spokes: 10 };
+/** @type {number} 賽車條前端 x */
+const STRIPE_X1 = 68;
+/** @type {number} 賽車條後端 x */
+const STRIPE_X0 = -63;
+/** @type {number} 交織週期（兩次交叉之間的 x 距離） */
+const BRAID_HALF = 9;
+/** @type {number} 帶子半寬 */
+const STRAND_W = 0.7;
 
 /**
- * 戰車輪浮雕的各層距離場（負值在內）：底盤（深色圓盤）、鐵輪箍、木輪輞、輻條、青銅輪轂
- * @type {(x: number, y: number) => { disc: number, tire: number, felloe: number, spoke: number, hub: number }}
- */
-const reliefWheelSd = (x, y) => {
-  const W = RELIEF_WHEEL;
-  const dx = x - W.x;
-  const dy = y - W.y;
-  const r = Math.hypot(dx, dy);
-  const a = Math.atan2(dy, dx);
-  /** @type {number} 每根輻條的角距 */
-  const step = (2 * Math.PI) / W.spokes;
-  // 第一根輻條轉半格，讓輻條不落在正上下、正前後（避免讀成十字）
-  const k = Math.round((a - step / 2) / step);
-  const da = a - step / 2 - k * step;
-  const spokeD = Math.max(r * Math.abs(Math.sin(da)) - 0.34, 1.0 - r, r - (W.r - 1.9));
-  return {
-    disc: r - W.r,
-    tire: Math.abs(r - (W.r - 0.55)) - 0.55,
-    felloe: Math.abs(r - (W.r - 1.6)) - 0.55,
-    spoke: spokeD,
-    hub: r - 1.4,
-  };
-};
-
-/**
- * 蓋板在 (x, |z|) 的表面高度（剖面第 0、1 點之間線性內插；|z| ≤ Z_FENDER − 4）
- * @type {(x: number, az: number) => number}
- */
-const deckYAt = (x, az) => {
-  const yR = P.yR(x);
-  const yA = P.yA(x);
-  const c = yA - yR;
-  if (c <= 0) {
-    return yA;
-  }
-  return lerp(yA, yR + 0.55 * c, Math.min(1, az / (Z_FENDER - 4)));
-};
-
-/** @type {number} 防滾架腳的 x（座艙後緣之後） */
-const ROLL_X = -32;
-/** @type {number} 防滾架腳的 |z| */
-const ROLL_Z = 11;
-
-/**
- * 低矮後傾的 U 形防滾架（iter-120，取代原本座艙兩側高 8 mm 的弧形護欄＋立柱）：兩腳埋進蓋板（x −32、|z| 11），
- * 往後上方傾到 x −37.5、頂高 39.4（只比蓋板高約 5 mm），斷面 2 × 1.8 mm 的鍛鐵管
- * @type {() => THREE.BufferGeometry}
- */
-const buildRollBar = () => {
-  const yb = deckYAt(ROLL_X, ROLL_Z) - 0.8;
-  return sweepEllipse(
-    [
-      [ROLL_X, yb, -ROLL_Z],
-      [ROLL_X - 3.2, 37.6, -ROLL_Z + 0.6],
-      [ROLL_X - 5.2, 39.1, -6],
-      [ROLL_X - 5.6, 39.4, 0],
-      [ROLL_X - 5.2, 39.1, 6],
-      [ROLL_X - 3.2, 37.6, ROLL_Z - 0.6],
-      [ROLL_X, yb, ROLL_Z],
-    ],
-    24,
-    () => [1.0, 0.9],
-    6,
-  );
-};
-
-/**
- * 側面賽車條紋的中心高度（iter-120）：從車頭 x 66 的 y 19.5（條紋實際從 x 60 擋泥板前端起畫）一路往後上升到車尾 x −62 的 y 26（前低後高的速度線，貫穿兩個擋泥板與收腰）
+ * 交織振幅：鼻端窄、車身中段寬
  * @type {(x: number) => number}
  */
-const stripeY = (x) => lerp(26, 19.5, (x + 62) / 128);
+const braidAmp = (x) => {
+  if (x > 40) {
+    return lerp(3.4, 1.6, (x - 40) / (STRIPE_X1 - 40));
+  }
+  return 3.4;
+};
+
+/**
+ * 交織紋距離場（負值在帶子內）：回傳 [帶子, 外框線]；座艙罩範圍不畫
+ * @type {(x: number, z: number) => { braid: number, frame: number, band: number }}
+ */
+const braidSd = (x, z) => {
+  const A = braidAmp(x);
+  const k = Math.PI / BRAID_HALF;
+  const ph = k * (x - STRIPE_X0);
+  const s = Math.sin(ph);
+  const slope = Math.sqrt(1 + (A * k * Math.cos(ph)) ** 2);
+  const dA = Math.abs(z - A * s) / slope - STRAND_W;
+  const dB = Math.abs(z + A * s) / slope - STRAND_W;
+  // 最近交叉點的序號決定哪一股在上：偶數 A 在上、奇數 B 在上；在下的那股在上股兩側留 0.45 mm 縫
+  const n = Math.round(ph / Math.PI);
+  const aOver = n % 2 === 0;
+  const over = aOver ? dA : dB;
+  const under = aOver ? dB : dA;
+  const underCut = Math.max(under, -(over - 0.45));
+  const braid = Math.min(over, underCut);
+  const wOut = A + 2.0;
+  const frame = Math.abs(Math.abs(z) - wOut) - 0.35;
+  const band = Math.abs(z) - (wOut + 0.9);
+  return { braid, frame, band };
+};
+
+/** @type {{ x0: number, x1: number, hw: number, h: number }} 座艙罩（前低後高的小水滴，刀背上唯一凸起） */
+const CANOPY = { x0: -20, x1: 8, hw: 6.6, h: 5.4 };
+
+/**
+ * 座艙罩：沿 x 掃掠的扁橢圓斷面，根部埋進刀背 0.8 mm
+ * @type {() => THREE.BufferGeometry}
+ */
+const buildCanopy = () => {
+  const n = 9;
+  const pts = [];
+  for (let i = 0; i <= n; i++) {
+    const x = lerp(CANOPY.x1, CANOPY.x0, i / n);
+    pts.push([x, P.yA(x) - 0.8, 0]);
+  }
+  return sweepEllipse(pts, 28, (t) => {
+    // 前端細、最高點在 t 0.62（偏後），尾端收尖
+    const bump = Math.sin(Math.PI * Math.min(1, t ** 0.8)) ** 0.7;
+    return [Math.max(0.3, CANOPY.hw * bump), Math.max(0.3, CANOPY.h * bump)];
+  }, 14);
+};
+
+/**
+ * 羊眼頭燈：擋泥板前緣的斜長眼形燈（扁橢球，埋一半在殼裡）
+ * @type {() => THREE.BufferGeometry}
+ */
+const buildEyes = () => {
+  /** @type {THREE.BufferGeometry[]} */
+  const eyes = [];
+  for (const sg of [-1, 1]) {
+    const x = 55;
+    const g = new THREE.SphereGeometry(1, 14, 8);
+    g.scale(3.4, 0.9, 1.6);
+    g.rotateY(sg * 0.55);
+    g.rotateZ(-0.32);
+    g.translate(x, shoulderY(x) + 0.4, sg * (P.hw(x) - 3.2));
+    eyes.push(g);
+  }
+  return mergeGeos(eyes);
+};
+
+/**
+ * 貼身平板尾翼：刀背延伸出的一片後掠薄板（俯視像刀柄護手往後掠），根部埋進車尾頂面
+ * @type {() => THREE.BufferGeometry}
+ */
+const buildTailBlade = () =>
+  flatPlate(
+    [
+      [-57, -6],
+      [-60, -31],
+      [-63.5, -41.5],
+      [-73, -42],
+      [-68, -27],
+      [-66.6, -6],
+      [-66.6, 6],
+      [-68, 27],
+      [-73, 42],
+      [-63.5, 41.5],
+      [-60, 31],
+      [-57, 6],
+    ],
+    30.4,
+    1.4,
+  );
 
 export const tanngrisnirChariotBody = makePolyBody({
   id: 'body-tanngrisnir-chariot',
@@ -343,262 +283,113 @@ export const tanngrisnirChariotBody = makePolyBody({
   phase: 8,
   mythSeries: 'norse',
   mythTheme: 'thor-goat-chariot',
-  form: 'chariot-tub',
-  roof: 'open-cockpit',
+  form: 'goat-blade',
+  roof: 'canopy',
   wing: 'goat-horns',
-  theme: '索爾的山羊戰車：LG1 楔形全罩——車頭往後連續升起的橡木斜面引擎蓋、前後獨立隆起的鍛鐵邊沿擋泥板與收腰、有蓋低座艙＋後傾鍛鐵防滾架，兩頭山羊從前擋泥板低頭前伸成左右衝角鼻（琥珀發光眼、青銅頸環），羊角沿擋泥板後掃成導流角，側面暗紅＋青銅折線賽車條與 10 輻戰車輪浮雕',
+  theme: '索爾的山羊戰車（第十階段 F1 刀鋒滑翔型）：細低尖鼻往後一條筆直刀背的風暴青灰車身，tumblehome 上層＋肩下陰影線＋鍛鐵裙板兩層量體；左右前擋泥板是兩頭山羊的頭（琥珀眼形頭燈），兩支大山羊角從擋泥板往後上掃再下捲成被風吹的側導流鰭；鼻尖到車尾一條亮黃銅北歐交織紋賽車條，冰川藍小色罩，車尾貼身後掠黃銅平板翼',
   material: 'ABS',
   density_g_cm3: 1.05,
   wallThickness_mm: 0.8,
   stations: STATIONS,
-  // 車轅甲板邊、擋泥板頂內緣、頂外緣是銳利稜線
-  hard: [1, 3, 4],
+  // 擋泥板頂、肩線、肩下陰影線是銳利稜線
+  hard: [2, 3, 4],
   wheelArches: ARCHES,
-  recesses: [DECK],
-  innerSkipRecess: true,
-  sideZMin: 30,
+  sideZMin: 26,
   zones: () => [
-    // 車尾斜面暗紅（iter-116：尾端削成斜面，暗紅帶放寬到 x −55）
-    { mat: 'red', keep: (x) => -55 - x },
-    // 鍛鐵邊沿：車斗邊沿與擋泥板頂的外緣（圓肩一圈 2.4 mm 寬）
-    { mat: 'iron', keep: (x, y, z) => Math.min(y - (P.yR(x) - 2.6), Math.abs(z) - (P.hw(x) - 2.4)) },
-    // 鍛鐵內緣：座艙口一圈 1.6 mm 寬
-    { mat: 'iron', keep: (x, y, z) => (y > P.yR(x) + 0.5 ? 1.6 - DECK.sd(x, y, z) : -1) },
-    // 鍛鐵下緣帶
-    { mat: 'iron', keep: (x, y, z) => (Math.abs(z) > 30 ? P.yLow(x) + 2.2 - y : -1) },
-    // 車轅甲板：深色橡木
-    { mat: 'oakDark', keep: (x, y, z) => Math.min(x - 22, Z_FENDER - 1 - Math.abs(z)) },
-    { mat: 'oak', keep: () => 1 },
+    // 下層：肩下陰影線以下全是鍛鐵裙板
+    { mat: 'iron', keep: (x, y, z) => Math.min(shoulderY(x) - 0.3 - y, Math.abs(z) - (P.hw(x) - 3.5)) },
+    { mat: 'slate', keep: () => 1 },
   ],
-  mats: { inner: 'inner', edge: 'edge', cap: 'red', recess: 'deck', recessWall: 'oakDark2', mount: 'mount' },
+  mats: { inner: 'inner', edge: 'edge', cap: 'cap', mount: 'mount' },
   materials,
   extras: (kit) => {
     /** @type {BodyPart[]} */
     const parts = [];
-    // 輪拱內襯（前後）
     parts.push({
       geometry: mergeGeos(ARCHES.map((a) => buildProfileLiner(a, 33, profile))),
       mat: 'liner',
       shell: true,
       name: 'arch-liners',
     });
-    // iter-115：輪胎內側環形擋板（kitsune 的 buildArchWell，|z| 22.9 接內襯內緣成一個輪室；車斗封成蓋板後輪室上方不再有開口）
     parts.push({
       geometry: mergeGeos(ARCHES.map((a) => buildArchWell(a, 22.9, 12.3, 17.8, chassisBlockedNearArch))),
       mat: 'liner',
       shell: true,
       name: 'arch-wells',
     });
-    // 兩頭山羊
-    const goats = [-1, 1].map((sg) => buildGoat(sg));
-    parts.push({ geometry: mergeGeos(goats.map((g) => g.head)), mat: 'goat', solid: true, outline: true, name: 'goat-heads' });
-    parts.push({ geometry: mergeGeos(goats.map((g) => g.horns)), mat: 'horn', solid: true, outline: true, name: 'goat-horns' });
-    parts.push({ geometry: mergeGeos(goats.map((g) => g.eyes)), mat: 'eye', solid: true, name: 'goat-eyes' });
-    parts.push({ geometry: mergeGeos(goats.map((g) => g.beard)), mat: 'beard', solid: true, outline: true, name: 'goat-beards' });
-    // 頸圈（挽具）：每頭山羊頸部一圈青銅頸環（iter-120 跟著羊頭移到擋泥板上，6 × 16 段）
-    /** @type {THREE.BufferGeometry[]} */
-    const collars = [];
-    for (const sg of [-1, 1]) {
-      const g = new THREE.TorusGeometry(3.5, 0.7, 6, 16);
-      g.scale(1, 1.05, 1);
-      g.lookAt(new THREE.Vector3(6, 1.6, 0).normalize());
-      g.translate(48, 32.1, sg * GOAT_Z);
-      collars.push(g);
-    }
-    parts.push({ geometry: mergeGeos(collars), mat: 'bronze', solid: true, outline: true, name: 'goat-collars' });
-    // 車尾斜面的青銅折線紋（iter-116：尾端削成斜面後沒有直立背板，改成斜面上沿 z 走的單一條鋸齒帶）
-    const zigTail = zigzagDist(-59.2, 1.4, 7);
-    parts.push({
-      geometry: kit.decal((x, y, z) => (x < -55.5 && Math.abs(z) < 25 && y > P.yR(x) - 1.2 ? 0.6 - zigTail(z, x) : -1), { offset: 0.1 }),
-      mat: 'dBronze',
-      name: 'decal-tail-zigzag',
-    });
-    // 座艙後方低矮後傾的 U 形防滾架（iter-120，取代弧形護欄＋立柱）
-    parts.push({ geometry: buildRollBar(), mat: 'iron', solid: true, outline: true, name: 'roll-bar' });
-    // 側面戰車大木輪浮雕（iter-116）：深色底盤 → 鐵輪箍 → 淺橡木輪輞與 10 根輻條 → 青銅輪轂，逐層加高
-    /** @type {(x: number, z: number) => boolean} 只畫在側板上 */
-    const onSide = (x, z) => Math.abs(z) >= P.hw(x) - 1.2;
-    parts.push({
-      geometry: kit.decal((x, y, z) => (onSide(x, z) ? -reliefWheelSd(x, y).disc : -1), { offset: 0.1 }),
-      mat: 'dSeam',
-      name: 'decal-relief-wheel-disc',
-    });
-    parts.push({
-      geometry: kit.decal((x, y, z) => (onSide(x, z) ? -reliefWheelSd(x, y).tire : -1), { offset: 0.35 }),
-      mat: 'dIron',
-      name: 'decal-relief-wheel-tire',
-    });
-    parts.push({
-      geometry: kit.decal((x, y, z) => {
-        if (!onSide(x, z)) {
-          return -1;
-        }
-        const w = reliefWheelSd(x, y);
-        return -Math.min(w.felloe, w.spoke);
-      }, { offset: 0.3 }),
-      mat: 'dWheel',
-      name: 'decal-relief-wheel-spokes',
-    });
-    parts.push({
-      geometry: kit.decal((x, y, z) => (onSide(x, z) ? -reliefWheelSd(x, y).hub : -1), { offset: 0.45 }),
-      mat: 'dBronze',
-      name: 'decal-relief-wheel-hub',
-    });
-    // 側面賽車條紋（iter-120，炫砲手法 4）：從羊鼻下方的擋泥板前端往後上升、貫穿前後擋泥板與收腰到車尾的暗紅帶（寬 3.2 mm），
-    // 帶中一條青銅折線（自繪單一鋸齒，不是雙折線閃電），戰車輪浮雕範圍內斷開
-    /** @type {(x: number, y: number, z: number) => boolean} 條紋可畫的範圍：側板、浮雕輪外 */
-    const stripeOk = (x, y, z) => onSide(x, z) && x < 60 && x > -62 && reliefWheelSd(x, y).disc > 0.7;
-    parts.push({
-      geometry: kit.decal((x, y, z) => (stripeOk(x, y, z) ? 1.6 - Math.abs(y - stripeY(x)) : -1), { offset: 0.12 }),
-      mat: 'dRed',
-      name: 'decal-side-stripe',
-    });
-    const zigSide = zigzagDist(0, 0.8, 5);
-    parts.push({
-      geometry: kit.decal((x, y, z) => (stripeOk(x, y, z) ? 0.36 - zigSide(x, y - stripeY(x)) : -1), { offset: 0.2 }),
-      mat: 'dBronze',
-      name: 'decal-side-zigzag',
-    });
-    // 蓋板（tonneau）木條縫（iter-115）：沿 x 的深色細縫，每 5 mm 一道，只畫在蓋板頂面（中央比邊沿高的段）、避開座艙口
-    parts.push({
-      geometry: kit.decal((x, y, z) => {
-        const az = Math.abs(z);
-        if (x > 26 || x < -61 || az > Z_FENDER || y < P.yR(x) + 0.4 || DECK.sd(x, y, z) < 1.2) {
-          return -1;
-        }
-        const u = (az + 2.5) % 5;
-        return 0.3 - Math.min(u, 5 - u);
-      }),
-      mat: 'dSeam',
-      name: 'decal-tonneau-seams',
-    });
-    // 側面橡木板縫（深色細線）
-    parts.push({
-      geometry: kit.decal((x, y, z) => {
-        // iter-116：戰車輪浮雕範圍內不畫板縫
-        if (Math.abs(z) < P.hw(x) - 1.2 || reliefWheelSd(x, y).disc < 0.8) {
-          return -1;
-        }
-        let d = Infinity;
-        for (const sy of SEAM_Y) {
-          d = Math.min(d, Math.abs(y - sy));
-        }
-        return 0.32 - d;
-      }),
-      mat: 'dSeam',
-      name: 'decal-oak-seams',
-    });
-    // 側面鐵箍（直條，凸起 0.3 mm）與輪拱鐵箍（沿輪拱切口 1.8 mm 寬）
-    parts.push({
-      geometry: kit.decal(
-        (x, y, z) => {
-          if (Math.abs(z) < P.hw(x) - 1.2) {
-            return -1;
-          }
-          let d = Infinity;
-          for (const bx of BAND_X) {
-            d = Math.min(d, Math.abs(x - bx) - BAND_W / 2);
-          }
-          for (const a of ARCHES) {
-            d = Math.min(d, Math.hypot(x - a.x, y - a.y) - a.radius - 1.8);
-          }
-          return -d;
-        },
-        { offset: 0.3 },
-      ),
-      mat: 'dIron',
-      name: 'decal-iron-bands',
-    });
-    // 甲板木條縫（沿 x 的細縫）
-    const deckSd = featureSd(DECK);
-    parts.push({
-      geometry: buildRegion(kit.surf, [...kit.holes, (x, y, z) => -deckSd(x, y, z), (x, y, z) => {
-        const u = Math.abs(z) % 5;
-        return 0.3 - Math.min(u, 5 - u);
-      }], { offset: -DECK.depth + 0.06 }).geometry,
-      mat: 'dSeam',
-      name: 'decal-deck-seams',
-    });
-    // 青銅鉚釘：側面鐵箍上每箍 3 顆、輪拱鐵箍上各 5 顆（半埋的小圓頂）
-    /** @type {THREE.BufferGeometry[]} */
-    const rivets = [];
-    /** @type {(x: number, y: number, sg: number) => void} */
-    const rivet = (x, y, sg) => {
-      const g = new THREE.SphereGeometry(0.7, 10, 6);
-      g.scale(0.9, 0.9, 0.7);
-      g.translate(x, y, sg * (P.hw(x) + 0.32));
-      rivets.push(g);
-    };
-    for (const sg of [-1, 1]) {
-      for (const bx of BAND_X) {
-        for (const ry of [17.2, 23.6, 29.4]) {
-          // iter-116：車尾斜面段的鐵箍較矮，超出側壁的鉚釘不放
-          if (ry > P.yR(bx) - 2.2) {
-            continue;
-          }
-          rivet(bx, ry, sg);
-        }
+    // 大件 1：兩支風吹後掃的山羊角
+    const horns = [-1, 1].map((sg) => buildHorn(sg));
+    parts.push({ geometry: mergeGeos(horns.map((h) => h.horn)), mat: 'horn', solid: true, outline: true, name: 'goat-horn-fins' });
+    parts.push({ geometry: mergeGeos(horns.map((h) => h.tip)), mat: 'hornTip', solid: true, name: 'goat-horn-tips' });
+    parts.push({ geometry: mergeGeos(horns.map((h) => h.web)), mat: 'slate', solid: true, outline: true, name: 'goat-horn-webs' });
+    // 羊眼頭燈
+    parts.push({ geometry: buildEyes(), mat: 'eye', solid: true, name: 'goat-eye-lamps' });
+    // 小色罩
+    parts.push({ geometry: buildCanopy(), mat: 'canopy', solid: true, outline: true, name: 'canopy-bubble' });
+    // 貼身平板尾翼
+    parts.push({ geometry: buildTailBlade(), mat: 'brass', solid: true, outline: true, name: 'tail-blade-wing' });
+    /** @type {(x: number, y: number, z: number) => boolean} 刀背頂面（中央、座艙罩外） */
+    const onTop = (x, y, z) => {
+      if (x > STRIPE_X1 || x < STRIPE_X0 || y < P.yA(x) - 1.5) {
+        return false;
       }
-      for (const a of ARCHES) {
-        for (const ang of [0.35, 0.95, Math.PI / 2, Math.PI - 0.95, Math.PI - 0.35]) {
-          const r = a.radius + 0.9;
-          rivet(a.x + r * Math.cos(ang), a.y + r * Math.sin(ang), sg);
-        }
+      if (x > CANOPY.x0 - 1 && x < CANOPY.x1 + 1 && Math.abs(z) < CANOPY.hw + 1) {
+        return false;
       }
-    }
-    parts.push({ geometry: mergeGeos(rivets), mat: 'bronze', solid: true, name: 'bronze-rivets' });
-    // iter-127 鍛銀賽車條：引擎蓋中央從座艙前緣（x −4，半寬 2.2）往車頭展開成矛尖形（x 57，半寬 6），外緣 0.6 mm 青銅收邊；
-    // 直邊、單一條、不做閃電折線（MYTH_RESEARCH H9；也避開「銀殼＋藍閃電」的劇中車組合），填滿原本空著的平甲板中段
-    /** @type {(x: number, z: number) => number} 賽車條外形距離（負值 = 條內） */
-    const silverSd = (x, z) => {
-      const w = lerp(2.2, 6, Math.max(0, Math.min(1, (x + 4) / 61)));
-      // 車頭端收成尖角：x 50 之後半寬再乘上往 x 59 收尖的比例
-      const tip = Math.max(0, Math.min(1, (59 - x) / 9));
-      return Math.max(Math.abs(z) - w * Math.min(1, 0.35 + tip), -4 - x, x - 59);
+      return Math.abs(z) < P.hw(x) - 7;
     };
-    /** @type {(x: number, y: number, z: number) => boolean} 引擎蓋頂面 */
-    const onHood = (x, y, z) => x > -5 && Math.abs(z) < Z_FENDER - 2 && y > P.yR(x) - 0.5 + (P.yA(x) < P.yR(x) ? P.yA(x) - P.yR(x) : 0) && DECK.sd(x, y, z) > 1.2;
+    // 大件 2：北歐交織紋賽車條（鍛鐵底帶＋黃銅雙股交織＋黃銅外框線）
     parts.push({
-      geometry: kit.decal((x, y, z) => (onHood(x, y, z) ? -silverSd(x, z) - 0.6 : -1), { offset: 0.24 }),
-      mat: 'dSilver',
-      name: 'decal-hood-silver-stripe',
+      geometry: kit.decal((x, y, z) => (onTop(x, y, z) ? -braidSd(x, z).band : -1), { offset: 0.1 }),
+      mat: 'dBand',
+      name: 'decal-interlace-band',
     });
     parts.push({
       geometry: kit.decal((x, y, z) => {
-        if (!onHood(x, y, z)) {
+        if (!onTop(x, y, z)) {
           return -1;
         }
-        const d = silverSd(x, z);
-        return Math.min(-d, d + 0.6);
+        const d = braidSd(x, z);
+        return -Math.min(d.braid, d.frame);
       }, { offset: 0.22 }),
-      mat: 'dBronze',
-      name: 'decal-hood-stripe-edge',
+      mat: 'dBrass',
+      name: 'decal-interlace-brass',
     });
-    // iter-127 雷光藍發光縫：前後輪拱切口內緣一道 0.55 mm 的發光線（在鍛鐵輪拱箍內側，鉚釘之內）
+    // 肩線黃銅細線（沿肩線上緣 0.7 mm，從鼻端到車尾，速度線）
     parts.push({
       geometry: kit.decal((x, y, z) => {
-        if (!onSide(x, z)) {
+        if (x > 66 || x < -64 || Math.abs(z) < P.hw(x) - 2.4) {
           return -1;
         }
-        let d = Infinity;
-        for (const a of ARCHES) {
-          d = Math.min(d, Math.abs(Math.hypot(x - a.x, y - a.y) - a.radius - 0.35) - 0.28);
+        return 0.35 - Math.abs(y - (shoulderY(x) + 0.6));
+      }, { offset: 0.12 }),
+      mat: 'dLine',
+      name: 'decal-shoulder-line',
+    });
+    // 下層裙板進氣口：前輪後方往後收尖的深色斜口（側視讀成兩層之間的進氣道）
+    parts.push({
+      geometry: kit.decal((x, y, z) => {
+        if (Math.abs(z) < P.hw(x) - 3.4 || x < 2 || x > 21) {
+          return -1;
         }
-        return -d;
-      }, { offset: 0.4 }),
-      mat: 'dGlow',
-      name: 'decal-arch-thunder-glow',
+        const top = shoulderY(x) - 3.2;
+        const bot = lerp(top - 0.8, 17, (x - 2) / 19);
+        return Math.min(top - y, y - bot, x - 2, 21 - x);
+      }, { offset: 0.1 }),
+      mat: 'dIntake',
+      name: 'decal-skirt-intake',
     });
     return parts;
   },
   src: {
     density_g_cm3: 'SPEC 1.14：ABS 約 1.05 g/cm³（推估）',
     wallThickness_mm: '推估：射出 ABS 殼 0.8 mm（同其他車殼）',
-    geometry: '本檔站位產生器 P（推估）：iter-120 車殼 x −63.5 ~ 60、羊頭衝角鼻到 79.5（長 143）；引擎蓋中線從車頭 18 升到座艙後 34.6、車尾 31.8；擋泥板邊沿輪上 32.3（31 mm 輪拱頂 30.5 之上）、兩輪之間 27.6；半寬前輪 35.4、後輪 37.5（仍蓋住 31 mm 輪胎外側面 34.75）、收腰 31；車殼頂高 40.2（防滾架），頂高 / 長度 0.28（HOMAGE_RESEARCH V17：0.22–0.38）',
-    cockpit: 'iter-120：座艙開口 x −30 ~ −6、|z| ≤ 9（深 4 mm，推估），原本 44 × 25 mm 開放座艙＋兩側弧形護欄拿掉；後傾 U 形防滾架斷面 2.0 × 1.8 mm 鍛鐵管（≥ 1.2 mm 射出薄件，推估），腳埋進蓋板 x −32、頂 x −37.6 / y 40.2；車轅、挽具溝（openings）與溝壁內襯全部拿掉，車頭封成連續斜面；輪拱內 buildArchWell 環形擋板（|z| 22.9）沿用',
-    goats: 'iter-120：山羊頭頸為一條實心 ABS 掃掠件（根部斷面 8.4 × 6.4 mm → 吻 5.2 × 3.8 mm，24 × 6 段），根部埋進前擋泥板頂（x 44.5、|z| 28.5），吻尖 x 79.5、y 22；羊角根直徑 3.4 → 尖端 1.26 mm（24 × 6 段，頂 35.8）；質量 = 封閉體積 × 1.05 g/cm³（推估）；羊頭 |z| 24.3–32.7，body-check 導輪間隙 5.24 mm',
-    zigzag: '車尾折線紋：單一條橫向鋸齒（週期 7、振幅 ±1.4、線寬 1.2 mm）；iter-120 側面賽車條：暗紅帶寬 3.2 mm、帶中青銅單一鋸齒（週期 5、振幅 ±0.8、線寬 0.72 mm），不是雙折線閃電（MYTH_RESEARCH H9），自繪',
-    wheelArches: '前後 R17.5（31 mm 輪胎半徑 15.5 + 2 mm），可裝 26 / 31 mm 輪；內襯從 |z| 21.5 到殼內面',
+    geometry: 'iter-128 本檔站位產生器 P（推估）：車殼 x −66 ~ 72（尾翼到 −73）（鼻尖不超過現行版羊頭吻尖 75.2）；刀背中線鼻尖 17.6 → 前軸 25.4 → 座艙前 29.6 → 車尾 31.2；擋泥板頂輪上 32.2（31 mm 輪拱頂 30.5 之上）、兩輪之間 31.2；肩線在擋泥板頂下 2.8、肩下陰影線往內切 2.6；半寬前輪 34.6、收腰 26.8、後輪 35.8、車尾 26.5，前端 x 52 → 64 急收成 9.5 的細鼻；頂高 / 長度依 HOMAGE_RESEARCH V17 0.22–0.38',
+    horns: 'iter-128 山羊角：實心 ABS 掃掠件，扁刀形斷面根部 2.5 × 5.2 mm → 尖端約 0.55 × 1.1 mm（56 × 8 段），7 道節環；根部埋進前擋泥板頂（x 31、y 31.2、|z| 31.2；離 31 mm 輪胎 ≥ 2 mm），頂約 37.2，尖端捲到 x −9.5、y 33.4；角根到 x 18 之間有 0.9 mm 腹板接到肩線；質量 = 封閉體積 × 1.05 g/cm³（推估）',
+    canopy: 'iter-128 座艙罩：x −20 ~ 8、半寬 6.6、高 5.4 的不透明亮面色罩（實心件，推估），V5 / L1-9「有色小座艙」',
+    tailWing: 'iter-128 平板尾翼：黃銅色 ABS 板厚 1.4 mm、y 30.4、x −57 ~ −73、半寬 42 的後掠刀柄形（翼端往後掠），根部埋進車尾頂面（推估）',
+    interlace: '北歐交織紋：兩股寬 1.4 mm 的帶子以半週期 9 mm 交織、交叉處一上一下輪替（Urnes 風格，自繪），外框線寬 0.7 mm；不是盧恩、不是雷紋、不是雙閃電（MYTH_RESEARCH H9）',
+    wheelArches: '前後 R17.5（31 mm 輪胎半徑 15.5 + 2 mm），可裝 26 / 31 mm 輪；內襯從 |z| 33 到殼內面',
     mounts: '對齊 chassis-midship 的車殼安裝點（SPEC 1.14）',
   },
 });
