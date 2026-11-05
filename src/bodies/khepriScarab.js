@@ -3,7 +3,7 @@
 // 前擋泥板是綠松石彩陶色的量體，一路延伸到扁鏟鼻尖（鼻錐和前擋泥板同色，不另外做成一顆頭）；兩者之間明顯收腰（俯視 ±44.4 → ±20.5）。
 // 有翼日盤 → 尾翼：紅玉髓日盤往後躺在鞘翅縫的尾端，左右各一片展開的翼從鞘翅尾端的殼面長出來（前緣貼著殼面、後緣上翹成鴨尾），
 // 翼面是金框鑲嵌的羽格（綠松石、青金石各一排，羽尖鋸齒），日盤和兩翼連成一整片。
-// 胸飾（pectoral）鑲嵌 → livery：前擋泥板前緣的金底紅玉髓格帶；鼻尖上一個象形文字框（cartouche）形的號碼牌（金框、青金石底，裡面只有兩道橫槓，不寫字）。
+// 胸飾（pectoral）鑲嵌 → livery：前擋泥板前緣的金底紅玉髓格帶；鼻尖一枚小日盤徽記（紅玉髓圓＋金環），和車尾的日盤呼應。
 // 收腰段頂面填平，上方是金色不透明小座艙。
 // 設計：shared/design/body-khepri-scarab/DESIGN.md（典故與文物對應 MYTH_RESEARCH 埃及節 E1、E2、E3、E7、E8；
 // 黑名單 E10 Blue Beetle、Victory Magnum 鍬形蟲：不用 V 形引擎蓋、沒有大顎）。
@@ -11,7 +11,7 @@
 // 不含任何廠商 / 作品名稱、商標、文字或神的人臉。
 import * as THREE from 'three';
 import { makePolyBody } from './polyBody.js';
-import { namedMaterial, decalMaterial, sideDecal, mergeGeos, lerp, sdRoundRect } from './loft.js';
+import { namedMaterial, decalMaterial, sideDecal, mergeGeos, lerp } from './loft.js';
 import { monoCurve, buildStations } from './gazelleLeap.js';
 
 /** @typedef {import('./loft.js').BodyPart} BodyPart */
@@ -34,8 +34,8 @@ const P = {
 
 /** @type {number} 鞘翅縫半寬（脊線外側縫底的 z） */
 const SEAM_Z = 3.4;
-/** @type {number} 縫底比脊頂低多少（後段最深，往前變淺） */
-const seamDepth = (x) => lerp(0.5, 0.9, Math.min(1, Math.max(0, (40 - x) / 70)));
+/** @type {(x: number) => number} 縫底比脊頂低多少（後段最深，往前變淺；最後 8 mm 收到幾乎齊平，鼻尖前緣不留缺口） */
+const seamDepth = (x) => lerp(0.5, 0.9, Math.min(1, Math.max(0, (40 - x) / 70))) * Math.min(1, Math.max(0.1, (75 - x) / 8));
 /** @type {number} 側裙下緣往內收（肩線挑出側裙＝下半內收 tumblehome） */
 const SKIRT_TUCK = 2.6;
 
@@ -50,6 +50,8 @@ const profile = (x) => {
   const yF = Math.max(P.yF(x), yg + 0.4);
   const yA = P.yA(x);
   const zc = 0.6 * hw;
+  // 鼻尖處肩線降得比側裙下緣還低，下緣跟著壓到肩線下 1.6 mm，側壁才不會上下顛倒、在鼻尖下緣折出缺口
+  const yl = Math.min(P.yLow(x), yA - 1.6);
   return [
     [0, ys],
     [1.5, ys - 0.25],
@@ -58,8 +60,8 @@ const profile = (x) => {
     [zc, yF],
     [lerp(zc, hw, 0.6), lerp(yF, yA, 0.4)],
     [hw, yA],
-    [hw - SKIRT_TUCK * 0.35, lerp(yA, P.yLow(x), 0.5)],
-    [hw - SKIRT_TUCK, P.yLow(x) + 0.8],
+    [hw - SKIRT_TUCK * 0.35, lerp(yA, yl, 0.5)],
+    [hw - SKIRT_TUCK, yl + 0.8],
   ];
 };
 
@@ -84,17 +86,16 @@ const X_INLAY = 56.2;
 const DISC = { x: -56, y: 35.8, r: 9.6, thick: 1.6, lean: 0.12 };
 
 /**
- * 有翼日盤的單側翼（另一側鏡射）：翼根 z0 接日盤、翼尖 z1；前緣在 x = xLe，沿殼面起伏（貼著殼面，高出 lift）；
+ * 有翼日盤的單側翼（另一側鏡射）：翼根 z0 接日盤、翼尖 z1；前緣在 x = xLe，從翼根到鞘翅拱頂沿殼面起伏（貼著殼面，高出 lift），
+ * 過了拱頂以後每往外 1 mm 只降 droop（比殼面降得慢，翼尖離開殼面微微上翹）；
  * 弦長由 chord0 收到 chord1，後緣每片羽多伸出 serration（鋸齒羽尖）；整片以前緣為軸往後上翹 pitch 弧度。
  * base / cell = 金色底板與鑲嵌羽格的厚度
- * @type {{ z0: number, z1: number, xLe: number, chord0: number, chord1: number, serration: number, pitch: number, lift: number, feathers: number, base: number, cell: number }}
+ * @type {{ z0: number, z1: number, xLe: number, chord0: number, chord1: number, serration: number, pitch: number, lift: number, droop: number, feathers: number, base: number, cell: number }}
  */
-const WING = { z0: 9, z1: 37, xLe: -50, chord0: 14, chord1: 10.5, serration: 2.6, pitch: 0.12, lift: 0.5, feathers: 5, base: 0.9, cell: 0.45 };
+const WING = { z0: 9, z1: 43, xLe: -50, chord0: 14, chord1: 10, serration: 2.6, pitch: 0.12, lift: 0.5, droop: 0.5, feathers: 6, base: 0.9, cell: 0.45 };
 
-/** @type {(x: number, z: number) => number} 號碼牌的象形文字框外形（俯視長圓框，x 60.6–73.2、半寬 4）：負值在框內 */
-const cartoucheSd = (x, z) => sdRoundRect(x, z, 60.6, 73.2, -4, 4, 4);
-/** @type {(x: number, z: number) => number} 框內兩道橫槓（抽象記號，不是文字）：正值在槓上 */
-const cartoucheMarks = (x, z) => Math.min(-cartoucheSd(x, z) - 1, Math.max(0.45 - Math.abs(x - 64.6), 0.45 - Math.abs(x - 67.6)));
+/** @type {{ x: number, r: number, ring: number }} 鼻尖的小日盤徽記（紅玉髓圓＋金環），和車尾的日盤呼應 */
+const NOSE_DISC = { x: 66.5, r: 2.7, ring: 0.9 };
 
 /**
  * 由半剖面折線反查某高度的殼外表面 z（剖面點 z 由中線往外遞增、y 由上往下遞減）
@@ -176,7 +177,6 @@ const materials = () => ({
   dGold: decalMaterial('decal-gold-leaf', { color: 0xd1aa35, metalness: 0.75, roughness: 0.34 }),
   dCarnelian: decalMaterial('decal-carnelian', { color: 0xb1342a, roughness: 0.32, clearcoat: 0.7 }),
   dTurquoise: decalMaterial('decal-turquoise', { color: 0x3fb8af, roughness: 0.55 }),
-  dLapis: decalMaterial('decal-lapis', { color: 0x1f4f96, roughness: 0.3, clearcoat: 0.6 }),
   dVoid: decalMaterial('decal-intake-void', { color: 0x07080a, roughness: 0.95 }),
 });
 
@@ -262,7 +262,10 @@ const wingPoint = (u, f, up, sg) => {
   // 每片羽中央的後緣最長、羽與羽之間最短 → 鋸齒羽尖
   const chord = lerp(WING.chord0, WING.chord1, u) + WING.serration * (1 - Math.abs(2 * ph - 1));
   const x = WING.xLe - f * chord;
-  return [x, hullTopY(WING.xLe, z) + WING.lift + (WING.xLe - x) * Math.tan(WING.pitch) + up, sg * z];
+  // 拱頂（z = 半寬的 0.6）以外：取「殼面」和「從拱頂以 droop 斜率往外降的直線」兩者較高的
+  const zc = 0.6 * P.hw(WING.xLe);
+  const yLe = Math.max(hullTopY(WING.xLe, z), hullTopY(WING.xLe, zc) - WING.droop * Math.max(0, z - zc));
+  return [x, yLe + WING.lift + (WING.xLe - x) * Math.tan(WING.pitch) + up, sg * z];
 };
 
 /**
@@ -306,7 +309,7 @@ export const khepriScarabBody = makePolyBody({
   form: 'scarab-dome',
   roof: 'closed',
   wing: 'sun-disc',
-  theme: '推日的聖甲蟲用元素表現的擋泥板肌肉車：兩片青金石鞘翅＝分開的後擋泥板大量體、中央金縫線相合，綠松石前擋泥板一路收成扁鏟鼻尖，中段深收腰上一個金色小座艙；車尾是有翼日盤尾翼（紅玉髓日盤＋左右兩片金框鑲嵌羽格的翼，從鞘翅尾端長出來、後緣上翹），鼻尖一個象形文字框形的號碼牌',
+  theme: '推日的聖甲蟲用元素表現的擋泥板肌肉車：兩片青金石鞘翅＝分開的後擋泥板大量體、中央金縫線相合，綠松石前擋泥板一路收成扁鏟鼻尖，中段深收腰上一個金色小座艙；車尾是有翼日盤尾翼（紅玉髓日盤＋左右兩片金框鑲嵌羽格的翼，從鞘翅尾端長出來、後緣上翹），鼻尖一枚小日盤徽記',
   material: 'ABS',
   density_g_cm3: 1.05,
   wallThickness_mm: 0.8,
@@ -325,6 +328,8 @@ export const khepriScarabBody = makePolyBody({
     // 鞘翅與收腰段頂面：青金石藍
     { mat: 'lapis', keep: () => 1 },
   ],
+  // 鼻尖封口和鼻錐同色
+  capFrontBands: [{ mat: 'faience' }],
   mats: { inner: 'inner', edge: 'edge', cap: 'basalt', mount: 'mount' },
   materials,
   extras: (kit) => {
@@ -411,24 +416,17 @@ export const khepriScarabBody = makePolyBody({
       mat: 'dCarnelian',
       name: 'decal-inlay-cells',
     });
-    // 鼻尖的象形文字框號碼牌：金框（線寬 0.8）＋框尾一道橫槓＋框內兩道金槓；框內其餘是青金石底（兩片貼紙不重疊）
-    parts.push({
-      geometry: kit.decal((x, y, z) => {
-        if (y < P.yA(x) + 0.3) {
-          return -1;
-        }
-        const frame = 0.4 - Math.abs(cartoucheSd(x, z));
-        const bar = Math.min(0.45 - Math.abs(x - 59.7), 5 - Math.abs(z));
-        return Math.max(frame, bar, cartoucheMarks(x, z));
-      }),
-      mat: 'dGold',
-      name: 'decal-cartouche-frame',
-    });
-    parts.push({
-      geometry: kit.decal((x, y, z) => (y < P.yA(x) + 0.3 ? -1 : Math.min(-cartoucheSd(x, z) - 0.4, -cartoucheMarks(x, z)))),
-      mat: 'dLapis',
-      name: 'decal-cartouche-fill',
-    });
+    // 鼻尖的小日盤徽記：紅玉髓圓＋外圈金環（兩片貼紙不重疊）；只是一個圓，沒有其他圖形
+    {
+      /** @type {(x: number, y: number, z: number) => number} 到徽記圓心的俯視距離（側面不畫） */
+      const rr = (x, y, z) => (y < P.yA(x) + 0.3 ? Infinity : Math.hypot(x - NOSE_DISC.x, z));
+      parts.push({ geometry: kit.decal((x, y, z) => NOSE_DISC.r - rr(x, y, z)), mat: 'dCarnelian', name: 'decal-nose-disc' });
+      parts.push({
+        geometry: kit.decal((x, y, z) => Math.min(rr(x, y, z) - NOSE_DISC.r, NOSE_DISC.r + NOSE_DISC.ring - rr(x, y, z))),
+        mat: 'dGold',
+        name: 'decal-nose-disc-ring',
+      });
+    }
     // 側面兩層量體：收腰段側壁下緣的黑色進氣口（往後上掃的平行四邊形）＋金色上緣線
     for (const side of [-1, 1]) {
       const opt = { x0: 0, y0: 0, zMin: 26, side };
@@ -446,9 +444,9 @@ export const khepriScarabBody = makePolyBody({
   src: {
     density_g_cm3: 'SPEC 1.14：ABS 約 1.05 g/cm³（推估）',
     wallThickness_mm: '推估：射出 ABS 殼 0.8 mm（同其他車殼）',
-    geometry: '本檔站位產生器 P（推估）：殼長 141（鞘翅尾端 −65 ~ 鼻尖 76），含日盤外框 x −66.3 ~ 76.2（142.5）；鞘翅量體頂 39、前擋泥板量體頂 36.2、收腰頂 33.4（頂面填平）、翼面後緣頂約 40.8（全車最高）；寬：鞘翅 ±44.4、前擋泥板 ±41.6、收腰 ±20.5、鼻尖 ±8',
+    geometry: '本檔站位產生器 P（推估）：殼長 141（鞘翅尾端 −65 ~ 鼻尖 76），含日盤外框 x −66.3 ~ 76.1（142.4）；鞘翅量體頂 39、前擋泥板量體頂 36.2、收腰頂 33.4（頂面填平）、翼面後緣頂約 41.1（全車最高）；寬：鞘翅 ±44.4、前擋泥板 ±41.6、收腰 ±20.5、鼻尖 ±8',
     wheelArches: '前後 R17.5（31 mm 輪胎半徑 15.5 + 2 mm，同 zeppelin / griffin），可裝 26 / 31 mm 輪',
-    disc: '有翼日盤尾翼：日盤是金色實心 ABS 電鍍盤 R9.6 × 1.6 mm（20 段）、往後躺 0.12 弧度（約 6.9°），中心 x −56、y 35.8，盤前緣埋進鞘翅縫；盤面紅玉髓盤心 R6.4；盤緣金色圓環（管半徑 0.7）。兩片翼：翼根 |z| 9 接日盤、翼尖 |z| 37，前緣在 x −50 沿殼面起伏（高出殼面 0.5 mm），弦長 14 → 10.5 mm、每片羽尖再多 2.6 mm（每側 5 片羽），和日盤同一個斜度往後上翹；金色底板厚 0.9 mm，上面每片羽 2 格鑲嵌（綠松石、青金石，厚 0.45 mm）。座艙罩：金色實心橢球 21 × 10.4 × 13.6 mm（下半埋進殼內）。質量 = 封閉體積 × 1.05 g/cm³（推估）',
+    disc: '有翼日盤尾翼：日盤是金色實心 ABS 電鍍盤 R9.6 × 1.6 mm（20 段）、往後躺 0.12 弧度（約 6.9°），中心 x −56、y 35.8，盤前緣埋進鞘翅縫；盤面紅玉髓盤心 R6.4；盤緣金色圓環（管半徑 0.7）。兩片翼：翼根 |z| 9 接日盤、翼尖 |z| 43，前緣在 x −50，到鞘翅拱頂為止沿殼面起伏（高出殼面 0.5 mm）、拱頂以外每 1 mm 降 0.5 mm（翼尖離開殼面微微上翹），弦長 14 → 10 mm、每片羽尖再多 2.6 mm（每側 6 片羽），和日盤同一個斜度往後上翹；金色底板厚 0.9 mm，上面每片羽 2 格鑲嵌（綠松石、青金石，厚 0.45 mm）。座艙罩：金色實心橢球 21 × 10.4 × 13.6 mm（下半埋進殼內）。質量 = 封閉體積 × 1.05 g/cm³（推估）',
     palette: '色碼取 MYTH_RESEARCH 3-2（推估，E2 Met 16.1.3 胸飾材質）：金 #C9A227、青金石 #26619C（鞘翅珍珠漆用較深的 #1F4F96）、紅玉髓 #B1342A、綠松石 #3FB8AF（前段彩陶釉用 #2F9E98）',
     mounts: '對齊 chassis-midship 的車殼安裝點（SPEC 1.14）',
   },
