@@ -3,7 +3,7 @@
 // (1) 號角的錐形 → 車身中脊：鼻端是一支細而低的尖鼻錐（深色，鼻尖一段金色），接上和兩側輪罩同色的深色細脊，過了座艙前的金環才變成象牙色，
 //     往後一路擴張成引擎罩，車尾張開成壓扁的排氣喇叭口（金色環邊＋4 片金色導流片＋兩側刀形端板＝擴散器 / 尾翼一體）；
 // (2) 金屬箍環 → 車身上的 6 道金色環帶（貼紙）；
-// (3) 彩虹橋 Bifröst → 一道從鼻尖沿中脊掃到車尾、跟著號角變寬的三色條紋（低彩度的銅紅、赭金、青綠），喇叭口內再三道同色細環；
+// (3) 彩虹橋 Bifröst → 一條從喇叭口斜繞號角一圈半到鼻尖、跟著號角變寬的三色緞帶（低彩度的銅紅、赭金、青綠），喇叭口內再三道同色細環；
 // (4) 兩段 Urnes 風格交織雙股紋（自繪曲線）、深色輪罩圓肩上一條從鼻尖到喇叭口漸粗的金色速度線。
 // 號角兩側是低平的深色擋泥側裙（前後輪罩，兩輪之間收腰），蓋住輪胎；前段中脊在兩個輪罩之間懸空。
 // 設計：shared/design/body-heimdall-horn/DESIGN.md（典故：《散文埃達》Gylfaginning；語彙：維京時代飲用角的金屬配件、Urnes 交織紋 MYTH_RESEARCH N8）。
@@ -258,7 +258,11 @@ const BELL_K_END = 0.5;
 /** @type {number} 喇叭口長度（x −63 → −70.5） */
 const BELL_LEN = 7.5;
 /** @type {number} 喇叭口環邊半徑（水平；不做太大，避免喇叭口像樂器擺件） */
-const BELL_R = 27;
+const BELL_R = 29.7;
+/** @type {number} 喇叭口亮金唇邊的管半徑 */
+const BELL_LIP_R = 1.15;
+/** @type {number} 彩虹橋緞帶從喇叭口到殼前端繞號角的圈數 */
+const BIFROST_TURNS = 1.5;
 
 /**
  * 喇叭口外張薄殼（繞 x 軸，橢圓斷面：y 方向比例由 BELL_K 漸變到 BELL_K_END）：pts 為 [半徑, 往後的距離]
@@ -302,7 +306,7 @@ export const heimdallHornBody = makePolyBody({
   form: 'horn-bell',
   roof: 'canopy',
   wing: 'bell-flare',
-  theme: '加拉爾號角融進車身：細而低的深色尖鼻錐（金色鼻尖）往後擴張成象牙色引擎罩，車尾壓扁的喇叭口當擴散器（金環邊＋金色導流片＋口內三色細環）；彩虹橋是一道從鼻尖沿中脊掃到車尾、越往後越寬的銅紅、赭金、青綠三色條紋；6 道金色環帶、交織雙股紋，深色輪罩肩上一條從鼻尖到喇叭口的金色速度線，兩側深色低輪罩蓋住輪胎',
+  theme: '加拉爾號角融進車身：細而低的深色尖鼻錐（金色鼻尖）往後擴張成象牙色引擎罩，車尾壓扁的喇叭口當擴散器（金環邊＋金色導流片＋口內三色細環）；彩虹橋是一條從喇叭口斜繞號角一圈半到鼻尖、越往後越寬的銅紅、赭金、青綠三色緞帶；6 道金色環帶、交織雙股紋，深色輪罩肩上一條從鼻尖到喇叭口的金色速度線，兩側深色低輪罩蓋住輪胎',
   material: 'ABS',
   density_g_cm3: 1.05,
   wallThickness_mm: 0.8,
@@ -358,18 +362,28 @@ export const heimdallHornBody = makePolyBody({
     });
     /** @type {(x: number, y: number, z: number) => number} 號角區且不在座艙罩下（正值 = 可貼） */
     const onHornDeck = (x, y, z) => Math.min(y - (Math.min(yValley(x), P.yc(x)) + 0.25), junctionZ(x) + 0.1 - Math.abs(z), -kit.underCanopy(x, z));
-    // 彩虹橋條紋：沿中脊頂從鼻尖掃到喇叭口的三道並排色帶（銅紅、赭金、青綠），每道寬 = 號角水平半徑的 0.16 倍（最細 0.6），越往後越寬
-    /** @type {[string, number][]} [材質, 色帶中心相對中線的道數] */
+    // 彩虹橋條紋：一條三色緞帶（銅紅、赭金、青綠）從喇叭口頂端斜繞號角一圈半到鼻尖，側視與 3/4 視角都看得到斜紋；
+    // 每道沿圓周的寬度 = 號角水平半徑的 0.24 倍（最細 0.8），越往後越寬（引擎罩段整條緞帶的垂直寬度約 6–8 mm）。
+    // 號角下半埋在車身裡，緞帶繞到下半時自然斷開
+    /** @type {[string, number][]} [材質, 色帶中心相對緞帶中線的道數] */
     const lanes = [
       ['bifrost1', -1],
       ['bifrost2', 0],
       ['bifrost3', 1],
     ];
+    /** @type {(x: number, y: number, z: number) => number} 到緞帶中線的圓周距離（帶正負號） */
+    const ribbonOffset = (x, y, z) => {
+      const turn = (BIFROST_TURNS * (x - XS[0])) / (XS[XS.length - 1] - XS[0]);
+      const dy = y - P.yc(x);
+      // 繞號角軸的角度（圈數）：頂端 0.25、+z 側 0
+      const at = Math.atan2(dy, z) / (2 * Math.PI) - 0.25 - turn;
+      return (at - Math.round(at)) * 2 * Math.PI * Math.hypot(dy, z);
+    };
     for (const [mat, lane] of lanes) {
       parts.push({
         geometry: kit.decal((x, y, z) => {
-          const w = Math.max(0.6, 0.16 * P.rz(x));
-          return Math.min(onHornDeck(x, y, z), y - P.yc(x), w / 2 - Math.abs(z - lane * w));
+          const w = Math.max(0.8, 0.24 * P.rz(x));
+          return Math.min(onHornDeck(x, y, z), w / 2 - Math.abs(ribbonOffset(x, y, z) - lane * w));
         }),
         mat,
         name: `decal-bifrost-stripe-${lane + 1}`,
@@ -449,7 +463,7 @@ export const heimdallHornBody = makePolyBody({
       flare.push([bellR(a), a]);
     }
     parts.push({ geometry: bellShell(flare), mat: 'ivory2', shell: true, outline: true, name: 'bell-flare' });
-    const rim = new THREE.TorusGeometry(BELL_R + 0.2, 0.95, 8, 40);
+    const rim = new THREE.TorusGeometry(BELL_R + 0.2, BELL_LIP_R, 8, 40);
     // 環面在 (x, y) 平面 → 轉到 (z, y) 平面，再壓成橢圓
     rim.rotateY(Math.PI / 2);
     rim.scale(1, BELL_K_END, 1);
@@ -517,8 +531,8 @@ export const heimdallHornBody = makePolyBody({
     wallThickness_mm: '推估：射出 ABS 殼 0.8 mm（同其他車殼）；喇叭口外張片以殼面積 × 壁厚計入質量',
     geometry: '本檔站位產生器 P（推估）：殼 x −63 ~ 66、實心鼻錐到 77.5、喇叭口環邊到 −71.4、端板到 −72.1（外框長約 149.6）；中脊頂 24（殼前端）→ 44（喇叭口接合處，全車最高）、座艙罩頂約 43；輪罩半寬前 37.5、後 39.2（蓋住輪胎），兩輪之間收腰 27.5，車頭收到 11；前輪罩與中脊之間（x 23 以前）挖空，中脊在兩輪罩間懸空',
     horn: '號角斷面：水平半徑 4（殼前端）→ 22（喇叭接合處）、垂直半徑 2.5 → 17；中心線高度 21.5 → 27（推估，側視緩弧）；鼻錐為 ABS 實心件，圓斷面 3.4 × 2.8 → 1.5，長 13',
-    bell: '喇叭口：橢圓外張薄殼（垂直 / 水平比例由接合處 0.77 漸變到環邊 0.5），長 7.5、環邊水平半徑 27、金色實心環邊管徑 1.9 mm；下半部 4 片擴散器導流片厚 1.2、高 2.4–4.2 mm（推估）；兩側刀形貼身端板厚 1.2 mm；口內三色細環線寬 1.0 mm',
-    hoops: '6 道金色環帶：寬 2 的貼紙（推估：飲用角的金屬箍以環帶表現）；彩虹橋條紋每道寬 = 號角水平半徑 × 0.16（0.6–3.5 mm）',
+    bell: '喇叭口：橢圓外張薄殼（垂直 / 水平比例由接合處 0.77 漸變到環邊 0.5），長 7.5、環邊水平半徑 29.7、亮金實心唇邊管徑 2.3 mm；下半部 4 片擴散器導流片厚 1.2、高 2.4–4.2 mm（推估）；兩側刀形貼身端板厚 1.2 mm；口內三色細環線寬 1.0 mm',
+    hoops: '6 道金色環帶：寬 2 的貼紙（推估：飲用角的金屬箍以環帶表現）；彩虹橋緞帶斜繞號角 1.5 圈，每道沿圓周寬 = 號角水平半徑 × 0.24（0.8–5.3 mm）',
     wheelArches: '前後 R17.5（31 mm 輪胎半徑 15.5 + 2 mm），可裝 26 / 31 mm 輪；內襯從 |z| 31 到殼內面',
     mounts: '對齊 chassis-midship 的車殼安裝點（SPEC 1.14）',
   },
