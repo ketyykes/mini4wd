@@ -1,11 +1,11 @@
 // 八足神駒斯雷普尼爾（body-sleipnir-stride，神話組・北歐）：不做馬頭、耳、眼、腿與蹄，「八足」用「八」的重複表現——
-// 兩側車身在前後輪之間各 4 道往後上方掃的銀色刀形飾條（共 8 道，一道比一道長、一道比一道斜，像連續攝影的步伐節奏），
-// 襯在深灰梭形凹槽底襯上；車尾貼身尾翼的後緣是 8 個鋸齒尖。
+// 兩側車身在前後輪之間各 4 道往後上方掃的金色刀形飾條（共 8 道，一道比一道長，下端跨過側裙下緣，像連續攝影的步伐節奏），
+// 襯在夜空靛藍的梭形凹槽底襯上；車尾貼身尾翼的後緣是 8 個鋸齒尖。
 // 車身是修長、低伏的刀形：前低後高（鼻端 24.5、車尾 28），前後輪上方各一處隆起，鼻段是低而薄的寬平刀口鼻（側視像刀尖）；
 // 鬃 → 鋸齒背鰭：引擎蓋中線一列往後梳的銀色鋸齒（停在座艙罩前），座艙後方的背脊再接一道往後升高的鋸齒冠，接到尾翼。
-// 配色：上半身是珍珠銀白 → 金屬銀 → 風暴灰 → 槍鐵深灰的前上斜分段漸層（亮面）、下半身炭灰（霧面）、飾條與背鰭是銀（金屬）；
+// 配色：上半身是珍珠銀白 → 金屬銀 → 風暴藍 → 夜空靛藍的前上斜分段漸層（亮面，灰馬奔過夜空）、下半身深靛藍（緞面）、八道飾條是金、背鰭與尾翼是銀（金屬）；
 // 紋樣：兩側肩上一條 Urnes 風格銀色交織帶、肩線下一道兩股絞繩紋（深色刻線，0.6 mm；不用 Tjängvide 那種像 Valknut 的編織帶、不用任何盧恩）、
-// 引擎蓋上從鼻尖往後掃到座艙前的一對青銅細線。沒有翅膀（避開天馬意象）、不放騎士。
+// 從鼻尖沿引擎蓋、座艙兩側一路掃到車尾的一對 3 mm 金銅條紋。沒有翅膀（避開天馬意象）、不放騎士。
 // 四個 R17.5 輪拱＋輪拱內襯：31 mm 大輪不切輪拱也能裝。
 // 設計：shared/design/body-sleipnir-stride/DESIGN.md（MYTH_RESEARCH N9、N10、N11、N12：《散文埃達》灰色八足馬、哥特蘭圖像石）。
 // 剖面為本檔站位產生器（推估）；塗裝全為自創，不含任何文字、號碼或商標。
@@ -36,7 +36,7 @@ const P = {
 
 /** @type {(x: number) => number} 輪上隆起係數（半寬 37 → 47.5 對應 0 → 1） */
 const podAt = (x) => Math.min(1, Math.max(0, (P.hw(x) - 37) / 10.5));
-/** @type {(x: number) => number} 側面腰線（上半身漸層漆與下半身炭灰的分界、側壁頂）：輪上隆起處往下多 2.5 mm（圓鼓的葉子板） */
+/** @type {(x: number) => number} 側面腰線（上半身漸層漆與下半身深靛藍的分界、側壁頂）：輪上隆起處往下多 2.5 mm（圓鼓的葉子板） */
 const ySideAt = (x) => P.yD(x) - 6.5 - 2.5 * podAt(x);
 
 /**
@@ -203,25 +203,26 @@ const knotSd = (x, y, z) => {
 
 /** @type {() => Record<string, THREE.Material>} */
 const materials = () => ({
-  // 上半身深灰（亮面）
-  grey: namedMaterial('paint-storm-grey', { color: 0x737a83, roughness: 0.34, metalness: 0.3, clearcoat: 0.8, clearcoatRoughness: 0.1 }),
-  // 漸層：珍珠銀白（車頭）、金屬銀、槍鐵深灰（車尾）——珍珠 / 金屬漆（paint- 且 roughness ≤ 0.5 → Blender 亮面漆）
+  // 漸層四段（亮面珍珠 / 金屬漆，paint- 且 roughness ≤ 0.5 → Blender 亮面漆）：珍珠銀白（車頭）→ 金屬銀 → 風暴藍 → 夜空靛藍（車尾）
   pearl: namedMaterial('paint-pearl-silverwhite', { color: 0xe2e5ea, roughness: 0.26, metalness: 0.25, clearcoat: 1.0, clearcoatRoughness: 0.05 }),
   silver2: namedMaterial('paint-metallic-silver', { color: 0xaab0b8, roughness: 0.3, metalness: 0.4, clearcoat: 0.9, clearcoatRoughness: 0.08 }),
-  gunmetal: namedMaterial('paint-gunmetal-deep', { color: 0x3c424a, roughness: 0.36, metalness: 0.35, clearcoat: 0.7, clearcoatRoughness: 0.12 }),
-  // 炭灰（下半身，霧面）
-  slate: namedMaterial('paint-charcoal-slate', { color: 0x2c3138, roughness: 0.62, clearcoat: 0.05 }),
-  slate2: namedMaterial('paint-charcoal-slate', { color: 0x2c3138, roughness: 0.62, clearcoat: 0.05, side: THREE.DoubleSide }),
-  // 飾條底襯：深灰淺凹槽＋上緣陰影帶＋銀色細邊
-  dBacking: decalMaterial('decal-relief-groove', { color: 0x23282f, roughness: 0.6 }),
-  dGrooveShade: decalMaterial('decal-relief-groove-shade', { color: 0x14171b, roughness: 0.7 }),
+  stormBlue: namedMaterial('paint-storm-blue', { color: 0x3d5296, roughness: 0.32, metalness: 0.3, clearcoat: 0.85, clearcoatRoughness: 0.1 }),
+  night: namedMaterial('paint-night-indigo', { color: 0x1b2360, roughness: 0.32, metalness: 0.3, clearcoat: 0.85, clearcoatRoughness: 0.1 }),
+  // 下半身：深靛藍（緞面，比上半身的夜空靛藍再暗一階），和銀白上身、金色飾條強對比
+  indigo: namedMaterial('paint-deep-indigo', { color: 0x161c4a, roughness: 0.45, clearcoat: 0.4 }),
+  indigo2: namedMaterial('paint-deep-indigo', { color: 0x161c4a, roughness: 0.45, clearcoat: 0.4, side: THREE.DoubleSide }),
+  // 飾條底襯：最深的夜空色淺凹槽＋上緣陰影帶＋銀色細邊
+  dBacking: decalMaterial('decal-relief-groove', { color: 0x0e1230, roughness: 0.6 }),
+  dGrooveShade: decalMaterial('decal-relief-groove-shade', { color: 0x080a1c, roughness: 0.7 }),
   dGrooveEdge: decalMaterial('decal-groove-edge-silver', { color: 0xc9cdd2, roughness: 0.28, metalness: 0.65 }),
-  // 引擎蓋上的青銅細線
-  dBronze: decalMaterial('decal-pinstripe-bronze', { color: 0xb07c40, roughness: 0.35, metalness: 0.7 }),
+  // 從鼻尖掃到車尾的金銅條紋
+  dBronze: decalMaterial('decal-stripe-gold-bronze', { color: 0xc8963c, roughness: 0.32, metalness: 0.75 }),
   // 交織帶：銀色貼紙
   dKnot: decalMaterial('decal-interlace-silver', { color: 0xd4d7da, roughness: 0.3, metalness: 0.65 }),
-  // 刀形飾條、鋸齒背鰭、尾翼（真金屬：名稱含 -steel）
+  // 鋸齒背鰭、尾翼（真金屬：名稱含 -steel）
   silver: namedMaterial('trim-silver-steel', { color: 0xc4c8cc, roughness: 0.3, metalness: 0.78, clearcoat: 0.2, side: THREE.DoubleSide }),
+  // 八道刀形飾條（真金屬：名稱以 -brass 結尾）
+  gold: namedMaterial('trim-gold-brass', { color: 0xd2a544, roughness: 0.28, metalness: 0.82, clearcoat: 0.3, side: THREE.DoubleSide }),
   inner: namedMaterial('shell-inner-dark', { color: 0x1a1d22, roughness: 0.85, side: THREE.BackSide }),
   edge: namedMaterial('shell-edge-slate', { color: 0x2b3442, roughness: 0.6, side: THREE.DoubleSide }),
   cockpit: namedMaterial('shell-inner-dark', { color: 0x1a1d22, roughness: 0.85, side: THREE.DoubleSide }),
@@ -320,18 +321,21 @@ const maneRow = (x1, x0, step, len, h, zc, thick, tiltDeg) => {
 /** @type {number} 每側刀形飾條數（左右共 8 道＝八足） */
 const STRAKES_PER_SIDE = 4;
 
+/** @type {number} 刀形飾條下端高度：比兩輪之間的側裙下緣（13.6）低 1.2，飾條跨過側裙下緣 */
+const STRAKE_Y0 = 12.4;
+
 /**
- * 第 i 道刀形飾條的側視外形 (x, y)（i = 0 最前）：下端寬 3、往後上方收成一個尖；越後面的越長、越斜
- * （下端 x 17 → −10、每 9 mm 一道；尖端高 22.6 → 25.6，都在腰線 26 以下、離前後輪拱 ≥ 4 mm）
+ * 第 i 道刀形飾條的側視外形 (x, y)（i = 0 最前）：下端寬 5、往後上方約 45° 收成一個尖；越後面的越長
+ * （下端 x 17 → −5.5、每 7.5 mm 一道；尖端 x 8 → −18.7、高 19.5 → 25.5，都在腰線 26 以下、離前後輪拱 ≥ 4 mm）
  * @type {(i: number) => number[][]}
  */
 const strakeOutline = (i) => {
-  const x0 = 17 - 9 * i;
+  const x0 = 17 - 7.5 * i;
   return [
-    [x0 + 1.4, 14.8],
-    [x0 - 6 - 0.9 * i, 22.6 + i],
-    [x0 - 3.4, 17.4],
-    [x0 - 1.6, 14.8],
+    [x0 + 1.4, STRAKE_Y0],
+    [x0 - 9 - 1.4 * i, 19.5 + 2 * i],
+    [x0 - 6, 16],
+    [x0 - 3.6, STRAKE_Y0],
   ];
 };
 
@@ -362,7 +366,7 @@ const CONFIG = {
   form: 'strider',
   roof: 'canopy',
   wing: 'mane-crest',
-  theme: '八足神駒用「八」的重複表現，不做馬頭與腿：修長低伏的刀形車身、低而薄的寬平刀口鼻，兩側前後輪之間各 4 道往後上方掃的銀色刀形飾條（共 8 道，一道比一道長）、引擎蓋與背脊上往後梳的銀色鋸齒背鰭、後緣 8 個鋸齒尖的貼身尾翼；珍珠銀白到槍鐵深灰的斜分段漸層上身＋炭灰下身，肩上一條銀色交織帶，引擎蓋上一對從鼻尖往後掃的青銅細線',
+  theme: '八足神駒用「八」的重複表現，不做馬頭與腿：修長低伏的刀形車身、低而薄的寬平刀口鼻，兩側前後輪之間各 4 道往後上方掃、下端跨過側裙下緣的金色刀形飾條（共 8 道，一道比一道長）、引擎蓋與背脊上往後梳的銀色鋸齒背鰭、後緣 8 個鋸齒尖的貼身尾翼；珍珠銀白到夜空靛藍的斜分段漸層上身＋深靛藍下身，肩上一條銀色交織帶，一對從鼻尖掃到車尾的 3 mm 金銅條紋',
   material: 'ABS',
   density_g_cm3: 1.05,
   wallThickness_mm: 0.8,
@@ -378,16 +382,16 @@ const CONFIG = {
   openings: [{ id: '座艙罩底開口', shape: 'fn', sd: (x, y, z) => (y < 30 ? 10 : Math.abs(z) - (canopyHalfW(x) - 0.8)) }],
   sideZMin: 30,
   zones: () => [
-    // 下半身（腰線以下）炭灰
-    { mat: 'slate', keep: (x, y) => (isLower(x, y) ? 1 : -1) },
-    // 塗裝：上半身由車頭珍珠銀白 → 金屬銀 → 風暴灰 → 車尾槍鐵深灰的四段漸層，
+    // 下半身（腰線以下）深靛藍
+    { mat: 'indigo', keep: (x, y) => (isLower(x, y) ? 1 : -1) },
+    // 塗裝：上半身由車頭珍珠銀白 → 金屬銀 → 風暴藍 → 車尾夜空靛藍的四段漸層，
     // 分段線往前上斜（x − 0.9·(y − 30)），像被風拉出的速度斜紋
     { mat: 'pearl', keep: (x, y) => x - 0.9 * (y - 30) - 26 },
     { mat: 'silver2', keep: (x, y) => x - 0.9 * (y - 30) - 2 },
-    { mat: 'grey', keep: (x, y) => x - 0.9 * (y - 30) + 24 },
-    { mat: 'gunmetal', keep: () => 1 },
+    { mat: 'stormBlue', keep: (x, y) => x - 0.9 * (y - 30) + 24 },
+    { mat: 'night', keep: () => 1 },
   ],
-  mats: { inner: 'inner', edge: 'edge', cap: 'slate', glass: 'glass', cockpit: 'cockpit', mount: 'mount' },
+  mats: { inner: 'inner', edge: 'edge', cap: 'indigo', glass: 'glass', cockpit: 'cockpit', mount: 'mount' },
   materials,
   extras: (kit) => {
     /** @type {BodyPart[]} */
@@ -443,19 +447,19 @@ const CONFIG = {
           strakes.push(finPlate(strakeOutline(i), sg * zc, 1.6));
         }
       }
-      parts.push({ geometry: mergeGeos(strakes), mat: 'silver', solid: true, outline: true, name: 'eight-strakes' });
+      parts.push({ geometry: mergeGeos(strakes), mat: 'gold', solid: true, outline: true, name: 'eight-strakes' });
     }
 
-    // ── 青銅細線（貼紙 0.9 mm）：引擎蓋上一對從鼻尖往後掃到座艙罩前的細線，往後漸漸分開 ──
+    // ── 金銅條紋（貼紙 3 mm）：一對從鼻尖往後掃、在引擎蓋上漸漸分開、經過座艙罩兩側一路到車尾的貫穿條紋（座艙罩底下不畫） ──
     parts.push({
       geometry: kit.decal((x, y, z) => {
-        if (x < 10.5 || x > 74 || y < P.yD(x) - 3) {
+        if (x < -70 || x > 74 || y < P.yD(x) - 3 || kit.underCanopy(x, z) >= 0) {
           return -1;
         }
-        return 0.45 - Math.abs(Math.abs(z) - Math.min(13.5, 0.42 * P.hw(x)));
-      }, { offset: 0.12 }),
+        return 1.5 - Math.abs(Math.abs(z) - Math.min(13.5, 0.42 * P.hw(x)));
+      }, { offset: 0.14 }),
       mat: 'dBronze',
-      name: 'decal-hood-pinstripes',
+      name: 'decal-through-stripes',
     });
 
     // 輪拱內襯（前後，31 mm 大輪拱）
@@ -485,13 +489,13 @@ const CONFIG = {
           }
         }
       }
-      parts.push({ geometry: mergeGeos(lips), mat: 'slate2', solid: true, outline: true, name: 'arch-lips' });
+      parts.push({ geometry: mergeGeos(lips), mat: 'indigo2', solid: true, outline: true, name: 'arch-lips' });
     }
 
     // ── 貼紙 ──
     // 飾條底襯：跟著腰線與輪拱走的淺凹槽（沒有邊框的硬邊黑方塊在側視會像車身開洞、和底盤連成一片）：
     // 上緣沿腰線下 0.8、下緣中段在側裙上 0.8 並往前後兩端往上收、前後端沿輪拱外 2.0 mm
-    // 收成圓角尖端（側視是一條梭形），角落用 smooth max 倒圓（半徑 2.4）；槽內深灰（不是純黑）、上緣內側一道陰影帶像腰線下的凹階，
+    // 收成圓角尖端（側視是一條梭形），角落用 smooth max 倒圓（半徑 2.4）；槽內是最深的夜空色（不是純黑）、上緣內側一道陰影帶像腰線下的凹階，
     // 外圍一圈 0.55 mm 銀色細邊，把槽和下方黑色底盤分開
     /** @type {(a: number, b: number, k: number) => number} 平滑 max（倒圓角半徑 k） */
     const smax = (a, b, k) => {
@@ -564,10 +568,10 @@ const CONFIG = {
     density_g_cm3: 'SPEC 1.14：ABS 約 1.05 g/cm³（推估）',
     wallThickness_mm: '推估：射出 ABS 殼 0.8 mm（同其他車殼）',
     geometry: '本檔站位產生器 P（推估）：殼 x −74 → 76（扇形尾翼尖 −73.6，不超出車尾）、背 28（車尾）→ 後輪上 35.8 / 腰 32.4 / 前輪上 35.8 → 鼻端 24.5、中線細脊高 1.2–1.8、座艙罩頂約 40；半寬：前後輪上方 47.4、腰 36.8（蓋住輪胎與底盤側面）、鼻端 21（寬平刀口鼻）；SPEC 1.14a 車殼外框長 ≤ 153 mm、半寬 ≤ 48.0',
-    wheelArches: '前後 R17.5（31 mm 輪胎半徑 15.5 + 2 mm，同 zeppelin / griffin / trojan），cutZFrom 30；輪拱內襯從側壁內面往內 3.5 mm；深藍灰擋泥唇 R0.55',
-    strakes: '八足：《散文埃達》「he has eight feet」（MYTH_RESEARCH N12）、哥特蘭圖像石的八足馬（N9、N10、N11）；改用「八」的重複——每側 4 道刀形飾條（厚 1.6 mm 的實心 ABS 直立薄板，下端 y 14.8、尖端 y 22.6–25.6，外凸約 0.9 mm）與後緣 8 個鋸齒尖的尾翼，形狀與位置自創',
+    wheelArches: '前後 R17.5（31 mm 輪胎半徑 15.5 + 2 mm，同 zeppelin / griffin / trojan），cutZFrom 30；輪拱內襯從側壁內面往內 3.5 mm；深靛藍擋泥唇 R0.55',
+    strakes: '八足：《散文埃達》「he has eight feet」（MYTH_RESEARCH N12）、哥特蘭圖像石的八足馬（N9、N10、N11）；改用「八」的重複——每側 4 道刀形飾條（厚 1.6 mm 的實心 ABS 直立薄板，下端 y 12.4（跨過側裙下緣 13.6）、尖端 y 19.5–25.5，外凸約 0.9 mm，金色）與後緣 8 個鋸齒尖的尾翼，形狀與位置自創',
     mane: '引擎蓋鋸齒背鰭、鋸齒冠與貼身尾翼為實心 ABS 刀形板（厚 1.1–1.3 mm，彼此交疊處體積重複計入，偏保守），質量 = 封閉體積 × 1.05 g/cm³（推估）',
-    color: '灰色：原典「grey foal with eight legs」（N12）；珍珠銀白到槍鐵深灰的分段漸層、炭灰下身、銀色飾條與背鰭、青銅細線為自創',
+    color: '灰色：原典「grey foal with eight legs」（N12）；灰馬留在珍珠銀白到金屬銀的前半身；往車尾轉成風暴藍、夜空靛藍的分段漸層、深靛藍下身、金色飾條、銀色背鰭、金銅條紋為自創',
     mounts: '對齊 chassis-midship 的車殼安裝點（SPEC 1.14）',
   },
 };

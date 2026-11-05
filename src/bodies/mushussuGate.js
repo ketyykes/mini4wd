@@ -1,7 +1,7 @@
 // 伊什塔爾城門（body-mushussu-gate，神話組・美索不達米亞）：把巴比倫的伊什塔爾城門做成一台蓄勢待發的低趴四驅車（LG1 暗器生物型的姿態）——
 // 前低後高的楔形車身、前後翼子板外鼓而腰身內收、細長的低尖鼻；城門的語彙全部做成車的零件與塗裝，車上沒有任何動物的頭、臉、腳：
 // 車尾＝城門本身：兩片從後翼子板長出來的「城垛鰭刀」（翼端板，上緣是往後上挑的刀背、後緣是三階城垛缺口）當門塔，
-// 中間一片後緣帶城垛齒的黃釉主翼當門楣；座艙是車頂上一個往前的拱門形（城門拱道）；輪拱是黃釉拱框。
+// 中間一片後緣帶城垛齒的黃釉主翼當門楣；座艙是車頂上一個往前的拱門形（城門拱道，煙燻金）；輪拱是黃釉拱框。
 // 塗裝：青金石藍釉磚（錯縫磚縫）、車頂中線從鼻尖貫穿到車尾的白瓣金心玫瑰花飾帶、側牆的大玫瑰圓徽拖著一條往後上掃的金色鱗紋色帶
 // （穆修胡修只留抽象的鱗紋）、上下黃釉磚邊框、鼻端兩側沿肩線的琥珀色細長頭燈。
 // 設計：shared/design/body-mushussu-gate/DESIGN.md（典故與文物對應 MYTH_RESEARCH 第 4 節 M1–M5）。剖面為本檔站位產生器（推估）。
@@ -193,8 +193,8 @@ const materials = () => ({
   dWhite: decalMaterial('decal-white-glaze', { color: 0xf2efe6, roughness: 0.38 }),
   dGold: decalMaterial('decal-gold', { color: 0xc8a24a, roughness: 0.32, metalness: 0.7 }),
   dNavy: decalMaterial('decal-gate-shadow-navy', { color: 0x0f2347, roughness: 0.6 }),
-  // 拱門形座艙：城門拱道的深色亮面（V5 有色不透明小座艙）
-  dCabin: decalMaterial('decal-cockpit-gateway-black', { color: 0x070b16, roughness: 0.32 }),
+  // 拱門形座艙：煙燻金（V5 有色不透明小座艙）；粗糙度取 0.45，強光下不會整片反白
+  dCabin: decalMaterial('decal-cockpit-smoked-gold', { color: 0x7d5a1c, roughness: 0.45, metalness: 0.55 }),
   // 頭燈：琥珀色細長燈條（低強度自發光，不過曝）
   lamp: decalMaterial('lamp-head-amber', { color: 0xffb440, emissive: 0xff8a10, emissiveIntensity: 0.35, roughness: 0.3 }),
   mount: namedMaterial('abs-mount-black', { color: 0x222326, roughness: 0.6 }),
@@ -262,8 +262,8 @@ const buildGateWing = () => {
   const petals = [];
   /** @type {THREE.BufferGeometry[]} */
   const cores = [];
-  // 刀背金邊：上緣往下 1.2 mm 的一條帶，比鰭刀厚 0.5 mm
-  const giltPts = [...FIN_TOP.slice(1), ...FIN_TOP.slice(1).reverse().map(([x, y]) => [x, y - 1.2])];
+  // 刀背金邊：上緣（鰭刀前緣）往下 2 mm 的一條帶，比鰭刀厚 0.5 mm
+  const giltPts = [...FIN_TOP.slice(1), ...FIN_TOP.slice(1).reverse().map(([x, y]) => [x, y - 2])];
   for (const sg of [-1, 1]) {
     fins.push(sidePlate([...FIN_TOP, ...FIN_REST], FIN_T, sg * FIN_Z));
     gilt.push(sidePlate(giltPts, FIN_T + 0.5, sg * FIN_Z));
@@ -292,7 +292,7 @@ export const mushussuGateBody = makePolyBody({
   form: 'brick-gate',
   roof: 'closed',
   wing: 'crenel-tail',
-  theme: '前低後高、翼子板外鼓而腰身內收的楔形車披上伊什塔爾城門的釉磚：青金石藍釉磚車身、車頂中線從鼻尖貫穿到車尾的白瓣金心玫瑰花飾帶、拱門形的深色座艙（金框）、側牆的大玫瑰圓徽拖著往後上掃的金色鱗紋色帶、上下黃釉磚邊框與瀝青黑裙帶、輪拱黃釉拱框、鼻端兩側的琥珀色細長頭燈；車尾是城門本身——兩片從後翼子板長出的城垛鰭刀（刀背金邊、後緣三階城垛缺口）夾著後緣帶城垛齒的黃釉主翼',
+  theme: '前低後高、翼子板外鼓而腰身內收的楔形車披上伊什塔爾城門的釉磚：青金石藍釉磚車身、車頂中線從鼻尖貫穿到車尾的白瓣金心玫瑰花飾帶、拱門形的煙燻金座艙（亮金框）、側牆的大玫瑰圓徽拖著往後上掃的金色鱗紋色帶、上下黃釉磚邊框與瀝青黑裙帶、輪拱黃釉拱框、鼻端兩側的琥珀色細長頭燈；車尾是城門本身——兩片從後翼子板長出的城垛鰭刀（刀背金邊、後緣三階城垛缺口）夾著後緣帶城垛齒的黃釉主翼',
   material: 'ABS',
   density_g_cm3: 1.05,
   wallThickness_mm: 0.8,
@@ -451,7 +451,7 @@ export const mushussuGateBody = makePolyBody({
       name: 'decal-roof-joints',
     });
 
-    // 拱門形座艙（城門拱道，拱頂朝車頭）：深色亮面＋金框（寬 1.4）＋外圈黑細線
+    // 拱門形座艙（城門拱道，拱頂朝車頭）：煙燻金＋亮金框（寬 1.4）＋外圈黑細線
     parts.push({ geometry: kit.decal((x, y, z) => (onTop(x, y) ? -cabinSd(x, z) : -1), { offset: 0.12 }), mat: 'dCabin', name: 'decal-cockpit-gateway' });
     parts.push({
       geometry: kit.decal((x, y, z) => {
@@ -527,7 +527,7 @@ export const mushussuGateBody = makePolyBody({
     geometry:
       '本檔站位產生器 P（推估，前低後高的楔形車殼）：殼 x −72 → 74（細長低尖鼻），鰭刀後緣 −76；肩線半寬 翼子板 44、腰 35（＋牆腳外張 0.6，外框半寬 ≤ 48.0）、鼻 22（x 60）→ 鼻端 6.5、車尾 24；甲板最高 33.9（x −28）、座艙鼓包頂約 36.6、鼻端 15.3、車尾 28.5，鰭刀刀尖 45.4（全車最高）；肩線 27.2–30.4；側裙下緣 10.5（包住電池管）、鼻端 12.8、車尾 16',
     wheelArches: '前後 R17.5（31 mm 輪胎半徑 15.5 + 2 mm），不切輪拱可裝；輪拱內襯＋輪胎內側環形擋板（buildArchWell）',
-    crenels: '車尾城門：兩片城垛鰭刀（|z| 24、厚 1.4；上緣 x −40 → −76 從後翼子板頂面上挑到 y 45.4，後緣三階城垛缺口每階深 2.4、高 4.8；刀背金邊寬 1.2；外側 8 瓣玫瑰花飾直徑約 6.7）＋主翼（底面 y 39.4、厚 1.4、翼展 49.4、弦 9–10.5，後掠 4–5.5 mm，後緣 15 段城垛齒深 1.5）；ABS 實心件（推估），質量 = 封閉體積 × 1.05 g/cm³',
+    crenels: '車尾城門：兩片城垛鰭刀（|z| 24、厚 1.4；上緣 x −40 → −76 從後翼子板頂面上挑到 y 45.4，後緣三階城垛缺口每階深 2.4、高 4.8；刀背金邊寬 2；外側 8 瓣玫瑰花飾直徑約 6.7）＋主翼（底面 y 39.4、厚 1.4、翼展 49.4、弦 9–10.5，後掠 4–5.5 mm，後緣 15 段城垛齒深 1.5）；ABS 實心件（推估），質量 = 封閉體積 × 1.05 g/cm³',
     livery: '側牆圓徽：半徑 4.9，花飾為車頂花飾的 1.95 倍；鱗紋色帶 x −22 → 10、半高 3.3 → 1.6、往後每 mm 上升 0.13；鱗紋為半徑 1.5 的半圓弧、列距 2.0；座艙拱門 x −24 → 7.5、半寬 7.5（殼面在座艙段隆起 3.4 mm 的鼓包）；頭燈條 x 50 → 68、寬 1.5（皆為貼紙，推估）',
     myth: '伊什塔爾城門的青金石藍釉磚、黃框、黑白金邊框與玫瑰花飾、拱門、城垛（MYTH_RESEARCH M2、M3）；穆修胡修只取鱗身的鱗紋（M1），不做頭、角、腳、尾',
     mounts: '對齊 chassis-midship 的車殼安裝點（SPEC 1.14）',
