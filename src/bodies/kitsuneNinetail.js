@@ -72,45 +72,13 @@ const yTopMin = (x) => {
   return f >= 0.98 ? 0 : (c + 1.1 - f * P.yS(x)) / (1 - f);
 };
 
-/** @type {(x: number) => number} 俯視半寬的控制曲線（車鼻段再經 smoothNose 平滑） */
-const hwRaw = monoCurve(XS_HW, [15, 18.5, 25, 31.5, 36, 33, 26.5, 29, 36, 38.5, 33, 33, 29.8, 27.3, 23.5, 20.2, 13.8, 8.8, 5.8, 3.1, 1.8, 1.2]);
-
-/** @type {number} 車鼻段平滑的高斯標準差（mm） */
-const NOSE_SIGMA = 1.6;
-/** @type {number[]} 高斯核取樣位移（±3σ，13 點） */
-const NOSE_OFFSETS = Array.from({ length: 13 }, (_, i) => (i - 6) * NOSE_SIGMA * 0.5);
-/** @type {number[]} 高斯核權重（已正規化） */
-const NOSE_WEIGHTS = (() => {
-  const w = NOSE_OFFSETS.map((o) => Math.exp(-0.5 * (o / NOSE_SIGMA) ** 2));
-  const sum = w.reduce((a, b) => a + b, 0);
-  return w.map((v) => v / sum);
-})();
-
-/**
- * 車鼻段（x 44–72）的高斯平滑，兩端用 smoothstep 和原曲線接回；取樣不超過鼻尖
- * @type {(f: (x: number) => number, x: number) => number}
- */
-const smoothNose = (f, x) => {
-  const w = smoothstep(42, 46, x) * (1 - smoothstep(70, 73, x));
-  if (w === 0) {
-    return f(x);
-  }
-  let v = 0;
-  NOSE_OFFSETS.forEach((o, i) => {
-    v += NOSE_WEIGHTS[i] * f(Math.min(75.5, x + o));
-  });
-  return (1 - w) * f(x) + w * v;
-};
-
 /** @type {Record<string, (x: number) => number>} */
 const P = {
   // 俯視半寬（肩稜線）：「深胸—細腰—窄臀」——座艙前的胸最寬 38.5（x 20）、座艙後段收成細腰 26.5（x −18）、
   // 後軸上方的臀 36（後軸後方 x −50 仍有 31.5）、往後收成窄尾（車尾半寬 15，扇翼從上方往外展開）。
-  // 前擋泥板：前輪上方 31–33，從 x 48 開始漸收，在 x 54–55.5 從約 23.5 收到 20.5，側壁只在這一小段跨過輪拱切口的
+  // 前擋泥板：前輪上方 31–33，從 x 50 開始漸收，在 x 54.2–55.6 從 23.5 收到 20.2，側壁只在這一小段跨過輪拱切口的
   // 邊界（|z| = 22.5），切口前緣是一道短而直的立邊；之後是夾在兩個擋泥板之間的細長刀尖鼻（x 61 半寬 8.8、鼻尖 1.2）
-  // 車鼻段（x 44–72）再做一次高斯平滑：單調三次曲線在控制點只有一階連續，曲率在控制點跳一下，
-  // 反光會在鼻面上畫出一條橫越兩側擋泥板的細亮線；平滑後曲率連續
-  hw: (x) => smoothNose(hwRaw, x),
+  hw: monoCurve(XS_HW, [15, 18.5, 25, 31.5, 36, 33, 26.5, 29, 36, 38.5, 33, 33, 29.8, 27.3, 23.5, 20.2, 13.8, 8.8, 5.8, 3.1, 1.8, 1.2]),
   // 肩稜線高度（頂面與側面交界）：前輪上方沿眉線圓弧拱起，整個前輪拱都在肩稜線下方的側壁上，
   // 輪拱不會擦過引擎蓋頂面（擦過時頂面會被切出一道細長的裂縫）
   yS: (x) => smoothMax(ySBase(x), browY(x), 1.2),
@@ -144,8 +112,8 @@ const profile = (x) => {
   ];
 };
 
-/** @type {{ x: number, pts: number[][] }[]} 車尾每 1 mm、車鼻（含前擋泥板前緣）每約 0.9 mm 一站，中段每 2 mm */
-const STATIONS = [...buildStations(-70, -60, 1, profile).slice(0, -1), ...buildStations(-60, 54, 2, profile).slice(0, -1), ...buildStations(54, 75.5, 0.9, profile)];
+/** @type {{ x: number, pts: number[][] }[]} 車尾與車鼻（含前擋泥板前緣）每約 0.9 mm 一站，中段每 2 mm */
+const STATIONS = [...buildStations(-70, -60, 0.9, profile).slice(0, -1), ...buildStations(-60, 54, 2, profile).slice(0, -1), ...buildStations(54, 75.5, 0.9, profile)];
 
 /** @type {{ x: number, y: number, radius: number, cutZFrom: number }[]} 前後輪拱（R17.5：31 mm 輪胎半徑 15.5 + 2 mm） */
 const ARCHES = [
