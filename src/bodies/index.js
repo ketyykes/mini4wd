@@ -34,6 +34,7 @@ import { firebirdBody } from './firebird.js';
 import { yagaHutBody } from './yagaHut.js';
 import { shivaRingBody } from './shivaRing.js';
 import { zeusThunderboltBody } from './zeusThunderbolt.js';
+import { venusScallopBody } from './venusScallop.js';
 
 /** @typedef {import('./types').BodyDef} BodyDef */
 /** @typedef {import('./types').BodyMassProps} BodyMassProps */
@@ -43,7 +44,7 @@ import { zeusThunderboltBody } from './zeusThunderbolt.js';
 // 比賽型 fastback-cabin / trail-canopy / hinge-deck / lowline-flat、致敬 LG2 griffin-vane / zeppelin-xtail / hydroplane-sponson、LG1 mantis-scythe（分組欄位 homageSeries / raceType / form）
 /** @type {BodyDef[]} */
 // 神話組（style 'myth'、mythSeries / mythTheme，體系清單 mythSeries.js）
-const bodies = [...homageBodiesA, ...homageBodiesB, skeletonBody, aeroWingBody, pcBoxBody, fastbackCabinBody, trailCanopyBody, hingeDeckBody, lowlineFlatBody, griffinVaneBody, zeppelinXtailBody, mantisScytheBody, hydroplaneSponsonBody, cicadaVeilBody, prismFacetBody, trojanHorseBody, cerberusTriheadBody, serpentLongshipBody, gullinburstiBoarBody, kunpengBody, quetzalSerpentBody, khepriScarabBody, kitsuneNinetailBody, minotaurMazeBody, sleipnirStrideBody, mushussuGateBody, gundestrupStagBody, tanngrisnirChariotBody, heimdallHornBody, firebirdBody, yagaHutBody, shivaRingBody, zeusThunderboltBody];
+const bodies = [...homageBodiesA, ...homageBodiesB, skeletonBody, aeroWingBody, pcBoxBody, fastbackCabinBody, trailCanopyBody, hingeDeckBody, lowlineFlatBody, griffinVaneBody, zeppelinXtailBody, mantisScytheBody, hydroplaneSponsonBody, cicadaVeilBody, prismFacetBody, trojanHorseBody, cerberusTriheadBody, serpentLongshipBody, gullinburstiBoarBody, kunpengBody, quetzalSerpentBody, khepriScarabBody, kitsuneNinetailBody, minotaurMazeBody, sleipnirStrideBody, mushussuGateBody, gundestrupStagBody, tanngrisnirChariotBody, heimdallHornBody, firebirdBody, yagaHutBody, shivaRingBody, zeusThunderboltBody, venusScallopBody];
 
 /** @type {() => BodyDef[]} */
 export const listBodies = () => bodies.slice();
