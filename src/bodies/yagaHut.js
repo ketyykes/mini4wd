@@ -3,7 +3,7 @@
 // 造型：一台前低後高的半罩露輪楔形車（LG1 半罩露輪攻擊型），小屋用「屋頂斷面」和零件表現，車上不做雞腳、不畫雅加婆婆：
 // 低矮的圓木甲板車身上，一座陡斜的人字木瓦屋頂從車頭的屋脊線一路升高到車尾，當座艙罩與後罩；車尾封口就是小屋的山牆（白色博風板＋琥珀圓窗）；
 // 屋脊兩側各一扇往車頭收窄的琥珀暖光窗當座艙窗；右側屋面一根微微後傾、立起來的紅磚煙囪，管口拖著一片往後飄的白色煙鰭；
-// 兩輪之間的圓木牆上每側三扇白色雕花窗框（nalichnik）的琥珀小窗——izba 正面「三扇窗」的排法，車身側面一眼就是一間木屋；
+// 兩輪之間的圓木牆上每側三扇深棕細木框的琥珀小窗——izba 正面「三扇窗」的排法，車身側面一眼就是一間木屋；
 // 後翼是一道柵欄：每側三片尖頂白木樁當翼端板、兩根紅色橫木就是上下兩段翼面；
 // 「會走路的小屋」只用姿態暗示：前輪罩整個切開、露出前輪，車身往前低頭；切口後方的甲板上每側三片往後掠的大型橘黃爪痕鰭（三道平行斜劃的爪痕，不做腳）。
 // 配色：原木暖褐（霧面）＋深炭灰木瓦屋頂（霧面）＋白色木作（霧面）＋紅色橫木與窗框＋橘黃爪痕鰭＋琥珀窗光。
@@ -195,6 +195,8 @@ const materials = () => ({
   brick: namedMaterial('paint-brick-red', { color: 0x9b4a32, roughness: 0.78, clearcoat: 0.0 }),
   // 窗內暖光：較深的琥珀底色＋低強度自發光（不過曝），由深色木窗框框住
   window: namedMaterial('lamp-window-amber', { color: 0x9c5418, emissive: 0x8a3806, emissiveIntensity: 0.15, roughness: 0.3, clearcoat: 0.5 }),
+  // 側牆小窗的窗光：比座艙窗亮一階的暖黃琥珀，和原木褐拉開明度（深棕細窗框之內才看得出是一扇亮著的窗）
+  windowWarm: namedMaterial('lamp-window-amber-warm', { color: 0xe0a048, emissive: 0xb86410, emissiveIntensity: 0.35, roughness: 0.3, clearcoat: 0.5 }),
   // 側裙（腰部遮住底盤的踏板）：深炭灰
   sill: namedMaterial('paint-sill-charcoal', { color: 0x2c2f33, roughness: 0.62, clearcoat: 0.08 }),
   // 往後飄的煙鰭（霧面暖灰白；材質與網格名稱都不含 smoke，避免 Blender 當成玻璃）
@@ -445,7 +447,7 @@ export const yagaHutBody = makePolyBody({
   form: 'log-hut',
   roof: 'closed',
   wing: 'chimney-stack',
-  theme: '前低後高的半罩露輪楔形車：圓木甲板車身（側面 2 根橫向圓木＋內收的深色裙身、白色封簷板肩線）上一座陡斜的人字木瓦屋頂，從車頭一路升高到車尾當座艙罩與後罩，車尾封口是小屋的山牆（白色博風板、琥珀圓窗）；屋脊兩側一對琥珀暖光座艙窗、右側屋面立起的紅磚煙囪拖著一片白色煙鰭；兩輪之間圓木牆上每側三扇白色雕花窗框的琥珀小窗；後翼是一道柵欄（每側三片尖頂白木樁當翼端板、兩根紅色橫木當上下兩段翼面）；前輪罩整個切開露出前輪，切口後方每側三片往後掠的大型橘黃爪痕鰭，車身往前低頭',
+  theme: '前低後高的半罩露輪楔形車：圓木甲板車身（側面 2 根橫向圓木＋內收的深色裙身、白色封簷板肩線）上一座陡斜的人字木瓦屋頂，從車頭一路升高到車尾當座艙罩與後罩，車尾封口是小屋的山牆（白色博風板、琥珀圓窗）；屋脊兩側一對琥珀暖光座艙窗、右側屋面立起的紅磚煙囪拖著一片白色煙鰭；兩輪之間圓木牆上每側三扇深棕細木框的琥珀小窗；後翼是一道柵欄（每側三片尖頂白木樁當翼端板、兩根紅色橫木當上下兩段翼面）；前輪罩整個切開露出前輪，切口後方每側三片往後掠的大型橘黃爪痕鰭，車身往前低頭',
   material: 'ABS',
   density_g_cm3: 1.05,
   wallThickness_mm: 0.8,
@@ -606,10 +608,10 @@ export const yagaHutBody = makePolyBody({
       mat: 'dGroove',
       name: 'decal-speed-lines',
     });
-    // 側牆三扇小窗：琥珀窗光＋白色雕花窗框（nalichnik：0.8 mm 窗框、上方加寬的簷板、下方窗台）＋深色木十字窗格
+    // 側牆三扇小窗：暖黃琥珀窗光＋和圓木同色系的深棕細窗框（0.6 mm 窗框、上方略寬的簷板、下方窗台、一道細十字窗格），像嵌在圓木牆裡的木框窗
     parts.push({
       geometry: kit.decal((x, y, z) => (onSideWall(x, y, z) ? -sideWindow(x, y).rect : -1), { offset: 0.16 }),
-      mat: 'window',
+      mat: 'windowWarm',
       name: 'lamp-side-windows',
     });
     parts.push({
@@ -618,24 +620,14 @@ export const yagaHutBody = makePolyBody({
           return -1;
         }
         const { rect, dx, dy } = sideWindow(x, y);
-        const ring = Math.min(rect, 0.8 - rect);
-        const cornice = Math.min(3.4 - dx, 0.45 - Math.abs(dy - 3.25));
-        const sill = Math.min(3.2 - dx, 0.35 - Math.abs(dy + 3.15));
-        return Math.max(ring, cornice, sill);
+        const ring = Math.min(rect, 0.6 - rect);
+        const cornice = Math.min(3.1 - dx, 0.3 - Math.abs(dy - 2.75));
+        const sill = Math.min(2.95 - dx, 0.25 - Math.abs(dy + 2.7));
+        const sash = Math.min(-rect, 0.2 - Math.min(dx, Math.abs(dy)));
+        return Math.max(ring, cornice, sill, sash);
       }, { offset: 0.18 }),
-      mat: 'dWhite',
-      name: 'decal-side-window-nalichnik',
-    });
-    parts.push({
-      geometry: kit.decal((x, y, z) => {
-        if (!onSideWall(x, y, z)) {
-          return -1;
-        }
-        const { rect, dx, dy } = sideWindow(x, y);
-        return Math.min(-rect, 0.3 - Math.min(dx, Math.abs(dy)));
-      }, { offset: 0.2 }),
       mat: 'dFrameWood',
-      name: 'decal-side-window-sash',
+      name: 'decal-side-window-frame',
     });
     // 座艙窗：屋脊兩側一對琥珀暖光窗（V5 有色不透明座艙）＋白色窗框（寬 1.2）＋外圈藍色描邊＋深色木內框與一道窗格
     parts.push({
@@ -702,7 +694,7 @@ export const yagaHutBody = makePolyBody({
     fence: '柵欄翼：每側三片尖頂木樁（寬 3.2、厚 1.2 mm，尖頂 43.2 / 45 / 46.6，根部 y 27.6 埋進後甲板）＋兩根橫木翼面（下段 6.6 × 1.2、上段 5.8 × 1.1，翼展 58.4 mm）；ABS 實心件（推估），質量 = 封閉體積 × 1.05 g/cm³',
     exhaust: '煙囪：右側屋面（z 6）立起、往後傾約 14° 的紅磚方煙囪（方形斷面邊長約 4.2 mm 的實心方柱）＋白灰管口環（邊長約 4.9、厚 1.3 mm）與黑色管口；管口後方一片往後飄的白色薄鰭（長約 21、頂 48.1、厚 1 mm）；均為 ABS 實心件（推估），質量 = 封閉體積 × 1.05 g/cm³',
     vanes: '爪痕鰭：前輪切口後方甲板上每側三片往後掠的刀形薄板（長 20、頂 y 34.2、厚 1.1 mm，|z| 21.4 / 24.9 / 28.4，前端 x 22 / 24.5 / 27），橘黃；ABS 實心件（推估）',
-    sideWindows: '側牆小窗：兩輪之間圓木牆上每側三扇（中心 x −13 / −4 / 5，玻璃 4.6 × 4.0）＋0.8 mm 白色窗框、上方簷板 6.8 × 0.9、下方窗台 6.4 × 0.7，全為貼紙（推估）',
+    sideWindows: '側牆小窗：兩輪之間圓木牆上每側三扇（中心 x −13 / −4 / 5，玻璃 4.6 × 4.0）＋0.6 mm 深棕木窗框、上方簷板 6.2 × 0.6、下方窗台 5.9 × 0.5、0.4 mm 十字窗格，全為貼紙（推估）',
     mounts: '對齊 chassis-midship 的車殼安裝點（SPEC 1.14）',
   },
 });
