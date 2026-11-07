@@ -50,10 +50,10 @@ const waistW = (x) => 1 - smoothstep(16, 26, Math.abs(x));
 const tuckAt = (x) => smoothMax(smoothMax(1, smoothMin(4, P.hw(x) - 37.6, 0.6), 0.4), 3.6 * waistW(x), 0.4);
 
 /**
- * 半剖面 8 點：脊頂 → 脊肩 → 凹谷 → 擋泥板頂 → 肩圓角 → 肩線稜（銳利）→ 下裙中段 → 下裙下緣（內收）
+ * 半剖面 8 點（未沿 x 平滑）：脊頂 → 脊肩 → 凹谷 → 擋泥板頂 → 肩圓角 → 肩線稜（銳利）→ 下裙中段 → 下裙下緣（內收）
  * @type {(x: number) => number[][]}
  */
-const profile = (x) => {
+const rawProfile = (x) => {
   const yC = P.yC(x);
   const hw = P.hw(x);
   const sw = smoothMin(5, 0.24 * hw, 0.5);
@@ -79,6 +79,30 @@ const profile = (x) => {
     [hw - 0.62 * t, lerp(yS, yL, 0.5)],
     [hw - t, yL],
   ];
+};
+
+/** @type {number[]} 沿 x 平滑剖面的取樣偏移（mm）與高斯權重（σ 3 mm） */
+const SMOOTH_DX = [-6, -4.5, -3, -1.5, 0, 1.5, 3, 4.5, 6];
+/**
+ * 半剖面（沿 x 做高斯平滑）：擋泥板、凹谷、內收各段的平滑銜接疊在一起，仍會在幾 mm 內留下小起伏（擋泥板頂的波浪、座艙前方甲板的小凹陷）；
+ * 每一點取前後 ±6 mm 同序號點的加權平均，把這些短波起伏燙平。靠近車尾、鼻尖時窗口縮小，兩端剖面不變
+ * @type {(x: number) => number[][]}
+ */
+const profile = (x) => {
+  const reach = Math.min(1, (x - XS[0]) / 6, (XS[XS.length - 1] - x) / 6);
+  if (reach <= 0) {
+    return rawProfile(x);
+  }
+  let wSum = 0;
+  /** @type {number[][] | null} */
+  let acc = null;
+  for (const d of SMOOTH_DX) {
+    const w = Math.exp(-((d / 3) ** 2) / 2);
+    const pts = rawProfile(x + d * reach);
+    acc = acc ? acc.map(([z, y], i) => [z + w * pts[i][0], y + w * pts[i][1]]) : pts.map(([z, y]) => [w * z, w * y]);
+    wSum += w;
+  }
+  return acc.map(([z, y]) => [z / wSum, y / wSum]);
 };
 
 /**
@@ -115,8 +139,8 @@ const STRIPE_HW = 7.4;
 /** 座艙開口（俯視方形，脊線後段 = 迷宮中心） */
 const COCKPIT = { x0: -18, x1: -4, hz: 6.2, r: 1.2 };
 
-/** @type {(x: number, y: number, z: number) => boolean} 肩線稜以下的第二層（只算側面，凹谷甲板不算） */
-const belowShoulder = (x, y, z) => y < shoulderY(x) - 0.15 && Math.abs(z) > P.hw(x) - 4.5;
+/** @type {(x: number, y: number, z: number) => boolean} 肩線稜以下的第二層（只算側面，凹谷甲板不算；肩線高度取平滑後剖面的第 5 點，和殼面稜線一致） */
+const belowShoulder = (x, y, z) => y < profile(x)[5][1] - 0.15 && Math.abs(z) > P.hw(x) - 4.5;
 /** @type {number} 鼻端下巴的起點：x 以前的下裙是壁畫藍，以後和下緣黑帶連成一圈黑色下巴（肩線在鼻端收攏，畫藍會留下碎片） */
 const CHIN_X = 70;
 
@@ -455,7 +479,7 @@ const CONFIG = {
         if (Math.abs(z) < P.hw(x) - 3 || x > 66 || x < -64) {
           return -1;
         }
-        return Math.min(0.4 - Math.abs(y - (shoulderY(x) - 0.9)), archRingDist(x, y) - 1.0);
+        return Math.min(0.4 - Math.abs(y - (profile(x)[5][1] - 0.9)), archRingDist(x, y) - 1.0);
       }),
       mat: 'dGold',
       name: 'decal-gold-shoulder-line',
