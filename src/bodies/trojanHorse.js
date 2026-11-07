@@ -1,6 +1,6 @@
 // 特洛伊木馬（body-trojan-horse，神話組・希臘）——照四視圖 28 建模的多稜面攻城木器：低鼻 → 高聳的前擋泥板肩甲夾著凹谷引擎蓋 → 高而多稜的煙燻座艙 → 平寬後甲板 → 鋸齒背鰭接上車尾中央直立單鰭與左右短 T 翼。
 // 不做馬頭，木馬只用木作、青銅、希臘紋樣與「鬃」的抽象：
-// 鬃 → 鋸齒背鰭：後甲板中線 4 齒往車尾升高的鋸齒鰭（青銅鑲邊＋胡桃木鰭心），接上貼著車尾的直立單鰭，鰭兩側各一片青銅短 T 翼；鼻部前緣一排青銅鋸齒，車頭下緣一條 W 形青銅鋸條。
+// 鬃 → 鋸齒背鰭：後甲板中線 4 齒往車尾升高的鋸齒鰭（青銅鑲邊＋胡桃木鰭心），接上貼著車尾的直立單鰭，鰭兩側各一片青銅短 T 翼；鼻部前緣是一條中橡木平頭板帶（木板端）。
 // 木板拼接 → 每一個稜面就是一塊木板：淺橡木與中橡木交錯的大面板、面板之間是青銅接縫與鉚釘列；折線切面描橘線。
 // 希臘紋樣 → 兩輪之間側裙上的青銅回紋鑲條、車尾下半車身的青銅回紋帶。
 // 藏兵 → 橡木側帶上一排五面圓盾（盾內透出琥珀色火光、青銅盾緣）。
@@ -180,6 +180,7 @@ const materials = () => ({
   inner: namedMaterial('shell-inner-dark', { color: 0x1e1712, roughness: 0.85, side: THREE.BackSide }),
   edge: namedMaterial('shell-edge-walnut', { color: 0x3a2214, roughness: 0.7, side: THREE.DoubleSide }),
   liner: namedMaterial('shell-wheelwell-walnut', { color: 0x2c1a0f, roughness: 0.8, side: THREE.DoubleSide }),
+  dOak: decalMaterial('decal-oak-mid', { color: 0xa87742, roughness: 0.64 }),
   dSeam: decalMaterial('decal-plank-seam-walnut', { color: 0x6a4424, roughness: 0.8 }),
   dDark: decalMaterial('decal-walnut-vent', { color: 0x140c07, roughness: 0.8 }),
   dBronze: decalMaterial('decal-bronze', { color: 0xc48c44, roughness: 0.32, metalness: 0.75 }),
@@ -205,7 +206,7 @@ const CONFIG = {
   form: 'plank-facet-pods',
   roof: 'canopy',
   wing: 'saw-fin-tbar',
-  theme: '照四視圖 28 的多稜面攻城木器：低鼻、高聳的前擋泥板肩甲夾著凹谷引擎蓋、高而多稜的煙燻座艙、平寬後甲板；鬃抽象成 4 齒鋸齒背鰭（青銅鑲邊＋胡桃木鰭心）接上車尾中央直立單鰭與左右青銅短 T 翼，鼻部前緣一排青銅鋸齒、車頭下緣 W 形青銅鋸條；每個稜面是一塊淺 / 中橡木交錯的木板，接縫是青銅細線與鉚釘列，折線切面描橘線；橡木側帶上一排五面透出琥珀色火光的圓盾，兩輪之間胡桃木側裙上的青銅回紋鑲條',
+  theme: '照四視圖 28 的多稜面攻城木器：低鼻、高聳的前擋泥板肩甲夾著凹谷引擎蓋、高而多稜的煙燻座艙、平寬後甲板；鬃抽象成 4 齒鋸齒背鰭（青銅鑲邊＋胡桃木鰭心）接上車尾中央直立單鰭與左右青銅短 T 翼，鼻部前緣是中橡木平頭板帶（木板端）；每個稜面是一塊淺 / 中橡木交錯的木板，接縫是青銅細線與鉚釘列，折線切面描橘線；橡木側帶上一排五面透出琥珀色火光的圓盾，兩輪之間胡桃木側裙上的青銅回紋鑲條',
   material: 'ABS',
   density_g_cm3: 1.05,
   wallThickness_mm: 0.8,
@@ -304,18 +305,22 @@ const CONFIG = {
     });
 
     // ── 貼紙 ──
-    // 鼻部前緣的青銅鋸齒：從鼻尖往後 9 mm 內是青銅，後緣切成 5 個往後的三角齒（俯視是鋸齒鼻）
+    // 鼻部前緣的木板端：從鼻尖往後 6 mm 一條中橡木平頭板帶（像城門的木板端），每 4.8 mm 一道深色板縫
+    parts.push({
+      geometry: kit.decal((x, y, z) => (x < 62 || (onSide(x, z) && y < darkTopY(x)) ? -1 : x - 71), { offset: 0.1 }),
+      mat: 'dOak',
+      name: 'decal-nose-plank-ends',
+    });
     parts.push({
       geometry: kit.decal((x, y, z) => {
-        if (x < 62 || onSide(x, z) && y < darkTopY(x)) {
+        if (x < 70.6 || (onSide(x, z) && y < darkTopY(x))) {
           return -1;
         }
-        const ph = Math.abs(((Math.abs(z) + 2.4) % 4.8) - 2.4) / 2.4;
-        const edge = 77 - x - 3.4 - 5.6 * (1 - ph);
-        return Math.min(-edge, 76.6 - x + 3);
-      }),
-      mat: 'dBronze',
-      name: 'decal-saw-nose',
+        const q = (Math.abs(z) + 2.4) / 4.8;
+        return Math.max(0.3 - Math.abs(q - Math.round(q)) * 4.8, 0.3 - Math.abs(x - 71));
+      }, { offset: 0.12 }),
+      mat: 'dSeam',
+      name: 'decal-nose-plank-seams',
     });
     // 木板接縫：橡木肩甲上沿 x 的縱向細縫（每 4.6 mm）＋木板分段的橫向青銅接縫
     parts.push({
@@ -401,22 +406,6 @@ const CONFIG = {
       }, { offset: 0.1 }),
       mat: 'dBronze',
       name: 'decal-shield-rims',
-    });
-    // 車頭下緣一排 W 形鋸齒（正視是一條鋸條）：前段（x > 46）下緣以上的青銅鋸齒帶，齒峰上緣描橘線
-    /** @type {(x: number, z: number) => number} 鋸齒上緣高度（週期 6 mm、齒高 3） */
-    const sawTop = (x, z) => {
-      const ph = Math.abs(((Math.abs(z) % 6) + 6) % 6 - 3) / 3;
-      return P.yLow(x) + 1.6 + 3 * ph;
-    };
-    parts.push({
-      geometry: kit.decal((x, y, z) => (x < 46 || archRingDist(x, y) < 0.6 ? -1 : sawTop(x, z) - y), { offset: 0.1 }),
-      mat: 'dBronze',
-      name: 'decal-front-saw',
-    });
-    parts.push({
-      geometry: kit.decal((x, y, z) => (x < 46 || archRingDist(x, y) < 0.6 ? -1 : 0.35 - Math.abs(y - sawTop(x, z))), { offset: 0.12 }),
-      mat: 'dOrange',
-      name: 'decal-front-saw-line',
     });
     // 頭燈：前擋泥板肩甲前端一對往鼻根斜收的琥珀色斜縫
     parts.push({
