@@ -1,9 +1,9 @@
 // 波賽頓三叉戟（body-poseidon-trident，神話組・希臘）：只用波賽頓的持物與象徵，車上沒有人像、臉、手或神像。
-// 照四視圖 11 建模：鈍而高的車鼻正中一支凸出的白色圓筒進氣口、寬方的車身、長座艙、平的後甲板、車尾單柱撐起的橢圓盤翼。
+// 照四視圖 11 建模：鈍而高的珍珠白船首、寬方的車身、長座艙、平的後甲板、車尾單柱撐起的尾翼；平面改成前三叉、後魚尾，和其他款拉開。
 // 元素：
-// (1) 三叉戟 → 一支三叉戟立柱從車尾中央穿過橢圓盤翼（後視是 Ψ，三支尖端各帶倒鉤）；
-// (2) 浪花 → 圓筒進氣口裡三道浪紋擋板；側裙下緣一條希臘波浪捲紋（running wave）；
-// (3) 浪峰 → 鼻部中線 S 形斷面（鼻唇微翹的浪峰 → 浪谷 → 往座艙爬升）、側面一道起伏的浪形分色線。
+// (1) 三叉戟 → 鼻頭三支同高的珍珠白尖（中尖從船首下方伸出、兩支外尖往外再往前彎，俯視是往前的 Ψ）；車尾一支三叉戟立柱穿過尾翼（後視 Ψ）；
+// (2) 浪花／海 → 魚尾形尾翼（後緣中央 V 形凹口）；側裙下緣一條希臘波浪捲紋（running wave）；
+// (3) 浪峰 → 側面一道起伏的浪形分色線。
 // 設計：shared/design/body-poseidon-trident/DESIGN.md（典故來源與文物對應寫在 DESIGN.md）。剖面為本檔站位產生器（推估）。
 // 塗裝全為自創，不含任何廠商 / 作品名稱、商標或文字。
 import * as THREE from 'three';
@@ -15,10 +15,10 @@ import { buildArchWell, chassisBlockedNearArch } from './kitsuneNinetail.js';
 
 /** @typedef {import('./loft.js').BodyPart} BodyPart */
 
-/** @type {number[]} 站位參數表（x 由後到前，前後軸 x = ±40）：車尾 −70、鼻端 74 */
-const XS = [-70, -65, -55, -40, -25, -15, -5, 5, 15, 25, 35, 45, 55, 62, 67, 71, 74];
+/** @type {number[]} 站位參數表（x 由後到前，前後軸 x = ±40）：車尾 −70、殼的鼻端 69（中尖再往前伸到 76.3） */
+const XS = [-70, -65, -55, -40, -25, -15, -5, 5, 15, 25, 35, 45, 55, 60, 64, 67, 69];
 /** @type {number[]} 俯視半寬的站位 */
-const XS_HW = [-70, -65, -55, -40, -30, -15, 0, 10, 25, 40, 55, 64, 70, 74];
+const XS_HW = [-70, -65, -55, -40, -30, -15, 0, 10, 25, 40, 55, 61, 66, 69];
 
 /** @type {{ x: number, y: number, r: number }[]} 擋泥板眉線：以輪拱圓心為圓心、半徑 18.5（R17.5 輪拱外 1 mm）的圓弧 */
 const BROWS = [
@@ -46,16 +46,16 @@ const browY = (x) => {
 
 /** @type {Record<string, (x: number) => number>} */
 const P = {
-  // 中線殼頂：鼻部 S 形——鼻唇 28.2（x 71）翹起成浪峰、x 62 落到 25.2 的浪谷，再往座艙爬升到 34.4；後甲板 32 平平收到車尾
-  yTop: monoCurve(XS, [31.5, 32, 32, 31.8, 32, 32.6, 33, 33, 32.8, 32.8, 32.8, 32.4, 28.4, 25.2, 26.4, 28.2, 26.6]),
+  // 中線殼頂：船首鼻端高 23.8（鈍而高），往後經 x 60 的 25.8 爬升到座艙段 33；後甲板 32 平平收到車尾
+  yTop: monoCurve(XS, [31.5, 32, 32, 31.8, 32, 32.6, 33, 33, 32.8, 32.8, 32.8, 32.4, 28.4, 25.8, 25.8, 25.2, 23.8]),
   // 肩稜線基本高度（前後輪上方再沿眉線拱起）
-  yS: monoCurve(XS, [27, 27, 27, 26.8, 26, 25.5, 25.5, 25.5, 26, 27.5, 29.5, 28.5, 25.5, 23, 21.5, 20.5, 19]),
-  // 俯視半寬：前輪上方寬浮筒（37.5），往前收成寬鈍的船首（x 64 有 25、鼻端 14.5，圓筒進氣口在正中）；兩輪之間的側箱 30（把底盤側框蓋住）、後輪上方 32，
-  // 車尾由比車身寬的橢圓盤翼（±47）蓋住
-  hw: monoCurve(XS_HW, [22, 27, 31, 32, 30.5, 30, 30, 30, 32, 37.5, 30.5, 25, 20, 14.5]),
+  yS: monoCurve(XS, [27, 27, 27, 26.8, 26, 25.5, 25.5, 25.5, 26, 27.5, 29.5, 28.5, 25.5, 22.5, 21, 20, 19]),
+  // 俯視半寬：前輪上方寬浮筒（37.5），往前收成船首（x 61 有 14、鼻端 6），船首下方伸出三叉戟的中尖，兩側另有兩支外尖；兩輪之間的側箱 28.5（把底盤側框蓋住）、後輪上方 32，
+  // 車尾收窄到 13，兩側由魚尾形尾翼的兩片尾鰭往後伸出
+  hw: monoCurve(XS_HW, [13, 19, 29, 32, 29.5, 28.5, 28.5, 28.5, 30.5, 37.5, 24, 14, 9, 6]),
   // 側裙下緣：兩輪之間壓到 11.5，把底盤側框封起來
   yLow: monoCurve(XS, [13, 12.5, 12, 11.5, 11.5, 11.5, 11.5, 11.5, 11.5, 11.5, 11.5, 11.5, 11.8, 12.2, 12.4, 12.6, 12.8]),
-  // 珍珠白中脊半寬（鼻端包住圓筒進氣口 → 座艙兩側 → 後甲板收窄）
+  // 珍珠白中脊半寬（鼻端整支中尖都是白色 → 座艙兩側 → 後甲板收窄）
   spine: monoCurve(XS, [8, 9, 10, 11, 12, 12.5, 12.5, 12.5, 12.5, 12, 11, 10, 9.5, 9.5, 9.5, 9.5, 9.5]),
 };
 
@@ -84,7 +84,7 @@ const profile = (x) => {
 };
 
 /** @type {{ x: number, pts: number[][] }[]} 車尾與車鼻每 1 mm 一站，中段每 2 mm */
-const STATIONS = [...buildStations(-70, -62, 1, profile).slice(0, -1), ...buildStations(-62, 58, 2, profile).slice(0, -1), ...buildStations(58, 74, 1, profile)];
+const STATIONS = [...buildStations(-70, -62, 1, profile).slice(0, -1), ...buildStations(-62, 58, 2, profile).slice(0, -1), ...buildStations(58, 69, 1, profile)];
 
 /** @type {{ x: number, y: number, radius: number, cutZFrom: number }[]} 前後輪拱（R17.5：31 mm 輪胎半徑 15.5 + 2 mm） */
 const ARCHES = [
@@ -107,13 +107,52 @@ const waveY = (x) => {
   return base + 2.6 * Math.sin(((x + 8) / 38) * Math.PI * 2);
 };
 
-/** @type {{ x0: number, x1: number, y: number, r: number, lip: number }} 鼻端圓筒進氣口（筒後端 x0、前端 x1、軸心高 y、外半徑 r、前緣唇管半徑 lip） */
-const TUBE = { x0: 67, x1: 77.3, y: 21, r: 8.5, lip: 0.9 };
+/** @type {number} 鼻頭三叉的底面高度 */
+const TINE_Y = 15.5;
 
-/** @type {{ x: number, y: number, ax: number, az: number, t: number }} 車尾橢圓盤翼（中心、x / z 半軸、厚度） */
-const DISC = { x: -61, y: 35.2, ax: 14.5, az: 47, t: 0.5, rim: 0.85 };
+/** @type {number[][]} 鼻頭中尖俯視外形 (x, z)：從船首下方往前伸，兩側倒鉤，尖端 (76.3, 0) */
+const SPEAR = [
+  [60, -4],
+  [70, -4],
+  [69.5, -7.5],
+  [76.3, 0],
+  [69.5, 7.5],
+  [70, 4],
+  [60, 4],
+];
 
-/** @type {number} 三叉戟頭的橫樑底高（立柱從後甲板穿過盤翼中心到這裡，盤翼上方露出約 2.5） */
+/** @type {number[][]} 鼻頭外尖（+z 側）俯視外形 (x, z)：從前輪前方往外再往前彎，外側一個倒鉤（|z| 39），尖端 (74.5, 32)；和中尖合成往前的 Ψ */
+const TINE = [
+  [56, 13],
+  [56, 23],
+  [60, 30],
+  [63.5, 39],
+  [65.5, 35],
+  [74.5, 32],
+  [66, 27],
+  [60.5, 19],
+  [58.5, 13],
+];
+
+/** @type {number[][]} 魚尾形尾翼（+z 半邊）俯視外形 (x, z)：前緣往後掠到翼尖，後緣往前收成中央的 V 形凹口 */
+const FLUKE = [
+  [-54.5, 0],
+  [-58, 12],
+  [-62.5, 26],
+  [-68, 39],
+  [-71.5, 46],
+  [-75, 46.8],
+  [-75.4, 41.5],
+  [-74, 32],
+  [-71, 20],
+  [-69, 9],
+  [-68.5, 0],
+];
+
+/** @type {{ x: number, y: number, t: number, rim: number }} 車尾尾翼（三叉戟立柱 x、高度、厚度、外緣圓管半徑） */
+const DISC = { x: -62, y: 35.2, t: 0.5, rim: 0.85 };
+
+/** @type {number} 三叉戟頭的橫樑底高（立柱從後甲板穿過尾翼到這裡，尾翼上方露出約 2.5） */
 const TRIDENT_BAR_Y = 38.4;
 
 /**
@@ -135,26 +174,6 @@ const TRIDENT_HEAD = (() => {
   // 底邊由左到右，再依序繞過右、中、左三支尖回到左下角
   return [[-21, TRIDENT_BAR_Y], [21, TRIDENT_BAR_Y], ...prong(17.5, 2, 47.6), ...prong(0, 2.4, 48.6), ...prong(-17.5, 2, 47.6)];
 })();
-
-/**
- * 進氣口浪花擋板上的一道浪紋（前視 (z, y)）：上緣是正弦浪，寬度裁在圓筒內
- * @type {(off: number) => number[][]}
- */
-const waveRidge = (off) => {
-  const r = TUBE.r - 1.2;
-  const w = Math.sqrt(Math.max(0, r * r - off * off)) - 0.4;
-  /** @type {number[][]} */
-  const top = [];
-  /** @type {number[][]} */
-  const bottom = [];
-  for (let i = 0; i <= 12; i++) {
-    const z = lerp(-w, w, i / 12);
-    const yc = TUBE.y + off + 0.6 * Math.sin(z * 0.9);
-    top.push([z, yc + 0.65]);
-    bottom.push([z, yc - 0.65]);
-  }
-  return [...bottom, ...top.reverse()];
-};
 
 /**
  * 希臘波浪捲紋（running wave）：底線＋每格一個往後捲的半圓渦（2D 距離，負值 = 在紋樣內）
@@ -182,12 +201,10 @@ const materials = () => ({
   // 深海藍：浪形分色線以下（亮面）
   deep: namedMaterial('paint-deep-sea-blue', { color: 0x163f86, roughness: 0.3, clearcoat: 0.8, clearcoatRoughness: 0.12 }),
   deepSolid: namedMaterial('paint-deep-sea-blue', { color: 0x163f86, roughness: 0.3, clearcoat: 0.8, clearcoatRoughness: 0.12, side: THREE.DoubleSide }),
-  // 珍珠白：中脊、圓筒進氣口、三叉尾鰭
+  // 珍珠白：中脊、鼻頭三叉、三叉戟
   pearl: namedMaterial('paint-pearl-white', { color: 0xf3f0e8, metalness: 0.2, roughness: 0.3, clearcoat: 0.9, clearcoatRoughness: 0.1 }),
-  pearlSolid: namedMaterial('paint-pearl-white', { color: 0xf3f0e8, metalness: 0.2, roughness: 0.3, clearcoat: 0.9, clearcoatRoughness: 0.1, side: THREE.DoubleSide }),
   // 深海軍藍：側裙底緣（緞面）
   navy: namedMaterial('paint-deep-navy', { color: 0x0f2140, roughness: 0.55, clearcoat: 0.25 }),
-  // 圓筒進氣口內的深色喉部
   glass: namedMaterial('pc-smoke-tint', { color: 0x1c2a36, roughness: 0.05, specularIntensity: 0.6, transparent: true, opacity: 0.5, envMapIntensity: 0.5, depthWrite: false, side: THREE.DoubleSide }),
   cockpit: namedMaterial('cockpit-dark', { color: 0x141c24, roughness: 0.7, side: THREE.DoubleSide }),
   inner: namedMaterial('shell-inner-dark', { color: 0x141a22, roughness: 0.85, side: THREE.BackSide }),
@@ -209,7 +226,7 @@ export const poseidonTridentBody = makePolyBody({
   form: 'wave-ring',
   roof: 'canopy',
   wing: 'trident-disc',
-  theme: '三叉戟與浪：鈍而高的車鼻正中一支凸出的珍珠白圓筒進氣口（白環＋筒內深海藍擋板與三道浪紋）；鼻部中線是浪峰 → 浪谷 → 爬升的 S 形斷面，珍珠白中脊從進氣口一路到車尾；海藍車身、側面起伏的浪形分色線下是深海藍，側裙底緣一條希臘波浪捲紋；車尾單柱撐起白邊深海藍橢圓盤翼，一支大三叉戟立柱從盤翼中心穿出',
+  theme: '三叉戟與浪：鈍而高的珍珠白船首，下方與兩側伸出三支同高的珍珠白尖（俯視是往前的 Ψ）；珍珠白中脊從船首一路到車尾；海藍車身、側面起伏的浪形分色線下是深海藍，側裙底緣一條希臘波浪捲紋；車尾收窄，單柱撐起白邊深海藍魚尾形尾翼（後緣中央 V 形凹口），一支大三叉戟立柱從尾翼中央穿出',
   material: 'ABS',
   density_g_cm3: 1.05,
   wallThickness_mm: 0.8,
@@ -253,57 +270,28 @@ export const poseidonTridentBody = makePolyBody({
     parts.push({ geometry: mergeGeos(ARCHES.map((a) => buildProfileLiner(a, 22.9, profile))), mat: 'liner', shell: true, name: 'arch-liners' });
     parts.push({ geometry: mergeGeos(ARCHES.map((a) => buildArchWell(a, 22.9, 12.3, 17.8, chassisBlockedNearArch))), mat: 'liner', shell: true, name: 'arch-wells' });
 
-    // ── 鼻端圓筒進氣口：凸出的珍珠白圓筒（開口朝前、置中）＋前緣白色圓唇＋筒內深海藍浪花擋板 ──
-    {
-      const len = TUBE.x1 - TUBE.x0;
-      const shellTube = new THREE.CylinderGeometry(TUBE.r, TUBE.r, len, 16, 1, true);
-      shellTube.rotateZ(Math.PI / 2);
-      shellTube.translate((TUBE.x0 + TUBE.x1) / 2, TUBE.y, 0);
-      parts.push({ geometry: shellTube, mat: 'pearlSolid', shell: true, outline: true, name: 'intake-tube' });
-      const lip = new THREE.TorusGeometry(TUBE.r - TUBE.lip, TUBE.lip, 6, 24);
-      lip.rotateY(Math.PI / 2);
-      lip.translate(TUBE.x1 - TUBE.lip, TUBE.y, 0);
-      parts.push({ geometry: lip, mat: 'pearl', solid: true, outline: true, name: 'intake-lip' });
-      // 筒內深海藍擋板（退在唇後 2.4），前面三道海藍浪紋（≋），開口不是黑洞
-      const baffle = new THREE.CylinderGeometry(TUBE.r - 0.3, TUBE.r - 0.3, 1.2, 16);
-      baffle.rotateZ(Math.PI / 2);
-      baffle.translate(TUBE.x1 - 2.4, TUBE.y, 0);
-      parts.push({ geometry: baffle, mat: 'deep', solid: true, outline: true, name: 'intake-wave-baffle' });
-      const ridges = [-3.4, 0, 3.4].map((off) => {
-        const g = finPlate(waveRidge(off), 0, 0.9);
-        g.rotateY(Math.PI / 2);
-        g.translate(TUBE.x1 - 1.35, 0, 0);
-        return g;
-      });
-      parts.push({ geometry: mergeGeos(ridges), mat: 'sea', solid: true, outline: true, name: 'intake-wave-ridges' });
-    }
+    // ── 鼻頭三叉（珍珠白，厚 3.2）：中尖從船首下方往前伸到 76.3，兩支外尖往外再往前彎，三支同高，俯視與正視都是往前的 Ψ ──
+    const tines = [1, -1].map((sg) => flatPlate(TINE.map(([x, z]) => [x, sg * z]), TINE_Y, 3.2));
+    parts.push({ geometry: mergeGeos([...tines, flatPlate(SPEAR, TINE_Y, 3.2)]), mat: 'pearl', solid: true, outline: true, name: 'trident-nose-tines' });
 
-    // ── 車尾：單柱（珍珠白）撐起深海藍橢圓盤翼，三叉戟立柱從盤翼中心穿出（珍珠白，後視 Ψ）──
+    // ── 車尾：單柱（珍珠白）撐起深海藍魚尾形尾翼，三叉戟立柱從尾翼中央穿出（珍珠白，後視 Ψ）──
     {
-      const yDeck = P.yTop(-58) - 1;
+      const yDeck = P.yTop(-53) - 1;
       const pylon = [
-        [-51, yDeck],
-        [-54.5, DISC.y + 0.2],
-        [-64.5, DISC.y + 0.2],
-        [-63, P.yTop(-63) - 1],
+        [-53, yDeck],
+        [-57, DISC.y + 0.2],
+        [-66.5, DISC.y + 0.2],
+        [-65.5, P.yTop(-65.5) - 1],
       ];
       parts.push({ geometry: finPlate(pylon, 0, 1.8), mat: 'pearl', solid: true, outline: true, name: 'disc-pylon' });
-      /** @type {number[][]} 橢圓盤翼俯視外形 */
-      const disc = [];
-      for (let i = 0; i < 32; i++) {
-        const a = (2 * Math.PI * i) / 32;
-        disc.push([DISC.x + DISC.ax * Math.cos(a), DISC.az * Math.sin(a)]);
-      }
-      parts.push({ geometry: flatPlate(disc, DISC.y, DISC.t), mat: 'deepSolid', solid: true, outline: true, name: 'disc-wing' });
-      // 盤翼外緣一圈珍珠白圓管（直徑 1.7），讓盤翼看起來有厚度
+      /** @type {number[][]} 魚尾形尾翼整圈外形（+z 半邊往後繞到 −z 半邊） */
+      const fluke = [...FLUKE, ...FLUKE.slice(1, -1).reverse().map(([x, z]) => [x, -z])];
+      parts.push({ geometry: flatPlate(fluke, DISC.y, DISC.t), mat: 'deepSolid', solid: true, outline: true, name: 'fluke-wing' });
+      // 尾翼外緣一圈珍珠白圓管（直徑 1.7），讓尾翼看起來有厚度
       /** @type {number[][]} */
-      const rimPath = [];
-      for (let i = 0; i <= 64; i++) {
-        const a = (2 * Math.PI * i) / 64;
-        rimPath.push([DISC.x + (DISC.ax - DISC.rim) * Math.cos(a), DISC.y + DISC.t / 2, (DISC.az - DISC.rim) * Math.sin(a)]);
-      }
-      parts.push({ geometry: sweepEllipse(rimPath, 96, () => [DISC.rim, DISC.rim], 8), mat: 'pearl', solid: true, outline: true, name: 'disc-rim' });
-      // 三叉戟：一支立柱（3.4 × 3.4）從後甲板穿過盤翼中心往上，頂端是 Ψ 形三叉頭（左右對稱、置中）
+      const rimPath = [...fluke, fluke[0]].map(([x, z]) => [x, DISC.y + DISC.t / 2, z]);
+      parts.push({ geometry: sweepEllipse(rimPath, 120, () => [DISC.rim, DISC.rim], 8), mat: 'pearl', solid: true, outline: true, name: 'fluke-rim' });
+      // 三叉戟：一支立柱（3.4 × 3.4）從後甲板穿過尾翼中央往上，頂端是 Ψ 形三叉頭（左右對稱、置中）
       const yShaft = P.yTop(DISC.x) - 1;
       const shaft = new THREE.BoxGeometry(3.4, TRIDENT_BAR_Y + 0.4 - yShaft, 3.4);
       shaft.translate(DISC.x, (yShaft + TRIDENT_BAR_Y + 0.4) / 2, 0);
@@ -316,7 +304,7 @@ export const poseidonTridentBody = makePolyBody({
     // ---- 貼紙 ----
     // 中脊兩側的珍珠白細邊已由分區做出；分區交界加一道浪花青光細線（線寬 0.7），從進氣口兩側一路拉到車尾
     parts.push({
-      geometry: kit.decal((x, y, z) => Math.min(0.35 - Math.abs(Math.abs(z) - P.spine(x) - 0.6), 73 - x, x + 69.5, -kit.underCanopy(x, z) - 0.6)),
+      geometry: kit.decal((x, y, z) => Math.min(0.35 - Math.abs(Math.abs(z) - P.spine(x) - 0.6), 68.5 - x, x + 69.5, -kit.underCanopy(x, z) - 0.6)),
       mat: 'dFoam',
       name: 'decal-spine-foam-line',
     });
@@ -348,10 +336,10 @@ export const poseidonTridentBody = makePolyBody({
   src: {
     density_g_cm3: 'SPEC 1.14：ABS 約 1.05 g/cm³（推估）',
     wallThickness_mm: '推估：射出 ABS 殼 0.8 mm（同其他車殼）',
-    fourview: 'shared/design/fourview-ref/fourview_11_v1.png（AI 參考圖，只取造型：鈍鼻正中凸出的圓筒進氣口、寬方車身、長座艙、車尾單柱橢圓盤翼；尺寸以底盤為準）',
-    geometry: '本檔站位產生器 P（推估）：殼 x −70 ~ 74、圓筒進氣口前緣 77.3；中線鼻唇 28.2、浪谷 25.2、座艙段 33.6、後甲板 32、座艙頂約 40.8、三叉尾鰭頂 48.8（全車最高）；半寬前輪上方 37.5、兩輪之間 30（側箱蓋住底盤側框）、後輪上方 32、鼻端 14.5（寬鈍船首）；兩輪之間下緣 11.5',
-    ring: '圓筒進氣口：ABS 薄壁圓筒（壁厚同殼 0.8）外半徑 8.5、x 67 → 77.3（Cylinder 16 段）；前緣圓唇管半徑 0.9（Torus 6×24 段）；筒內深海藍擋板厚 1.2、退在唇後 2.4，前面三道浪紋實心條厚 0.9、高 1.3（推估）',
-    tail: '單柱厚 1.8、橢圓盤翼半軸 14.5 × 47（比車身寬）、厚 0.5、高 35.2，外緣珍珠白圓管直徑 1.7；三叉戟立柱 3.4 × 3.4 從後甲板穿過盤翼中心到 38.8，三叉頭厚 1.8、寬 ±21（含倒鉤 ±22.3）、中尖頂 48.6（推估）',
+    fourview: 'shared/design/fourview-ref/fourview_11_v1.png（AI 參考圖，只取造型：鈍而高的鼻、寬方車身、長座艙、車尾單柱尾翼；鼻頭圓筒被評審讀成眼睛，已改成三叉；尺寸以底盤為準）',
+    geometry: '本檔站位產生器 P（推估）：殼 x −70 ~ 69、鼻頭中尖到 76.3；中線船首 23.8、座艙段 33、後甲板 32、三叉戟頂 48.9（全車最高）；半寬前輪上方 37.5、兩輪之間 28.5（側箱蓋住底盤側框）、後輪上方 32、車尾 13；兩輪之間下緣 11.5',
+    tines: '鼻頭三叉：ABS 實心平板厚 3.2、底面高 15.5；中尖 x 60 → 76.3、倒鉤 ±7.5；外尖從 x 56 往外再往前彎，倒鉤到 |z| 39、尖端 (74.5, ±32)（推估）',
+    tail: '單柱厚 1.8；魚尾形尾翼厚 0.5、高 35.2，翼尖 x −75、|z| 46.8，後緣中央凹口 x −68.5，外緣珍珠白圓管直徑 1.7；三叉戟立柱 3.4 × 3.4 從後甲板穿過尾翼到 38.8，三叉頭厚 1.8、寬 ±21（含倒鉤 ±22.3）、中尖頂 48.6（推估）',
     wheelArches: '前後 R17.5（31 mm 輪胎半徑 15.5 + 2 mm），可裝 26 / 31 mm 輪',
     mounts: '對齊 chassis-midship 的車殼安裝點（SPEC 1.14）',
   },
