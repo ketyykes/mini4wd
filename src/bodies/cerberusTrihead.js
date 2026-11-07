@@ -1,5 +1,5 @@
 // 三頭犬（body-cerberus-trihead，神話組・希臘；LG1 F2 擋泥板肌肉型）：不做犬頭，用「三」的重複、冥府之門、鎖鏈與蛇尾的曲線表現。
-// 「三」：三道等長、平行、同高、並排往前刺的陶土色鼻脊刃——左右前擋泥板拱頂各一道、中央門縫上一道，前後位置與刃頂高度完全相同，
+// 「三」：三道等長、平行、同高、並排往前刺的陶土色鼻脊刃——左右前擋泥板拱頂各一道、中央門縫上一道，後端位置與刃頂高度相同、周邊白色加彩描邊，
 // 從車頭看是一排三支一樣的刃；左右刃根部各一條餘燼色橫縫頭燈，鼻樑上另一條；
 // 左右刃往後接著擋泥板頂面的陶土色塊一路到車尾，和中線（中央刃、門縫、蛇尾翼）合成三道貫穿全車的縱線。
 // 冥府之門：引擎蓋中央谷地是兩片陶土色門扉（黑框線、白色門釘），中央刃立在兩片門扉之間的門縫上，刃根兩側透出餘燼色火光。
@@ -152,6 +152,8 @@ const materials = () => ({
   deck: namedMaterial('shell-deck-dark-matte', { color: 0x141110, roughness: 0.85 }),
   clay: namedMaterial('paint-terracotta-clay', { color: 0xc0623a, roughness: 0.72, clearcoat: 0.0 }),
   clay2: namedMaterial('paint-terracotta-clay', { color: 0xc0623a, roughness: 0.72, clearcoat: 0.0, side: THREE.DoubleSide }),
+  // 鼻脊刃周邊描邊：陶繪的白色加彩（霧面）
+  white2: namedMaterial('paint-added-white', { color: 0xeee6d6, roughness: 0.6, clearcoat: 0.0, side: THREE.DoubleSide }),
   inner: namedMaterial('shell-inner-dark', { color: 0x1a1412, roughness: 0.85, side: THREE.BackSide }),
   edge: namedMaterial('shell-edge-black', { color: 0x141110, roughness: 0.7, side: THREE.DoubleSide }),
   cockpit: namedMaterial('shell-inner-dark', { color: 0x1a1412, roughness: 0.85, side: THREE.DoubleSide }),
@@ -168,6 +170,34 @@ const materials = () => ({
   tail: namedMaterial('lamp-red', { color: 0xd0142a, emissive: 0x900010, emissiveIntensity: 0.6, roughness: 0.1, clearcoat: 1.0 }),
   mount: namedMaterial('abs-mount-black', { color: 0x222326, roughness: 0.6 }),
 });
+
+/**
+ * 取出 ExtrudeGeometry 某個材質群組的三角形（含法線），讓同一塊實體件的兩面與周邊窄面用不同材質；三角形總數不變
+ * @type {(g: THREE.BufferGeometry, materialIndex: number) => THREE.BufferGeometry}
+ */
+const extrudeGroup = (g, materialIndex) => {
+  const pos = g.attributes.position;
+  const nrm = g.attributes.normal;
+  const idx = g.index;
+  /** @type {number[]} */
+  const p = [];
+  /** @type {number[]} */
+  const n = [];
+  for (const grp of g.groups) {
+    if (grp.materialIndex !== materialIndex) {
+      continue;
+    }
+    for (let i = grp.start; i < grp.start + grp.count; i++) {
+      const v = idx ? idx.getX(i) : i;
+      p.push(pos.getX(v), pos.getY(v), pos.getZ(v));
+      n.push(nrm.getX(v), nrm.getY(v), nrm.getZ(v));
+    }
+  }
+  const out = new THREE.BufferGeometry();
+  out.setAttribute('position', new THREE.Float32BufferAttribute(p, 3));
+  out.setAttribute('normal', new THREE.Float32BufferAttribute(n, 3));
+  return out;
+};
 
 /**
  * 輪拱內襯（沿垂直側壁內側裁切，參考 zeppelin 的 buildHullLiner）：只取上半圈，擋住從輪拱看進去的殼內空腔與底盤空隙
@@ -259,7 +289,7 @@ const CONFIG = {
   form: 'tri-ridge',
   roof: 'canopy',
   wing: 's-stem-spade',
-  theme: '黑釉擋泥板肌肉車：三道等長、平行、同高、並排的陶土色鼻脊刃（左右前擋泥板拱頂與中央門縫各一道）配三條餘燼色橫縫頭燈、左右刃往後接著擋泥板頂面一路到車尾的陶土色塊、引擎蓋中央兩片陶土色門扉與發光門縫（冥府之門）、霧面黑背脊配緞面黑釉擋泥板與側壁、收腰段側壁的陶土色鎖鏈與回紋飾帶；四輪擋泥板鼓成肩與臀、中段收腰、中央直脊；收腰上方壓低的暗紅煙燻座艙罩；從背脊以 S 形升起、頂端展開成鏟形翼面的陶土色蛇尾翼',
+  theme: '黑釉擋泥板肌肉車：三道等長、平行、同高、並排、前緣白色描邊的陶土色鼻脊刃（左右前擋泥板拱頂與中央門縫各一道）配三條餘燼色橫縫頭燈、左右刃往後接著擋泥板頂面一路到車尾的陶土色塊、引擎蓋中央兩片陶土色門扉與發光門縫（冥府之門）、霧面黑背脊配緞面黑釉擋泥板與側壁、收腰段側壁的陶土色鎖鏈與回紋飾帶；四輪擋泥板鼓成肩與臀、中段收腰、中央直脊；收腰上方壓低的暗紅煙燻座艙罩；從背脊以 S 形升起、頂端展開成鏟形翼面的陶土色蛇尾翼',
   material: 'ABS',
   density_g_cm3: 1.05,
   wallThickness_mm: 0.8,
@@ -290,33 +320,36 @@ const CONFIG = {
   extras: (kit) => {
     /** @type {BodyPart[]} */
     const parts = [];
-    // ── 三道鼻脊刃（實體件，厚 1.8）：三道並排在同一段 x（27 → 51），刃頂是同一條斜線（後端 y 37.2 → 刃尖 y 29.4），根部各自埋進下方殼面 1 mm ──
+    // ── 三道鼻脊刃（實體件，厚 1.8）：三道並排、後端同在 x 28.4、刃頂同一條斜線（y 37.2 往前斜降），根部各自埋進下方殼面 1 mm ──
+    // 左右刃的刃尖懸在擋泥板前緣外（x 51）；中央刃下方的鼻樑一路往前延伸，刃的前段只高出殼面約 1.5 mm，
+    // 所以中央刃尖往前多伸 1.5 mm（x 52.5）、刃尖抬高 0.6 mm，從 front34 看三道露出的長度相同
     {
-      /** @type {(x: number) => number} 刃頂高度（三道共用） */
-      const top = (x) => lerp(37.2, 29.4, (x - BLADE_X0) / (BLADE_X1 - BLADE_X0));
       /**
-       * 一道刃的側視輪廓：後端從殼面垂直立起，上緣沿共用刃頂斜降到刃尖，刃尖下緣 1.2 mm，下緣沿殼面往回
-       * @type {(z: number) => number[][]}
+       * 一道刃的側視輪廓：後端從殼面垂直立起，上緣是刃頂斜線，刃尖下緣 1.2 mm，下緣沿殼面往回
+       * @type {(z: number, x1: number, tipY: number, underX: number) => number[][]}
        */
-      const blade = (z) => {
+      const blade = (z, x1, tipY, underX) => {
+        /** @type {(x: number) => number} 刃頂高度 */
+        const top = (x) => lerp(37.2, tipY, (x - BLADE_X0) / (x1 - BLADE_X0));
         /** @type {(x: number) => number} 該道刃下方的殼面高度 */
         const s = (x) => kit.surf.topY(x, z);
         return [
           [BLADE_X0 - 1.4, s(BLADE_X0 - 1.4) - 1],
           [BLADE_X0, top(BLADE_X0)],
-          [BLADE_X1, top(BLADE_X1)],
-          [BLADE_X1 - 0.6, top(BLADE_X1) - 1.2],
-          [44, Math.min(s(44), top(44) - 1.6) - 1.6],
+          [x1, tipY],
+          [x1 - 0.6, tipY - 1.2],
+          [underX, Math.min(s(underX), top(underX) - 1.6) - 1.6],
           [36, s(36) - 1],
         ];
       };
-      parts.push({
-        geometry: mergeGeos([finPlate(blade(0), 0, 1.8), finPlate(blade(BLADE_Z), BLADE_Z, 1.8), finPlate(blade(-BLADE_Z), -BLADE_Z, 1.8)]),
-        mat: 'clay2',
-        solid: true,
-        outline: true,
-        name: 'tri-ridge-blades',
-      });
+      const plates = [
+        finPlate(blade(0, BLADE_X1 + 1.5, 30, 49.5), 0, 1.8),
+        finPlate(blade(BLADE_Z, BLADE_X1, 29.4, 44), BLADE_Z, 1.8),
+        finPlate(blade(-BLADE_Z, BLADE_X1, 29.4, 44), -BLADE_Z, 1.8),
+      ];
+      // 刃的兩面是陶土色；周邊的窄面（刃頂前緣、刃尖、後緣）是白色加彩描邊，和車身的白線呼應（ExtrudeGeometry：群組 0 = 兩面、群組 1 = 周邊）
+      parts.push({ geometry: mergeGeos(plates.map((g) => extrudeGroup(g, 0))), mat: 'clay2', solid: true, outline: true, name: 'tri-ridge-blades' });
+      parts.push({ geometry: mergeGeos(plates.map((g) => extrudeGroup(g, 1))), mat: 'white2', solid: true, outline: true, name: 'tri-ridge-blade-edges' });
     }
 
     // ── 蛇尾翼（大件）：扁橢圓斷面沿 S 形中心線掃掠，翼柱和鏟形翼面是同一件 ──
@@ -428,7 +461,7 @@ const CONFIG = {
     wallThickness_mm: '推估：射出 ABS 殼 0.8 mm（同其他車殼）',
     geometry: '本檔站位產生器 P（推估）：殼長 137（−65 ~ 鼻尖 72），含蛇尾翼後緣（−67）的外框長約 139；擋泥板拱頂後 33 / 前 32.4、中央直脊 30.8、座艙罩頂約 34.5、蛇尾翼頂約 40.3；寬：車尾 ±30、臀 ±43.8、肩 ±44、收腰 ±27.5',
     wheelArches: '前後 R15.2（26 mm 輪胎半徑 13 + 2.2 mm）',
-    blades: '三道鼻脊刃：ABS 實心立板（厚 1.8 mm，推估），三道並排在 z 0 / ±33、同一段 x 27 → 51（等長、平行），刃頂同一條線 y 37.2 → 29.4',
+    blades: '三道鼻脊刃：ABS 實心立板（厚 1.8 mm，推估），三道並排在 z 0 / ±33、後端同在 x 28.4（平行），刃頂 y 37.2 往前斜降：左右刃尖 x 51 / y 29.4，中央刃尖 x 52.5 / y 30（下方鼻樑往前延伸，多伸 1.5 mm 讓露出長度相同）；刃的周邊窄面白色描邊',
     tail: '蛇尾翼：ABS 扁橢圓斷面實體件（翼柱 5.2 × 1.8 → 7.2 × 1.3，鏟形翼面翼展 46、厚 1.2，推估），中心線側視 S 形：貼背脊 y 30.4–31.4 → 升到 39.6',
     mounts: '對齊 chassis-midship 的車殼安裝點（SPEC 1.14）',
   },
