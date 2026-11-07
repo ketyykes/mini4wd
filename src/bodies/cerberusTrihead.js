@@ -1,12 +1,13 @@
 // 三頭犬（body-cerberus-trihead，神話組・希臘；LG1 F2 擋泥板肌肉型）：不做犬頭，用「三」的重複、冥府之門、鎖鏈與蛇尾的曲線表現。
-// 「三」：三道等長、平行、往前刺的陶土色鼻脊刃——中央鼻樑一道、左右前擋泥板脊線各一道，刃的根部各一條餘燼色橫縫頭燈；
-// 左右刃往後接著擋泥板頂面的陶土色塊一路到車尾，和中線（門縫、蛇尾翼）合成三道貫穿全車的縱線。
-// 冥府之門：引擎蓋中央谷地是兩片陶土色門扉（黑框線、白色門釘），中線門縫透出餘燼色火光。
+// 「三」：三道等長、平行、同高、並排往前刺的陶土色鼻脊刃——左右前擋泥板拱頂各一道、中央門縫上一道，前後位置與刃頂高度完全相同，
+// 從車頭看是一排三支一樣的刃；左右刃根部各一條餘燼色橫縫頭燈，鼻樑上另一條；
+// 左右刃往後接著擋泥板頂面的陶土色塊一路到車尾，和中線（中央刃、門縫、蛇尾翼）合成三道貫穿全車的縱線。
+// 冥府之門：引擎蓋中央谷地是兩片陶土色門扉（黑框線、白色門釘），中央刃立在兩片門扉之間的門縫上，刃根兩側透出餘燼色火光。
 // 鎖鏈：收腰段側壁上緣一條陶土色鎖鏈（正面環與側立環交錯），下方是陶土飾帶上的黑色回紋。
 // 蛇尾 → 尾翼：一條從座艙後方貼著背脊往後、在車尾以 S 形升起的陶土色帶狀翼柱，升到頂後往兩側展開成鏟形翼面（一體式尾翼）。
 // 四輪擋泥板各自鼓起成肩 / 臀（前低後高），中段收腰，中央一條隆起的直脊（不是 V 形）；座艙罩在中段、壓低的暗紅煙燻罩。
 // 設計：shared/design/body-cerberus-trihead/DESIGN.md（MYTH_RESEARCH G3–G5、G12：羅浮宮 E 701 卡厄瑞水罐、「三個犬頭、蛇尾」、黑繪技法）。
-// 塗裝：黑繪陶的配色反過來用——半光澤黑釉為主色，陶土色（霧面）做擋泥板頂面色塊、門扉、鼻脊刃、尾翼與線條，白色加彩只點門釘，餘燼色自發光點綴；
+// 塗裝：黑繪陶的配色反過來用——黑釉為主色（左右色塊之間的背脊頂面霧面、其餘緞面：背脊頂面在側視是掠射角，緞面清漆會把背景反成像透明泡殼的亮面），陶土色（霧面）做擋泥板頂面色塊、門扉、鼻脊刃、尾翼與線條，白色加彩只點門釘，餘燼色自發光點綴；
 // 不用 Black Saber 的黑＋紅灰＋金座艙組合，也沒有架高尾翼與端板；全為自創，不含任何文字或商標。
 import * as THREE from 'three';
 import { makePolyBody, sweepEllipse, finPlate } from './polyBody.js';
@@ -117,10 +118,10 @@ const meanderSd = (u, v, unit) => {
 /** @type {{ x0: number, x1: number }} 冥府之門（引擎蓋中央谷地的兩片門扉）前後端 */
 const GATE = { x0: 21, x1: 46 };
 /**
- * 門扉內距：到門扉四邊的最小距離（正值 = 在門扉內）；每片門扉從中線旁 1.4 mm 到 0.29 半寬（谷地外緣），跟著擋泥板內緣往前收窄
+ * 門扉內距：到門扉四邊的最小距離（正值 = 在門扉內）；每片門扉從中線旁 2 mm（門縫寬 4 mm，中央刃立在門縫上）到 0.29 半寬（谷地外緣），跟著擋泥板內緣往前收窄
  * @type {(x: number, z: number) => number}
  */
-const gateInset = (x, z) => Math.min(x - GATE.x0, GATE.x1 - x, Math.abs(z) - 1.4, 0.29 * P.hw(x) - Math.abs(z));
+const gateInset = (x, z) => Math.min(x - GATE.x0, GATE.x1 - x, Math.abs(z) - 2, 0.29 * P.hw(x) - Math.abs(z));
 
 /** @type {number} 擋泥板頂面色塊的前端 x（接在左右鼻脊刃的根部後緣） */
 const BAND_X1 = 28;
@@ -145,8 +146,10 @@ const chainSd = (u, v) => {
 
 /** @type {() => Record<string, THREE.Material>} */
 const materials = () => ({
-  // 黑釉：黑繪陶的半光澤黑（緞面 roughness 0.56：roughness 0.3 的亮面在 Blender 會出現大片波浪反光），陶土色為霧面
+  // 黑釉（側壁）：黑繪陶的半光澤黑（緞面 roughness 0.56：roughness 0.3 的亮面在 Blender 會出現大片波浪反光），陶土色為霧面
   black: namedMaterial('paint-figure-black', { color: 0x141110, roughness: 0.56, clearcoat: 0.12, clearcoatRoughness: 0.4 }),
+  // 背脊頂面霧面黑：名稱含 dark-matte → Blender 走霧面塑膠（無清漆），掠射角不會把背景反成亮面
+  deck: namedMaterial('shell-deck-dark-matte', { color: 0x141110, roughness: 0.85 }),
   clay: namedMaterial('paint-terracotta-clay', { color: 0xc0623a, roughness: 0.72, clearcoat: 0.0 }),
   clay2: namedMaterial('paint-terracotta-clay', { color: 0xc0623a, roughness: 0.72, clearcoat: 0.0, side: THREE.DoubleSide }),
   inner: namedMaterial('shell-inner-dark', { color: 0x1a1412, roughness: 0.85, side: THREE.BackSide }),
@@ -172,7 +175,7 @@ const materials = () => ({
  */
 const buildLiner = (arch, depth) => {
   const r = arch.radius + 0.3;
-  const n = 40;
+  const n = 32;
   const a0 = 0.12;
   const a1 = Math.PI - 0.12;
   const pos = [];
@@ -238,8 +241,12 @@ const tailRadius = (t) => {
   return [t < 0.78 ? lerp(2.6, 3.6, t / 0.78) : lerp(3.6, 23, flare ** 0.8), lerp(0.9, 0.6, t)];
 };
 
-/** @type {number} 左右鼻脊刃的 z 位置（前擋泥板拱頂） */
+/** @type {number} 左右鼻脊刃的 z 位置（前擋泥板拱頂）；中央刃在 z 0 */
 const BLADE_Z = 33;
+/** @type {number} 三道鼻脊刃共用的後端 x（刃最高處） */
+const BLADE_X0 = 28.4;
+/** @type {number} 三道鼻脊刃共用的刃尖 x（比前擋泥板前緣多伸約 4 mm） */
+const BLADE_X1 = 51;
 
 /** @type {import('./polyBody.js').PolyBodyConfig & { mythSeries: string, mythTheme: string }} 車殼設定 */
 const CONFIG = {
@@ -252,7 +259,7 @@ const CONFIG = {
   form: 'tri-ridge',
   roof: 'canopy',
   wing: 's-stem-spade',
-  theme: '黑釉擋泥板肌肉車：三道等長平行的陶土色鼻脊刃（中央鼻樑與左右前擋泥板各一道）配三條餘燼色橫縫頭燈、左右刃往後接著擋泥板頂面一路到車尾的陶土色塊、引擎蓋中央兩片陶土色門扉與發光門縫（冥府之門）、收腰段側壁的陶土色鎖鏈與回紋飾帶；四輪擋泥板鼓成肩與臀、中段收腰、中央直脊；收腰上方壓低的暗紅煙燻座艙罩；從背脊以 S 形升起、頂端展開成鏟形翼面的陶土色蛇尾翼',
+  theme: '黑釉擋泥板肌肉車：三道等長、平行、同高、並排的陶土色鼻脊刃（左右前擋泥板拱頂與中央門縫各一道）配三條餘燼色橫縫頭燈、左右刃往後接著擋泥板頂面一路到車尾的陶土色塊、引擎蓋中央兩片陶土色門扉與發光門縫（冥府之門）、霧面黑背脊配緞面黑釉擋泥板與側壁、收腰段側壁的陶土色鎖鏈與回紋飾帶；四輪擋泥板鼓成肩與臀、中段收腰、中央直脊；收腰上方壓低的暗紅煙燻座艙罩；從背脊以 S 形升起、頂端展開成鏟形翼面的陶土色蛇尾翼',
   material: 'ABS',
   density_g_cm3: 1.05,
   wallThickness_mm: 0.8,
@@ -273,7 +280,9 @@ const CONFIG = {
     { mat: 'clay', keep: (x, y, z) => (onSide(x, z) ? -1 : gateInset(x, z)) },
     // 擋泥板頂面的陶土色塊：沿擋泥板拱頂（0.76 半寬）從左右鼻脊刃的根部一路到車尾，寬 7 mm，和中線（鼻脊刃、門縫、蛇尾翼）合成三道縱線
     { mat: 'clay', keep: (x, y, z) => (onSide(x, z) ? -1 : Math.min(fenderBandInset(x, z), BAND_X1 - x)) },
-    // 其餘全部是黑釉
+    // 左右擋泥板色塊之間的頂面（座艙前後的背脊）是霧面黑：分界和色塊內緣是同一條線，不多切面
+    { mat: 'deck', keep: (x, y, z) => (onSide(x, z) ? -1 : Math.min(0.76 * P.hw(x) - 3.5 - Math.abs(z), BAND_X1 - x)) },
+    // 其餘全部是緞面黑釉
     { mat: 'black', keep: () => 1 },
   ],
   mats: { inner: 'inner', edge: 'edge', cap: 'black', cockpit: 'cockpit', glass: 'glass', mount: 'mount' },
@@ -281,16 +290,28 @@ const CONFIG = {
   extras: (kit) => {
     /** @type {BodyPart[]} */
     const parts = [];
-    // ── 三道鼻脊刃（實體件，厚 1.8）：根部埋進殼面 1 mm，後端最高（高出殼面 4.8 mm）、上緣一路斜降到刃尖 ──
+    // ── 三道鼻脊刃（實體件，厚 1.8）：三道並排在同一段 x（27 → 51），刃頂是同一條斜線（後端 y 37.2 → 刃尖 y 29.4），根部各自埋進下方殼面 1 mm ──
     {
-      /** @type {(x: number) => number} 前擋泥板拱頂的殼面高度 */
-      const tf = (x) => kit.surf.topY(x, BLADE_Z);
-      /** @type {number[][]} 左右刃：根部在前擋泥板拱頂（x 27 → 45），刃尖比擋泥板前緣多伸約 4 mm（x 51） */
-      const side = [[27, tf(27) - 1], [28.4, tf(28.4) + 4.8], [43, tf(43) + 2.4], [51, 28], [50.4, 26.8], [45, tf(45) - 1.6], [36, tf(36) - 1]];
-      /** @type {number[][]} 中央刃：沿鼻樑直脊（x 46.6 → 70.6），和左右刃等長（24 mm）、平行 */
-      const centre = [[46.6, P.yC(46.6) - 1], [48, P.yC(48) + 4.8], [70.6, P.yC(70.6) + 0.4], [70.6, P.yC(70.6) - 0.8], [58, P.yC(58) - 1]];
+      /** @type {(x: number) => number} 刃頂高度（三道共用） */
+      const top = (x) => lerp(37.2, 29.4, (x - BLADE_X0) / (BLADE_X1 - BLADE_X0));
+      /**
+       * 一道刃的側視輪廓：後端從殼面垂直立起，上緣沿共用刃頂斜降到刃尖，刃尖下緣 1.2 mm，下緣沿殼面往回
+       * @type {(z: number) => number[][]}
+       */
+      const blade = (z) => {
+        /** @type {(x: number) => number} 該道刃下方的殼面高度 */
+        const s = (x) => kit.surf.topY(x, z);
+        return [
+          [BLADE_X0 - 1.4, s(BLADE_X0 - 1.4) - 1],
+          [BLADE_X0, top(BLADE_X0)],
+          [BLADE_X1, top(BLADE_X1)],
+          [BLADE_X1 - 0.6, top(BLADE_X1) - 1.2],
+          [44, Math.min(s(44), top(44) - 1.6) - 1.6],
+          [36, s(36) - 1],
+        ];
+      };
       parts.push({
-        geometry: mergeGeos([finPlate(centre, 0, 1.8), finPlate(side, BLADE_Z, 1.8), finPlate(side, -BLADE_Z, 1.8)]),
+        geometry: mergeGeos([finPlate(blade(0), 0, 1.8), finPlate(blade(BLADE_Z), BLADE_Z, 1.8), finPlate(blade(-BLADE_Z), -BLADE_Z, 1.8)]),
         mat: 'clay2',
         solid: true,
         outline: true,
@@ -300,7 +321,7 @@ const CONFIG = {
 
     // ── 蛇尾翼（大件）：扁橢圓斷面沿 S 形中心線掃掠，翼柱和鏟形翼面是同一件 ──
     parts.push({
-      geometry: smoothNormals(sweepEllipse(TAIL_PATH, 30, tailRadius, 12)),
+      geometry: smoothNormals(sweepEllipse(TAIL_PATH, 24, tailRadius, 12)),
       mat: 'clay2',
       solid: true,
       outline: true,
@@ -339,7 +360,7 @@ const CONFIG = {
       mat: 'dIncised',
       name: 'decal-incised-fender-line',
     });
-    // 冥府之門：門扉內縮 1.2 mm 的黑框線、每片門扉 2 排白色門釘、中線門縫的餘燼色火光（寬 1.6 mm）
+    // 冥府之門：門扉內縮 1.2 mm 的黑框線、每片門扉 2 排白色門釘、中線門縫的餘燼色火光（寬 3.4 mm，中央刃兩側各露出約 0.8 mm）
     parts.push({
       geometry: kit.decal((x, y, z) => (onSide(x, z) ? -1 : 0.28 - Math.abs(gateInset(x, z) - 1.2)), { offset: 0.1 }),
       mat: 'dBlack',
@@ -370,11 +391,11 @@ const CONFIG = {
       name: 'decal-fender-band-edges',
     });
     parts.push({
-      geometry: kit.decal((x, y, z) => Math.min(0.8 - Math.abs(z), x - GATE.x0 + 0.5, GATE.x1 + 0.5 - x), { offset: 0.14 }),
+      geometry: kit.decal((x, y, z) => Math.min(1.7 - Math.abs(z), x - GATE.x0 + 0.5, GATE.x1 + 0.5 - x), { offset: 0.14 }),
       mat: 'dEmber',
       name: 'decal-gate-ember-seam',
     });
-    // 三條餘燼色橫縫頭燈：三道鼻脊刃的根部各一條（中央鼻樑 x 64、左右前擋泥板前緣 x 45.4），寬 1.4 mm
+    // 三條餘燼色橫縫頭燈：鼻樑 x 64 一條、左右前擋泥板前緣（左右刃根部）x 45.4 各一條，寬 1.4 mm
     parts.push({
       geometry: kit.decal((x, y, z) => {
         if (onSide(x, z)) {
@@ -407,7 +428,7 @@ const CONFIG = {
     wallThickness_mm: '推估：射出 ABS 殼 0.8 mm（同其他車殼）',
     geometry: '本檔站位產生器 P（推估）：殼長 137（−65 ~ 鼻尖 72），含蛇尾翼後緣（−67）的外框長約 139；擋泥板拱頂後 33 / 前 32.4、中央直脊 30.8、座艙罩頂約 34.5、蛇尾翼頂約 40.3；寬：車尾 ±30、臀 ±43.8、肩 ±44、收腰 ±27.5',
     wheelArches: '前後 R15.2（26 mm 輪胎半徑 13 + 2.2 mm）',
-    blades: '三道鼻脊刃：ABS 實心立板（厚 1.8 mm，推估），三道等長（24 mm）、平行：中央刃沿鼻樑 x 46.6 → 70.6（高 4.8 → 0.4），左右刃根部在前擋泥板拱頂 x 27 → 45、刃尖到 x 51',
+    blades: '三道鼻脊刃：ABS 實心立板（厚 1.8 mm，推估），三道並排在 z 0 / ±33、同一段 x 27 → 51（等長、平行），刃頂同一條線 y 37.2 → 29.4',
     tail: '蛇尾翼：ABS 扁橢圓斷面實體件（翼柱 5.2 × 1.8 → 7.2 × 1.3，鏟形翼面翼展 46、厚 1.2，推估），中心線側視 S 形：貼背脊 y 30.4–31.4 → 升到 39.6',
     mounts: '對齊 chassis-midship 的車殼安裝點（SPEC 1.14）',
   },
