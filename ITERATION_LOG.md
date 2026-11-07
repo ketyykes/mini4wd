@@ -397,3 +397,20 @@ iter-134 評語交回同一組；規定計分鎖釋放前只改程式、不跑�
 | cerberus | 刃尖做尖；刃厚 1.8 → 1.4 mm，白色只留刃頂前緣約 1 mm |
 | yaga | 窗玻璃 4.6 × 4.0 → 5.6 × 4.8 mm，深棕細框不變 |
 | kitsune | 車鼻段 x 44–72 半寬加一次高斯平滑（σ 1.6 mm），曲率連續，橫向亮線變柔和；擋泥板前端再收 0.2–0.45 mm |
+
+## iter-135 驗證、評審與計分
+- 18:01–18:07 合併 a、b、d、e、f；6 款 body-check 26 mm 合法，31 mm 合法性和 iter-132 一樣（kitsune、firebird 合法；minotaur、cerberus、yaga、quetzal 本來就不合法）；最大俯視 IoU 0.835（sleipnir × lowline-flat，不變），minotaur × aero-wing 0.834；`vitest -t P20` 通過。quetzal 車殼鼻尖 x 78.6，沒有超過 iter-132 的 79.0。
+- 18:02–18:24 持鎖用 64 samples 出 6 款 5 視角。
+- 獨立評審（18:25–18:30，`shared/reviews/iter-135/REVIEW.md`，又一位評審；「上一輪」用 iter-134 的圖）：minotaur、quetzal 比 iter-134 好；firebird、cerberus、yaga 小幅好；**kitsune 持平**（三視角幾乎沒變）。6 款加上退回的 gullinbursti 對第十一階段基準都仍全過；6 款比 iter-132 都是好。16 款沒有任何一款元素化「否」或比基準更差。整體 7 項 8 / 8 / 8 / 8 / 8 / 7 / 8.5，平均 7.93（和 iter-134 一樣）。
+- 完整計分（18:25–18:40，持鎖，app `84c8658`）：**20/20**，外觀 7.93 → 總分 89.65。
+- 18:40 kitsune 的 iter-135 修正退回 iter-134 版（revert `fc4391b`）：「沒進步的改動不留」。只動 kitsune 一個車殼檔，程式和 iter-134 一致；重出它的 64 samples 5 視角後，對最終程式再跑一次完整計分。
+- 最後完整計分（18:45–19:00，持鎖，app `e0f2c34`）：**20/20**，外觀 7.93 → 總分 **89.65**。程式定案。
+
+## 第十二階段結論（19:06）
+- 9 款最終版本：kitsune iter-134、quetzal iter-135、sleipnir iter-134、gullinbursti iter-133、minotaur iter-135、firebird iter-135、kunpeng iter-134、cerberus iter-135、yaga iter-135。退回兩次：gullinbursti 的 iter-134（評審判差）、kitsune 的 iter-135（評審判持平）。
+- 上一階段沒過保留條件的 4 款（kitsune、quetzal、gullinbursti、minotaur）這階段都過了；另外 5 款都比 iter-132 好。
+- 外觀 7.79 → **7.93**（神話辨識度 7.5 → 8、多樣性與完成度 7.5 → 8），炫砲度維持 8.5；總分 88.95 → **89.65**。三輪是三位不同的獨立評審。
+- 9 款實測（iter-132 → 最終）：殼面＋實體 1,009,196 → 996,823（−1.2%），每款都沒增加；平均正面面積 2785.2 → 2784.4 mm²，單款最多 +2.0%（quetzal）；31 mm 合法性不變；最大 IoU 0.835（sleipnir × lowline-flat，和開工時一樣）。
+- 共用檔只改了 `polyBody.js` 一處：新增選填的 `step`（預設 0.5，其他款不受影響），quetzal 用 0.55。
+- Blender：16 款 5 視角全部 64 samples、最終版；陣容圖 5 張、`before_after_myth_p11.png`（16 款，第十一階段基準 → 最終）、新增 `before_after_myth_p12.png`（9 款，iter-132 → 最終）。
+- 暫時 worktree p12-a～f、p12-base 與分支已移除。
