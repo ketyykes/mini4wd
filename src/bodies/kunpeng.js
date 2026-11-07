@@ -3,9 +3,9 @@
 // 造型：平滑流線的低趴全罩——細長低鼻、一路直線斜升的平順楔形引擎蓋（前擋泥板不鼓起）、中段透明窗、座艙後是一路緩降到圓收車尾的長甲板；
 //       俯視是修長前尖的鯤身，前後輪上方微微隆起；側面前輪後方一組鰓狀斜百葉、後甲板一整片橫向百葉。
 // (1) 鯤的鰓 → 前輪後方三道往後斜的鰓狀進氣縫（深藍縫配銅色唇線）；
-// (2) 鵬的羽 → 後甲板五片層疊的橫向羽片百葉（實體薄片，後緣上翹、一片比一片高，像疊起的飛羽）、後擋泥板頂上和殼面連續、往外後展開的一對鵬翼、車尾一片箭形羽尾；
+// (2) 鵬的羽 → 後甲板五片層疊的橫向羽片百葉（實體薄片，後緣上翹、一片比一片高，像疊起的飛羽）、後擋泥板頂上和殼面連續、往外後展開的一對後掠尖角鵬翼；車尾端面一條紅色尾燈條；
 // (3) 水 → 風的兩色 livery（照四視圖的青綠＋米白）：前下半青綠（北冥的水）、後上半米白（扶搖的風），中間一條往前上斜切的乾淨分界，
-//     分界上一條銅色細線（水擊三千里）；羽片、鵬翼用同一個青綠襯在米白後甲板上，深藍只留在羽尾板與鰓縫當點綴。
+//     分界上一條銅色細線（水擊三千里）；羽片、鵬翼用同一個青綠襯在米白後甲板上，深藍只留在鰓縫當點綴。
 // 設計：shared/design/body-kunpeng/DESIGN.md（典故與文物對應 MYTH_RESEARCH 第 7 節 Z1–Z4；黑名單 7-3）。剖面為本檔站位產生器（推估）。
 // 不寫任何文字（含「Kunpeng」字樣）、不做晶片紋、不做紅色魚身 / 海豚形、不做龍角龍鬚。
 import * as THREE from 'three';
@@ -88,8 +88,8 @@ const materials = () => ({
   mist: namedMaterial('paint-cream-white', { color: 0xeee3c6, roughness: 0.42, clearcoat: 0.6, clearcoatRoughness: 0.2 }),
   // 羽片百葉、鵬翼：同一個青綠（實體件），襯在米白的後甲板上
   wing: namedMaterial('paint-qing-green-feather', { color: 0x17695f, roughness: 0.36, metalness: 0.15, clearcoat: 0.8, clearcoatRoughness: 0.15 }),
-  // 點綴：北冥深藍（羽尾板）
-  navy: namedMaterial('paint-abyss-blue-tail', { color: 0x0b2456, roughness: 0.32, metalness: 0.2, clearcoat: 0.8, clearcoatRoughness: 0.15 }),
+  // 車尾尾燈條
+  tailLight: namedMaterial('lamp-red', { color: 0xd0142a, emissive: 0x900010, emissiveIntensity: 0.6, roughness: 0.1, clearcoat: 1.0 }),
   // 透明窗：淡青煙燻 PC（半透明，看得到殼內）
   canopy: namedMaterial('pc-smoke-tint', { color: 0x2a4652, roughness: 0.05, specularIntensity: 0.6, transparent: true, opacity: 0.7, envMapIntensity: 0.6, side: THREE.DoubleSide }),
   windowFloor: namedMaterial('shell-window-floor-dark', { color: 0x0c1a24, roughness: 0.6, side: THREE.DoubleSide }),
@@ -291,33 +291,21 @@ const buildLiner = (arch, depth) => {
   return g;
 };
 
-/**
- * 車尾羽尾板（俯視）：從車尾殼面下伸出的一片薄板，後緣收成一道平順的箭形羽尖（不做鋸齒），半寬 15
- * @type {number[][]} 每點 [x, z]
- */
-const TAIL_FEATHER = [
-  [-66, -15],
-  [-66, 15],
-  [-71, 15],
-  [-75, 0],
-  [-71, -15],
-];
+/** @type {{ x0: number, x1: number, y0: number, y1: number, hz: number }} 車尾尾燈條：嵌在車尾端面、凸出 0.5 mm 的一條橫向紅色燈條 */
+const TAIL_LIGHT = { x0: -72.5, x1: -71.4, y0: 20.4, y1: 21.8, hz: 10 };
 
 /**
- * 鵬翼（俯視，|z| 側）：後擋泥板頂上往外後方展開的一對薄翼，翼根貼著殼面、從擋泥板稜往外緩降，後緣三道羽尖；
+ * 鵬翼（俯視，|z| 側）：後擋泥板頂上往外後方展開的一對薄翼，翼根貼著殼面、從擋泥板稜往外緩降，翼尖是一個乾淨的後掠尖角（後緣內凹一道弧）；
  * 輪胎外緣（|z| 37.75）上方的翼底仍比 31 mm 後輪頂 28.5 高 1.5 mm 以上
  * @type {number[][]} 每點 [x, |z|]
  */
 const PENG_WING = [
   [-22, 20],
   [-38, 38],
-  [-49, 47],
-  [-58, 47.5],
-  [-55, 42],
-  [-61, 41],
-  [-58, 35],
-  [-64, 33],
-  [-62, 20],
+  [-50, 46],
+  [-61, 47.5],
+  [-57, 38],
+  [-63, 20],
 ];
 
 /**
@@ -424,7 +412,7 @@ export const kunpengBody = makePolyBody({
   form: 'gill-teardrop',
   roof: 'clear',
   wing: 'feather-louver-deck',
-  theme: '鯤鵬（鰓羽長身）：平滑流線的低趴全罩，細長低鼻一路直線斜升成平順楔形（前擋泥板不鼓起）到中段透明窗，座艙後一路緩降到圓收車尾的長甲板；俯視是修長、前尖的鯤身。前輪後方三道往後斜的鰓狀進氣縫（鯤的鰓），後甲板五片層疊上翹的青綠羽片百葉、車尾一片深藍箭形羽尾、後擋泥板頂上和殼面連續往外後展開的一對青綠鵬翼（鵬的羽）；塗裝照四視圖前下半青綠、後上半米白，一條往前上斜切的分界加銅色細線',
+  theme: '鯤鵬（鰓羽長身）：平滑流線的低趴全罩，細長低鼻一路直線斜升成平順楔形（前擋泥板不鼓起）到中段透明窗，座艙後一路緩降到圓收車尾的長甲板；俯視是修長、前尖的鯤身。前輪後方三道往後斜的鰓狀進氣縫（鯤的鰓），後甲板五片層疊上翹的青綠羽片百葉、後擋泥板頂上和殼面連續往外後展開、翼尖後掠的一對青綠鵬翼（鵬的羽），車尾端面一條紅色尾燈條；塗裝照四視圖前下半青綠、後上半米白，一條往前上斜切的分界加銅色細線',
   material: 'ABS',
   density_g_cm3: 1.05,
   wallThickness_mm: 0.8,
@@ -457,14 +445,10 @@ export const kunpengBody = makePolyBody({
       outline: true,
       name: 'feather-louvers',
     });
-    // 車尾羽尾板（厚 1.2 mm，頂面貼在車尾殼面下 0.4 mm）
-    parts.push({
-      geometry: flatPlate(TAIL_FEATHER, kit.surf.topY(-66, 0) - 1.6, 1.2),
-      mat: 'navy',
-      solid: true,
-      outline: true,
-      name: 'feather-tail',
-    });
+    // 車尾尾燈條
+    const lightBar = new THREE.BoxGeometry(TAIL_LIGHT.x1 - TAIL_LIGHT.x0, TAIL_LIGHT.y1 - TAIL_LIGHT.y0, 2 * TAIL_LIGHT.hz);
+    lightBar.translate((TAIL_LIGHT.x0 + TAIL_LIGHT.x1) / 2, (TAIL_LIGHT.y0 + TAIL_LIGHT.y1) / 2, 0);
+    parts.push({ geometry: lightBar, mat: 'tailLight', solid: true, outline: true, name: 'tail-light-bar' });
     // 透明窗下的深色底板（窗內看到的是深色，不是底盤）：沿窗框內縮 0.6 mm 的平板，y 27
     /** @type {number[][]} */
     const floor = [];
@@ -520,7 +504,7 @@ export const kunpengBody = makePolyBody({
     geometry: '本檔站位產生器 P（推估，比例取自四視圖 14 後縮到底盤）：車殼 x −72 ~ 77.5；中線鼻尖 16 → 楔形引擎蓋前軸 30.8 → 座艙頂 36.6（x −2）→ 車尾 25.6；擋泥板稜前 31.2（削平）/ 後 33.2（31 mm 輪拱頂 30.5 之上）；側壁下緣 10.6；半寬鼻尖 5、前輪 31、中段 33、後輪 31、車尾 15',
     feathers: '羽片百葉為實心 ABS 薄楔（厚 0.9 mm），5 片前緣 x −24 / −31 / −38 / −45 / −52、弦長 5.4–6.4 mm＋中央羽尖 1.6 mm、後緣抬高 1.4 → 3 mm、半寬 14.5–16 mm（推估）',
     pengWings: '鵬翼為實心 ABS 薄板（厚 1.2 mm），翼根 x −22 ~ −62、|z| 20 埋進殼面，翼尖到 |z| 47.5、x −58，翼底 y 31.6（推估）',
-    featherTail: '羽尾板為實心 ABS 薄板（厚 1.2 mm），x −66 ~ −75、半寬 15，後緣三道羽尖（推估）',
+    tailLight: '尾燈條為實心件，x −72.5 ~ −71.4、y 20.4 ~ 21.8、半寬 10，凸出車尾端面 0.5 mm（推估）',
     livery: '青綠 / 米白分界沿 x − 0.9 (y − 20) = 2 斜切，分界銅線 0.7 mm；鰓縫 3 道寬 1.4 mm、高 7.2 mm，唇線 0.56 mm；皆為自繪（推估）',
     wheelArches: '前後 R17.5（31 mm 輪胎半徑 15.5 + 2 mm），切口從 |z| 23.5 起（輪胎內側 |z| 24.7）＋3 mm 深內襯',
     mounts: '對齊 chassis-midship 的車殼安裝點（SPEC 1.14）',
