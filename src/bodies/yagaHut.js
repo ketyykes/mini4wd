@@ -414,14 +414,14 @@ const buildSills = () => {
 /** @type {number[]} 側牆三扇小窗的中心 x（兩輪之間的圓木牆，izba 正面「三扇窗」的排法） */
 const SIDE_WINDOW_X = [-13, -4, 5];
 /**
- * 側牆小窗：到最近一扇窗玻璃的矩形距離（半寬 2.3、半高 2.0，跟著圓木牆上下置中；負值 = 玻璃內）與相對座標
+ * 側牆小窗：到最近一扇窗玻璃的矩形距離（半寬 2.8、半高 2.4，跟著圓木牆上下置中；負值 = 玻璃內）與相對座標
  * @type {(x: number, y: number) => { rect: number, dx: number, dy: number }}
  */
 const sideWindow = (x, y) => {
   const cx = SIDE_WINDOW_X.reduce((a, b) => (Math.abs(x - b) < Math.abs(x - a) ? b : a));
   const dx = Math.abs(x - cx);
   const dy = y - (yWallTop(x) + yLogBot(x)) / 2;
-  return { rect: Math.max(dx - 2.3, Math.abs(dy) - 2.0), dx, dy };
+  return { rect: Math.max(dx - 2.8, Math.abs(dy) - 2.4), dx, dy };
 };
 
 /** @type {(x: number, y: number) => number} 奔跑速度線：腰側圓木牆上 3 道往後漸細的深色短線（負值 = 線內） */
@@ -621,8 +621,8 @@ export const yagaHutBody = makePolyBody({
         }
         const { rect, dx, dy } = sideWindow(x, y);
         const ring = Math.min(rect, 0.6 - rect);
-        const cornice = Math.min(3.1 - dx, 0.3 - Math.abs(dy - 2.75));
-        const sill = Math.min(2.95 - dx, 0.25 - Math.abs(dy + 2.7));
+        const cornice = Math.min(3.7 - dx, 0.3 - Math.abs(dy - 3.3));
+        const sill = Math.min(3.55 - dx, 0.25 - Math.abs(dy + 3.25));
         const sash = Math.min(-rect, 0.2 - Math.min(dx, Math.abs(dy)));
         return Math.max(ring, cornice, sill, sash);
       }, { offset: 0.18 }),
@@ -694,7 +694,7 @@ export const yagaHutBody = makePolyBody({
     fence: '柵欄翼：每側三片尖頂木樁（寬 3.2、厚 1.2 mm，尖頂 43.2 / 45 / 46.6，根部 y 27.6 埋進後甲板）＋兩根橫木翼面（下段 6.6 × 1.2、上段 5.8 × 1.1，翼展 58.4 mm）；ABS 實心件（推估），質量 = 封閉體積 × 1.05 g/cm³',
     exhaust: '煙囪：右側屋面（z 6）立起、往後傾約 14° 的紅磚方煙囪（方形斷面邊長約 4.2 mm 的實心方柱）＋白灰管口環（邊長約 4.9、厚 1.3 mm）與黑色管口；管口後方一片往後飄的白色薄鰭（長約 21、頂 48.1、厚 1 mm）；均為 ABS 實心件（推估），質量 = 封閉體積 × 1.05 g/cm³',
     vanes: '爪痕鰭：前輪切口後方甲板上每側三片往後掠的刀形薄板（長 20、頂 y 34.2、厚 1.1 mm，|z| 21.4 / 24.9 / 28.4，前端 x 22 / 24.5 / 27），橘黃；ABS 實心件（推估）',
-    sideWindows: '側牆小窗：兩輪之間圓木牆上每側三扇（中心 x −13 / −4 / 5，玻璃 4.6 × 4.0）＋0.6 mm 深棕木窗框、上方簷板 6.2 × 0.6、下方窗台 5.9 × 0.5、0.4 mm 十字窗格，全為貼紙（推估）',
+    sideWindows: '側牆小窗：兩輪之間圓木牆上每側三扇（中心 x −13 / −4 / 5，玻璃 5.6 × 4.8）＋0.6 mm 深棕木窗框、上方簷板 7.4 × 0.6、下方窗台 7.1 × 0.5、0.4 mm 十字窗格，全為貼紙（推估）',
     mounts: '對齊 chassis-midship 的車殼安裝點（SPEC 1.14）',
   },
 });
