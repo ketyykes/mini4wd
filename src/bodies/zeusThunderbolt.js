@@ -322,14 +322,14 @@ export const zeusThunderboltBody = makePolyBody({
     // ── 水平叉刃（實體，金）：兩支鋸齒形平板從前擋泥板前緣往前伸，尖端越過中央鼻端，俯視是一道叉口 ──
     parts.push({ geometry: mergeGeos([1, -1].map((sg) => flatPlate(PRONG.map(([x, z]) => [x, sg * z]), PRONG_Y, 1.6))), mat: 'gold', solid: true, outline: true, name: 'thunderbolt-prongs' });
 
-    // ── 車尾：錐形尖尾（鈷藍）＋末端金色十字鰭（雷霆杖柄頭） ──
+    // ── 車尾：錐形尖尾（大理石白，和鈷藍車身分開）＋末端金色十字鰭（雷霆杖柄頭） ──
     {
       const len = TAIL_CONE.x0 - TAIL_CONE.x1;
       const cone = new THREE.CylinderGeometry(0.3, TAIL_CONE.r, len, 16, 1);
       // 圓柱軸 +y 轉到 −x（錐尖朝後）
       cone.rotateZ(Math.PI / 2);
       cone.translate((TAIL_CONE.x0 + TAIL_CONE.x1) / 2, TAIL_CONE.y, 0);
-      parts.push({ geometry: cone, mat: 'blue', solid: true, outline: true, name: 'tail-cone' });
+      parts.push({ geometry: cone, mat: 'marble', solid: true, outline: true, name: 'tail-cone' });
       // 直立鰭：從中脊尾段升起，上緣後掠到 48.5，往下穿過尖尾到 19（十字的直立臂）；後緣 x −69，錐尖再往後伸出 6
       const fin = [
         [-50, P.yTop(-50) - 1],
