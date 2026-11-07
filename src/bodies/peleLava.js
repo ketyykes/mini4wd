@@ -1,13 +1,13 @@
 // 熔岩火山（body-pele-lava，神話組・波利尼西亞）：夏威夷火山女神 Pele 只用自然元素表現——黑曜石、熔岩裂紋、火山口、噴發的弧線。
 // 不做神像、人形、臉、頭髮（不做「Pele 之髮」的具象髮絲），也不做提基雕像。照四視圖 16 建模：
 // (1) 黑曜石 → 殼面：全車黑曜石色亮面漆，面切成多道銳利稜線（打製黑曜石的貝殼狀斷口感）；
-// (2) 熔岩裂紋 → livery：殼面上一張不規則的發光橘紅裂紋網，側面兩道往後掃的熔岩紅斜切色塊；前葉子板側面 4 道直條鰓縫、鼻頭正面一道橫向熔岩裂縫，縫底都是發光的熔岩；
+// (2) 熔岩裂紋 → livery：殼面上一張不規則的發光橘紅裂紋網，側面兩道往後掃的熔岩紅斜切色塊；前葉子板側面 4 道直條鰓縫、鼻段兩道往後流的縱向熔岩裂縫，縫底都是發光的熔岩；
 // (3) 火山口 → 車頂進氣口：座艙後方一座矮的圓錐形進氣口，口內是發光的熔岩盤；
 // (4) 噴發的弧線 → 天鵝頸單柱翼：一支從車尾甲板升起、往後彎下的弧形單柱，吊著一片熔岩紅的後掠翼（四視圖 16 的招牌造型）。
 // 姿態：低而尖的楔形鼻、前擋泥板兩團肩部量體、長座艙，車尾單柱翼是全車最高點。
 // 設計：shared/design/body-pele-lava/DESIGN.md（來源與四視圖對照）。剖面為本檔站位產生器（推估）。不含任何文字。
 import * as THREE from 'three';
-import { makePolyBody, flatPlate, sweepEllipse } from './polyBody.js';
+import { makePolyBody, flatPlate, sweepEllipse, finPlate } from './polyBody.js';
 import { namedMaterial, decalMaterial, mergeGeos, lerp, smoothstep } from './loft.js';
 import { monoCurve, buildStations } from './gazelleLeap.js';
 
@@ -138,27 +138,37 @@ const buildCrater = (yBase) => {
   return g;
 };
 
-/** @type {number[][]} 天鵝頸單柱中心線 (x, y)：車尾甲板 x −40 升起，往後拱過頂點（中心線 y 46，外緣 48.4），再往後下彎到翼面 */
+/** @type {number[][]} 天鵝頸單柱中心線 (x, y)：車尾甲板 x −40 升起，往後拱過頂點（中心線 y 45，外緣 48.4），再往後下彎到翼面 */
 const NECK = [
   [-40, 30.5],
-  [-41.5, 35.5],
-  [-44, 40.5],
-  [-48, 43.6],
-  [-53, 45.6],
-  [-58, 46],
-  [-62.5, 45.3],
-  [-65.5, 44],
-  [-67, 42.8],
+  [-41.5, 35.3],
+  [-44, 39.8],
+  [-48, 42.6],
+  [-53, 44.6],
+  [-58, 45],
+  [-62.5, 44.3],
+  [-65.5, 43.5],
+  [-67.5, 42.7],
 ];
 
 /**
- * 天鵝頸單柱：沿中心線掃出的扁橢圓斷面（側向半厚 1.8，弦向半寬由根部 4 收到頂部 2.4）
+ * 天鵝頸單柱：沿中心線掃出的扁橢圓斷面（側向半厚 2.6，弦向半寬由根部 5.5 收到頂部 3.4）
  * @type {() => THREE.BufferGeometry}
  */
 const buildNeck = () => {
   const pts = NECK.map(([x, y]) => [x, y, 0]);
-  return sweepEllipse(pts, 30, (t) => [1.8, lerp(4, 2.4, Math.min(1, t * 1.6))], 12);
+  return sweepEllipse(pts, 30, (t) => [2.6, lerp(5.5, 3.4, Math.min(1, t * 1.6))], 12);
 };
+
+/** @type {number[][]} 中央脊鰭側視外形 (x, y)：火山口後緣沿車尾中線隆起、往後升高接進天鵝頸根部；底邊埋進殼面 */
+const SPINE = [
+  [-35.5, 30.5],
+  [-38, 33],
+  [-41, 36.6],
+  [-43.5, 38.6],
+  [-45, 36],
+  [-44.5, 30.5],
+];
 
 /** @type {number} 翼面底高 */
 const WING_Y = 41.6;
@@ -173,17 +183,17 @@ const WING_HALF = [
   [-75, 0],
 ];
 
-/** @type {() => THREE.BufferGeometry} 後掠翼（厚 1.4） */
+/** @type {() => THREE.BufferGeometry} 後掠翼（厚 2.2） */
 const buildWing = () => {
   const right = WING_HALF;
   const left = WING_HALF.slice(1, -1).reverse().map(([x, z]) => [x, -z]);
-  return flatPlate([...right, ...left], WING_Y, 1.4);
+  return flatPlate([...right, ...left], WING_Y, 2.2);
 };
 
 /** @type {number[]} 前葉子板側面鰓縫的 x（前輪拱後緣 57.5 之前的側壁，4 道間距 2.6） */
 const GILL_X = [59, 61.6, 64.2, 66.8];
-/** @type {number} 鼻頭橫向熔岩裂縫的 x */
-const NOSE_CRACK_X = 70.5;
+/** @type {number} 鼻段縱向熔岩裂縫的後端 x */
+const NOSE_CRACK_X0 = 58;
 
 /**
  * 輪拱內襯：輪拱切口後面的一段圓柱面（只取上半圈），z 從側壁內面往內 depth
@@ -225,7 +235,7 @@ const materials = () => ({
   obsidian2: namedMaterial('paint-obsidian-black', { color: 0x121114, roughness: 0.18, metalness: 0.2, clearcoat: 1, clearcoatRoughness: 0.05, side: THREE.DoubleSide }),
   basalt: namedMaterial('paint-basalt-matte', { color: 0x2a2726, roughness: 0.7, clearcoat: 0.05 }),
   lava: namedMaterial('paint-lava-red', { color: 0xc8261a, roughness: 0.3, clearcoat: 0.9, clearcoatRoughness: 0.1 }),
-  lava2: namedMaterial('paint-lava-red', { color: 0xc8261a, roughness: 0.3, clearcoat: 0.9, clearcoatRoughness: 0.1, side: THREE.DoubleSide }),
+  lava2: namedMaterial('paint-lava-red', { color: 0xb01e14, roughness: 0.42, clearcoat: 0.6, clearcoatRoughness: 0.15, side: THREE.DoubleSide }),
   // 熔岩發光：火山口內的熔岩盤
   glow: namedMaterial('lamp-lava-glow', { color: 0xff6a1a, emissive: 0xff4a08, emissiveIntensity: 0.6, roughness: 0.4 }),
   inner: namedMaterial('shell-inner-dark', { color: 0x141215, roughness: 0.85, side: THREE.BackSide }),
@@ -250,7 +260,7 @@ export const peleLavaBody = makePolyBody({
   form: 'obsidian-shard',
   roof: 'canopy',
   wing: 'eruption-swan-neck',
-  theme: '夏威夷火山女神 Pele 只用自然元素：黑曜石亮黑殼面切出多道銳利稜線，殼面一張發光的橘紅熔岩裂紋網、側面兩道往後斜升的熔岩紅色塊、前葉子板側面 4 道直條鰓縫、鼻頭正面一道橫向熔岩裂縫（縫底發光）；座艙後方一座圓錐形火山口進氣口，口內是發光熔岩；車尾一支往後彎下的天鵝頸單柱（噴發的弧線）吊著熔岩紅後掠翼',
+  theme: '夏威夷火山女神 Pele 只用自然元素：黑曜石亮黑殼面切出多道銳利稜線，殼面一張發光的橘紅熔岩裂紋網、側面兩道往後斜升的熔岩紅色塊、前葉子板側面 4 道直條鰓縫、鼻段兩道往後流的縱向熔岩裂縫（縫底發光）；座艙後方一座圓錐形火山口進氣口，口內是發光熔岩；車尾一支往後彎下的天鵝頸單柱（噴發的弧線）吊著熔岩紅後掠翼',
   material: 'ABS',
   density_g_cm3: 1.05,
   wallThickness_mm: 0.8,
@@ -303,7 +313,7 @@ export const peleLavaBody = makePolyBody({
     lavaPool.translate(CRATER.x, craterBase + CRATER.h - 1.2, CRATER.z);
     parts.push({ geometry: lavaPool, mat: 'glow', solid: true, name: 'crater-lava' });
     // 天鵝頸單柱與後掠翼
-    parts.push({ geometry: buildNeck(), mat: 'obsidian2', solid: true, outline: true, name: 'swan-neck-pylon' });
+    parts.push({ geometry: mergeGeos([buildNeck(), finPlate(SPINE, 0, 3.6)]), mat: 'obsidian2', solid: true, outline: true, name: 'swan-neck-pylon' });
     parts.push({ geometry: buildWing(), mat: 'lava2', solid: true, outline: true, name: 'swan-neck-wing' });
 
     /** @type {(x: number, z: number) => boolean} 在側壁上（肩線以外） */
@@ -354,16 +364,15 @@ export const peleLavaBody = makePolyBody({
     };
     parts.push({ geometry: kit.decal((x, y, z) => 0.6 - gillDist(x, y, z)), mat: 'dSlot', name: 'decal-gill-slots' });
     parts.push({ geometry: kit.decal((x, y, z) => 0.22 - gillDist(x, y, z), { offset: 0.12 }), mat: 'dCrack', name: 'decal-gill-glow' });
-    // 鼻頭正面一道橫向的熔岩裂縫（不規則緩彎，從左到右一條）
-    /** @type {(x: number, z: number) => number} 到裂縫中心線的距離；Infinity = 不在裂縫範圍 */
+    // 鼻段兩道縱向往後流的熔岩裂縫：從鼻尖兩側往後、微微外張並不規則緩彎（不做橫向線條）
+    /** @type {(x: number, z: number) => number} 到最近一道縱向裂縫的距離；Infinity = 不在範圍 */
     const noseCrackDist = (x, z) => {
-      const az = Math.abs(z);
-      if (x < NOSE_CRACK_X - 3 || x > NOSE_CRACK_X + 3 || az > P.hw(x) * 0.72) {
+      if (x < NOSE_CRACK_X0 || x > X_NOSE - 0.8) {
         return Infinity;
       }
-      // 不規則的緩彎（兩個不同週期的正弦相加，左右不對稱），不做規則鋸齒
-      const wob = 0.45 * Math.sin(z * 0.55 + 0.7) + 0.25 * Math.sin(z * 1.3 - 0.4);
-      return Math.abs(x - (NOSE_CRACK_X + wob));
+      const t = (X_NOSE - x) / (X_NOSE - NOSE_CRACK_X0);
+      const zc = lerp(2.2, 7.5, t) + 0.5 * Math.sin(x * 0.7 + 0.4) + 0.25 * Math.sin(x * 1.9);
+      return Math.abs(Math.abs(z) - zc);
     };
     parts.push({ geometry: kit.decal((x, y, z) => 0.45 - noseCrackDist(x, z)), mat: 'dSlot', name: 'decal-nose-crack' });
     parts.push({ geometry: kit.decal((x, y, z) => 0.2 - noseCrackDist(x, z), { offset: 0.12 }), mat: 'dCrack', name: 'decal-nose-crack-glow' });
@@ -373,7 +382,7 @@ export const peleLavaBody = makePolyBody({
     density_g_cm3: 'SPEC 1.14：ABS 約 1.05 g/cm³（推估）',
     wallThickness_mm: '推估：射出 ABS 殼 0.8 mm（同其他款）',
     geometry: '本檔站位產生器 P（推估），比例取自四視圖 16（shared/design/body-pele-lava/fourview_trace.txt）縮到底盤：鼻尖 x 77（離地 15）、車尾 −69；半寬車尾 33 / 後輪 26（後輪露出）/ 側艙 35 / 前輪 26（前輪露出）/ 鼻尖 8；肩線 32 高過 R17.5 輪拱；座艙罩頂約 39；天鵝頸頂 48.4（全車最高）',
-    wing: '天鵝頸單柱（扁橢圓斷面 3.6 × 8 → 4.8）、後掠翼（半展 40、厚 1.4，往後伸到 x −75，比車尾殼面再後 6 mm）、火山口進氣口（底半徑 10.5、高 2.6 的旋轉體）：ABS 實心件（推估），質量 = 封閉體積 × 1.05 g/cm³；單柱與火山口底部埋進殼面',
+    wing: '天鵝頸單柱（扁橢圓斷面 5.2 × 11 → 6.8，前面接中線脊鰭厚 3.6）、後掠翼（半展 40、厚 2.2，往後伸到 x −75，比車尾殼面再後 6 mm）、火山口進氣口（底半徑 10.5、高 2.6 的旋轉體）：ABS 實心件（推估），質量 = 封閉體積 × 1.05 g/cm³；單柱與火山口底部埋進殼面',
     myth: 'Pele 與火山、熔岩、黑曜石的關聯：見 shared/design/body-pele-lava/DESIGN.md 列出的來源；只用自然元素，不做神像與人形',
     mounts: '對齊 chassis-midship 的車殼安裝點（SPEC 1.14）',
   },
