@@ -55,7 +55,8 @@ const yValley = (x) => {
 const zValley = (x) => Math.min(Math.max(P.zs(x) + 1.4, 17.5), Q.hw(x) - 9);
 
 /**
- * 半剖面 10 點：中脊頂 → 中脊肩 → 低谷 → 側箱內稜 → 側箱頂 → 外肩 → 側壁 → 下緣
+ * 半剖面 12 點（多切面：除了中線，每一點都是銳利稜線）：中脊頂 → 中脊肩 → 低谷 → 側箱內稜 → 側箱頂的折線 → 外肩 →
+ * 側壁往內斜切的腰線（四視圖側面那道深斜切）→ 下緣
  * @type {(x: number) => number[][]}
  */
 const profile = (x) => {
@@ -67,6 +68,10 @@ const profile = (x) => {
   const yp = Math.max(yPod(x), yv + 0.6);
   const zv = zValley(x);
   const zr = Math.min(zv + 2.5, hw - 6);
+  // 側箱頂中間一道折線（往上 0.8），讓頂面分成兩個斜面
+  const zm = (zr + hw - 3) / 2;
+  // 側壁腰線：外肩下往內斜切 1.6 mm，再往外回到下緣（側視是一道深陰影線）
+  const yWaist = Math.max(lo + 3.2, yp - 7.2);
   return [
     [0, yc],
     [0.55 * zs, yc - 0.25],
@@ -74,9 +79,11 @@ const profile = (x) => {
     [Math.min(zs + 1.2, zv - 0.1), yv],
     [zv, yv],
     [zr, yp - 0.4],
+    [zm, yp + 0.8],
     [hw - 3, yp],
     [hw - 0.5, yp - 3.2],
-    [hw, lo + 4],
+    [hw - 2.1, yWaist],
+    [hw - 0.3, lo + 1.2],
     [hw, lo],
   ];
 };
@@ -115,8 +122,8 @@ const materials = () => ({
   frost: namedMaterial('paint-frost-pearl-white', { color: 0xeef3f7, roughness: 0.32, clearcoat: 0.8 }),
   ice: namedMaterial('paint-ice-blue', { color: 0x8fc7e6, roughness: 0.3, clearcoat: 0.8 }),
   iceSolid: namedMaterial('paint-ice-blue', { color: 0x8fc7e6, roughness: 0.3, clearcoat: 0.8 }),
-  // 下緣與管口喉部：深夜藍
-  navy: namedMaterial('paint-night-navy', { color: 0x1c2a3f, roughness: 0.55, clearcoat: 0.2 }),
+  // 下半部側壁與下緣：深石墨藍（和珍珠白、冰藍對比）
+  navy: namedMaterial('paint-night-navy', { color: 0x1a2438, roughness: 0.45, clearcoat: 0.4 }),
   ivory: namedMaterial('paint-horn-ivory', { color: 0xf1e8d2, roughness: 0.4, clearcoat: 0.5 }),
   // 真金屬（名稱含 -brass → Blender metallic）：號角箍環與喇叭口
   gold: namedMaterial('trim-gold-brass', { color: 0xd8b04a, metalness: 0.85, roughness: 0.28, clearcoat: 0.3 }),
@@ -131,12 +138,13 @@ const materials = () => ({
   mount: namedMaterial('abs-mount-black', { color: 0x222326, roughness: 0.6 }),
   dGold: decalMaterial('decal-gold-line', { color: 0xd8b04a, metalness: 0.75, roughness: 0.3 }),
   dWhite: decalMaterial('decal-bridge-edge-white', { color: 0xf6f8fa, roughness: 0.35 }),
+  dSilver: decalMaterial('decal-intake-slat-silver', { color: 0xc9d2da, metalness: 0.7, roughness: 0.3 }),
   // 彩虹細線（低強度自發光，Blender 不過曝）
-  rbRed: decalMaterial('decal-bifrost-red', { color: 0xd8423a, roughness: 0.35, emissive: 0xd8423a, emissiveIntensity: 0.25 }),
-  rbOrange: decalMaterial('decal-bifrost-orange', { color: 0xec8a2e, roughness: 0.35, emissive: 0xec8a2e, emissiveIntensity: 0.25 }),
-  rbGold: decalMaterial('decal-bifrost-yellow', { color: 0xf0cf3c, roughness: 0.35, emissive: 0xf0cf3c, emissiveIntensity: 0.22 }),
-  rbGreen: decalMaterial('decal-bifrost-green', { color: 0x3fae6a, roughness: 0.35, emissive: 0x3fae6a, emissiveIntensity: 0.25 }),
-  rbBlue: decalMaterial('decal-bifrost-blue', { color: 0x3a6fd8, roughness: 0.35, emissive: 0x3a6fd8, emissiveIntensity: 0.28 }),
+  rbRed: decalMaterial('decal-bifrost-red', { color: 0xe8302a, roughness: 0.3, emissive: 0xe8302a, emissiveIntensity: 0.4 }),
+  rbOrange: decalMaterial('decal-bifrost-orange', { color: 0xf5841e, roughness: 0.3, emissive: 0xf5841e, emissiveIntensity: 0.4 }),
+  rbGold: decalMaterial('decal-bifrost-yellow', { color: 0xf7d21e, roughness: 0.3, emissive: 0xf7d21e, emissiveIntensity: 0.35 }),
+  rbGreen: decalMaterial('decal-bifrost-green', { color: 0x22b35a, roughness: 0.3, emissive: 0x22b35a, emissiveIntensity: 0.4 }),
+  rbBlue: decalMaterial('decal-bifrost-blue', { color: 0x2f5fe8, roughness: 0.3, emissive: 0x2f5fe8, emissiveIntensity: 0.45 }),
 });
 
 /** @type {(x: number, zc: number) => number} 支柱位置的中脊頂高（往下 1 mm 埋進殼面） */
@@ -200,14 +208,14 @@ export const heimdallHornBody = makePolyBody({
   form: 'bifrost-deck',
   roof: 'canopy',
   wing: 'bridge-plank',
-  theme: '彩虹橋與加拉爾號角：低平 T 形鼻翼、背線從引擎罩爬升直接長進跨過後輪的冰藍平板橋翼（兩緣五色彩虹細線、下方兩片拱形銀支柱撐出一道橋拱），兩側從前輪後方斜升的象牙白錐形號角側管、金色喇叭口吹向高起的後輪拱；珍珠白配冰藍',
+  theme: '彩虹橋與加拉爾號角：低平 T 形鼻翼、背線從引擎罩爬升直接長進跨過後輪的冰藍平板橋翼（兩緣五色彩虹細線、下方兩片拱形銀支柱撐出一道橋拱），兩側從前輪後方斜升的象牙白錐形號角側管、金色喇叭口吹向高起的後輪拱；珍珠白配冰藍、深石墨藍下半部',
   material: 'ABS',
   density_g_cm3: 1.05,
   wallThickness_mm: 0.8,
   stations: STATIONS,
   // 殼面網格 0.7 mm：車身表面積大，放寬網格讓面數留在效能預算內
   step: 0.7,
-  hard: [2, 3, 5, 7],
+  hard: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
   wheelArches: ARCHES,
   canopy: {
     section: 'ellipse',
@@ -229,8 +237,10 @@ export const heimdallHornBody = makePolyBody({
     const spine = (x, y, z) => Math.max(P.zs(x) + 0.4 - Math.abs(z), x - 63);
     /** @type {(x: number, y: number, z: number) => number} 後輪拱外側斜面（四視圖的冰藍後側面）：外肩以下、斜線之後 */
     const rearFacet = (x, y, z) => Math.min(Math.abs(z) - (Q.hw(x) - 0.8), -8 - 0.55 * (y - 15) - x);
+    /** @type {(x: number, y: number, z: number) => number} 下半部（外肩斜面以下的側壁）：深石墨藍 */
+    const lower = (x, y, z) => Math.min(Math.abs(z) - (Q.hw(x) - 2.4), yPod(x) - 3.6 - y, 62 - x);
     return [
-      { mat: 'navy', keep: (x, y) => Math.min(Q.lo(x) + 2.2 - y, 62 - x) },
+      { mat: 'navy', keep: (x, y, z) => Math.max(Math.min(Q.lo(x) + 2.2 - y, 62 - x), lower(x, y, z)) },
       { mat: 'ice', keep: (x, y, z) => Math.max(spine(x, y, z), rearFacet(x, y, z)) },
       { mat: 'frost', keep: () => 1 },
     ];
@@ -283,8 +293,8 @@ export const heimdallHornBody = makePolyBody({
       const xb = BRIDGE.x1 + 3;
       parts.push({ geometry: strip(0.5, 1.3, xa, xb), mat: 'dWhite', name: 'decal-bridge-edge' });
       RAINBOW.forEach((mat, i) => {
-        const o = 1.6 + i * 0.95;
-        parts.push({ geometry: strip(o, o + 0.7, xa, xb), mat, name: `decal-bifrost-line-${i}` });
+        const o = 1.6 + i * 1.1;
+        parts.push({ geometry: strip(o, o + 0.95, xa, xb), mat, name: `decal-bifrost-line-${i}` });
       });
     }
     // ── 橋翼支柱：左右兩組銀色拱肋＋立柱，立在橋下引擎蓋上，側視是一座拱橋 ──
@@ -298,7 +308,7 @@ export const heimdallHornBody = makePolyBody({
         name: 'bridge-arch-piers',
       });
     }
-    // ── 側面彩虹細線：沿外肩下方從鼻頸掃到車尾（三道：紅、金、藍） ──
+    // ── 側面彩虹細線：沿外肩斜面從鼻頸掃到車尾（三道：紅、金、藍），下方接深色下半部 ──
     {
       /** @type {[string, number][]} */
       const lanes = [
@@ -309,8 +319,8 @@ export const heimdallHornBody = makePolyBody({
       for (const [mat, k] of lanes) {
         parts.push({
           geometry: kit.decal((x, y, z) => {
-            const yLine = yPod(x) - 4.8 - k * 1.25;
-            return Math.min(0.45 - Math.abs(y - yLine), Math.abs(z) - (Q.hw(x) - 1.2), 60 - x, x + 64);
+            const yLine = yPod(x) - 0.9 - k * 0.95;
+            return Math.min(0.36 - Math.abs(y - yLine), Math.abs(z) - (Q.hw(x) - 3.1), 60 - x, x + 64);
           }, { offset: 0.1 }),
           mat,
           name: `decal-side-bifrost-${k}`,
@@ -325,6 +335,23 @@ export const heimdallHornBody = makePolyBody({
         name: `decal-nose-bifrost-${mat}`,
       });
     }
+    // 後輪拱前的斜切進氣口：深色下半部上四道銀色橫向百葉（號角喇叭口吹進來的位置）
+    parts.push({
+      geometry: kit.decal((x, y, z) => {
+        if (Math.abs(z) < Q.hw(x) - 2.6 || x > -2 || x < -22) {
+          return -1;
+        }
+        // 進氣口前緣斜切：越低越往後
+        const front = -2 - 0.9 * (25 - y) - x;
+        let best = -1;
+        for (const yl of [17.4, 18.9, 20.4, 21.9]) {
+          best = Math.max(best, 0.32 - Math.abs(y - yl));
+        }
+        return Math.min(best, front, x + 21.5);
+      }, { offset: 0.1 }),
+      mat: 'dSilver',
+      name: 'decal-intake-slats',
+    });
     // 座艙罩金色細框
     parts.push({
       geometry: kit.decal((x, y, z) => {
@@ -384,7 +411,7 @@ export const heimdallHornBody = makePolyBody({
     density_g_cm3: 'SPEC 1.14：ABS 約 1.05 g/cm³（推估）',
     wallThickness_mm: '推估：射出 ABS 殼 0.8 mm（同其他車殼）',
     geometry: '本檔站位產生器（推估，比例取自四視圖 04）：殼 x −66 ~ 76、橋翼後緣 −70；T 形鼻翼半寬 40、頂 20、厚約 3.4；兩前輪之間窄鼻半寬 22.5（前輪外露）、後輪拱 41.5、車尾 36；中脊從鼻翼 17.5 爬升到橋翼前緣 43、橋下降到 31，橋翼頂 44.2 為全車最高',
-    bridge: '彩虹橋翼：ABS 平板厚 1.0，x −4 → −70、半寬 12 → 19；左右各一道拱肋（肋寬 1.8）＋兩根立柱，立板厚 1.2、位於 |z| 11；兩緣白邊＋五色細線各寬 0.7 mm（推估）',
+    bridge: '彩虹橋翼：ABS 平板厚 1.0，x −4 → −70、半寬 12 → 19；左右各一道拱肋（肋寬 1.8）＋兩根立柱，立板厚 1.2、位於 |z| 11；兩緣白邊＋五色細線各寬 0.95 mm（推估）',
     horn: '號角側管：ABS 實心錐管，半徑 0.8 → 2.5、沿側壁從 x 20 斜升到 −19.5，喇叭口外張到半徑 3.6（推估）',
     wheelArches: '後 R17.5（31 mm 輪胎半徑 15.5 + 2 mm）；前輪在窄鼻外側外露（車身半寬 22.5 < 輪胎內側 24.75），可裝 26 / 31 mm 輪',
     mounts: '對齊 chassis-midship 的車殼安裝點（SPEC 1.14）',
