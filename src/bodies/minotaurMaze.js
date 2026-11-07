@@ -1,7 +1,7 @@
 // 米諾陶洛斯（body-minotaur-maze，神話組・希臘）：照四視圖 18 的「三層階梯鼻、大型多面座艙罩、高車尾、單柱牛角新月尾翼」建模；車上沒有牛的頭、臉、眼、鼻孔、鼻環。
 // 牛角 → 尾翼：一片加粗的金色新月形尾翼，中央最低、兩端往上翹並往前彎（後視、俯視都是新月），單柱撐在車尾中線，整片高過座艙罩頂。
 // 迷宮 → 階梯鼻與紋樣：楔形鼻上疊三層同心梯形階梯（正視三圈梯形、側視三階，一圈比一圈小），頂面陶土橘、側面與正面奶油白；座艙罩正前方一道橫向細線迷宮帶；
-// 座艙罩後方到車尾的背脊上一整條奶油白底黑回紋帶；側面下半是壁畫藍板塊，板塊上奶油白連續回紋帶，上緣一條金色阿里阿德涅之線。
+// 座艙罩後方到車尾的背脊上一整條壁畫藍底奶油白回紋帶；側面下半是壁畫藍板塊，板塊上奶油白連續回紋帶，上緣一條金色阿里阿德涅之線。
 // 設計：shared/design/body-minotaur-maze/DESIGN.md（MYTH_RESEARCH G6、G9、G10、G12、G13）。剖面為本檔站位產生器（推估）；塗裝全為自創，不含任何文字、號碼或商標。
 // 塗裝：陶土橘（霧面）為主色，克諾索斯壁畫藍（緞面）做側面下半，奶油白做回紋與描線，金色做尾翼與細線。
 import * as THREE from 'three';
@@ -16,8 +16,8 @@ import { monoCurve, buildStations, smoothNormals } from './gazelleLeap.js';
 const XS = [-64, -58, -52, -46, -38, -28, -16, -4, 8, 20, 30, 40, 46, 52, 58, 62, 66];
 /** @type {Record<string, (x: number) => number>} */
 const P = {
-  // 半寬：前寬後窄——前擋泥板是 ±42.6 的寬肩，x 46 之後收成 ±15 → ±9.5 的楔形短鼻；收腰 ±31、後擋泥板只到 ±30.6（俯視後輪露在車身外）、車尾 ±25；新月尾翼翼端伸到 ±44，比車尾寬
-  hw: monoCurve(XS, [25, 27.4, 30, 30.5, 30.6, 31, 31, 31.4, 36.5, 39.6, 41.6, 42.6, 41, 26, 15, 11.5, 9.5]),
+  // 半寬：前寬後窄——前擋泥板是 ±42.8 的寬肩，x 46 之後收成 ±22.6 → ±11.5 → ±8 的楔形尖鼻；座艙段深收腰 ±26.5、後擋泥板只到 ±30.6（俯視後輪露在車身外）、車尾收窄到 ±21；新月尾翼翼端伸到 ±44，比車尾寬
+  hw: monoCurve(XS, [21, 23, 27, 30.6, 30.5, 27, 26.5, 27, 37.5, 41, 42.4, 42.8, 41.6, 22.6, 11.5, 11.5, 8]),
   // 中央頂線：車尾高，往前平順降到鼻端 19
   yC: monoCurve(XS, [33.4, 35.2, 35.8, 35.6, 35, 34.4, 33.6, 32.8, 31.6, 30.4, 29.4, 28.6, 27.6, 25, 22, 20.2, 19]),
   // 擋泥板肩（0.55 半寬）：前擋泥板比引擎蓋高
@@ -162,7 +162,8 @@ const materials = () => ({
   edge: namedMaterial('shell-edge-black', { color: 0x1b1817, roughness: 0.6, side: THREE.DoubleSide }),
   liner: namedMaterial('shell-wheelwell-umber', { color: 0x2a201b, roughness: 0.8, side: THREE.DoubleSide }),
   dCream: decalMaterial('decal-fresco-cream', { color: 0xefe4c8, roughness: 0.6 }),
-  dBlack: decalMaterial('decal-slip-black', { color: 0x1b1918, roughness: 0.5 }),
+  // 迷宮紋的底色：克諾索斯壁畫藍
+  dBlue: decalMaterial('decal-fresco-blue', { color: 0x2e5b85, roughness: 0.5 }),
   // 阿里阿德涅之線：微微發光的金線
   dThread: decalMaterial('decal-ariadne-glow', { color: 0xf2c24e, emissive: 0xffb428, emissiveIntensity: 0.45, roughness: 0.3, metalness: 0.4 }),
   lamp: namedMaterial('lamp-warm-white', { color: 0xfff1d0, emissive: 0xffe2a0, emissiveIntensity: 0.7, roughness: 0.15 }),
@@ -206,7 +207,7 @@ const CONFIG = {
   form: 'stepped-labyrinth-nose',
   roof: 'canopy',
   wing: 'horn-crescent-mono',
-  theme: '陶土橘＋壁畫藍雙色四驅車：±42.6 的寬肩前擋泥板、疊在楔形鼻上的三層同心梯形階梯（頂面陶土橘、側面與正面奶油白，一圈比一圈小）、座艙罩正前方的橫向細線迷宮帶、大型梯形剖面深茶色座艙罩、窄而高的車尾（俯視後輪外露）；擋泥板肩稜上奶油白描線，座艙罩後方到車尾的背脊一整條奶油白底黑回紋帶；側面下半壁畫藍板塊從收腰往車尾斜升，板塊上奶油白連續回紋帶，上緣一條發光金線（阿里阿德涅之線）；車尾單柱撐起加粗的金色牛角新月尾翼，高過座艙罩頂，中央最低、兩端上翹前彎，頂面一道陶土色新月條',
+  theme: '陶土橘＋壁畫藍雙色四驅車：±42.8 的寬肩前擋泥板、疊在楔形鼻上的三層同心梯形階梯（頂面陶土橘、側面與正面奶油白，一圈比一圈小）、座艙罩正前方的壁畫藍底奶油白橫向迷宮帶、大型梯形剖面深茶色座艙罩、窄而高的車尾（俯視後輪外露）；擋泥板肩稜上奶油白描線，座艙罩後方到車尾的背脊一整條壁畫藍底奶油白回紋帶；側面下半壁畫藍板塊從收腰往車尾斜升，板塊上奶油白連續回紋帶，上緣一條發光金線（阿里阿德涅之線）；車尾單柱撐起加粗的金色牛角新月尾翼，高過座艙罩頂，中央最低、兩端上翹前彎，頂面一道陶土色新月條',
   material: 'ABS',
   density_g_cm3: 1.05,
   wallThickness_mm: 0.8,
@@ -220,7 +221,7 @@ const CONFIG = {
     { x: -40, y: 13, radius: 15.2, cutZFrom: 23.8 },
   ],
   canopy: CANOPY,
-  sideZMin: 28,
+  sideZMin: 21,
   zones: () => [
     // 側面下半壁畫藍板塊
     { mat: 'blue', keep: (x, y, z) => (onSide(x, z) ? splitY(x) - y : -1) },
@@ -331,10 +332,15 @@ const CONFIG = {
     parts.push({ geometry: mergeGeos(ARCHES.map((a) => buildProfileLiner(a, 22.4, profile))), mat: 'liner', shell: true, name: 'arch-liners' });
 
     // ── 貼紙 ──
-    // 座艙罩正前方一道橫向細線迷宮帶（黑色連續回紋沿 z 走，帶寬約 5.7）
+    // 座艙罩正前方一道橫向細線迷宮帶：壁畫藍底條上的奶油白連續回紋（沿 z 走，帶寬約 5.7）
     parts.push({
-      geometry: kit.decal((x, y, z) => (onSide(x, z) || Math.abs(z) > MAZE.hz ? -1 : -greekKey(z + MAZE.hz, x - MAZE.x0 + KEY_Y0 + 0.9)), { offset: 0.1 }),
-      mat: 'dBlack',
+      geometry: kit.decal((x, y, z) => (onSide(x, z) ? -1 : Math.min(MAZE.hz + 0.8 - Math.abs(z), x - MAZE.x0 + 0.6, MAZE.x0 + 6.3 - x)), { offset: 0.08 }),
+      mat: 'dBlue',
+      name: 'decal-maze-band-ground',
+    });
+    parts.push({
+      geometry: kit.decal((x, y, z) => (onSide(x, z) || Math.abs(z) > MAZE.hz ? -1 : -greekKey(z + MAZE.hz, x - MAZE.x0 + KEY_Y0 + 0.9)), { offset: 0.12 }),
+      mat: 'dCream',
       name: 'decal-maze-band',
     });
     // 擋泥板肩稜（0.55 半寬的銳利稜線）上一道奶油白描線（寬 0.7），從鼻端第一階走到車尾
@@ -343,10 +349,10 @@ const CONFIG = {
       mat: 'dCream',
       name: 'decal-shoulder-lines',
     });
-    // 背脊回紋帶：奶油白底（寬 8.4）上的黑色連續回紋（含上下邊線），從座艙罩後緣到車尾
+    // 背脊回紋帶：壁畫藍底（寬 8.4）上的奶油白連續回紋（含上下邊線），從座艙罩後緣到車尾
     parts.push({
       geometry: kit.decal((x, y, z) => (x > SPINE.x0 && x < SPINE.x1 ? SPINE.hz - Math.abs(z) : -1), { offset: 0.1 }),
-      mat: 'dCream',
+      mat: 'dBlue',
       name: 'decal-spine-band',
     });
     parts.push({
@@ -357,12 +363,12 @@ const CONFIG = {
         // 回紋帶的上下邊線在 v = −0.9 與 4.8，中心 1.95 對齊車身中線
         return -greekKey(x, z + KEY_Y0 + 1.95);
       }, { offset: 0.12 }),
-      mat: 'dBlack',
+      mat: 'dCream',
       name: 'decal-spine-key',
     });
     // 側裙回紋帶（奶油白，壁畫藍底上）：兩輪拱之間
     for (const side of [-1, 1]) {
-      const opt = { x0: 0, y0: 0, zMin: 26, side };
+      const opt = { x0: 0, y0: 0, zMin: 21, side };
       /** @type {(u: number, v: number) => number} */
       const key = (u, v) => Math.max(greekKey(u + 60, v), 2.2 - archRingDist(side * u, v), Math.abs(u) - 22.6);
       parts.push({ geometry: kit.decal(sideDecal(key, opt), { offset: 0.1 }), mat: 'dCream', name: `decal-greek-key-${side}` });
@@ -382,7 +388,7 @@ const CONFIG = {
   src: {
     density_g_cm3: 'SPEC 1.14：ABS 約 1.05 g/cm³（推估）',
     wallThickness_mm: '推估：射出 ABS 殼 0.8 mm（同其他車殼）',
-    geometry: '本檔站位產生器 P（推估，造型比例取自 shared/design/body-minotaur-maze/fourview.png 與 fourview_trace.txt，縮到底盤尺寸）：殼長 130（−64 ~ 鼻端 66）；鼻端楔形中線 27.6 → 19，上面疊三層階梯（每層高 1.5，前端 x 65.4 / 60 / 54.4、後端半寬 16 / 12 / 8）、中央頂 35.8、座艙罩頂約 37.8、新月尾翼中央 41.2 → 翼端約 46.8；寬：前擋泥板 ±42.6、收腰 ±31、後擋泥板 ±30.6、車尾 ±25、鼻端 ±9.5；新月尾翼 ±44',
+    geometry: '本檔站位產生器 P（推估，造型比例取自 shared/design/body-minotaur-maze/fourview.png 與 fourview_trace.txt，縮到底盤尺寸）：殼長 130（−64 ~ 鼻端 66）；鼻端楔形中線 27.6 → 19，上面疊三層階梯（每層高 1.5，前端 x 65.4 / 60 / 54.4、後端半寬 16 / 12 / 8）、中央頂 35.8、座艙罩頂約 37.8、新月尾翼中央 41.2 → 翼端約 46.8；寬：前擋泥板 ±42.8、收腰 ±26.5、後擋泥板 ±30.6、車尾 ±21、鼻端 ±8；新月尾翼 ±44',
     wheelArches: '前後 R15.2（26 mm 輪胎半徑 13 + 2.2 mm）',
     wing: '新月尾翼：ABS 扁橢圓斷面實體件（弦長 24 → 2.4、厚 2.2 → 1.0，推估），半翼展 44、翼端前彎 8、上翹 5.6；中央單柱厚 2.4',
     mounts: '對齊 chassis-midship 的車殼安裝點（SPEC 1.14）',
