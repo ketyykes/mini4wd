@@ -1,11 +1,11 @@
 // 鯤鵬（body-kunpeng，神話組・中國）：《莊子・逍遙遊》「北冥有魚，其名為鯤……化而為鳥，其名為鵬」。
 // 不做魚頭、鳥頭、鯨臉與眼睛，「化」用三種元素表現在四視圖 14（shared/design/body-kunpeng/fourview.png）的造型上：
-// 造型：平滑流線的低趴全罩——細長低鼻、一路緩升的引擎蓋、中段透明窗、座艙後是一路緩降到圓收車尾的長甲板；
+// 造型：平滑流線的低趴全罩——細長低鼻、一路直線斜升的平順楔形引擎蓋（前擋泥板不鼓起）、中段透明窗、座艙後是一路緩降到圓收車尾的長甲板；
 //       俯視是修長前尖的鯤身，前後輪上方微微隆起；側面前輪後方一組鰓狀斜百葉、後甲板一整片橫向百葉。
-// (1) 鯤的鰓 → 前輪後方三道往後斜的鰓狀進氣縫（深色縫配青色唇線）；
+// (1) 鯤的鰓 → 前輪後方三道往後斜的鰓狀進氣縫（深色縫配珍珠銀唇線）；
 // (2) 鵬的羽 → 後甲板五片層疊的橫向羽片百葉（實體薄片，後緣上翹、一片比一片高，像疊起的飛羽）、後擋泥板頂上往外後展開的一對鵬翼、車尾一片三叉羽尾；
-// (3) 水 → 風的漸變 livery：前半深藍（北冥深水），往後一段比一段淡（中藍 → 天藍 → 霧白），後半留白（扶搖長風），
-//     色帶分界往後上方斜掃，每道分界一條青色細線（水擊三千里）。
+// (3) 水 → 風的兩色 livery：前下半北冥深藍、後上半扶搖淺灰，中間一條往前上斜切的乾淨分界，分界上一條珍珠銀細線（水擊三千里）；
+//     羽片、羽尾、鵬翼用同一個深藍，襯在淺灰的後甲板上。
 // 設計：shared/design/body-kunpeng/DESIGN.md（典故與文物對應 MYTH_RESEARCH 第 7 節 Z1–Z4；黑名單 7-3）。剖面為本檔站位產生器（推估）。
 // 不寫任何文字（含「Kunpeng」字樣）、不做晶片紋、不做紅色魚身 / 海豚形、不做龍角龍鬚。
 import * as THREE from 'three';
@@ -19,16 +19,16 @@ import { monoCurve, buildStations } from './gazelleLeap.js';
 const XS = [-72, -68, -61, -52, -40, -28, -16, -6, 4, 14, 26, 40, 52, 62, 70, 77.5];
 /** @type {Record<string, (x: number) => number>} */
 const P = {
-  // 中線頂（含座艙泡）：鼻尖 15.8 → 引擎蓋緩升 → 座艙頂 36.6（x −2）→ 長甲板緩降到車尾 25.6（快背）
-  yC: monoCurve(XS, [25.6, 27.4, 29, 30.4, 31.8, 33.2, 35.2, 36.6, 36.2, 34.2, 29.8, 26.8, 24, 21.2, 18.4, 15.8]),
-  // 引擎蓋 / 甲板線（座艙泡兩側的高度）
-  yH: monoCurve(XS, [25.2, 27, 28.6, 30, 31.2, 31.8, 32, 31.6, 31.2, 30.4, 28.4, 26, 23.4, 20.6, 18, 15.4]),
-  // 擋泥板隆起：前輪 32.4、後輪 33.2（31 mm 輪拱頂 30.5 之上），兩輪之間緩降
-  yF: monoCurve(XS, [25.4, 28, 31, 32.8, 33.2, 32.2, 30.8, 30.4, 30.6, 31.2, 32.2, 32.4, 30.2, 25, 20.4, 16.4]),
+  // 中線頂（含座艙泡）：鼻尖 16 → 一路直線斜升的楔形鼻 → 座艙頂 36.6（x −2）→ 長甲板緩降到車尾 25.6（快背）
+  yC: monoCurve(XS, [25.6, 27.4, 29, 30.4, 31.8, 33.2, 35.2, 36.6, 36.2, 34.2, 32.2, 31.3, 26.8, 22.6, 19.2, 16]),
+  // 引擎蓋 / 甲板線（座艙泡兩側的高度）：鼻尖 15.4 直線斜升到前軸 30.8（楔形，31 mm 輪胎上方仍有間隙）
+  yH: monoCurve(XS, [25.2, 27, 28.6, 30, 31.2, 31.8, 32, 31.8, 31.6, 31.4, 31.2, 30.8, 26.3, 22.1, 18.7, 15.4]),
+  // 擋泥板稜：前段削平、只比引擎蓋高 0.3–0.6 mm（和楔形鼻接成一個面）；後輪 33.2（31 mm 輪拱頂 30.5 之上）
+  yF: monoCurve(XS, [25.4, 28, 31, 32.8, 33.2, 32.2, 31.2, 31, 31, 31.2, 31.4, 31.2, 26.6, 22.4, 19, 15.7]),
   // 座艙泡（點 1）半寬
   cw: monoCurve(XS, [7, 8, 8.8, 9.4, 9.8, 10.4, 11.2, 11.8, 11.6, 10.6, 8.6, 6.8, 5.6, 4.6, 3.6, 2.6]),
-  // 半寬：修長的鯤身——鼻尖 5 → 前輪 30 → 中段收到 24.5 → 後輪 31 → 收尖車尾 15（輪胎外緣露在殼外）
-  hw: monoCurve(XS, [15, 21, 27, 30, 31, 29, 25.5, 24.5, 24.5, 26, 29, 30, 27.5, 21, 12.5, 5]),
+  // 半寬：修長的鯤身——鼻尖 5 → 前輪 31 → 中段 33（側壁蓋到底盤側框外）→ 後輪 31 → 收尖車尾 15（輪胎外緣露在殼外）
+  hw: monoCurve(XS, [15, 21, 27, 30, 31, 31.5, 32.5, 33, 33, 33, 32, 31, 27.5, 21, 12.5, 5]),
   // 最寬處高度
   yS: monoCurve(XS, [21.6, 21.4, 21, 20.6, 20.2, 20, 19.8, 19.8, 19.8, 19.8, 20, 20, 19.4, 17.8, 16.2, 14.8]),
   // 側壁下緣：比一般全罩低一截的深腹（鯤身），兩端往上收
@@ -83,21 +83,19 @@ const shellZAt = (x, y) => {
 
 /** @type {() => Record<string, THREE.Material>} */
 const materials = () => ({
-  // 水 → 風的五段色帶（亮面珍珠漆 → 後段霧白）
-  deep: namedMaterial('paint-abyss-blue-pearl', { color: 0x0e2747, roughness: 0.28, metalness: 0.3, clearcoat: 0.9, clearcoatRoughness: 0.1 }),
-  mid: namedMaterial('paint-sea-blue-pearl', { color: 0x1d5a8a, roughness: 0.28, metalness: 0.3, clearcoat: 0.9, clearcoatRoughness: 0.1 }),
-  sky: namedMaterial('paint-sky-blue', { color: 0x6fa6c8, roughness: 0.32, metalness: 0.15, clearcoat: 0.8, clearcoatRoughness: 0.12 }),
-  mist: namedMaterial('paint-mist-white-blue', { color: 0xc6dce7, roughness: 0.4, clearcoat: 0.6, clearcoatRoughness: 0.2 }),
-  white: namedMaterial('paint-cloud-white', { color: 0xeef1f0, roughness: 0.45, clearcoat: 0.5, clearcoatRoughness: 0.25 }),
-  // 羽片百葉：青色珍珠漆
-  teal: namedMaterial('paint-qing-teal-pearl', { color: 0x1f8f8a, roughness: 0.3, metalness: 0.35, clearcoat: 0.9, clearcoatRoughness: 0.1 }),
+  // 水 → 風兩色：前下半北冥深藍（亮面珍珠漆），後上半扶搖淺灰，一條斜切分界
+  deep: namedMaterial('paint-abyss-blue-pearl', { color: 0x0b2456, roughness: 0.28, metalness: 0.3, clearcoat: 0.9, clearcoatRoughness: 0.1 }),
+  mist: namedMaterial('paint-wind-light-grey', { color: 0xc4ccd2, roughness: 0.4, clearcoat: 0.6, clearcoatRoughness: 0.2 }),
+  // 羽片百葉、羽尾板、鵬翼：同一個北冥深藍（實體件），襯在淺灰的後甲板上
+  wing: namedMaterial('paint-abyss-blue-feather', { color: 0x0b2456, roughness: 0.4, metalness: 0.08, clearcoat: 0.7, clearcoatRoughness: 0.2 }),
   // 透明窗：淡青煙燻 PC（半透明，看得到殼內）
   canopy: namedMaterial('pc-smoke-tint', { color: 0x2a4652, roughness: 0.05, specularIntensity: 0.6, transparent: true, opacity: 0.7, envMapIntensity: 0.6, side: THREE.DoubleSide }),
   windowFloor: namedMaterial('shell-window-floor-dark', { color: 0x0c1a24, roughness: 0.6, side: THREE.DoubleSide }),
   inner: namedMaterial('shell-inner-dark', { color: 0x16181b, roughness: 0.85, side: THREE.BackSide }),
   edge: namedMaterial('shell-edge-ink', { color: 0x2a2e33, roughness: 0.6, side: THREE.DoubleSide }),
   liner: namedMaterial('shell-wheelwell-slate', { color: 0x2c3a44, roughness: 0.65, side: THREE.DoubleSide }),
-  dTeal: decalMaterial('decal-qing-teal', { color: 0x23a39b, roughness: 0.35, metalness: 0.3 }),
+  // 分界線與鰓唇：珍珠銀細線
+  dLine: decalMaterial('decal-pearl-silver-line', { color: 0xe3e8ec, roughness: 0.3, metalness: 0.6 }),
   dGill: decalMaterial('decal-gill-dark', { color: 0x081420, roughness: 0.75 }),
   mount: namedMaterial('abs-mount-black', { color: 0x222326, roughness: 0.6 }),
 });
@@ -112,8 +110,8 @@ const materials = () => ({
  */
 const flowS = (x, y) => x - 0.9 * (y - 20);
 
-/** @type {number[]} 色帶分界（flowS 值，由前往後）：深藍 | 中藍 | 天藍 | 霧白 | 白 */
-const BAND_S = [28, 8, -12, -30];
+/** @type {number} 深藍 / 淺灰的分界（flowS 值）：一條往後下、往前上的斜切線 */
+const SPLIT_S = 2;
 
 /** @type {{ x: number, y: number, radius: number, cutZFrom: number }[]} 前後輪拱（R17.5：31 mm 輪胎半徑 15.5 + 2 mm） */
 const ARCHES = [
@@ -144,7 +142,7 @@ const gillSd = (x, y) => {
 };
 
 /**
- * 鰓縫後緣的青色唇線（每道縫後方 0.5 mm、寬 0.5 mm）
+ * 鰓縫後緣的珍珠銀唇線（每道縫後方 0.5 mm、寬 0.5 mm）
  * @type {(x: number, y: number) => number}
  */
 const gillLipSd = (x, y) => {
@@ -326,9 +324,6 @@ const PENG_WING = [
   [-62, 20],
 ];
 
-/** @type {string[]} 由前往後的色帶材質 */
-const BAND_MATS = ['deep', 'mid', 'sky', 'mist', 'white'];
-
 export const kunpengBody = makePolyBody({
   id: 'body-kunpeng',
   name: '鯤鵬',
@@ -339,7 +334,7 @@ export const kunpengBody = makePolyBody({
   form: 'gill-teardrop',
   roof: 'clear',
   wing: 'feather-louver-deck',
-  theme: '鯤鵬（鰓羽長身）：平滑流線的低趴全罩，細長低鼻緩升到中段透明窗，座艙後一路緩降到圓收車尾的長甲板；俯視是修長、前尖的鯤身。前輪後方三道往後斜的鰓狀進氣縫（鯤的鰓），後甲板五片層疊上翹的青色羽片百葉、車尾一片三叉羽尖的羽尾板、後擋泥板頂上往外後展開的一對青色鵬翼（鵬的羽）；塗裝前半深藍（北冥深水）往後一段比一段淡、後半留白（扶搖長風），每道往後上斜掃的分界一條青色細線',
+  theme: '鯤鵬（鰓羽長身）：平滑流線的低趴全罩，細長低鼻一路直線斜升成平順楔形（前擋泥板不鼓起）到中段透明窗，座艙後一路緩降到圓收車尾的長甲板；俯視是修長、前尖的鯤身。前輪後方三道往後斜的鰓狀進氣縫（鯤的鰓），後甲板五片層疊上翹的深藍羽片百葉、車尾一片三叉羽尖的羽尾板、後擋泥板頂上往外後展開的一對深藍鵬翼（鵬的羽）；塗裝前下半北冥深藍、後上半扶搖淺灰，一條往前上斜切的分界加珍珠銀細線',
   material: 'ABS',
   density_g_cm3: 1.05,
   wallThickness_mm: 0.8,
@@ -355,15 +350,9 @@ export const kunpengBody = makePolyBody({
       mat: 'canopy',
       keep: (x, y, z) => Math.min(P.cw(x) - 0.4 - Math.abs(z), x - CANOPY_X0, CANOPY_X1 - x, y - P.yH(x) - 0.25),
     },
-    ...BAND_MATS.map((mat, i) => ({
-      mat,
-      keep: (x, y) => {
-        const s = flowS(x, y);
-        const hi = i === 0 ? Infinity : BAND_S[i - 1];
-        const lo = i === BAND_MATS.length - 1 ? -Infinity : BAND_S[i];
-        return Math.min(hi - s, s - lo);
-      },
-    })),
+    // 前下半深藍、後上半淺灰
+    { mat: 'deep', keep: (x, y) => flowS(x, y) - SPLIT_S },
+    { mat: 'mist', keep: () => 1 },
   ],
   mats: { inner: 'inner', edge: 'edge', cap: 'deep', mount: 'mount' },
   materials,
@@ -373,7 +362,7 @@ export const kunpengBody = makePolyBody({
     // 後甲板的層疊羽片百葉
     parts.push({
       geometry: mergeGeos(FEATHERS.map((f) => buildFeather(f, kit.surf.topY))),
-      mat: 'teal',
+      mat: 'wing',
       solid: true,
       outline: true,
       name: 'feather-louvers',
@@ -381,7 +370,7 @@ export const kunpengBody = makePolyBody({
     // 車尾羽尾板（厚 1.2 mm，頂面貼在車尾殼面下 0.4 mm）
     parts.push({
       geometry: flatPlate(TAIL_FEATHER, kit.surf.topY(-66, 0) - 1.6, 1.2),
-      mat: 'teal',
+      mat: 'wing',
       solid: true,
       outline: true,
       name: 'feather-tail',
@@ -399,25 +388,20 @@ export const kunpengBody = makePolyBody({
     // 鵬翼：左右一對薄翼（厚 1.2 mm）
     parts.push({
       geometry: mergeGeos([1, -1].map((sg) => flatPlate(sg > 0 ? PENG_WING.map(([x, z]) => [x, z]) : PENG_WING.map(([x, z]) => [x, -z]).reverse(), 31.6, 1.2))),
-      mat: 'teal',
+      mat: 'wing',
       solid: true,
       outline: true,
       name: 'peng-wings',
     });
-    // 色帶分界的青色細線（0.6 mm）；座艙泡上不畫
+    // 深藍 / 淺灰分界的珍珠銀細線（0.7 mm）；座艙泡上不畫
     parts.push({
       geometry: kit.decal((x, y, z) => {
         if (Math.abs(z) < P.cw(x) && x > CANOPY_X0 && x < CANOPY_X1) {
           return -1;
         }
-        const s = flowS(x, y);
-        let d = Infinity;
-        for (const b of BAND_S) {
-          d = Math.min(d, Math.abs(s - b));
-        }
-        return 0.3 - d;
+        return 0.35 - Math.abs(flowS(x, y) - SPLIT_S);
       }, { offset: 0.1 }),
-      mat: 'dTeal',
+      mat: 'dLine',
       name: 'decal-wave-lines',
     });
     // 鯤的鰓：前輪後方三道斜縫
@@ -428,7 +412,7 @@ export const kunpengBody = makePolyBody({
     });
     parts.push({
       geometry: kit.decal((x, y, z) => (onSide(x, z) ? gillLipSd(x, y) : -1), { offset: 0.12 }),
-      mat: 'dTeal',
+      mat: 'dLine',
       name: 'decal-gill-lips',
     });
     // 輪拱內襯（前後）
@@ -443,11 +427,11 @@ export const kunpengBody = makePolyBody({
   src: {
     density_g_cm3: 'SPEC 1.14：ABS 約 1.05 g/cm³（推估）',
     wallThickness_mm: '推估：射出 ABS 殼 0.8 mm（同其他款）',
-    geometry: '本檔站位產生器 P（推估，比例取自四視圖 14 後縮到底盤）：車殼 x −72 ~ 77.5；中線鼻尖 15.8 → 座艙頂 36.6（x −2）→ 車尾 25.6；擋泥板隆起前 32.4 / 後 33.2（31 mm 輪拱頂 30.5 之上）；側壁下緣 10.6；半寬鼻尖 5、前輪 30、中段 24.5、後輪 31、車尾 15',
+    geometry: '本檔站位產生器 P（推估，比例取自四視圖 14 後縮到底盤）：車殼 x −72 ~ 77.5；中線鼻尖 16 → 楔形引擎蓋前軸 30.8 → 座艙頂 36.6（x −2）→ 車尾 25.6；擋泥板稜前 31.2（削平）/ 後 33.2（31 mm 輪拱頂 30.5 之上）；側壁下緣 10.6；半寬鼻尖 5、前輪 31、中段 33、後輪 31、車尾 15',
     feathers: '羽片百葉為實心 ABS 薄楔（厚 0.9 mm），5 片前緣 x −24 / −31 / −38 / −45 / −52、弦長 5.4–6.4 mm＋中央羽尖 1.6 mm、後緣抬高 1.4 → 3 mm、半寬 14.5–16 mm（推估）',
     pengWings: '鵬翼為實心 ABS 薄板（厚 1.2 mm），翼根 x −22 ~ −62、|z| 20 埋進殼面，翼尖到 |z| 47.5、x −58，翼底 y 31.6（推估）',
     featherTail: '羽尾板為實心 ABS 薄板（厚 1.2 mm），x −66 ~ −75、半寬 15，後緣三道羽尖（推估）',
-    livery: '漸變色帶沿 x − 0.9 (y − 20) 斜掃，分界 28 / 8 / −12 / −30，分界青線 0.6 mm；鰓縫 3 道寬 1.4 mm、高 7.2 mm，唇線 0.56 mm；皆為自繪（推估）',
+    livery: '深藍 / 淺灰分界沿 x − 0.9 (y − 20) = 2 斜切，分界銀線 0.7 mm；鰓縫 3 道寬 1.4 mm、高 7.2 mm，唇線 0.56 mm；皆為自繪（推估）',
     wheelArches: '前後 R17.5（31 mm 輪胎半徑 15.5 + 2 mm），切口從 |z| 23.5 起（輪胎內側 |z| 24.7）＋3 mm 深內襯',
     mounts: '對齊 chassis-midship 的車殼安裝點（SPEC 1.14）',
   },
