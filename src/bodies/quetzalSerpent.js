@@ -2,7 +2,7 @@
 // 不做蛇頭、眼、牙與蛇信。照四視圖 02 建模：
 // (1) 層疊的羽 → 迴力鏢海鷗翼：俯視是往前尖的人字形、後視是中央下凹兩端上翹、左右對稱的 M 形；翼前段翡翠綠，
 //     後段是朱紅與翡翠綠相間的羽紋格、後緣一排羽尖；翼端立一片往後拉長的綠咬鵑羽片（金色羽軸）；兩片黑曜石翼柱架在車尾；
-// (2) 黑曜石刀 → 鏟形鼻上的刀狀擾流：寬而薄的鏟形鼻，中線立一把黑曜石色的刀刃，鼻頭中央再往前伸一支金色尖刺；
+// (2) 黑曜石刀 → 鏟形鼻上的刀狀擾流：寬而薄的鏟形鼻，中線立一道金色刀脊，接鼻頭中央往前伸的金色尖刺，合成一支鼻錐；
 // (3) 階梯金字塔 → 側面 talud-tablero：肩線下是一段直立的綠松石立板（上面是連續的階梯回紋）、再一階、朱紅斜坡到下緣（兩輪之間往外伸成側箱封住底盤）；
 // (4) 紋樣與配色：頂面兩道往前尖的朱紅人字帶＋金邊（四視圖的 V 形分色）；翡翠綠金屬漆（主色）＋朱紅＋綠松石＋金。
 // 姿態：鼻尖低而薄，前擋泥板的稜線高過中線（V 形引擎蓋低谷），座艙後背線平，迴力鏢翼是全車最高點——前低後高。
@@ -319,10 +319,10 @@ const SPIKE_TIP = 78.1;
 /** @type {number} 尖刺根部 x（埋進鼻段殼面） */
 const SPIKE_ROOT = 61;
 /** @type {number} 尖刺中心線高度（鼻端面上下緣中間） */
-const SPIKE_Y = 17.4;
+const SPIKE_Y = 17.6;
 
 /**
- * 鼻頭中央往前的尖刺：菱形斷面的四角錐（根部半寬 4.2、半高 2），根部埋進鼻段，刺尖往前
+ * 鼻頭中央往前的尖刺：菱形斷面的四角錐（根部半寬 5、半高 2.4），根部埋進鼻段，刺尖往前
  * @type {() => THREE.BufferGeometry}
  */
 const buildNoseSpike = () => {
@@ -330,12 +330,12 @@ const buildNoseSpike = () => {
   const g = new THREE.ConeGeometry(1, len, 4, 1);
   // 錐尖原本朝 +y：轉成朝 +x，再壓成菱形斷面
   g.rotateZ(-Math.PI / 2);
-  g.scale(1, 2, 4.2);
+  g.scale(1, 2.4, 5);
   g.translate(SPIKE_ROOT + len / 2, SPIKE_Y, 0);
   return g;
 };
 
-/** @type {number[][]} 黑曜石刀刃（側視，中線上）：鼻段上的一片背鰭，刃尖在 x 65.5 往前，刃背沿鼻面升到 x 54；下緣埋進殼面 */
+/** @type {number[][]} 金色刀脊（側視，中線上）：鼻段上的一片背鰭，刃尖在 x 65.5 往前接尖刺，刃背沿鼻面升到 x 51；下緣埋進殼面 */
 const NOSE_BLADE = [
   [65.5, 21],
   [57.5, 25.8],
@@ -412,7 +412,7 @@ export const quetzalSerpentBody = makePolyBody({
   form: 'obsidian-spade',
   roof: 'canopy',
   wing: 'boomerang-plume',
-  theme: '特奧蒂瓦坎羽蛇神殿的階梯金字塔、綠咬鵑羽與黑曜石刀，不做蛇頭：寬而薄的鏟形鼻中線立一把黑曜石刀刃、鼻頭中央往前伸一支金色尖刺，前擋泥板稜線高過中線成 V 形引擎蓋；車尾迴力鏢海鷗翼（俯視往前尖、後視中央下凹兩端上翹的 M 形），翼前段翡翠綠、後段朱紅與翡翠綠相間的羽紋格（後緣羽尖），翼端各立一片綠咬鵑長羽片（金色羽軸），兩片黑曜石翼柱架起；側面是綠松石立板（階梯回紋）＋朱紅斜坡（兩輪之間外伸側箱封住底盤）；頂面兩道朱紅人字帶＋金邊，翡翠綠金屬漆配朱紅、綠松石與金',
+  theme: '特奧蒂瓦坎羽蛇神殿的階梯金字塔、綠咬鵑羽與黑曜石刀，不做蛇頭：寬而薄的鏟形鼻中線立一道金色刀脊、接鼻頭中央往前伸的金色尖刺（一支鼻錐），前擋泥板稜線高過中線成 V 形引擎蓋；車尾迴力鏢海鷗翼（俯視往前尖、後視中央下凹兩端上翹的 M 形），翼前段翡翠綠、後段朱紅與翡翠綠相間的羽紋格（後緣羽尖），翼端各立一片綠咬鵑長羽片（金色羽軸），兩片黑曜石翼柱架起；側面是綠松石立板（階梯回紋）＋朱紅斜坡（兩輪之間外伸側箱封住底盤）；頂面兩道朱紅人字帶＋金邊，翡翠綠金屬漆配朱紅、綠松石與金',
   material: 'ABS',
   density_g_cm3: 1.05,
   wallThickness_mm: 0.8,
@@ -460,10 +460,8 @@ export const quetzalSerpentBody = makePolyBody({
       shell: true,
       name: 'arch-liners',
     });
-    // 黑曜石刀刃（中線，厚 1.2）
-    parts.push({ geometry: finPlate(NOSE_BLADE, 0, 1.2), mat: 'obsidian', solid: true, outline: true, name: 'obsidian-nose-blade' });
-    // 鼻頭中央往前的金色尖刺
-    parts.push({ geometry: buildNoseSpike(), mat: 'gold', solid: true, outline: true, name: 'gold-nose-spike' });
+    // 鼻錐：中線金色刀脊（厚 2）接鼻頭中央往前的金色尖刺，前看是一支連續的金色鼻錐
+    parts.push({ geometry: mergeGeos([finPlate(NOSE_BLADE, 0, 2), buildNoseSpike()]), mat: 'gold', solid: true, outline: true, name: 'gold-nose-spike' });
     // 海鷗翼：前段整片翡翠綠，後段是左右對稱、朱紅與翡翠綠相間的羽紋格（後緣羽尖）
     parts.push({ geometry: mergeGeos([buildWingStrip(WING, -WING_SPAN, WING_SPAN, 0, FEATHER_U), buildFeatherCells(1)]), mat: 'green2', solid: true, outline: true, name: 'gull-wing-green' });
     parts.push({ geometry: buildFeatherCells(0), mat: 'vermilion2', solid: true, outline: true, name: 'gull-wing-feathers' });
@@ -518,7 +516,7 @@ export const quetzalSerpentBody = makePolyBody({
     density_g_cm3: 'SPEC 1.14：ABS 約 1.05 g/cm³（推估）',
     wallThickness_mm: '推估：射出 ABS 殼 0.8 mm（同其他款）',
     geometry: '本檔站位產生器 P（推估），比例取自四視圖 02（shared/design/body-quetzal-serpent/fourview_trace.txt）縮到底盤：殼面鼻尖 x 66（離地 17.5 的薄鏟形鼻）、尖刺到 x 78.1、車尾 −70；半寬後輪 36 / 腰 25（腰線以下側箱 27.3）/ 前輪 26（前輪露出）/ 鏟鼻 33、鼻尖 30；前擋泥板稜線 34；座艙罩頂約 39.5；海鷗翼峰點頂 48.5（全車最高）；前後輪拱 R17.5',
-    wing: '海鷗翼（厚 1.6、弦長 12、翼展半寬 42，後緣 7 格羽尖伸出 2.6；後視 M 形：中央往外升 5.5 到 |z| 33 再垂 1）、黑曜石翼柱（|z| 13、厚 1.6）、翼端羽片（厚 1.2）與金色羽軸（厚 0.5）、黑曜石刀刃（厚 1.2）、鼻頭尖刺（菱形斷面四角錐，根部 8.4 × 4、長 17.1）：ABS 實心件（推估），質量 = 封閉體積 × 1.05 g/cm³；支柱與刀刃底邊埋進殼面',
+    wing: '海鷗翼（厚 1.6、弦長 12、翼展半寬 42，後緣 7 格羽尖伸出 2.6；後視 M 形：中央往外升 5.5 到 |z| 33 再垂 1）、黑曜石翼柱（|z| 13、厚 1.6）、翼端羽片（厚 1.2）與金色羽軸（厚 0.5）、金色刀脊（厚 2）、鼻頭尖刺（菱形斷面四角錐，根部 10 × 4.8、長 17.1）：ABS 實心件（推估），質量 = 封閉體積 × 1.05 g/cm³；支柱與刀刃底邊埋進殼面',
     myth: '階梯金字塔（talud-tablero）：MYTH_RESEARCH A2（特奧蒂瓦坎羽蛇神殿）；綠咬鵑羽：A1；綠松石 / 海菊蛤紅 / 螺貝白：A6（大英博物館雙頭蛇）；階梯回紋：A7；黑曜石刀：A2 神殿的黑曜石嵌片與中美洲黑曜石工具',
     mounts: '對齊 chassis-midship 的車殼安裝點（SPEC 1.14）',
   },
