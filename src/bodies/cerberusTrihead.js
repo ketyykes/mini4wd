@@ -1,5 +1,5 @@
-// 三頭犬（body-cerberus-trihead，神話組・希臘）：照四視圖 07 的「從前輪往前伸的扁平尖矛鼻、多面切削的側面、低座艙、高車尾、閃電 Z 字端板尾翼」建模，不做犬頭。
-// 「三」：扁平尖矛鼻兩側各三道並排的刃狀稜（陶土色），從側面、斜前方都數得出三道；尾翼後緣三個等長尖齒、端板往上折兩段。
+// 三頭犬（body-cerberus-trihead，神話組・希臘）：照四視圖 07 的「從前輪往前伸成細長尖刺的匕首鼻、多面切削的側面、低座艙、高車尾、兩端 Z 字閃電折線的尾翼、俯視 W 形尾」建模，不做犬頭。
+// 「三」：匕首鼻兩側三條等長平行的陶土色速度線；尾翼後緣三個等長尖齒（俯視 W 形尾）。
 // 黑繪陶 livery：黑釉為主色，陶土色做擋泥板頂面色塊、刃狀稜、尾翼與描線（切面折線上的對比色描線），白色加彩細線鑲邊；
 // 側面上層是陶土色鎖鏈（冥府的鎖鏈），下層收腰段是陶土飾帶上的黑色回紋（羅浮宮 E 701 卡厄瑞水罐的黑繪陶語彙）。
 // 側面多面切削：肩稜下的上層側壁往下內收到一道腰折線，折線下是往外的裙板，兩輪之間的裙板一路蓋到底盤側框上緣。
@@ -12,20 +12,20 @@ import { monoCurve, buildStations } from './gazelleLeap.js';
 
 /** @typedef {import('./loft.js').BodyPart} BodyPart */
 
-/** 站位參數表（x 由後到前，前後軸 x = ±40；x 46 以前是扁平尖矛鼻，矛尖 x 72） */
-const XS = [-64, -58, -52, -44, -36, -26, -14, -2, 10, 22, 32, 40, 46, 52, 58, 64, 68, 72];
+/** 站位參數表（x 由後到前，前後軸 x = ±40；x 46 以前是細長匕首鼻，鼻尖 x 77） */
+const XS = [-64, -58, -52, -44, -36, -26, -14, -2, 10, 22, 32, 40, 46, 52, 58, 64, 70, 77];
 /** @type {Record<string, (x: number) => number>} */
 const P = {
-  // 半寬：車尾 ±30、後擋泥板 ±43、收腰 ±30.6、前擋泥板 ±42；前擋泥板之後收成俯視細長三角的矛鼻（x 52 ±23 → x 64 ±9.4 → 矛尖）
-  hw: monoCurve(XS, [30, 38, 42.4, 43, 40, 34, 31, 30.6, 32, 36, 40, 42, 36, 23, 15.4, 9.4, 5.6, 1.5]),
-  // 中央背脊頂：車尾高、往前一路降到扁平矛尖
-  yC: monoCurve(XS, [33, 34.4, 34.8, 34.4, 33.6, 32.4, 31, 30, 28.8, 27, 25.6, 24, 22.4, 20.4, 18.6, 17, 16, 15.2]),
-  // 刻面艙頂（0.5 半寬）：後艙最高（前低後高），前艙比背脊高；矛鼻段和背脊同高（扁平）
-  yF: monoCurve(XS, [33.4, 35.4, 36, 35.6, 34.4, 31.4, 27, 26, 27.4, 29.8, 30.4, 29.6, 27.2, 23.6, 20.4, 17.8, 16.6, 15.4]),
+  // 半寬：車尾 ±30、後擋泥板 ±42、收腰 ±30.6、前擋泥板 ±42；前擋泥板之後收成俯視細長三角的匕首鼻（x 52 ±20 → x 64 ±7 → 鼻尖 ±0.8）
+  hw: monoCurve(XS, [30, 38, 41.4, 42, 39.6, 34, 31, 30.6, 32, 36, 40, 42, 34, 20, 12, 7, 3.6, 0.8]),
+  // 中央背脊頂：車尾高、往前一路降到匕首鼻尖（17.4）
+  yC: monoCurve(XS, [33, 34.4, 34.8, 34.4, 33.6, 32.4, 31, 30, 28.8, 27, 25.6, 24, 22.4, 21, 19.8, 18.8, 18, 17.4]),
+  // 刻面艙頂（0.5 半寬）：後艙最高（前低後高），前艙比背脊高；匕首鼻段和背脊同高（扁平）
+  yF: monoCurve(XS, [33.4, 35.4, 36, 35.6, 34.4, 31.4, 27, 26, 27.4, 29.8, 30.4, 29.6, 27.2, 22.6, 20.6, 19.2, 18.2, 17.5]),
   // 肩稜（最寬處）
-  yE: monoCurve(XS, [29.4, 31.4, 32, 31.6, 30.4, 27.4, 24.4, 23.8, 24.4, 26.6, 27.8, 27.6, 25.8, 22.2, 19.4, 17, 16, 15.2]),
-  // 裙板下緣：兩輪之間降到 10.4（底盤側框頂 9.9 之上），矛鼻段抬高
-  yLow: monoCurve(XS, [18, 15, 13.4, 12.8, 12.6, 11, 10.4, 10.4, 10.4, 11.2, 12.4, 12.8, 13.2, 13.8, 14.2, 14.6, 14.8, 15]),
+  yE: monoCurve(XS, [29.4, 31.4, 32, 31.6, 30.4, 27.4, 24.4, 23.8, 24.4, 26.6, 27.8, 27.6, 25.8, 21.4, 19.6, 18.6, 17.8, 17.2]),
+  // 裙板下緣：兩輪之間降到 10.4（底盤側框頂 9.9 之上），匕首鼻段抬高
+  yLow: monoCurve(XS, [18, 15, 13.4, 12.8, 12.6, 11, 10.4, 10.4, 10.4, 11.2, 12.4, 12.8, 13.2, 14, 14.8, 15.4, 16, 16.6]),
 };
 
 /** @type {(x: number) => number} 腰折線高度：肩稜與裙板下緣之間 42% 處 */
@@ -42,7 +42,7 @@ const profile = (x) => {
   const yE = P.yE(x);
   const hw = P.hw(x);
   const yValley = Math.min(yC - 0.6, yF - 1.2);
-  // 矛鼻段（x 50 以後）側壁很矮，折線內收量跟著縮小
+  // 匕首鼻段（x 50 以後）側壁很矮，折線內收量跟著縮小
   const inset = lerp(2.2, 0.6, Math.min(1, Math.max(0, (x - 50) / 14)));
   return [
     [0, yC],
@@ -56,7 +56,7 @@ const profile = (x) => {
   ];
 };
 
-const STATIONS = buildStations(-64, 72, 1.5, profile);
+const STATIONS = buildStations(-64, 77, 1.5, profile);
 
 /** @type {{ x: number, y: number, radius: number }[]} 前後輪拱圓（26 mm 輪胎半徑 13 + 2.2 mm） */
 const ARCHES = [
@@ -138,8 +138,8 @@ const materials = () => ({
   // 背脊頂面霧面黑：掠射角不反成亮面
   deck: namedMaterial('shell-deck-dark-matte', { color: 0x141110, roughness: 0.85 }),
   // 陶土色（霧面）
-  clay: namedMaterial('paint-terracotta-clay', { color: 0xc8662f, roughness: 0.7, clearcoat: 0.0 }),
-  clay2: namedMaterial('paint-terracotta-clay', { color: 0xc8662f, roughness: 0.7, clearcoat: 0.0, side: THREE.DoubleSide }),
+  clay: namedMaterial('paint-terracotta-clay', { color: 0xa8502c, roughness: 0.7, clearcoat: 0.0 }),
+  clay2: namedMaterial('paint-terracotta-clay', { color: 0xa8502c, roughness: 0.7, clearcoat: 0.0, side: THREE.DoubleSide }),
   inner: namedMaterial('shell-inner-dark', { color: 0x1a1412, roughness: 0.85, side: THREE.BackSide }),
   edge: namedMaterial('shell-edge-black', { color: 0x141110, roughness: 0.7, side: THREE.DoubleSide }),
   cockpit: namedMaterial('shell-inner-dark', { color: 0x0c0a0a, roughness: 0.9, side: THREE.DoubleSide }),
@@ -147,7 +147,7 @@ const materials = () => ({
   glass: namedMaterial('pc-tint-black-smoke', { color: 0x120d0c, roughness: 0.08, specularIntensity: 0.5, transparent: true, opacity: 0.88, envMapIntensity: 0.45, depthWrite: false, side: THREE.DoubleSide }),
   liner: namedMaterial('shell-wheelwell-dark', { color: 0x1a1412, roughness: 0.8, side: THREE.DoubleSide }),
   // 刻線、鎖鏈、描線：陶土色
-  dClay: decalMaterial('decal-incised-clay', { color: 0xc8662f, roughness: 0.7 }),
+  dClay: decalMaterial('decal-incised-clay', { color: 0xa8502c, roughness: 0.7 }),
   dBlack: decalMaterial('decal-figure-black', { color: 0x141110, roughness: 0.4 }),
   // 白色加彩細線（霧面礦物顏料）
   dWhite: decalMaterial('decal-added-white', { color: 0xeee6d6, roughness: 0.6 }),
@@ -222,17 +222,10 @@ const CANOPY = {
   })(),
 };
 
-/**
- * 矛鼻兩側各三道並排刃狀稜：和中線平行（不從一點放射），由內而外一道比一道短（[z, 末端 x]）
- * @type {number[][]}
- */
-const SPEAR_RIDGES = [
-  [3, 68],
-  [6, 64.4],
-  [9, 60.4],
-];
-/** @type {number} 刃狀稜的根部 x（前擋泥板之間的引擎蓋上） */
-const SPEAR_X0 = 42;
+/** @type {number[]} 匕首鼻兩側三條平行速度線的 z（等長、等寬，x 32 → 54） */
+const SPEED_ZS = [4, 6.8, 9.6];
+/** @type {number[]} 匕首鼻脊稜的起點與尖端 x */
+const DAGGER_X = [40, 76.6];
 
 /** @type {number} 尾翼板底面高度 */
 const WING_Y = 40.2;
@@ -251,16 +244,18 @@ const WING_PLAN = [
   [-66, -31],
   [-59.6, -46],
 ];
-/** @type {number[][]} 端板側視：從翼下往上折兩段的閃電 Z 字形（四視圖 07 的翼端） */
-const ENDPLATE = [
-  [-50.4, 38],
-  [-60.4, 38],
-  [-63.4, 41.8],
-  [-58.8, 41.8],
-  [-61.2, 45.6],
-  [-54, 42.6],
-  [-57, 42.6],
+/** @type {number[][]} 翼端閃電（後視 (z, y) 多邊形，右側）：從翼端往上、往外折兩段的 Z 字閃電，前後厚 1.6，立在翼弦中段 */
+const BOLT = [
+  [38.6, 40.2],
+  [46.4, 40.2],
+  [43.6, 43.6],
+  [47.6, 43.6],
+  [42.6, 48.6],
+  [44, 44.8],
+  [40.4, 44.8],
 ];
+/** @type {number} 翼端閃電所在的 x（翼弦中段） */
+const BOLT_X = -55.2;
 
 /** @type {import('./polyBody.js').PolyBodyConfig & { mythSeries: string, mythTheme: string }} 車殼設定 */
 const CONFIG = {
@@ -273,7 +268,7 @@ const CONFIG = {
   form: 'trispike-shovel',
   roof: 'canopy',
   wing: 'trifang-zigzag-plate',
-  theme: '黑釉多面切削四驅車：從前輪往前伸的扁平尖矛鼻，矛鼻兩側各三道並排的陶土色刃狀稜；擋泥板頂面陶土色塊、白色加彩鑲邊，肩稜與腰折線上的陶土色描線；側面上層陶土色鎖鏈、收腰裙板上陶土飾帶的黑色回紋；壓低拉長的深色煙燻座艙罩；高車尾單柱撐起後緣三尖齒的陶土色尾翼，兩端是黑色閃電 Z 字端板',
+  theme: '黑釉多面切削四驅車：從前輪往前伸成細長尖刺的匕首鼻（中線陶土色脊稜收尖到鼻尖），兩側三條等長平行的陶土色速度線；擋泥板頂面陶土色塊、白色加彩鑲邊，肩稜與腰折線上的陶土色描線；側面上層陶土色鎖鏈、收腰裙板上陶土飾帶的黑色回紋；壓低拉長的深色煙燻座艙罩；高車尾單柱撐起後緣三尖齒（俯視 W 形）的陶土紅褐尾翼，兩端往上折成陶土紅褐 Z 字閃電',
   material: 'ABS',
   density_g_cm3: 1.05,
   wallThickness_mm: 0.8,
@@ -305,19 +300,10 @@ const CONFIG = {
     /** @type {(x: number, z: number) => number} 殼面高度 */
     const top = (x, z) => kit.surf.topY(x, z);
 
-    // ── 矛鼻兩側各三道刃狀稜（陶土色實體件）──
-    {
-      /** @type {THREE.BufferGeometry[]} */
-      const ridges = [];
-      for (const sg of [-1, 1]) {
-        for (const [z, x1] of SPEAR_RIDGES) {
-          ridges.push(ridgeStrip(top, [SPEAR_X0, sg * z], [x1, sg * z], 1.2, 1.1));
-        }
-      }
-      parts.push({ geometry: mergeGeos(ridges), mat: 'clay2', solid: true, name: 'spear-tri-ridges' });
-    }
+    // ── 匕首鼻脊稜（陶土色實體件）：中線一道三角斷面稜，從引擎蓋一路收尖到鼻尖 x 76.6 ──
+    parts.push({ geometry: ridgeStrip(top, [DAGGER_X[0], 0], [DAGGER_X[1], 0], 1.8, 1.6, 16), mat: 'clay2', solid: true, outline: true, name: 'dagger-spine' });
 
-    // ── 尾翼：後緣三尖齒的陶土色平板、中央黑色單柱、兩端黑色閃電 Z 字端板 ──
+    // ── 尾翼：後緣三尖齒的陶土色平板、中央黑色單柱、兩端往上折的陶土紅褐 Z 字閃電 ──
     parts.push({ geometry: flatPlate(WING_PLAN, WING_Y, 1), mat: 'clay2', solid: true, outline: true, name: 'trifang-wing' });
     {
       /** @type {(x: number) => number} 中線殼面高度 */
@@ -332,15 +318,21 @@ const CONFIG = {
         0,
         2.4,
       );
-      parts.push({ geometry: pylon, mat: 'black2', solid: true, name: 'wing-pylon' });
+      parts.push({ geometry: pylon, mat: 'black2', solid: true, outline: true, name: 'wing-pylon' });
     }
-    parts.push({
-      geometry: mergeGeos([finPlate(ENDPLATE, 46.6, 1.2), finPlate(ENDPLATE, -46.6, 1.2)]),
-      mat: 'black2',
-      solid: true,
-      outline: true,
-      name: 'zigzag-endplates',
-    });
+    {
+      /** @type {THREE.BufferGeometry[]} */
+      const bolts = [];
+      for (const sg of [-1, 1]) {
+        // finPlate 的 (x, y) 當成後視 (z, y)；繞 y 轉 −90° 後 x → z、厚度方向 → x
+        const pts = sg > 0 ? BOLT : BOLT.map(([z, y]) => [-z, y]).reverse();
+        const g = finPlate(pts, 0, 1.6);
+        g.rotateY(-Math.PI / 2);
+        g.translate(BOLT_X, 0, 0);
+        bolts.push(g);
+      }
+      parts.push({ geometry: mergeGeos(bolts), mat: 'clay2', solid: true, outline: true, name: 'zigzag-bolt-tips' });
+    }
 
     // 輪拱內襯（前後，R15.2）：每個角度的外緣取該高度的殼內面
     parts.push({ geometry: mergeGeos(ARCHES.map((a) => buildProfileLiner(a, 22.4, profile))), mat: 'liner', shell: true, name: 'arch-liners' });
@@ -385,32 +377,32 @@ const CONFIG = {
       };
       parts.push({ geometry: kit.decal(sideDecal(chain, opt), { offset: 0.12 }), mat: 'dClay', name: `decal-chain-${side}` });
     }
-    // 矛鼻中線一條白色加彩細線（矛脊）
+    // 匕首鼻兩側三條平行速度線（陶土色，等長、寬 1.2）
     parts.push({
-      geometry: kit.decal((x, y, z) => (x > 44 && x < 70 ? 0.3 - Math.abs(z) : -1), { offset: 0.1 }),
-      mat: 'dWhite',
-      name: 'decal-spear-spine',
+      geometry: kit.decal((x, y, z) => {
+        if (onSide(x, z) || x < 32 || x > 54) {
+          return -1;
+        }
+        let d = -1;
+        for (const zz of SPEED_ZS) {
+          d = Math.max(d, 0.6 - Math.abs(Math.abs(z) - zz));
+        }
+        return d;
+      }, { offset: 0.1 }),
+      mat: 'dClay',
+      name: 'decal-speed-lines',
     });
-    // 尾燈：車尾左右一對細長紅燈
-    {
-      /** @type {THREE.BufferGeometry[]} */
-      const lamps = [];
-      for (const sg of [-1, 1]) {
-        const l = new THREE.BoxGeometry(0.8, 1.4, 10);
-        l.translate(-64.2, 25.6, sg * 15);
-        lamps.push(l);
-      }
-      parts.push({ geometry: mergeGeos(lamps), mat: 'tail', solid: true, name: 'lamp-tail' });
-    }
+    // 尾燈：車尾一整條橫貫的細長紅燈條（不做成左右一對燈點）
+    parts.push({ geometry: new THREE.BoxGeometry(0.8, 1.2, 36).translate(-64.2, 25.6, 0), mat: 'tail', solid: true, outline: true, name: 'lamp-tail' });
     return parts;
   },
   src: {
     density_g_cm3: 'SPEC 1.14：ABS 約 1.05 g/cm³（推估）',
     wallThickness_mm: '推估：射出 ABS 殼 0.8 mm（同其他車殼）',
-    geometry: '本檔站位產生器 P（推估，造型比例取自 shared/design/body-cerberus-trihead/fourview.png 與 fourview_trace.txt，縮到底盤尺寸）：殼長 136（−64 ~ 矛尖 72），尾翼後緣 x −66；後刻面艙頂 36、中央背脊 34.8、座艙罩頂約 34.6、尾翼頂約 41.2、端板頂 45.6；寬：車尾 ±30、後擋泥板 ±43、收腰 ±30.6、前擋泥板 ±42、矛鼻 x 52 ±23 → x 64 ±9.4；兩輪之間裙板下緣 10.4',
+    geometry: '本檔站位產生器 P（推估，造型比例取自 shared/design/body-cerberus-trihead/fourview.png 與 fourview_trace.txt，縮到底盤尺寸）：殼長 141（−64 ~ 鼻尖 77），尾翼後緣 x −66；後刻面艙頂 36、中央背脊 34.8、座艙罩頂約 34.6、尾翼頂約 41.2、翼端閃電頂 48.6；寬：車尾 ±30、後擋泥板 ±42、收腰 ±30.6、前擋泥板 ±42、匕首鼻 x 52 ±20 → x 64 ±7；兩輪之間裙板下緣 10.4',
     wheelArches: '前後 R15.2（26 mm 輪胎半徑 13 + 2.2 mm）',
-    ridges: '矛鼻刃狀稜：ABS 三角斷面實體件，根部寬 2.4、高 1.1，往矛尖收到 0.3（推估），每側三道和中線平行，x 42 → 68 / 64.4 / 60.4',
-    wing: '尾翼：ABS 平板厚 1 mm（推估），y 40.2，翼展 92、後緣三尖齒 x −66；中央單柱厚 2.4；端板厚 1.2，往上折兩段到 y 45.6',
+    ridges: '匕首鼻脊稜：ABS 三角斷面實體件，根部寬 3.6、高 1.6，往鼻尖收到 0.3（推估），x 40 → 76.6',
+    wing: '尾翼：ABS 平板厚 1 mm（推估），y 40.2，翼展 92、後緣三尖齒 x −66；中央單柱厚 2.4；翼端 Z 字閃電厚 1.6，往上往外折兩段到 y 48.6',
     mounts: '對齊 chassis-midship 的車殼安裝點（SPEC 1.14）',
   },
 };
