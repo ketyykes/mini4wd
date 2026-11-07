@@ -28,9 +28,6 @@ const P = {
 /** @type {number[]} 俯視與下緣的站位 */
 const XS_HW = [-67, -64, -56, -46, -38, -28, -18, -8, 2, 12, 22, 32, 42, 52, 56, 59, 66, 72, 77];
 /** @type {Record<string, (x: number) => number>} */
-/** @type {{ x0: number, x1: number, zOut: number, yTop: number }} 側裙：前後輪之間的直立板範圍；yTop 拉到車身下緣上方，讓側裙和車身連成一體 */
-const SKIRT = { x0: -22.5, x1: 9, zOut: 37.4, yTop: 21 };
-
 const Q = {
   // 俯視半寬：修長的窄車尾 20–21（後輪外露，車尾另有寬尾刃）→ 往前漸寬 → 前輪拱 41 → 盾形尖鼻（直邊收到鼻尖 2）
   hw: monoCurve(XS_HW, [20, 20.5, 21, 21, 21, 21, 22, 24, 26.5, 30, 36, 40.5, 41, 40.5, 38, 33.5, 22.5, 11.5, 2]),
@@ -162,7 +159,6 @@ const materials = () => ({
   // 主色：珍珠銀白（上半身）；輔色：深靛藍（側壁與下緣）；金：真金屬（名稱含 -brass → Blender metallic）
   navy: namedMaterial('paint-pearl-silverwhite', { color: 0xe3e6eb, roughness: 0.26, metalness: 0.25, clearcoat: 1.0, clearcoatRoughness: 0.05 }),
   navyDark: namedMaterial('paint-deep-indigo', { color: 0x1a2462, roughness: 0.4, metalness: 0.2, clearcoat: 0.6 }),
-  navySkirt: namedMaterial('paint-deep-indigo-satin', { color: 0x1a2462, roughness: 0.6, metalness: 0.1, side: THREE.DoubleSide }),
   gold: namedMaterial('trim-gold-brass', { color: 0xd6aa3c, metalness: 0.85, roughness: 0.28, clearcoat: 0.3 }),
   goldSolid: namedMaterial('trim-gold-brass', { color: 0xd6aa3c, metalness: 0.85, roughness: 0.28, clearcoat: 0.3 }),
   glass: namedMaterial('pc-smoke-tint', { color: 0x1c2030, roughness: 0.05, specularIntensity: 0.6, transparent: true, opacity: 0.55, envMapIntensity: 0.5, depthWrite: false, side: THREE.DoubleSide }),
@@ -221,7 +217,7 @@ export const sleipnirStrideBody = makePolyBody({
     /** @type {(x: number, y: number, z: number) => number} 後輪拱前下方的金色斜片 */
     const rearFlash = (x, y, z) => Math.min(Math.abs(z) - (Q.hw(x) - 0.8), -22 - x + 0.0 * y, x + 30 - 1.1 * (y - 15), 21.5 - y, y - 16.5);
     /** @type {(x: number) => number} 白藍分色線：側壁上由前往後斜升（前 x 50 處 y 20 → 車尾 27） */
-    const splitY = (x) => lerp(30, 23, Math.min(1, Math.max(0, (x + 67) / 117)));
+    const splitY = (x) => lerp(27, 20, Math.min(1, Math.max(0, (x + 67) / 117)));
     return [
       { mat: 'navyDark', keep: (x, y, z) => Math.max(Q.lo(x) + 1.2 - y, Math.min(Math.abs(z) - (Q.hw(x) - 1), splitY(x) - y, 50 - x)) },
       { mat: 'gold', keep: (x, y, z) => Math.max(shieldRim(x, y, z), tailFrame(x, y, z), frontFlash(x, y, z), rearFlash(x, y, z)) },
@@ -273,26 +269,14 @@ export const sleipnirStrideBody = makePolyBody({
       mat: 'dGold',
       name: 'decal-canopy-frame',
     });
-    // ── 側裙：前後輪之間每側一片深靛藍直立板（|z| SKIRT.zOut，在底盤側框外），頂板接回車身下緣、和下緣同色，上下緣各一條金邊 ──
+    // ── 側裙：前後輪之間每側一片深靛藍直立板（|z| 37.4，在底盤側框外），把兩輪之間的底盤側框蓋住 ──
     parts.push({
-      geometry: buildBellySkirt({ x0: SKIRT.x0, x1: SKIRT.x1, zIn: (x) => Q.hw(x) - 1, zOut: SKIRT.zOut, yTop: SKIRT.yTop, t: 0.8 }),
-      mat: 'navySkirt',
+      geometry: buildBellySkirt({ x0: -22.5, x1: 9, zIn: (x) => Q.hw(x) - 1, zOut: 37.4, yTop: 16.2, t: 0.8 }),
+      mat: 'navyDark',
       solid: true,
       outline: true,
       name: 'side-skirts',
     });
-    {
-      /** @type {THREE.BufferGeometry[]} */
-      const trims = [];
-      for (const sg of [-1, 1]) {
-        for (const yc of [SKIRT.yTop - 0.5, 11.6]) {
-          const bar = new THREE.BoxGeometry(SKIRT.x1 - SKIRT.x0 - 1.2, 0.9, 0.5);
-          bar.translate((SKIRT.x0 + SKIRT.x1) / 2, yc, sg * (SKIRT.zOut + 0.05));
-          trims.push(bar);
-        }
-      }
-      parts.push({ geometry: mergeGeos(trims), mat: 'goldSolid', solid: true, outline: true, name: 'side-skirt-gold-trim' });
-    }
     // ── 北歐交織帶（深靛藍）：引擎蓋兩側白色斜面＋座艙後窄車尾甲板 ──
     parts.push({
       geometry: kit.decal((x, y, z) => {

@@ -70,6 +70,18 @@
 - **決定**：mushussu 連兩輪（137、138）輸舊版 → 退回 `e0f2c34`（05:22，P20 通過）。yaga、khepri 是 136 輸、137 贏、138 輸，不算連兩輪 → iter-139 最後一次。主線 iter-138 版打 tag `p13-iter138`，iter-139 改壞的款退回這個 tag 的版本。
 - 總分 50 + 7.07 × 5 = **85.35**（iter-137 83.55、iter-136 84.30、基準 89.65）。
 
+## iter-139（05:25 派工，最後一輪）＋程式凍結
+- 19 款照 iter-138 評審修（`shared/stage10/brief-iter139.md`）：現贏舊版的 8 款只小修；yaga、khepri 最後一次；9 位新神可較大修改。05:31–05:47 全部交件，05:58 出完圖，P20 通過。
+- yaga 鼻叉鏤空裡的木門與門廊底板只標 `solid`（藏在開口裡的深色內襯，沿用前幾階段的 liner 做法）；俯視 IoU 對 griffin 0.839。
+- **計分（06:00–06:14，iter-139 全部版本）**：20/20。P16_collision_patches 68.1 s、P18_pairwise 292.2 s、P20_body_variety 45.1 s。
+- **評審（06:1x，第四位新評審，`shared/reviews/iter-139/REVIEW.md`）**：本輪 7.07、舊陣容 7.36；猜題 9/9；元素化否 0 款。盲評新版較好 6 款（cerberus、firebird、kitsune、kunpeng、minotaur、quetzal）、舊版較好 4 款（heimdall、khepri、sleipnir、yaga）、相同 6 款。
+  - 評審揭露另一個洩漏：brief 第 4 步先看本輪陣容圖，陣容圖上就能看出甲乙哪版是本輪。選擇仍只依外觀，沒有比對檔案。
+- **決定（06:16，程式凍結）**：
+  - khepri、yaga：138、139 連兩輪輸 → 退回 `e0f2c34`。
+  - heimdall、sleipnir：138 贏、139 小修後輸 → 退回 iter-138 版（tag `p13-iter138`）。
+  - 最終 25 款：舊版 8 款（trojan、serpent-longship、gullinbursti、tanngrisnir、gundestrup、mushussu、khepri、yaga）＋新版現有款 8 款（cerberus、minotaur、kitsune、kunpeng、quetzal、firebird 為 iter-139 版；heimdall、sleipnir 為 iter-138 版）＋新 9 位神（iter-139 版）。退回後 P20 通過。
+- 總分（iter-139 評審）50 + 7.07 × 5 = **85.35**。
+
 # 第十階段：神話車殼依 LG1 家族從頭重塑（2026-11-05 12:0x 起，截止 15:30）
 
 ## 第 0 輪（12:00–12:15）
