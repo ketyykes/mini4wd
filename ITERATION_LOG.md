@@ -61,6 +61,15 @@
 - 退回後 P20 不過：舊 tanngrisnir × amaterasu 俯 0.861、舊 trojan × poseidon 俯 0.854。舊版不動，iter-138 由 d 組（amaterasu）、a 組（poseidon）閃開。
 - 總分（外觀用 iter-137 評審）50 + 6.71 × 5 = 83.55；這個分數是退回前的版本。
 
+## iter-138（04:20 派工）
+- 20 款（10 款保留的新版現有款＋9 位新神；trojan 等 5 款已退回不改）照 iter-137 評審修（`shared/stage10/brief-iter138.md`），04:28–04:51 交件、04:28–05:05 出圖。a 組把 poseidon 對舊 trojan 從 0.854 拉到 0.839、d 組把 amaterasu 對舊 tanngrisnir 從 0.861 拉到 0.836，全部合併後 P20 通過。
+- 25 款量測（`scripts/body-tris.mjs`，Blender 同時在算，碰撞格 ms 偏高）：整車正面面積平均 **2809.1 mm²**（條件 ≤ 2924；基準 2838.6）；單款合計三角形最多 241,918（舊 gundestrup，上限 754,824）；碰撞格 > 1000 ms 有 7 款（gundestrup 1643、tanngrisnir 1402、nezha 1273、amaterasu 1151、heimdall 1130、pele 1100、apollo 1064），其中 gundestrup、tanngrisnir 是程式沒變的舊版 → 負載雜訊大，凍結後空機重量。
+- **計分（05:07–05:21）**：20/20。P16_collision_patches 68.0 s（1.55 s／款）、P18_pairwise 284.0 s、P20_body_variety 36.8 s、P08 55.7 s、P17_phase7_laps 114.4 s。
+- **評審（05:1x，第三位新評審，`shared/reviews/iter-138/REVIEW.md`）**：本輪 7.07、舊陣容 7.50；猜題 9/9；元素化否 0 款。盲評新版較好 8 款（cerberus、minotaur、sleipnir、heimdall、firebird、kitsune、kunpeng、quetzal），舊版較好 3 款（yaga、khepri、mushussu），兩版相同 5 款（已退回）。
+  - 評審自己揭露流程違規：甲乙選完後打開「四視圖」，發現下排就是本輪圖，又用 `cmp` 比對過檔案；選擇是在開四視圖之前記下、沒有改。下一輪評審 brief 加註：甲乙全部判完才開四視圖、不准比對檔案。
+- **決定**：mushussu 連兩輪（137、138）輸舊版 → 退回 `e0f2c34`（05:22，P20 通過）。yaga、khepri 是 136 輸、137 贏、138 輸，不算連兩輪 → iter-139 最後一次。主線 iter-138 版打 tag `p13-iter138`，iter-139 改壞的款退回這個 tag 的版本。
+- 總分 50 + 7.07 × 5 = **85.35**（iter-137 83.55、iter-136 84.30、基準 89.65）。
+
 # 第十階段：神話車殼依 LG1 家族從頭重塑（2026-11-05 12:0x 起，截止 15:30）
 
 ## 第 0 輪（12:00–12:15）
