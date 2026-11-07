@@ -3,6 +3,49 @@
 > 這個檔案只放現行階段。第一到九階段（iter-00 ～ iter-127）的完整紀錄在 `ITERATION_LOG_HISTORY.md`，內容未改。
 > 程式碼註解裡的「見 ITERATION_LOG iter-NN」、測試檔的「查證紀錄：ITERATION_LOG iter-NN」，iter-127 以前的都指那份檔案。
 
+# 第十三階段：神話車殼照 AI 四視圖重新建模＋新增 9 位神（2026-11-08 00:00 起，截止 11:00）
+
+## 第 0 輪（00:00–00:25）
+- 基準：app `918c847`（程式＝`e0f2c34`），11-07 22:37 計分 20/20。各項耗時（35 款）：`P16_collision_patches` 59.6 s（每款 1.70 s）、`P18_pairwise` 269.1 s、`P20_body_variety` 38.7 s（595 對）、`P08_mass` 57.5 s、`P17_phase7_laps` 126.4 s。
+  - 這幾項都逐款或逐對跑，車款 35 → 44 款，總耗時必然變長；GOAL 改成比每款（P20 比每對）平均耗時，不比基準慢超過 20%，也不能逾時。P16 逾時 120 s，44 款照現在的每款耗時約 75 s，有餘裕但要壓神話款的碰撞格。
+- body-tris 現行 16 款：正面面積平均 2838.6 mm²（GOAL 上限 2924）；碰撞格合計 19,438 ms、平均 1215 ms（brief 要求每款 ≤ 1000 ms）。
+- `e6ec286`：`mythSeries.js`、`types.d.ts` 新增 `roman`。
+- 每款指定的四視圖：`shared/stage10/p13-fourview-map.txt`；站位表與疊圖在 `shared/design/<body-id>/fourview_trace.txt`、`fourview_overlay.png`。
+- worktree：`app/.claude/worktrees/p13-a`～`p13-h`（從 `e6ec286` 開）。工作 brief：`shared/stage10/brief-iter136.md`。
+
+## iter-136 計畫（00:2x 派工，第 1 款 01:20、全部 02:20 前交）
+| 組 | 車款（四視圖） | 重點 |
+| --- | --- | --- |
+| a | zeus-thunderbolt（10）、poseidon-trident（11）、apollo-lyre（06） | 新款；三叉戟放車尾，避開 cerberus 的三道鼻刃 |
+| b | venus-scallop（31）、mars-spear（03）、trojan-horse（28） | 維納斯、瑪爾斯是新的羅馬體系 |
+| c | cerberus-trihead（07）、minotaur-maze（18）、khepri-scarab（05） | 三道等長鼻刃；牛角尾翼 |
+| d | kitsune-ninetail（08）、amaterasu-mirror（22）、nezha-windfire（29） | kitsune 與天照同色系，要拉開 |
+| e | shiva-ring（24）、pele-lava（16）、quetzal-serpent（02） | 濕婆不做三叉戟與第三隻眼 |
+| f | heimdall-horn（04）、sleipnir-stride（30）、serpent-longship（20） | heimdall 評審說最不炫，大改 |
+| g | gullinbursti-boar（26）、tanngrisnir-chariot（25）、kunpeng（14） | |
+| h | mushussu-gate（09）、firebird（12）、gundestrup-stag（19）、yaga-hut（23） | 4 款，依序做 |
+- 合併後的檢查：神話組兩兩 IoU < 0.80、全部 < 0.85；全長與穿牆探針；P20；Blender 3 視角 32 samples；完整計分；評審（現有款盲評 A/B、像不像四視圖、元素化、7 項評分）。
+
+## iter-136 結果（00:25–02:35）
+- 8 組 subagent 00:50–02:24 陸續交件，主 agent 先交先合併（`/tmp/mini4wd-p13/pick.sh`：只 cherry-pick 各組自己的 commit，subagent 合併主線用的 merge commit 跳過）。25 款全部有新版。
+- 合併時踩到的坑：
+  - 各組都在 `src/bodies/index.js` 尾端註冊新款，cherry-pick 一定衝突；用小工具取聯集。subagent 合併過主線的分支，衝突區塊外已經有同一行，第一次合併出重複 import，Blender 匯出報 `Identifier 'zeusThunderboltBody' has already been declared`，mushussu、zeus、venus 出圖失敗。`dc483be` 去重，工具改成全檔去重後再出圖。
+  - 8 組同時量測時負載衝到 111，擠掉同機 nextjspickball 的 E2E；00:24 起要求每組一次只跑 1 個量測程序。
+- 跨組 IoU 協調（`shared/stage10/myth-iou.mjs`）：
+  - 01:20（19 款）：kitsune × shiva 俯視 0.859、shiva × zeus 0.862 超過 0.85 → e 組改 shiva（環放大抬高、前輪段鼓面）、a 組改 zeus 前翼。
+  - 02:05（44 款）：amaterasu × pele 0.858、firebird × mars 0.855 超過 0.85；trojan 對 7 款 0.83–0.85 → e 組改 pele（尖鼻、前輪段收窄、翼後移）、b 組改 mars 與 trojan。
+  - 02:25（最終）：全部 < 0.85，最大 aero-wing × mushussu 俯視 0.846；神話組最大 firebird × mars 0.839；**神話組 ≥ 0.80 還有 31 對**（幾乎都是俯視，共用底盤與 ±46 mm 輪拱讓平面天生接近）。舊版 16 款本來就有 8 對 ≥ 0.80。
+- P20 的 roof 種類：c、f、g 組把 minotaur、serpent、tanngrisnir 的開放座艙改掉後神話組 roof 只剩 3 種，a 組把 apollo、c 組把 minotaur、f 組把 serpent 改回 `open-cockpit`，`P20_myth_variety` 通過。
+- 面數：25 款殼面＋實體都在 110,000 以內（各組回報，網格邊長多放寬到 0.7–1.0 mm）。碰撞格 ms 在高負載下量的，雜訊很大（同一版差 3 倍），等計分時看 P16 實際耗時。
+- 全長檢查（`shared/stage10/len.mjs`）：各設定的預設車殼都不是神話款，結果不變、全部合法。穿牆探針（`pen2.mjs`）同樣只跑 pc-box 類設定，神話款不影響，沒有重跑。
+- Blender 3 視角 32 samples：25 款全部出圖（apollo 02:01 的開放座艙版排在計分之後）。
+- 評審資料夾 `shared/reviews/iter-136/`（`shared/stage10/mkreview13.sh`）：甲乙盲評 16 款、四視圖對照 25 款、新 9 款匿名猜題；答案在 `/tmp/mini4wd-p13/iter-136-key.txt`。02:4x 派獨立評審。
+
+- **評審（02:45，`shared/reviews/iter-136/REVIEW.md`）**：新陣容 6.86、舊陣容 7.50（同一位評審）；新 9 款猜題 9/9、沒有人像。盲評新版較好：heimdall、mushussu、kunpeng、quetzal；其餘 12 款舊版較好。共通問題是 20 款以上同一副「鼓包前輪拱＋泡泡座艙＋平尾」殼；venus 放射紋有旭日旗風險、cerberus 座艙像牙、minotaur／yaga／serpent 像沒做完。
+- **計分（02:33–02:48）**：20/20。P16_collision_patches 68.4 s（44 款，1.55 s／款；基準 35 款 59.6 s = 1.70 s／款）、P18_pairwise 280.8 s（基準 269.1 s，35 款）、P20_body_variety 42.9 s（946 對；基準 38.7 s／595 對）、P08 71.0 s、P17_phase7_laps 152.4 s；每款 P16 跑圈 5.6–8.5 s。都沒有逾時、每款平均沒有變慢。
+- 總分 50 + 6.86 × 5 = **84.30**（基準 89.65）。
+- **決定**：分數沒進步，但這是使用者要求的重建模，不能整批退回；照 GOAL 的「舊版較好的款給 2 輪機會」，iter-137 修，修完再盲評，再輸就退回 e0f2c34 版。
+
 # 第十階段：神話車殼依 LG1 家族從頭重塑（2026-11-05 12:0x 起，截止 15:30）
 
 ## 第 0 輪（12:00–12:15）
