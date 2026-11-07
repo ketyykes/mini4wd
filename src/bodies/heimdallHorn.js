@@ -106,8 +106,8 @@ const bridgeHalfW = (x) => lerp(BRIDGE.hw0, BRIDGE.hw1, (BRIDGE.x0 - x) / (BRIDG
 /** @type {string[]} 彩虹細線的材質鍵（由外緣往內）：紅、橘、金、綠、藍 */
 const RAINBOW = ['rbRed', 'rbOrange', 'rbGold', 'rbGreen', 'rbBlue'];
 
-/** @type {{ x0: number, x1: number, zOut: number, yTop: number, yBot: number, t: number }} 側裙：前後輪之間每側一片直立板（|z| zOut，在底盤側框外），下緣到底盤上緣、頂部棚板接回殼側壁 */
-const SKIRT = { x0: -22.5, x1: 22.5, zOut: 37.4, yTop: 16.2, yBot: 10.5, t: 0.5 };
+/** @type {{ x0: number, x1: number, zOut: number, yTop: number, yBot: number, t: number }} 側箱外殼：前後輪之間每側一片淡藍直立板（|z| zOut，在底盤側框外），下緣到底盤上緣、上緣 yTop 用頂板接回殼側壁，把號角後面的空間整個封起來 */
+const SKIRT = { x0: -22.5, x1: 22.5, zOut: 37.4, yTop: 23.6, yBot: 10.5, t: 0.5 };
 
 /** @type {{ x0: number, x1: number, xBell: number, y0: number, y1: number, r0: number, r1: number, rBell: number, rz: number }} 加拉爾號角：貼在側裙外表面，前輪後方 x0 → 後輪前 x1 一路張開，x1 之後外張成喇叭口（口朝後）；rz 是往外凸出的厚度上限 */
 const HORN = { x0: 22, x1: -16, xBell: -21.8, y0: 13.8, y1: 15.4, r0: 1.3, r1: 4.0, rBell: 5.6, rz: 1.8 };
@@ -165,7 +165,7 @@ const materials = () => ({
   iceSolid: namedMaterial('paint-ice-blue', { color: 0x8fc7e6, roughness: 0.3, clearcoat: 0.8 }),
   // 下半部側壁與下緣：深石墨藍（和珍珠白、冰藍對比）
   navy: namedMaterial('paint-night-navy', { color: 0x1a2438, roughness: 0.45, clearcoat: 0.4 }),
-  navySolid: namedMaterial('paint-night-navy', { color: 0x1a2438, roughness: 0.45, clearcoat: 0.4, side: THREE.DoubleSide }),
+  iceSide: namedMaterial('paint-ice-blue', { color: 0x8fc7e6, roughness: 0.3, clearcoat: 0.8, side: THREE.DoubleSide }),
   ivory: namedMaterial('paint-horn-ivory', { color: 0xf1e8d2, roughness: 0.4, clearcoat: 0.5 }),
   // 真金屬（名稱含 -brass → Blender metallic）：號角箍環與喇叭口
   gold: namedMaterial('trim-gold-brass', { color: 0xd8b04a, metalness: 0.85, roughness: 0.28, clearcoat: 0.3 }),
@@ -429,10 +429,10 @@ export const heimdallHornBody = makePolyBody({
       rim.translate(X_REAR - 0.3, yc, 0);
       parts.push({ geometry: rim, mat: 'hornGold', solid: true, outline: true, name: 'gjallarhorn-tail-rim' });
     }
-    // ── 側裙：前後輪之間每側一片深石墨藍直立板，下緣到底盤上緣，把兩輪之間的底盤（電池盒）整片蓋住 ──
+    // ── 側箱外殼：前後輪之間每側一片淡藍直立板＋頂板，把兩輪之間的底盤與號角後面的空間整個封起來，號角嵌在外殼表面成進氣管 ──
     parts.push({
       geometry: buildBellySkirt({ x0: SKIRT.x0, x1: SKIRT.x1, zIn: (x) => Q.hw(x) - 1, zOut: SKIRT.zOut, yTop: SKIRT.yTop, yBot: SKIRT.yBot, t: SKIRT.t }),
-      mat: 'navySolid',
+      mat: 'iceSide',
       solid: true,
       outline: true,
       name: 'side-skirts',
@@ -473,7 +473,7 @@ export const heimdallHornBody = makePolyBody({
     geometry: '本檔站位產生器（推估，比例取自四視圖 04）：殼 x −66 ~ 76、橋翼後緣 −70；T 形鼻翼半寬 40、頂 20、厚約 3.4；兩前輪之間窄鼻半寬 22.5（前輪外露）、後輪拱 40.5、車尾 35.5；兩輪之間側裙 |z| 37.4；中脊從鼻翼 17.5 爬升到橋翼前緣 43、橋下降到 31，橋翼頂 44.2 為全車最高',
     bridge: '彩虹橋翼：ABS 平板厚 1.0，x −4 → −70、半寬 12 → 19；左右各一道拱肋（肋寬 1.8）＋兩根立柱，立板厚 1.2、位於 |z| 11；兩緣白邊＋五色細線各寬 0.95 mm（推估）',
     horn: '號角：ABS 半管薄殼（壁厚同殼 0.8），貼在側裙外表面，從 x 22 到 −16 半徑 1.3 → 4.0、之後外張成半徑 5.6 的喇叭口（口朝後，x −21.8）；斷面往外扁（凸出 ≤ 1.8 mm）；兩道象牙白半圈箍環、喇叭口金色唇邊（推估）',
-    skirt: '側裙：ABS 直立板＋頂部棚板，厚 0.6，|z| 37.4、x −22.5 ~ 22.5、y 10.5 ~ 16.2（下緣離底盤側框頂約 1 mm，推估）',
+    skirt: '側箱外殼：ABS 直立板＋頂板，厚 0.5，|z| 37.4、x −22.5 ~ 22.5、y 10.5 ~ 23.6（下緣離底盤側框頂約 1 mm，推估）',
     wheelArches: '後 R17.5（31 mm 輪胎半徑 15.5 + 2 mm）；前輪在窄鼻外側外露（車身半寬 22.5 < 輪胎內側 24.75），可裝 26 / 31 mm 輪',
     mounts: '對齊 chassis-midship 的車殼安裝點（SPEC 1.14）',
   },
