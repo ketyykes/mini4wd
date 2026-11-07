@@ -14,16 +14,33 @@ import { monoCurve, buildStations } from './gazelleLeap.js';
 /** @typedef {import('./loft.js').BodyPart} BodyPart */
 
 /** @type {number} 車尾 x */
-const X_TAIL = -69;
+const X_TAIL = -62;
 /** @type {number} 鼻尖 x */
 const X_NOSE = 77;
 
+/** @type {{ x: number, depth: number, half: number }[]} 側艙外緣的 V 形熔岩裂口（每側一道）：中心 x、切入深度、半寬（切到半寬 28，仍蓋住底盤側壁 27） */
+const FISSURES = [
+  { x: -5, depth: 7, half: 11 },
+];
+/**
+ * 俯視半寬要扣掉的裂口深度：每道裂口是往外張開的 V（頂點朝車身內側）
+ * @type {(x: number) => number}
+ */
+const fissureCut = (x) => {
+  let d = 0;
+  for (const f of FISSURES) {
+    d = Math.max(d, f.depth * Math.max(0, 1 - Math.abs(x - f.x) / f.half));
+  }
+  return d;
+};
+
 /** @type {number[]} 站位參數表（x 由後到前，前後軸 x = ±40，推估） */
-const XS = [-69, -64, -56, -48, -40, -30, -20, -10, 0, 12, 24, 32, 40, 48, 56, 63, 69, 73, 77];
+const XS = [-62, -58.5, -53.5, -48, -40, -30, -20, -10, 0, 12, 24, 32, 40, 48, 56, 63, 69, 73, 77];
 /** @type {Record<string, (x: number) => number>} */
 const P = {
-  // 俯視半寬：方正的寬車尾（33，後輪後方的兩塊尾角）→ 後輪段收到 26（後輪胎面往外露出 8 mm，半罩露輪）→ 兩輪之間是全車最寬的黑曜石側艙（33）→ 前輪段收到 26（前輪胎面也往外露出）→ 楔形尖鼻（鼻尖 8）
-  hw: monoCurve(XS, [33, 33, 29, 26, 26, 27.5, 32, 35, 35, 33.5, 29, 26.5, 26, 26, 25.5, 23, 19, 14, 8]),
+  // 俯視半寬：短車尾（30，收在天鵝頸翼前緣底下）→ 後輪段收到 26（後輪胎面往外露出 8 mm，半罩露輪）→ 兩輪之間是全車最寬的黑曜石側艙（35，外緣切一道 V 形裂口）→ 前輪段收到 26（前輪胎面也往外露出）→ 楔形尖鼻（鼻尖 8）
+  // 側艙外緣再切進一道寬 V 形熔岩裂口（見 fissureCut）
+  hw: ((base) => (x) => base(x) - fissureCut(x))(monoCurve(XS, [30, 29, 26.5, 26, 26, 27.5, 32, 35, 35, 33.5, 29, 26.5, 26, 26, 25.5, 23, 19, 14, 8])),
   // 中線頂：鼻尖 15 → 前擋泥板之間 28 → 座艙段 33 → 車尾甲板 31.5
   yC: monoCurve(XS, [30.5, 31.5, 32, 32.5, 32.5, 33, 33, 33, 33, 32, 30.5, 29, 28, 27, 24.5, 21.5, 18.5, 16.8, 15]),
   // 稜線（z ≈ 0.62 半寬，銳利）：前輪上方 33 高過中線（兩團肩部量體）
@@ -61,7 +78,7 @@ const profile = (x) => {
 };
 
 /** @type {{ x: number, pts: number[][] }[]} 站位表：車尾與鼻段每 1.5 mm、中段每 2.5 mm */
-const STATIONS = [...buildStations(X_TAIL, -61, 1.5, profile).slice(0, -1), ...buildStations(-61, 61, 2.5, profile).slice(0, -1), ...buildStations(61, X_NOSE, 1.5, profile)];
+const STATIONS = [...buildStations(X_TAIL, -56, 1.5, profile).slice(0, -1), ...buildStations(-56, 61, 2.5, profile).slice(0, -1), ...buildStations(61, X_NOSE, 1.5, profile)];
 
 /** @type {{ x: number, y: number, radius: number, cutZFrom: number }[]} 前後輪拱（R17.5：31 mm 輪胎半徑 15.5 + 2） */
 const ARCHES = [
@@ -174,13 +191,13 @@ const SPINE = [
 const WING_Y = 41.6;
 /** @type {number[][]} 後掠翼半邊外形 (x, z)：前緣後掠、翼梢往後尖出 */
 const WING_HALF = [
-  [-62.5, 0],
-  [-64.5, 18],
-  [-68.5, 34],
-  [-73, 40],
-  [-74.5, 36],
-  [-75, 14],
-  [-75, 0],
+  [-61.5, 0],
+  [-62.5, 18],
+  [-66.5, 34],
+  [-74, 47.5],
+  [-75, 43],
+  [-75, 16],
+  [-69.5, 0],
 ];
 
 /** @type {() => THREE.BufferGeometry} 後掠翼（厚 2.2） */
@@ -381,8 +398,8 @@ export const peleLavaBody = makePolyBody({
   src: {
     density_g_cm3: 'SPEC 1.14：ABS 約 1.05 g/cm³（推估）',
     wallThickness_mm: '推估：射出 ABS 殼 0.8 mm（同其他款）',
-    geometry: '本檔站位產生器 P（推估），比例取自四視圖 16（shared/design/body-pele-lava/fourview_trace.txt）縮到底盤：鼻尖 x 77（離地 15）、車尾 −69；半寬車尾 33 / 後輪 26（後輪露出）/ 側艙 35 / 前輪 26（前輪露出）/ 鼻尖 8；肩線 32 高過 R17.5 輪拱；座艙罩頂約 39；天鵝頸頂 48.4（全車最高）',
-    wing: '天鵝頸單柱（扁橢圓斷面 5.2 × 11 → 6.8，前面接中線脊鰭厚 3.6）、後掠翼（半展 40、厚 2.2，往後伸到 x −75，比車尾殼面再後 6 mm）、火山口進氣口（底半徑 10.5、高 2.6 的旋轉體）：ABS 實心件（推估），質量 = 封閉體積 × 1.05 g/cm³；單柱與火山口底部埋進殼面',
+    geometry: '本檔站位產生器 P（推估），比例取自四視圖 16（shared/design/body-pele-lava/fourview_trace.txt）縮到底盤：鼻尖 x 77（離地 15）、車尾 −62；半寬車尾 30 / 後輪 26（後輪露出）/ 側艙 35（x −5 切進 7 mm 的 V 形裂口）/ 前輪 26（前輪露出）/ 鼻尖 8；肩線 32 高過 R17.5 輪拱；座艙罩頂約 39；天鵝頸頂 48.4（全車最高）',
+    wing: '天鵝頸單柱（扁橢圓斷面 5.2 × 11 → 6.8，前面接中線脊鰭厚 3.6）、後掠翼（半展 47.5、厚 2.2，往後伸到 x −75，比車尾殼面再後 13 mm；後緣中央 V 形缺口到 x −69.5）、火山口進氣口（底半徑 10.5、高 2.6 的旋轉體）：ABS 實心件（推估），質量 = 封閉體積 × 1.05 g/cm³；單柱與火山口底部埋進殼面',
     myth: 'Pele 與火山、熔岩、黑曜石的關聯：見 shared/design/body-pele-lava/DESIGN.md 列出的來源；只用自然元素，不做神像與人形',
     mounts: '對齊 chassis-midship 的車殼安裝點（SPEC 1.14）',
   },
