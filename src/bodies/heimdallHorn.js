@@ -5,7 +5,7 @@
 // 設計：shared/design/body-heimdall-horn/DESIGN.md（典故：《散文埃達》Gylfaginning；彩虹橋三色見 MYTH_RESEARCH 北歐節 N12）。
 // 塗裝全為自創；不用盧恩字母、不含文字與商標。
 import * as THREE from 'three';
-import { makePolyBody, finPlate, flatPlate, sweepEllipse } from './polyBody.js';
+import { makePolyBody, finPlate, flatPlate } from './polyBody.js';
 import { namedMaterial, decalMaterial, mergeGeos, lerp } from './loft.js';
 import { monoCurve, buildStations, fenderFloor, smoothMax } from './gazelleLeap.js';
 import { buildProfileLiner } from './khepriScarab.js';
@@ -98,23 +98,60 @@ const ARCHES = [
 ];
 
 /** @type {{ x0: number, x1: number, hw0: number, hw1: number, y: number, t: number }} 彩虹橋翼：前緣 x −4（座艙後背線長進去）→ 後緣 −70，半寬由 12 往後展開到 19 */
-const BRIDGE = { x0: -4, x1: -70, hw0: 12, hw1: 19, y: 43.2, t: 1.0 };
+const BRIDGE = { x0: -4, x1: -70, hw0: 12, hw1: 19, y: 43.2, t: 0.8 };
 /** @type {(x: number) => number} 橋翼在 x 處的半寬 */
 const bridgeHalfW = (x) => lerp(BRIDGE.hw0, BRIDGE.hw1, (BRIDGE.x0 - x) / (BRIDGE.x0 - BRIDGE.x1));
 
 /** @type {string[]} 彩虹細線的材質鍵（由外緣往內）：紅、橘、金、綠、藍 */
 const RAINBOW = ['rbRed', 'rbOrange', 'rbGold', 'rbGreen', 'rbBlue'];
 
-/** @type {number[][]} 號角側管中心線 (x, y)：前輪後方低處 → 斜升到後輪拱前（四視圖的側面斜線） */
-const HORN_PATH = [
-  [20, 17.2],
-  [8, 18.6],
-  [-4, 20.8],
-  [-14, 23.4],
-  [-19.5, 25],
-];
-/** @type {(t: number) => number} 號角半徑：前端 0.8 → 管口前 2.5（錐形） */
-const hornR = (t) => lerp(0.8, 2.5, t ** 1.4);
+/** @type {{ x0: number, x1: number, xBell: number, y0: number, y1: number, r0: number, r1: number, rBell: number }} 加拉爾號角導管：前輪後方 x0 → 後輪前 x1 沿側裙一路張開，x1 之後再外張成喇叭口（口朝後） */
+const HORN = { x0: 22, x1: -16, xBell: -21.5, y0: 18.6, y1: 17.4, r0: 1.8, r1: 5.0, rBell: 6.8 };
+
+/** @type {(x: number) => { y: number, r: number }} 號角導管在 x 處的中心高度與半徑（錐形，最後一段外張成喇叭口） */
+const hornAt = (x) => {
+  if (x >= HORN.x1) {
+    const t = (HORN.x0 - x) / (HORN.x0 - HORN.x1);
+    return { y: lerp(HORN.y0, HORN.y1, t), r: lerp(HORN.r0, HORN.r1, t ** 1.25) };
+  }
+  const u = (HORN.x1 - x) / (HORN.x1 - HORN.xBell);
+  return { y: HORN.y1, r: lerp(HORN.r1, HORN.rBell, u ** 2) };
+};
+
+/**
+ * 號角導管（半管薄殼）：只做側壁外面那半圈（管心貼在側壁外表面內 0.4 mm），沿 x 掃過；口端開放朝後
+ * @type {(sgn: number) => THREE.BufferGeometry}
+ */
+const buildHornDuct = (sgn) => {
+  const nx = 64;
+  const na = 14;
+  /** @type {number[]} */
+  const pos = [];
+  /** @type {(i: number, k: number) => number[]} */
+  const at = (i, k) => {
+    const x = lerp(HORN.x0, HORN.xBell, i / nx);
+    const { y, r } = hornAt(x);
+    const a = -Math.PI / 2 + (Math.PI * k) / na;
+    return [x, y + r * Math.sin(a), sgn * (Q.hw(x) - 0.4 + r * Math.cos(a))];
+  };
+  for (let i = 0; i < nx; i++) {
+    for (let k = 0; k < na; k++) {
+      const a = at(i, k);
+      const b = at(i + 1, k);
+      const c = at(i + 1, k + 1);
+      const d = at(i, k + 1);
+      if (sgn > 0) {
+        pos.push(...a, ...b, ...c, ...a, ...c, ...d);
+      } else {
+        pos.push(...a, ...c, ...b, ...a, ...d, ...c);
+      }
+    }
+  }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  g.computeVertexNormals();
+  return g;
+};
 
 /** @type {() => Record<string, THREE.Material>} */
 const materials = () => ({
@@ -163,7 +200,7 @@ const ribTopY = (x, zc) => {
 };
 
 /**
- * 橋拱支柱（側視，立板厚 1.2）：一道拱肋＋兩根拱上立柱（拱肋到橋翼底），讀成一座拱橋
+ * 橋拱拱肋（側視，立板厚 0.8）：貼在腹板外側的一道銀色拱肋，讀成一座拱橋
  * @type {(zc: number) => THREE.BufferGeometry}
  */
 const buildArchPier = (zc) => {
@@ -179,14 +216,7 @@ const buildArchPier = (zc) => {
     lower.push([x, Math.max(deckAt(x, zc), yt - ARCH_RIB.w)]);
   }
   /** @type {THREE.BufferGeometry[]} */
-  const gs = [finPlate([...upper, ...lower.reverse()], zc, 1.2)];
-  for (const xs of [-29, -54]) {
-    const yb = ribTopY(xs, zc) - 0.6;
-    gs.push(finPlate([[xs - 0.7, yb], [xs + 0.7, yb], [xs + 0.7, BRIDGE.y + 0.3], [xs - 0.7, BRIDGE.y + 0.3]], zc, 1.2));
-  }
-  // 前端：背線長進橋翼的接頭（橋翼前緣下方的實心楔）
-  gs.push(finPlate([[-17, deckAt(-17, zc)], [-6, deckAt(-6, zc)], [-6, BRIDGE.y + 0.3], [-13, BRIDGE.y + 0.3]], zc, 1.2));
-  return mergeGeos(gs);
+  return finPlate([...upper, ...lower.reverse()], zc, 0.8);
 };
 
 /** @type {(x: number) => number} 座艙罩俯視半寬（同 canopy 站位） */
@@ -297,11 +327,22 @@ export const heimdallHornBody = makePolyBody({
         parts.push({ geometry: strip(o, o + 0.95, xa, xb), mat, name: `decal-bifrost-line-${i}` });
       });
     }
-    // ── 橋翼支柱：左右兩組銀色拱肋＋立柱，立在橋下引擎蓋上，側視是一座拱橋 ──
+    // ── 橋翼支撐：左右兩片冰藍薄腹板把橋翼和橋下引擎蓋整片接起來（側視不再透空），外側貼一道銀色拱肋，側視是一座拱橋 ──
     {
       const zc = 11;
+      /** @type {(z: number) => THREE.BufferGeometry} 腹板：下緣沿引擎蓋、上緣頂住橋翼底 */
+      const web = (z) => {
+        /** @type {number[][]} */
+        const lower = [];
+        for (let i = 0; i <= 16; i++) {
+          const x = lerp(-66, -6, i / 16);
+          lower.push([x, deckAt(x, z)]);
+        }
+        return finPlate([...lower, [-6, BRIDGE.y + 0.3], [-66, BRIDGE.y + 0.3]], z, 0.6);
+      };
+      parts.push({ geometry: mergeGeos([web(zc), web(-zc)]), mat: 'iceSolid', solid: true, outline: true, name: 'bridge-webs' });
       parts.push({
-        geometry: mergeGeos([buildArchPier(zc), buildArchPier(-zc)]),
+        geometry: mergeGeos([buildArchPier(zc + 0.8), buildArchPier(-zc - 0.8)]),
         mat: 'silver',
         solid: true,
         outline: true,
@@ -361,49 +402,22 @@ export const heimdallHornBody = makePolyBody({
       mat: 'dGold',
       name: 'decal-canopy-frame',
     });
-    // ── 號角側管：沿側壁斜升的錐形管（象牙白、管心埋進側壁），兩道金色箍環，管口金色喇叭口吹向後輪拱 ──
+    // ── 加拉爾號角導管：沿側裙從前輪後方一路張開到後輪前的金色長號角（半管薄殼，喇叭口朝後），兩道象牙白箍環 ──
     {
-      /** @type {(x: number) => number} 該處側壁外表面 |z| */
-      const sideZ = (x) => Q.hw(x);
-      /** @type {(sgn: number) => number[][]} */
-      const path3 = (sgn) => HORN_PATH.map(([x, y], i) => [x, y, sgn * (sideZ(x) - 0.2 * hornR(i / (HORN_PATH.length - 1)))]);
+      parts.push({ geometry: mergeGeos([buildHornDuct(1), buildHornDuct(-1)]), mat: 'goldSide', shell: true, outline: true, name: 'gjallarhorn-ducts' });
       /** @type {THREE.BufferGeometry[]} */
-      const tubes = [];
-      /** @type {THREE.BufferGeometry[]} */
-      const metal = [];
-      /** @type {THREE.BufferGeometry[]} 喇叭口外張薄殼（開放面，面積 × 壁厚計質量） */
-      const bells = [];
+      const rings = [];
       for (const s of [-1, 1]) {
-        const pts = path3(s);
-        tubes.push(sweepEllipse(pts, 28, (t) => [hornR(t), hornR(t)], 12));
-        const curve = new THREE.CatmullRomCurve3(pts.map(([x, y, z]) => new THREE.Vector3(x, y, z)));
-        // 箍環（沿管 0.35、0.7 處）
-        for (const t of [0.35, 0.7]) {
-          const p = curve.getPointAt(t);
-          const d = curve.getTangentAt(t);
-          const ring = new THREE.TorusGeometry(hornR(t) + 0.15, 0.32, 6, 14);
-          ring.lookAt(d);
-          ring.translate(p.x, p.y, p.z);
-          metal.push(ring);
+        for (const x of [12, -4]) {
+          const { y, r } = hornAt(x);
+          const ring = new THREE.TorusGeometry(r + 0.2, 0.4, 6, 18, Math.PI);
+          ring.rotateZ(-Math.PI / 2);
+          ring.rotateY(s > 0 ? -Math.PI / 2 : Math.PI / 2);
+          ring.translate(x, y, s * (Q.hw(x) - 0.4));
+          rings.push(ring);
         }
-        // 喇叭口：短錐外張（半徑 2.4 → 3.6，長 2.4，開放薄殼）＋唇邊
-        const end = curve.getPointAt(1);
-        const dir = curve.getTangentAt(1);
-        const bell = new THREE.CylinderGeometry(3.6, 2.4, 2.4, 16, 1, true);
-        // 圓柱沿 +y：底端（細）在管口、頂端（粗）往管口方向外張
-        bell.translate(0, 1.2, 0);
-        const q = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir);
-        bell.applyQuaternion(q);
-        bell.translate(end.x, end.y, end.z);
-        bells.push(bell);
-        const lip = new THREE.TorusGeometry(3.6, 0.4, 6, 16);
-        lip.applyQuaternion(new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 0, 1), dir));
-        lip.translate(end.x + dir.x * 2.4, end.y + dir.y * 2.4, end.z + dir.z * 2.4);
-        metal.push(lip);
       }
-      parts.push({ geometry: mergeGeos(tubes), mat: 'ivory', solid: true, outline: true, name: 'gjallarhorn-side-pipes' });
-      parts.push({ geometry: mergeGeos(metal), mat: 'gold', solid: true, outline: true, name: 'gjallarhorn-rings' });
-      parts.push({ geometry: mergeGeos(bells), mat: 'goldSide', shell: true, outline: true, name: 'gjallarhorn-bells' });
+      parts.push({ geometry: mergeGeos(rings), mat: 'ivory', solid: true, name: 'gjallarhorn-rings' });
     }
     return parts;
   },
@@ -412,7 +426,7 @@ export const heimdallHornBody = makePolyBody({
     wallThickness_mm: '推估：射出 ABS 殼 0.8 mm（同其他車殼）',
     geometry: '本檔站位產生器（推估，比例取自四視圖 04）：殼 x −66 ~ 76、橋翼後緣 −70；T 形鼻翼半寬 40、頂 20、厚約 3.4；兩前輪之間窄鼻半寬 22.5（前輪外露）、後輪拱 41.5、車尾 36；中脊從鼻翼 17.5 爬升到橋翼前緣 43、橋下降到 31，橋翼頂 44.2 為全車最高',
     bridge: '彩虹橋翼：ABS 平板厚 1.0，x −4 → −70、半寬 12 → 19；左右各一道拱肋（肋寬 1.8）＋兩根立柱，立板厚 1.2、位於 |z| 11；兩緣白邊＋五色細線各寬 0.95 mm（推估）',
-    horn: '號角側管：ABS 實心錐管，半徑 0.8 → 2.5、沿側壁從 x 20 斜升到 −19.5，喇叭口外張到半徑 3.6（推估）',
+    horn: '號角導管：ABS 半管薄殼（壁厚同殼 0.8），沿側裙從 x 22 到 −16 半徑 1.8 → 5.0，之後外張成半徑 6.8 的喇叭口（口朝後，x −21.5）；兩道象牙白半圈箍環（推估）',
     wheelArches: '後 R17.5（31 mm 輪胎半徑 15.5 + 2 mm）；前輪在窄鼻外側外露（車身半寬 22.5 < 輪胎內側 24.75），可裝 26 / 31 mm 輪',
     mounts: '對齊 chassis-midship 的車殼安裝點（SPEC 1.14）',
   },
