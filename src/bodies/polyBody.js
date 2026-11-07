@@ -27,6 +27,7 @@ import { makeLoftKit, createPolySurface, cachedBuild, buildRegion, buildMountTab
  * @property {number} wallThickness_mm
  * @property {{ x: number, pts: number[][] }[]} stations 半剖面站位表（見 createPolySurface）
  * @property {number} [tuck] 側裙下緣內收量
+ * @property {number} [step] 殼面網格邊長（mm，預設 0.5）；車身表面積大的款可放寬，殼面面數才不會增加
  * @property {boolean} [innerSkipRecess] 內面避開凹陷（預設 false）
  * @property {number[]} [hard] 有給時改用平滑剖面（createSmoothPolySurface），只有這些點是銳利稜線
  * @property {{ x: number, y: number, radius: number, cutZFrom: number }[]} wheelArches
@@ -379,8 +380,8 @@ export function makePolyBody(cfg) {
   /** @type {() => BodyPart[]} */
   const compose = () => {
     const surf = cfg.hard
-      ? createSmoothPolySurface(cfg.stations, { step: 0.5, tuck: cfg.tuck ?? 0, hard: cfg.hard })
-      : createPolySurface(cfg.stations, { step: 0.5, tuck: cfg.tuck ?? 0 });
+      ? createSmoothPolySurface(cfg.stations, { step: cfg.step ?? 0.5, tuck: cfg.tuck ?? 0, hard: cfg.hard })
+      : createPolySurface(cfg.stations, { step: cfg.step ?? 0.5, tuck: cfg.tuck ?? 0 });
     const kit = makeLoftKit(data, { mode: 'linear', sideZMin: cfg.sideZMin ?? 26, surface: surf });
     /** @type {BodyPart[]} */
     const parts = [];
