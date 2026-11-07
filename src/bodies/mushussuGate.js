@@ -183,8 +183,8 @@ const cabinSd = (x, z) => {
 /** @type {() => Record<string, THREE.Material>} */
 const materials = () => ({
   // 青金石藍釉磚（亮面釉）
-  lapis: namedMaterial('paint-lapis-glaze', { color: 0x1b469a, roughness: 0.32, clearcoat: 0.75, clearcoatRoughness: 0.12 }),
-  lapis2: namedMaterial('paint-lapis-glaze', { color: 0x1b469a, roughness: 0.32, clearcoat: 0.75, clearcoatRoughness: 0.12, side: THREE.DoubleSide }),
+  lapis: namedMaterial('paint-lapis-glaze', { color: 0x15327e, roughness: 0.32, clearcoat: 0.75, clearcoatRoughness: 0.12 }),
+  lapis2: namedMaterial('paint-lapis-glaze', { color: 0x15327e, roughness: 0.32, clearcoat: 0.75, clearcoatRoughness: 0.12, side: THREE.DoubleSide }),
   // 土黃釉磚（霧面）
   ochre: namedMaterial('paint-ochre-glaze-matte', { color: 0xc08a3e, roughness: 0.62, clearcoat: 0.1 }),
   ochre2: namedMaterial('paint-ochre-glaze-matte', { color: 0xc08a3e, roughness: 0.62, clearcoat: 0.1, side: THREE.DoubleSide }),
@@ -194,20 +194,20 @@ const materials = () => ({
   bitumen: namedMaterial('paint-bitumen-black-matte', { color: 0x1a1a1a, roughness: 0.72, clearcoat: 0.05 }),
   bitumen2: namedMaterial('paint-bitumen-black-matte', { color: 0x1a1a1a, roughness: 0.72, clearcoat: 0.05, side: THREE.DoubleSide }),
   // 金邊（真金屬：-brass 結尾）
+  navy2: namedMaterial('paint-gate-arch-navy', { color: 0x0e1f42, roughness: 0.3, clearcoat: 0.6, side: THREE.DoubleSide }),
+  joint2: namedMaterial('paint-brick-joint-navy', { color: 0x0b1d4a, roughness: 0.5, side: THREE.DoubleSide }),
   white2: namedMaterial('paint-glaze-white', { color: 0xf1ede2, roughness: 0.4, clearcoat: 0.5, side: THREE.DoubleSide }),
   gold2: namedMaterial('trim-gold-brass', { color: 0xc8a24a, roughness: 0.3, metalness: 0.8, clearcoat: 0.3, side: THREE.DoubleSide }),
   inner: namedMaterial('shell-inner-dark', { color: 0x131a26, roughness: 0.85, side: THREE.BackSide }),
-  edge: namedMaterial('shell-edge-lapis', { color: 0x173b78, roughness: 0.5, side: THREE.DoubleSide }),
+  edge: namedMaterial('shell-edge-lapis', { color: 0x112a6a, roughness: 0.5, side: THREE.DoubleSide }),
   liner: namedMaterial('shell-wheelwell-navy', { color: 0x14284a, roughness: 0.75, side: THREE.DoubleSide }),
-  dJoint: decalMaterial('decal-brick-joint-navy', { color: 0x14377e, roughness: 0.5 }),
+  dJoint: decalMaterial('decal-brick-joint-navy', { color: 0x0f2864, roughness: 0.5 }),
   dJointOchre: decalMaterial('decal-brick-joint-umber', { color: 0x7a5424, roughness: 0.6 }),
   dYellow: decalMaterial('decal-yellow-glaze', { color: 0xe0ac46, roughness: 0.36 }),
   dTurq: decalMaterial('decal-turquoise-glaze', { color: 0x2f8fb0, roughness: 0.36 }),
   dWhite: decalMaterial('decal-white-glaze', { color: 0xf2efe6, roughness: 0.38 }),
   dGold: decalMaterial('decal-gold', { color: 0xc8a24a, roughness: 0.32, metalness: 0.7 }),
   dNavy: decalMaterial('decal-gate-shadow-navy', { color: 0x0f2347, roughness: 0.6 }),
-  // 頭燈：琥珀色細長燈條（低強度自發光，不過曝）
-  lamp: decalMaterial('lamp-head-amber', { color: 0xffb440, emissive: 0xff8a10, emissiveIntensity: 0.35, roughness: 0.3 }),
   mount: namedMaterial('abs-mount-black', { color: 0x222326, roughness: 0.6 }),
 });
 
@@ -271,9 +271,11 @@ const skirtTopY = (x) => (x >= 4 ? lerp(24.8, 21, (x - 4) / 17) : lerp(24.8, 25.
 
 /**
  * 兩輪之間的折線切面側板與上緣白色飾條（左右各一）
- * @type {() => { plate: THREE.BufferGeometry, trim: THREE.BufferGeometry }}
+ * @type {() => { plate: THREE.BufferGeometry, trim: THREE.BufferGeometry, band: THREE.BufferGeometry, gold: THREE.BufferGeometry, petals: THREE.BufferGeometry, joints: THREE.BufferGeometry }}
  */
 const buildCreaseSkirt = () => {
+  // 側板上的玫瑰花飾帶中線 y
+  const ROS_Y = 17.6;
   /** @type {(pts: number[][], zc: number, thick: number) => THREE.BufferGeometry} */
   const extrude = (pts, zc, thick) => {
     const g = new THREE.ExtrudeGeometry(new THREE.Shape(pts.map(([x, y]) => new THREE.Vector2(x, y))), { depth: thick, bevelEnabled: false });
@@ -289,11 +291,63 @@ const buildCreaseSkirt = () => {
   const plates = [];
   /** @type {THREE.BufferGeometry[]} */
   const trims = [];
+  /** @type {THREE.BufferGeometry[]} */
+  const bands = [];
+  /** @type {THREE.BufferGeometry[]} */
+  const golds = [];
+  /** @type {THREE.BufferGeometry[]} */
+  const petals = [];
+  /** @type {THREE.BufferGeometry[]} */
+  const joints = [];
+  // 板外表面 |z|
+  const zOut = SKIRT_Z + SKIRT_T / 2;
+  /** @type {(w: number, h: number, d: number, x: number, y: number, z: number) => THREE.BufferGeometry} 盒子（中心在 x, y, z） */
+  const box = (w, h, d, x, y, z) => {
+    const g = new THREE.BoxGeometry(w, h, d);
+    g.translate(x, y, z);
+    return g.index ? g.toNonIndexed() : g;
+  };
+  /** @type {(r: number, t: number, x: number, y: number, z: number) => THREE.BufferGeometry} 面向 z 的薄圓片 */
+  const disc = (r, t, x, y, z) => {
+    const g = new THREE.CylinderGeometry(r, r, t, 12, 1);
+    g.rotateX(Math.PI / 2);
+    g.translate(x, y, z);
+    return g.index ? g.toNonIndexed() : g;
+  };
   for (const sg of [-1, 1]) {
     plates.push(extrude(platePts, sg * SKIRT_Z, SKIRT_T));
     trims.push(extrude(trimPts, sg * (SKIRT_Z + 0.05), SKIRT_T + 0.3));
+    // 玫瑰花飾帶：深藍底帶（高 3.8）＋上下金邊，帶上一列白瓣金心玫瑰花飾（每 5.4 mm 一朵）
+    bands.push(box(41.6, 3.8, 0.16, 0, ROS_Y, sg * (zOut + 0.08)));
+    for (const dy of [-2.1, 2.1]) {
+      golds.push(box(41.6, 0.4, 0.22, 0, ROS_Y + dy, sg * (zOut + 0.11)));
+    }
+    for (let k = -3; k <= 3; k++) {
+      const xc = k * 5.4;
+      for (let a = 0; a < 8; a++) {
+        const th = (a * Math.PI) / 4;
+        petals.push(disc(0.55, 0.2, xc + 1.15 * Math.cos(th), ROS_Y + 1.15 * Math.sin(th), sg * (zOut + 0.26)));
+      }
+      golds.push(disc(0.6, 0.24, xc, ROS_Y, sg * (zOut + 0.3)));
+    }
+    // 釉磚縫：花飾帶上方兩層錯縫磚（磚 4.6 × 2.2，縫寬 0.3），只鋪到折線上緣下方
+    for (const y0 of [ROS_Y + 4.5, ROS_Y + 6.7]) {
+      for (let x = -20.8; x < 20.8; x += 2.3) {
+        if (y0 < skirtTopY(x + 1.15) - 0.6 && y0 < skirtTopY(x) - 0.6) {
+          joints.push(box(2.3, 0.3, 0.12, x + 1.15, y0, sg * (zOut + 0.06)));
+        }
+      }
+    }
+    for (const [yc, off] of [[ROS_Y + 3.4, 0], [ROS_Y + 5.6, 2.3]]) {
+      for (let x = -20.8 + off; x < 20.8; x += 4.6) {
+        // 磚縫不要超出板子的折線上緣
+        if (yc + 1.1 < skirtTopY(x) - 0.6) {
+          joints.push(box(0.3, 2.2, 0.12, x, yc, sg * (zOut + 0.06)));
+        }
+      }
+    }
   }
-  return { plate: mergeGeos(plates), trim: mergeGeos(trims) };
+  return { plate: mergeGeos(plates), trim: mergeGeos(trims), band: mergeGeos(bands), gold: mergeGeos(golds), petals: mergeGeos(petals), joints: mergeGeos(joints) };
 };
 
 /**
@@ -350,7 +404,7 @@ export const mushussuGateBody = makePolyBody({
   form: 'glazed-grille-fastback',
   roof: 'closed',
   wing: 'gate-tower-crenel',
-  theme: '寬平方鼻頭、前移六角座艙、緩降快背的四驅車披上伊什塔爾城門的釉磚：鼻端斜面金框裡的錯縫黃釉磚格、青金石藍釉磚車身、深藍黑亮釉的六角城門拱道座艙（金框）、前翼子板上的小階梯雉堞片、側牆上緣的白瓣金心玫瑰花飾帶、兩輪之間的土黃釉磚折線切面側板（白色折線、金色鱗紋）；車尾是城門——兩座階梯形門塔尾鰭架起一片浮在甲板上、頂緣排三座三階雉堞的城牆尾翼',
+  theme: '寬平方鼻頭、前移六角座艙、緩降快背的四驅車披上伊什塔爾城門的釉磚：鼻端斜面金框裡的錯縫黃釉磚格、青金石藍釉磚車身、深藍黑亮釉的六角城門拱道座艙（金框）、前翼子板上的小階梯雉堞片、側牆上緣的白瓣金心玫瑰花飾帶、兩輪之間的青金石藍折線切面側板（白色折線、一列玫瑰花飾、錯縫磚縫）；車尾是城門——兩座階梯形門塔尾鰭架起一片浮在甲板上、頂緣排三座三階雉堞的城牆尾翼',
   material: 'ABS',
   density_g_cm3: 1.05,
   wallThickness_mm: 0.8,
@@ -406,9 +460,9 @@ export const mushussuGateBody = makePolyBody({
 
     // 鼻端斜面的釉磚格（四視圖蜂巢格柵鼻）：深藍底 → 錯縫黃釉磚（磚 4.6 × 2.2、縫 0.55）→ 外圍金框（寬 1.1）
     /** @type {number} 釉磚格半寬 */
-    const GRILLE_HW = 19;
+    const GRILLE_HW = 10;
     /** @type {(x: number, y: number, z: number) => number} 釉磚格框內（正值 = 框內） */
-    const inGrille = (x, y, z) => Math.min(x - NOSE_FACE_X - 0.6, GRILLE_HW - Math.abs(z), y - P.yLow(x) - 1.6);
+    const inGrille = (x, y, z) => Math.min(x - NOSE_FACE_X - 2.2, GRILLE_HW - Math.abs(z), y - P.yLow(x) - 1.6);
     parts.push({ geometry: kit.decal((x, y, z) => (onTop(x, y) || x > X_FRONT - 1.6 ? inGrille(x, y, z) : -1)), mat: 'dNavy', name: 'decal-grille-base' });
     parts.push({
       geometry: kit.decal((x, y, z) => {
@@ -433,20 +487,6 @@ export const mushussuGateBody = makePolyBody({
       mat: 'dGold',
       name: 'decal-grille-frame',
     });
-    // 頭燈：釉磚格外側的琥珀色斜細燈條
-    parts.push({
-      geometry: kit.decal((x, y, z) => {
-        if (!onTop(x, y) || x < NOSE_FACE_X + 0.5) {
-          return -1;
-        }
-        const az = Math.abs(z);
-        const yc = lerp(P.yLow(x) + 3.2, P.yLow(x) + 5.2, (az - 21.5) / 11.5);
-        return Math.min(az - 21.5, 33 - az, 0.8 - Math.abs(y - yc));
-      }, { offset: 0.12 }),
-      mat: 'lamp',
-      name: 'lamp-head',
-    });
-
     // 六角城門拱道的金框（寬 1.0）與拱道裡的磚縫（深色上的細金縫，讀成拱道內壁）
     parts.push({
       geometry: kit.decal((x, y, z) => {
@@ -532,11 +572,38 @@ export const mushussuGateBody = makePolyBody({
       mat: 'dGold',
       name: 'decal-ochre-panel-gold',
     });
-    // 折線切面側板（兩輪之間，|z| 32.6 的直立板）：土黃釉面，上緣是一條往後斜升、在 x 4 折一次的折線，沿折線一條白色飾條；
+    // 折線切面側板（兩輪之間，|z| 32.6 的直立板）：青金石藍釉面，一列白瓣金心玫瑰花飾（深藍底帶、金邊）與錯縫磚縫，
+    // 上緣是一條往後斜升、在 x 4 折一次的折線，沿折線一條白色飾條；
     // 板子擋住深收腰下方的底盤，俯視只看得到板厚
     const skirt = buildCreaseSkirt();
-    parts.push({ geometry: skirt.plate, mat: 'ochre2', solid: true, outline: true, name: 'crease-side-plate' });
+    parts.push({ geometry: skirt.plate, mat: 'lapis2', solid: true, outline: true, name: 'crease-side-plate' });
     parts.push({ geometry: skirt.trim, mat: 'white2', solid: true, outline: true, name: 'crease-side-trim-white' });
+    parts.push({ geometry: skirt.band, mat: 'navy2', solid: true, outline: true, name: 'crease-side-rosette-band' });
+    parts.push({ geometry: skirt.gold, mat: 'gold2', solid: true, outline: true, name: 'crease-side-rosette-gold' });
+    parts.push({ geometry: skirt.petals, mat: 'white2', solid: true, outline: true, name: 'crease-side-rosette-petals' });
+    parts.push({ geometry: skirt.joints, mat: 'joint2', solid: true, outline: true, name: 'crease-side-brick-joints' });
+
+    // 城門口內襯：深藍黑的門道底板、兩側壁與前壁（藏在城門口裡，從車尾看是一條深色門道，看不到底盤）
+    {
+      const floorY = 27.2;
+      const x0 = X_REAR - 0.5;
+      const x1 = GATE_GAP.x + 0.4;
+      /** @type {(w: number, h: number, d: number, x: number, y: number, z: number) => THREE.BufferGeometry} */
+      const box = (w, h, d, x, y, z) => {
+        const g = new THREE.BoxGeometry(w, h, d);
+        g.translate(x, y, z);
+        return g.index ? g.toNonIndexed() : g;
+      };
+      const wallTop = P.yTop(GATE_GAP.x) - 0.6;
+      const liners = [
+        box(x1 - x0, 0.5, 2 * GATE_GAP.hw + 0.8, (x0 + x1) / 2, floorY, 0),
+        box(0.4, wallTop - floorY, 2 * GATE_GAP.hw + 0.8, x1, (wallTop + floorY) / 2, 0),
+      ];
+      for (const sg of [-1, 1]) {
+        liners.push(box(x1 - x0, wallTop - floorY, 0.4, (x0 + x1) / 2, (wallTop + floorY) / 2, sg * (GATE_GAP.hw + 0.2)));
+      }
+      parts.push({ geometry: mergeGeos(liners), mat: 'navy2', solid: true, name: 'gate-passage-liner' });
+    }
 
     // 車尾城門（gate-tower-crenel）＋前翼子板小城垛片
     const gate = buildGate();
@@ -555,7 +622,7 @@ export const mushussuGateBody = makePolyBody({
       '本檔站位產生器 P（推估）：殼 x −73 → 74；肩線半寬 方鼻 37–39、翼子板 44.5、腰 23、車尾 24–27.5；車尾中央 |z| < 13 切出城門口（x < −63）（＋牆腳外張 0.6，外框半寬 ≤ 48.0）；中線 鼻端 16、引擎蓋 29.5、座艙頂 37.8（x 0）、車尾 31；翼子板稜線 32.5–32.6；門塔頂 41（全車最高）；側裙下緣 12.5，車尾 20 讓開後導輪',
     wheelArches: '前後 R17.5（31 mm 輪胎半徑 15.5 + 2 mm），不切輪拱可裝；輪拱內襯＋輪胎內側環形擋板（buildArchWell）',
     gate: '城牆尾翼：x −69.5、厚 1.2、半寬 15.2，底緣 34.8 浮在甲板上、牆頂 37.8，3 座三階雉堞每階高 1.0；門塔尾鰭 |z| 15.9、厚 1.2，頂緣三階 36 → 41；前翼子板城垛片 |z| 28、厚 1.4、底寬 11、高約 5；ABS 實心件（推估），質量 = 封閉體積 × 1.05 g/cm³',
-    livery: '鼻端釉磚格 半寬 19、磚 4.6 × 2.2；六角座艙 x −18 → 40、最寬半寬 12.2；玫瑰花飾帶在肩線下 3.4、半高 2.3、間距 5.4；土黃側板 x −21 → 21；折線切面側板 |z| 32.6、厚 0.8、上緣 21 → 24.8（x 4）→ 25.8，白色飾條高 1.2（皆為貼紙 / 塗裝分區，推估）',
+    livery: '鼻端釉磚格 半寬 10、x > 69.7、磚 4.6 × 2.2；六角座艙 x −18 → 40、最寬半寬 12.2；玫瑰花飾帶在肩線下 3.4、半高 2.3、間距 5.4；土黃側板 x −21 → 21；折線切面側板 |z| 32.6、厚 0.8、上緣 21 → 24.8（x 4）→ 25.8，白色飾條高 1.2，板上玫瑰花飾 7 朵（間距 5.4、中線 y 17.6）與兩層錯縫磚縫（皆為實心薄片、貼紙 / 塗裝分區，推估）',
     myth: '伊什塔爾城門的青金石藍釉磚、黃釉、金邊框、玫瑰花飾、拱門與階梯形雉堞（MYTH_RESEARCH M2、M3）；穆修胡修只取鱗紋（M1），不做頭、角、腳、尾',
     mounts: '對齊 chassis-midship 的車殼安裝點（SPEC 1.14）',
   },
