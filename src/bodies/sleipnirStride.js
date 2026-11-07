@@ -4,7 +4,7 @@
 // 設計：shared/design/body-sleipnir-stride/DESIGN.md（典故：《散文埃達》Gylfaginning「Sleipnir … has eight feet」，MYTH_RESEARCH 北歐節 N9、N12）。
 // 塗裝全為自創；不用盧恩字母、不含文字與商標；不重現 Tjängvide 圖像石的騎士構圖。
 import * as THREE from 'three';
-import { makePolyBody, flatPlate, finPlate, sweepEllipse } from './polyBody.js';
+import { makePolyBody, flatPlate, finPlate } from './polyBody.js';
 import { namedMaterial, decalMaterial, mergeGeos, lerp } from './loft.js';
 import { monoCurve, buildStations, fenderFloor, smoothMax } from './gazelleLeap.js';
 import { buildProfileLiner } from './khepriScarab.js';
@@ -151,18 +151,6 @@ const knotHood = makeKnot({ a: 3.4, b: 3.6, v0: 21.5, x0: 24, x1: 58 });
 /** @type {(x: number, v: number) => number} 座艙後窄車尾甲板兩側的交織帶 */
 const knotTail = makeKnot({ a: 3.0, b: 3.0, v0: 11.5, x0: -63, x1: -30 });
 
-/** @type {number[][]} 車尾馬蹄鐵金邊（右半，[x, y, z]）：從後輪前的側壁長出，往外跨過外露的後輪，繞過車尾接到另一側 */
-const HORSESHOE = [
-  [-21, 26.8, 22.6],
-  [-27, 29.6, 29],
-  [-35, 30.9, 32.6],
-  [-46, 31.2, 33.4],
-  [-56, 33.6, 32],
-  [-64, 36.6, 26],
-  [-69.5, 38.2, 13],
-  [-70.4, 38.4, 0],
-];
-
 /** @type {() => Record<string, THREE.Material>} */
 const materials = () => ({
   // 主色：珍珠銀白（上半身）；輔色：深靛藍（側壁與下緣）；金：真金屬（名稱含 -brass → Blender metallic）
@@ -193,7 +181,7 @@ export const sleipnirStrideBody = makePolyBody({
   form: 'eightfold-shield',
   roof: 'canopy',
   wing: 'gilt-ducktail',
-  theme: '八足神駒用「八」與奔馳表現，不做馬頭與腿：盾形尖鼻（中央稜線、金色盾緣）、修長低伏的楔形車身、座艙偏後，車尾整片往上翹成鴨尾（金色 U 形框＋金色尾刃）；兩側前後輪之間深色側板上各 8 道往後斜的金色飾條，前後兩組各自由短到長，像奔馳的步幅；珍珠銀白為主、深靛藍側壁為輔，金色 V 形前緣、車尾馬蹄鐵金邊，引擎蓋與車尾甲板上深靛藍北歐交織帶，車尾直牆下段鋼色擴散器鰭片',
+  theme: '八足神駒用「八」與奔馳表現，不做馬頭與腿：盾形尖鼻（中央稜線、金色盾緣）、修長低伏的楔形車身、座艙偏後，車尾整片往上翹成鴨尾（金色 U 形框＋金色尾刃）；兩側前後輪之間深色側板上各 8 道往後斜的金色飾條，前後兩組各自由短到長，像奔馳的步幅；珍珠銀白為主、深靛藍側壁為輔，金色 V 形前緣、車尾甲板 U 形馬蹄鐵金邊，引擎蓋與車尾甲板上深靛藍北歐交織帶，車尾直牆下段鋼色擴散器鰭片',
   material: 'ABS',
   density_g_cm3: 1.05,
   wallThickness_mm: 0.8,
@@ -307,11 +295,18 @@ export const sleipnirStrideBody = makePolyBody({
       mat: 'dGold',
       name: 'decal-chevron-inner',
     });
-    // ── 車尾馬蹄鐵金邊：圓斷面金管從兩側後輪前的側壁長出、往外跨過外露的後輪、繞過車尾（俯視是 U 形馬蹄鐵） ──
-    {
-      const path = [...HORSESHOE, ...HORSESHOE.slice(0, -1).reverse().map(([x, y, z]) => [x, y, -z])];
-      parts.push({ geometry: sweepEllipse(path, 220, () => [1.1, 1.1], 10), mat: 'goldSolid', solid: true, name: 'horseshoe-rim' });
-    }
+    // ── 車尾馬蹄鐵金邊：車尾甲板頂面沿外緣一圈 2.4 mm 寬的 U 形金色貼紙（兩臂從後輪前沿外肩往後，繞過車尾上緣） ──
+    parts.push({
+      geometry: kit.decal((x, y, z) => {
+        if (x > -22 || y < yFender(x) - 2.4) {
+          return -1;
+        }
+        const inset = Math.min(Q.hw(x) - Math.abs(z), x - X_REAR);
+        return Math.min(1.2 - Math.abs(inset - 3.2), -22 - x);
+      }, { offset: 0.12 }),
+      mat: 'dGold',
+      name: 'decal-horseshoe-rim',
+    });
     // ── 車尾擴散器格柵：車尾直牆下段 5 片往後伸的鋼色直立鰭 ──
     {
       /** @type {THREE.BufferGeometry[]} */
