@@ -2,13 +2,14 @@
 // 側視：鼻尖壓到 15.6 mm 的低鼻錐，往後一路斜升到前輪上方的「牛肩」擋泥板量體（最高 37.6，比中央脊線還高），
 // 中段大幅收腰（半寬 46 → 29，肩線降到 24 以下），後輪再鼓起一對較低的「牛臀」擋泥板，車尾往下收——量體集中在四個角，像低頭蓄力往前衝的公牛。
 // 斷面：中央隆起的圓脊（不是 V 形）＋兩側凹谷＋擋泥板頂；肩線是唯一銳利稜線，下面往內收 3.5–4 mm 成第二層（壁畫藍下裙＋黑色下緣），側視有上下兩層量體。
-// 神話元素：新月角 = 一片貼低的新月形金色前翼——從左右前擋泥板的前坡長出、往前往內收，在鼻尖上方連成一道弧（扁平翼斷面，不是圓錐形的角）；鼻錐和車身同為赭紅，沒有牛的臉、眼、鼻孔、鼻環；
+// 神話元素：新月角 = 左右前擋泥板頂各一片金色新月鰭——鰭根沿擋泥板頂、側視前緣外凸後緣內凹、鰭尖往後上方掃並往外張（翼型斷面的立鰭，不是圓錐形的角）；鼻錐和車身同為赭紅、下巴黑色，沒有牛的臉、眼、鼻孔、鼻環；
 // 迷宮回紋 = 從鼻尖沿中央脊往後掃到車尾的黑底奶油白雙回紋賽車條，中線一條微微發光的金色阿里阿德涅之線走進座艙；座艙是脊線後段的方形開放座艙（迷宮中心，井壁和賽車條同為黑色）。
 // 設計：shared/design/body-minotaur-maze/DESIGN.md（MYTH_RESEARCH G6、G9、G10、G13）。剖面為本檔站位產生器（推估）；塗裝全為自創，不含任何文字、號碼或商標。
 import * as THREE from 'three';
-import { makePolyBody, sweepEllipse } from './polyBody.js';
-import { namedMaterial, decalMaterial, sideDecal, sdRoundRect, mergeGeos, lerp } from './loft.js';
-import { monoCurve, buildStations, smoothNormals } from './gazelleLeap.js';
+import { makePolyBody } from './polyBody.js';
+import { namedMaterial, decalMaterial, sideDecal, sdRoundRect, mergeGeos, lerp, smoothstep } from './loft.js';
+import { toCreasedNormals } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
+import { monoCurve, buildStations, smoothMax } from './gazelleLeap.js';
 import { buildArchWell, chassisBlockedNearArch } from './kitsuneNinetail.js';
 
 /** @typedef {import('./loft.js').BodyPart} BodyPart */
@@ -19,31 +20,34 @@ const XS = [-70, -64, -56, -48, -40, -30, -20, -8, 4, 16, 26, 36, 44, 52, 60, 66
 const P = {
   // 中央脊線：車尾 19 → 後輪 30.4 → 座艙段 34–35.4 → 牛肩前方 36.4（x 26，最高）→ 往前斜降成低頭的牛額 → 鼻尖 15.6
   yC: monoCurve(XS, [19, 22.4, 27, 29.4, 30.4, 31.8, 33.2, 34.4, 35.4, 36.2, 36.4, 35.6, 33.6, 30.4, 26.4, 23, 19.8, 17.4, 15.6]),
-  // 半寬（俯視）：牛臀 37.6、腰 29、牛肩 46.0（外框 ≤ 48）、鼻錐往鼻尖收到 13.5
-  hw: monoCurve(XS, [10, 19, 31, 37, 37.6, 34, 29.6, 29, 31.6, 42, 46, 46, 46, 44, 36, 27.5, 21, 16, 13.5]),
+  // 半寬（俯視）：車尾收尖到 6、牛臀 37.6、腰 29、牛肩 46.0（外框 ≤ 48）、鼻錐往鼻尖收到 13.5
+  hw: monoCurve(XS, [6, 14, 30.5, 37, 37.6, 34, 29.6, 29, 31.6, 42, 46, 46, 46, 44.4, 37.5, 29, 22, 16.5, 13.5]),
   // 下緣：中段 10.8（底盤側框頂 9.4 之上）、車尾與鼻吻抬高
   yLow: monoCurve(XS, [16.2, 15.4, 13.6, 12.2, 11.4, 11, 10.8, 10.8, 10.8, 11, 11.4, 12, 12.6, 13.4, 14.2, 14.8, 15.2, 15.4, 15.4]),
 };
 
+/** @type {(a: number, b: number, k?: number) => number} 平滑最小值（避免 Math.min 在殼面上留下沿 x 走的折痕） */
+const smoothMin = (a, b, k = 1.2) => -smoothMax(-a, -b, k);
 /** @type {(x: number, xc: number, h: number, k: number) => number} 拋物線擋泥板頂高度（中心 xc 高 h，往前後以 k 下降） */
 const bump = (x, xc, h, k) => h - k * (x - xc) * (x - xc);
 /** @type {(x: number) => number} 中央脊兩側凹谷（甲板）高度 */
-const valleyY = (x) => P.yC(x) - lerp(2.6, 5.2, Math.min(1, Math.max(0, (P.hw(x) - 14) / 20)));
+const valleyY = (x) => P.yC(x) - lerp(2.6, 5.2, smoothstep(14, 34, P.hw(x)));
 /**
  * 擋泥板頂高度：前輪「牛肩」最高 37.6（x 37，比脊線高 → 側視最高點在前輪上方，低頭衝撞的肩）、後輪「牛臀」33.4（x −41）；不高過脊線 2.5 mm（車尾不鼓成兩個包）；
- * 兩輪之間掉回甲板邊（凹谷 − 2），所以中段收腰、量體集中在四角
+ * 兩輪之間掉回甲板邊（凹谷 − 2），所以中段收腰、量體集中在四角；各段之間用平滑最大 / 最小值銜接，殼面沿 x 不留折痕
  * @type {(x: number) => number}
  */
-const fenderY = (x) => Math.min(P.yC(x) + 2.5, Math.max(valleyY(x) - 2.2, bump(x, 37, 37.6, 0.0125), bump(x, -41, 33.4, 0.016)));
+const fenderY = (x) =>
+  smoothMin(P.yC(x) + 2.5, smoothMax(valleyY(x) - 2.2, smoothMax(bump(x, 37, 37.6, 0.0125), bump(x, -41, 33.4, 0.016), 1.5), 1.5), 1.0);
 /** @type {(x: number) => number} 肩線（側面上層的銳利稜線）高度 */
-const shoulderY = (x) => Math.max(P.yLow(x) + 4.5, fenderY(x) - 3.0);
-/** @type {(x: number) => number} 腰段權重（|x| < 16 為 1，|x| > 26 為 0） */
-const waistW = (x) => Math.min(1, Math.max(0, (26 - Math.abs(x)) / 10));
+const shoulderY = (x) => smoothMax(P.yLow(x) + 4.5, fenderY(x) - 3.0, 0.8);
+/** @type {(x: number) => number} 腰段權重（|x| < 16 為 1，|x| > 26 為 0，中間平滑過渡） */
+const waistW = (x) => 1 - smoothstep(16, 26, Math.abs(x));
 /**
  * 肩線以下往內收的量（第二層下裙）：輪旁受輪胎外緣（|z| 34.25 + 1 mm 以上）限制，腰段收 3.6 mm
  * @type {(x: number) => number}
  */
-const tuckAt = (x) => Math.max(1, Math.min(4, P.hw(x) - 37.6), 3.6 * waistW(x));
+const tuckAt = (x) => smoothMax(smoothMax(1, smoothMin(4, P.hw(x) - 37.6, 0.6), 0.4), 3.6 * waistW(x), 0.4);
 
 /**
  * 半剖面 8 點：脊頂 → 脊肩 → 凹谷 → 擋泥板頂 → 肩圓角 → 肩線稜（銳利）→ 下裙中段 → 下裙下緣（內收）
@@ -52,10 +56,10 @@ const tuckAt = (x) => Math.max(1, Math.min(4, P.hw(x) - 37.6), 3.6 * waistW(x));
 const profile = (x) => {
   const yC = P.yC(x);
   const hw = P.hw(x);
-  const sw = Math.min(5, 0.24 * hw);
-  const vz = Math.min(sw + 3.2, 0.5 * hw);
-  const fz = Math.max(vz + 1.2, hw - 7.5);
-  const yV = Math.min(valleyY(x), yC - 1.2);
+  const sw = smoothMin(5, 0.24 * hw, 0.5);
+  const vz = smoothMin(sw + 3.2, 0.5 * hw, 0.6);
+  const fz = smoothMax(vz + 1.2, hw - 7.5, 0.8);
+  const yV = smoothMin(valleyY(x), yC - 1.2, 0.5);
   const yF = fenderY(x);
   const yS = shoulderY(x);
   const t = tuckAt(x);
@@ -106,8 +110,10 @@ const STRIPE_HW = 7.4;
 /** 座艙開口（俯視方形，脊線後段 = 迷宮中心） */
 const COCKPIT = { x0: -18, x1: -4, hz: 6.2, r: 1.2 };
 
-/** @type {(x: number, y: number, z: number) => boolean} 下裙（肩線稜以下的第二層；只算側面，凹谷甲板不算） */
-const onSkirt = (x, y, z) => y < shoulderY(x) - 0.15 && Math.abs(z) > P.hw(x) - 4.5;
+/** @type {(x: number, y: number, z: number) => boolean} 肩線稜以下的第二層（只算側面，凹谷甲板不算） */
+const belowShoulder = (x, y, z) => y < shoulderY(x) - 0.15 && Math.abs(z) > P.hw(x) - 4.5;
+/** @type {number} 鼻端下巴的起點：x 以前的下裙是壁畫藍，以後和下緣黑帶連成一圈黑色下巴（肩線在鼻端收攏，畫藍會留下碎片） */
+const CHIN_X = 70;
 
 /**
  * 線段距離
@@ -160,6 +166,81 @@ const greekKey = (u, v) => {
   return d - KEY_W / 2;
 };
 
+/**
+ * 新月鰭的外形參數：鰭根是一條直線，沿前擋泥板頂外側（x 30–53、|z| 41，擋泥板最寬的一段），鰭尖收成一點在後上方（x 12、y 48，懸在腰段外上方）；隨高度往外傾 28°（俯視鰭尖伸出腰段外緣，外框半寬 47.5 ≤ 48）
+ * @type {{ xLead: number, xTrail: number, xTip: number, yTip: number, zRoot: number, cantDeg: number, thick: number, nc: number, ns: number }}
+ */
+const FIN = { xLead: 53, xTrail: 30, xTip: 12, yTip: 48, zRoot: 41, cantDeg: 28, thick: 1.4, nc: 6, ns: 8 };
+
+/**
+ * 新月鰭（前擋泥板頂的金色立鰭，左右各一）：側視是新月形——前緣外凸、從擋泥板頂陡升再往後掃，後緣內凹，兩緣在後上方收成尖端；
+ * 斷面是對稱翼型（後緣收尖），厚度往鰭尖收到 0.2 倍（1.4 → 0.28 mm）；鰭根埋進殼面 1 mm，所以整條根部和擋泥板頂一體，沒有接縫或懸空
+ * @type {(top: (x: number, z: number) => number, sg: number) => THREE.BufferGeometry}
+ */
+const crescentFin = (top, sg) => {
+  const { xLead, xTrail, xTip, yTip, zRoot, cantDeg, thick, nc, ns } = FIN;
+  const tan = Math.tan((cantDeg * Math.PI) / 180);
+  /** @type {(u: number) => number} 後緣閉合的 NACA 對稱厚度（0–1 弦長，最大約 1） */
+  const tdist = (u) => (0.2969 * Math.sqrt(u) - 0.126 * u - 0.3516 * u * u + 0.2843 * u ** 3 - 0.1015 * u ** 4) / 0.1;
+  /** @type {(i: number, j: number, side: number) => number[]} */
+  const pt = (i, j, side) => {
+    const s = j / ns;
+    const u = (1 - Math.cos((Math.PI * i) / nc)) / 2;
+    // 前緣：先陡升再往後掃（外凸）；後緣：先貼著擋泥板往後、到尾段才陡升（內凹）
+    const xL = lerp(xLead, xTip, s ** 1.4);
+    const hL = s ** 0.6;
+    const xT = lerp(xTrail, xTip, s ** 0.8);
+    const hT = s ** 3;
+    const x = lerp(xL, xT, u);
+    // 鰭尖懸在鰭根範圍之後，沿用鰭根後端的殼面高度當基準
+    const xr = Math.min(xLead, Math.max(xTrail, x));
+    const yRoot = top(xr, sg * zRoot) - 1.0;
+    const y = lerp(yRoot, yTip, lerp(hL, hT, u));
+    const zLocal = side * (thick / 2) * tdist(u) * lerp(1, 0.2, s);
+    return [x, y, sg * (zRoot + Math.max(0, y - yRoot) * tan + zLocal)];
+  };
+  const pos = [];
+  /** @type {(a: number[], b: number[], c: number[]) => void} 依左右側決定繞向（右側直接加，左側鏡射後反轉） */
+  const tri = (a, b, c) => (sg > 0 ? pos.push(...a, ...b, ...c) : pos.push(...a, ...c, ...b));
+  for (const side of [-1, 1]) {
+    for (let i = 0; i < nc; i++) {
+      for (let j = 0; j < ns; j++) {
+        const a = pt(i, j, side);
+        const b = pt(i + 1, j, side);
+        const c = pt(i + 1, j + 1, side);
+        const d = pt(i, j + 1, side);
+        if (side < 0) {
+          tri(a, b, c);
+          tri(a, c, d);
+        } else {
+          tri(a, c, b);
+          tri(a, d, c);
+        }
+      }
+    }
+  }
+  // 鰭根與鰭尖封面（兩端繞向相反，封閉網格才能用散度定理算體積）
+  for (const j of [0, ns]) {
+    for (let i = 0; i < nc; i++) {
+      const a = pt(i, j, -1);
+      const b = pt(i + 1, j, -1);
+      const c = pt(i + 1, j, 1);
+      const d = pt(i, j, 1);
+      if (j === 0) {
+        tri(a, c, b);
+        tri(a, d, c);
+      } else {
+        tri(a, b, c);
+        tri(a, c, d);
+      }
+    }
+  }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  // 前緣圓、後緣與鰭尖銳利：只在夾角小於 60° 的相鄰面之間平滑法向
+  return toCreasedNormals(g, Math.PI / 3);
+};
+
 /** @type {() => Record<string, THREE.Material>} */
 const materials = () => ({
   // 壁畫色：赭紅、壁畫藍、奶油白（霧面，像灰泥上的礦物顏料）
@@ -168,7 +249,7 @@ const materials = () => ({
   cream: namedMaterial('paint-fresco-cream', { color: 0xebdfc1, roughness: 0.62, clearcoat: 0.05 }),
   // 賽車條底色、座艙井壁：亮面黑（少數亮面部位）
   black: namedMaterial('paint-bull-black', { color: 0x1d1b1a, roughness: 0.3, clearcoat: 0.8, clearcoatRoughness: 0.12 }),
-  // 新月前翼：金色（真金屬：名稱含 -brass）
+  // 新月鰭：金色（真金屬：名稱含 -brass）
   gold: namedMaterial('trim-gold-brass', { color: 0xc9a23a, roughness: 0.3, metalness: 0.8, clearcoat: 0.2 }),
   inner: namedMaterial('shell-inner-dark', { color: 0x1a1716, roughness: 0.85, side: THREE.BackSide }),
   edge: namedMaterial('shell-edge-black', { color: 0x1d1b1a, roughness: 0.6, side: THREE.DoubleSide }),
@@ -252,7 +333,7 @@ const CONFIG = {
   form: 'bull-slab',
   roof: 'open-cockpit',
   wing: 'none',
-  theme: 'F2 擋泥板肌肉型「低頭衝撞的蠻牛」：低矮的鼻錐往後斜升到前輪上方高聳的牛肩擋泥板、中段大幅收腰、後輪牛臀擋泥板；肩線下內收的壁畫藍下裙；一片貼低的新月形金色前翼從左右前擋泥板前坡長出、在鼻尖上方連成一道弧；黑底奶油白雙回紋賽車條從鼻尖沿中央脊掃到車尾，發光的金色阿里阿德涅之線走進脊線後段的迷宮中心座艙；沒有牛臉、牛眼、鼻環',
+  theme: 'F2 擋泥板肌肉型「低頭衝撞的蠻牛」：低矮的鼻錐往後斜升到前輪上方高聳的牛肩擋泥板、中段大幅收腰、後輪牛臀擋泥板；肩線下內收的壁畫藍下裙；左右前擋泥板頂各一片金色新月鰭，鰭尖往後上方掃、往外張成 V；黑色下巴；黑底奶油白雙回紋賽車條從鼻尖沿中央脊掃到車尾，發光的金色阿里阿德涅之線走進脊線後段的迷宮中心座艙；沒有牛臉、牛眼、鼻環',
   material: 'ABS',
   density_g_cm3: 1.05,
   wallThickness_mm: 0.8,
@@ -274,8 +355,10 @@ const CONFIG = {
   zones: () => [
     // 下裙下緣黑色帶
     { mat: 'black', keep: (x, y) => ROCKER_Y - y },
+    // 鼻端下巴：黑
+    { mat: 'black', keep: (x, y, z) => (x >= CHIN_X && belowShoulder(x, y, z) ? 1 : -1) },
     // 下裙：壁畫藍（肩線稜以下的第二層）
-    { mat: 'blue', keep: (x, y, z) => (onSkirt(x, y, z) ? 1 : -1) },
+    { mat: 'blue', keep: (x, y, z) => (belowShoulder(x, y, z) ? 1 : -1) },
     // 中央脊黑底賽車條（鼻尖 → 車尾）
     { mat: 'black', keep: (x, y, z) => STRIPE_HW - Math.abs(z) },
     // 擋泥板與甲板：赭紅
@@ -312,30 +395,14 @@ const CONFIG = {
       parts.push({ geometry: mergeGeos(walls), mat: 'well', solid: true, name: 'cockpit-well' });
     }
 
-    // ── 新月前翼（大件 1）：一片貼低、近乎水平的新月形金色翼片。斷面是扁平的菱形（弦寬 7 mm、最厚 1.5 mm），不是圓管。
-    //    兩端各有 10 mm 貼著前擋泥板前坡的肩線走（x 46 → 56，內半邊埋進殼面，弦寬收到 3.6），再離開擋泥板繞過前輪前方、一路降低，
-    //    在鼻尖上方連成一道弧，中央 7 mm 寬的翼片有一半壓在鼻尖頂面上（不在鼻子下方）。最前緣 x 80.7，不超過外框原本的最前緣 ──
-    {
-      /** @type {number[][]} 翼的中心線（左端 → 鼻尖 → 右端） */
-      const half = [
-        [46.0, 32.8, 45.0],
-        [51.0, 31.4, 44.0],
-        [56.0, 29.6, 40.6],
-        [63.0, 26.2, 41.5],
-        [70.0, 23.2, 40.5],
-        [75.4, 20.6, 34.0],
-        [77.0, 19.0, 21.0],
-        [77.0, 18.3, 8.0],
-      ];
-      const path = [...half.map(([x, y, z]) => [x, y, -z]), [77.0, 18.2, 0], ...half.map(([x, y, z]) => [x, y, z]).reverse()];
-      /** @type {(t: number) => number[]} 斷面半徑 [弦向, 上下]：貼著擋泥板的兩端弦寬 3.6，離開擋泥板後放寬到 7 */
-      const wingR = (t) => {
-        const w = 1 - Math.abs(2 * t - 1);
-        return [lerp(1.8, 3.5, Math.min(1, w / 0.22)), 0.75];
-      };
-      // 斷面只取 4 段＝扁平的菱形翼片；法向做平滑，翼面扭轉的地方才不會露出一格一格的三角面
-      parts.push({ geometry: smoothNormals(sweepEllipse(path, 44, wingR, 4)), mat: 'gold', solid: true, outline: true, name: 'crescent-front-wing' });
-    }
+    // ── 新月鰭（大件 1）：左右前擋泥板頂各一片金色立鰭，側視新月形、鰭尖指向後上方，前視往外張成 V ──
+    parts.push({
+      geometry: mergeGeos([crescentFin(top, 1), crescentFin(top, -1)]),
+      mat: 'gold',
+      solid: true,
+      outline: true,
+      name: 'crescent-fender-fins',
+    });
 
     // 輪拱內襯、環形擋板
     parts.push({ geometry: mergeGeos(ARCHES.map((a) => buildLiner(kit, a))), mat: 'liner', shell: true, name: 'arch-liners' });
@@ -404,12 +471,12 @@ const CONFIG = {
   src: {
     density_g_cm3: 'SPEC 1.14：ABS 約 1.05 g/cm³（推估）',
     wallThickness_mm: '推估：射出 ABS 殼 0.8 mm（同其他車殼）',
-    geometry: '本檔站位產生器 P（推估）：殼 x −70 → 77.5、新月前翼最前緣 x 80.7（外框長 150.7 ≤ 153，SPEC 1.14a）；脊線 19（車尾）→ 36.4（x 26）→ 15.6（鼻尖）；擋泥板頂：牛肩 37.6（x 37）、牛臀 33.4（x −41）；全車最高點是牛肩擋泥板頂 37.8；半寬：牛臀 37.6、腰 29、牛肩 46.0（外框半寬 ≤ 48.0）、鼻吻 13.5',
+    geometry: '本檔站位產生器 P（推估）：殼 x −70 → 77.5（外框長 147.5 ≤ 153，SPEC 1.14a）；脊線 19（車尾）→ 36.4（x 26）→ 15.6（鼻尖）；擋泥板頂：牛肩 37.6（x 37）、牛臀 33.4（x −41）；全車最高點是新月鰭尖 48.0；半寬：牛臀 37.6、腰 29、牛肩 46.0、鼻吻 13.5；外框半寬 47.5（新月鰭尖，≤ 48.0）',
     wheelArches: '前後 R15.2（26 mm 輪胎半徑 13 + 2.2 mm），前 cutZFrom 33、後 30；31 mm 大輪需切輪拱。輪拱內襯從側壁內面往內 4.5 mm，輪胎內側另有 buildArchWell 環形擋板（|z| 22.9）',
     labyrinth: '迷宮 / 回紋：克諾索斯銀幣背面的直線迷宮（MYTH_RESEARCH G9）與「回紋是線性形式的迷宮」（G10）——畫成沿中央脊的雙回紋賽車條與兩輪之間的下裙回紋帶（線寬 0.75 mm，格距自訂）',
     thread: '阿里阿德涅之線（G6）：金色 1.1 mm 細線沿中線從鼻尖走進座艙，自發光強度 0.45（推估）',
     cockpit: '迷宮中心方形開放座艙 14 × 12.4 mm、井壁深約 4 mm（0.8 mm 實心壁，亮面黑），沒有底板',
-    frontWing: '新月前翼為一條實心 ABS 掃掠件（44 × 4 段）：扁平菱形斷面，弦寬 7 mm（貼著擋泥板的兩端收到 3.6 mm）、最厚 1.5 mm；兩端各 10 mm 貼著前擋泥板前坡的肩線（x 46–56），繞過前輪前方（最寬 |z| 約 45），中央在鼻尖上方（x 77、y 18.2），最前緣 x 80.7；質量 = 封閉體積 × 1.05 g/cm³（推估）',
+    crescentFins: '新月鰭為左右各一片實心 ABS 立鰭（6 × 8 段）：對稱翼型斷面最厚 1.4 mm、往鰭尖收到 0.28 mm；鰭根沿前擋泥板頂外側 x 30–53、|z| 41，埋進殼面 1 mm；鰭尖 x 12、y 48，往外傾 28°；質量 = 封閉體積 × 1.05 g/cm³（推估）',
     nose: '鼻錐和車身同為壁畫赭紅，素面，不做眼、鼻孔、鼻環；只有中央的黑底回紋賽車條與金線通到鼻尖',
     mounts: '對齊 chassis-midship 的車殼安裝點（SPEC 1.14）',
   },
