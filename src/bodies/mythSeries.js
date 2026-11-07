@@ -6,6 +6,7 @@
 /** @type {{ key: MythSeries, label: string }[]} 神話體系代號與中文名稱 */
 export const MYTH_SERIES = [
   { key: 'greek', label: '希臘神話' },
+  { key: 'roman', label: '羅馬神話' },
   { key: 'norse', label: '北歐神話' },
   { key: 'egyptian', label: '埃及神話' },
   { key: 'mesopotamian', label: '美索不達米亞神話' },

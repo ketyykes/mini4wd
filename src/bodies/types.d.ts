@@ -9,6 +9,7 @@ export interface BodyMount extends Vec3 {
 /** 神話體系代號（清單與中文名稱見 mythSeries.js） */
 export type MythSeries =
   | 'greek'
+  | 'roman'
   | 'norse'
   | 'egyptian'
   | 'mesopotamian'
