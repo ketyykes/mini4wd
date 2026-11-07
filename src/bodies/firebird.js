@@ -389,6 +389,9 @@ const buildTailCapScales = (r0, r1, dx) => {
   return g;
 };
 
+/** @type {number} 擋泥板下折後緣的起點 |z|（31 mm 輪外側面 = 輪距 59.5 / 2 + 輪寬 10 / 2 = 34.75，再留 1.15 mm 間隙） */
+const FENDER_LIP_Z = 35.9;
+
 /** @type {number} 前輪室封板的 |z|（和胎內側環形擋板同一平面） */
 const WELL_Z = 22.9;
 /** @type {number} 前輪擋泥板內襯半徑（R17.5 輪拱 + 0.3） */
@@ -408,7 +411,8 @@ const fenderZIn = (x) => Math.max(WELL_Z, x >= 44 ? WELL_Z : CUT_Z + (44 - x) / 
  * (1) 胎內側隔板（|z| 22.9）：切口範圍內、R17.6 圓以外、底盤側框之上，到殼頂內面；
  * (2) 切口後壁（x 21.7）：殼內面的斷面，從底盤側框或側裙下緣到殼頂內面；
  * (3) 擋泥板內襯：R17.8 圓柱面，從切口前緣往前到擋泥板收窄處；
- * (4) 擋泥板斷面牆：沿切口前緣，從內襯到殼頂內面，讓擋泥板後緣看起來是實心的端面
+ * (4) 擋泥板斷面牆：沿切口前緣，從內襯到殼頂內面，讓擋泥板後緣看起來是實心的端面；輪胎外側（|z| ≥ 35.9，31 mm 輪外側面 34.75 外 1.15 mm）
+ *     再往下延伸成 3.5 mm 高的下折後緣：擋泥板在輪胎正上方只有約 1.3 mm 厚，從後方看是一片往上翹的薄邊，下折後緣讓它讀成有厚度的擋泥板
  * @type {(topY: (x: number, z: number) => number) => THREE.BufferGeometry}
  */
 const buildFrontWell = (topY) => {
@@ -470,11 +474,11 @@ const buildFrontWell = (topY) => {
   // (4) 擋泥板斷面牆：沿切口前緣（往外側後掠的斜線，往殼內退 0.25）
   const zEnd = P.hw(cutFrontX(39)) - 0.4;
   geos.push(
-    buildStrip(8, (t) => {
+    buildStrip(14, (t) => {
       const z = lerp(CUT_Z, zEnd, t);
       const x = cutFrontX(z) + 0.25;
-      const yb = archTopY(x, WELL_R) - 0.1;
       const yt = topY(x, z) - 0.3;
+      const yb = z >= FENDER_LIP_Z ? Math.min(archTopY(x, WELL_R) - 0.1, yt - 3.5) : archTopY(x, WELL_R) - 0.1;
       return yt > yb + 0.1 ? [v(x, yb, z), v(x, yt, z)] : null;
     }),
   );
@@ -625,7 +629,7 @@ export const firebirdBody = makePolyBody({
       mat: 'dBerry',
       name: 'decal-blade-berries',
     });
-    // 頂面羽鱗：往後疊的扇形羽片（金色弧線 0.7 mm，外圈一道 0.35 mm 黑漆描邊，讓金紋在橘底上跳出來），
+    // 頂面羽鱗：往後疊的扇形羽片（金色弧線 0.7 mm，外圈一道 0.35 mm 深紅描邊，讓金紋在橘底上跳出來（黑色描邊近看像一排小破洞）），
     // 從前輪上方一路鋪到車尾，座艙兩側到肩線；避開黑漆長條與背脊線（扇尾翼根之後沒有背脊線，鋪到中線旁）
     /** @type {(x: number, y: number, z: number) => number} 頂面羽鱗弧的半徑差（NaN = 這裡不鋪） */
     const wingScaleDr = (x, y, z) => {
@@ -659,10 +663,10 @@ export const firebirdBody = makePolyBody({
         const dr = wingScaleDr(x, y, z);
         return Number.isNaN(dr) ? -1 : 0.2 - Math.abs(dr - 0.55);
       }, { offset: 0.1 }),
-      mat: 'dBlack',
+      mat: 'dBarb',
       name: 'decal-wing-scales-ink',
     });
-    // 車尾側壁羽鱗：後輪後方收窄的車尾側壁（輪胎內側）鋪同一種扇形羽片弧線（側視 (x, y) 格）＋黑漆描邊，車尾不留整片素面
+    // 車尾側壁羽鱗：後輪後方收窄的車尾側壁（輪胎內側）鋪同一種扇形羽片弧線（側視 (x, y) 格）＋深紅描邊，車尾不留整片素面
     /** @type {(x: number, y: number, z: number) => number} 側壁羽鱗弧的半徑差（NaN = 這裡不鋪） */
     const tailScaleDr = (x, y, z) => {
       const az = Math.abs(z);
@@ -692,12 +696,12 @@ export const firebirdBody = makePolyBody({
         const dr = tailScaleDr(x, y, z);
         return Number.isNaN(dr) ? -1 : 0.2 - Math.abs(dr - 0.55);
       }, { offset: 0.1 }),
-      mat: 'dBlack',
+      mat: 'dBarb',
       name: 'decal-tail-side-scales-ink',
     });
-    // 車尾端面羽鱗（正後方那一面）：往下垂的金色半圓弧＋黑漆描邊
+    // 車尾端面羽鱗（正後方那一面）：往下垂的金色半圓弧＋深紅描邊
     parts.push({ geometry: buildTailCapScales(-0.35, 0.35, 0.12), mat: 'dGold', name: 'decal-tail-cap-scales' });
-    parts.push({ geometry: buildTailCapScales(0.35, 0.75, 0.1), mat: 'dBlack', name: 'decal-tail-cap-scales-ink' });
+    parts.push({ geometry: buildTailCapScales(0.35, 0.75, 0.1), mat: 'dBarb', name: 'decal-tail-cap-scales-ink' });
     // 側面飛羽：金橙羽面＋直的黑漆羽軸＋深紅斜向羽枝細紋；每片下緣 0.6 mm 黑影，讓上片疊在下片上
     /** @type {(x: number, y: number, z: number) => boolean} 側裙（肩線以下、輪拱外） */
     const onSkirt = (x, y, z) => Math.abs(z) > P.hw(x) - 0.2 && y < P.yS(x) - 0.6 && y > yRedBand(x) + 0.3 && archRingDist(x, y) > 1.2;

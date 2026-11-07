@@ -180,6 +180,8 @@ const materials = () => ({
   teal2: namedMaterial('paint-songhua-green-pearl', { color: 0x4f7f6f, roughness: 0.3, metalness: 0.35, clearcoat: 0.9, clearcoatRoughness: 0.1, side: THREE.DoubleSide }),
   paper: namedMaterial('paint-rice-paper-white', { color: 0xece8de, roughness: 0.66, clearcoat: 0.05 }),
   paper2: namedMaterial('paint-rice-paper-white', { color: 0xece8de, roughness: 0.66, clearcoat: 0.05, side: THREE.DoubleSide }),
+  // 鵬翼翼尖：同色的霧面墨黑（亮面加金屬感時，往上折的翼尖會把後導輪映成一顆深色圓斑，看起來像圓孔）
+  inkMatte: namedMaterial('paint-ink-black-satin', { color: 0x12202e, roughness: 0.62, clearcoat: 0.1, side: THREE.DoubleSide }),
   inner: namedMaterial('shell-inner-dark', { color: 0x16181b, roughness: 0.85, side: THREE.BackSide }),
   edge: namedMaterial('shell-edge-ink', { color: 0x2a2e33, roughness: 0.6, side: THREE.DoubleSide }),
   // 水天之間：淡青灰的透明窗
@@ -350,7 +352,7 @@ const VANE_LOW = {
   ],
 };
 /**
- * @type {Blade} 上層翼片（鵬翼）：再放大、再後移；翼根貼著窄車尾頂面（x −55 ~ −36，埋進殼面），往外後方展成弦長 12–19 mm 的寬翼，
+ * @type {Blade} 上層翼片（鵬翼）：再放大、再後移；翼根貼著窄車尾頂面（x −55 ~ −36，埋進殼面），往外後方展成弦長 13–19 mm、翼展到 |z| 約 39 的寬翼，
  * 和下層前後、上下錯開成兩層。翼身上反只給 6°（和下層同理：上反角接近 3/4 視角仰角時，近側翼面會側對鏡頭、讀成細刃），
  * 外段（翼尖）沿一條折線再往上折，見 VANE_TIP
  */
@@ -361,18 +363,18 @@ const VANE_UP = {
   pivotZ: 15,
   poly: [
     [-36, 13],
-    [-48, 26],
-    [-55, 35.5],
-    [-67.5, 34.5],
-    [-64, 26],
-    [-60, 19],
+    [-49, 28],
+    [-57, 39.5],
+    [-70, 38.5],
+    [-66, 28],
+    [-61, 19],
     [-55, 13],
   ],
 };
 /** @type {[number, number][]} 鵬翼翼尖的折線（x, z）：翼尖沿這條線再往上折 */
 const TIP_HINGE = [
-  [-55, 35.5],
-  [-67.5, 34.5],
+  [-57, 39.5],
+  [-70, 38.5],
 ];
 /**
  * @type {number} 鵬翼翼尖再往上折的角度（度）：加上翼身上反共約 50°，翼尖在側視與兩個 3/4 視角都露出翼面，讀成一片揚起的羽翼。
@@ -385,13 +387,13 @@ const TIP_FOLD = 44;
 const VANE_TIP = {
   ...VANE_UP,
   poly: [
-    [-55, 35.5],
-    [-58, 42.5],
-    [-65, 46.5],
-    [-72.5, 45.5],
-    [-70, 41.5],
-    [-72, 38],
-    [-67.5, 34.5],
+    [-57, 39.5],
+    [-60, 45],
+    [-67, 48.5],
+    [-74.5, 47.5],
+    [-72, 44],
+    [-74, 41],
+    [-70, 38.5],
   ],
 };
 
@@ -477,7 +479,7 @@ export const kunpengBody = makePolyBody({
       [FIN, 'ink2', 'fin-blades'],
       [VANE_LOW, 'teal2', 'wing-vanes-lower'],
       [VANE_UP, 'paper2', 'wing-vanes-upper'],
-      [VANE_TIP, 'ink2', 'wing-vanes-upper-tips'],
+      [VANE_TIP, 'inkMatte', 'wing-vanes-upper-tips'],
     ];
     for (const [blade, mat, name] of blades) {
       const g = blade === VANE_TIP ? buildTip() : buildBlade(blade);
