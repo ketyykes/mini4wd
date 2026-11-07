@@ -2,7 +2,7 @@
 // 不做蛇頭、眼、牙與蛇信，主題用四種元素表現：
 // (1) 階梯金字塔 → 車身：頂面由車尾往鼻尖一階一階下降的平台（座艙後一道階面貼金），側視是一道階梯楔形；側面是 talud-tablero 的立板＋內收斜坡兩階；
 //     尾翼的翼端板是階梯金字塔的側影，上下兩片翼面各站在一階上；
-// (2) 層疊的羽 → 翼片：尾翼的兩層翼面、後輪上方兩側往外下垂的厚導流片（和車身同色）；
+// (2) 層疊的羽 → 翼片：尾翼的兩層翼面、後輪上方兩側從肩部往外下垂的擋泥板外擴唇（和車身同色）；
 // (3) 紋樣與配色：立板上連續帶狀的階梯回紋（xicalcoliuhqui，不做四向旋轉單元）、座艙以後頂面的綠松石馬賽克小片；深翡翠金屬綠（主色）＋綠松石＋海菊蛤紅＋金；
 // (4) 象徵物件：黑曜石刀的刃形做成鼻面一把往前尖出的黃銅單刃（有厚度與倒角）；前擋泥板前緣一對亮金色細縫頭燈；座艙罩是黑曜石色。
 // 姿態：四輪都罩住，前擋泥板是兩團壓低的肩部量體、中間夾著低平的通道，鼻段短、寬、扁，車尾階梯往上——前低後高、蓄勢待發。
@@ -337,7 +337,7 @@ export const quetzalSerpentBody = makePolyBody({
   form: 'step-pyramid',
   roof: 'canopy',
   wing: 'terrace-wing',
-  theme: '特奧蒂瓦坎羽蛇神殿的階梯金字塔，不做蛇頭：四輪全罩、前擋泥板是兩團壓低的肩部量體，頂面由車尾往鼻尖一階一階下降（座艙後一道階面貼金），鼻面一把往前尖出的黃銅單刃；側面是立板＋斜坡兩階，立板上一道連續的階梯回紋；尾翼是壓低的階梯金字塔側影金色翼端板＋上下兩層翼面，後輪上方兩側往外下垂的厚導流片；深翡翠金屬綠配綠松石、海菊蛤紅與金，前擋泥板前緣一對亮金色細縫頭燈、黑曜石色座艙罩',
+  theme: '特奧蒂瓦坎羽蛇神殿的階梯金字塔，不做蛇頭：四輪全罩、前擋泥板是兩團壓低的肩部量體，頂面由車尾往鼻尖一階一階下降（座艙後一道階面貼金），鼻面一把往前尖出的黃銅單刃；側面是立板＋斜坡兩階，立板上一道連續的階梯回紋；尾翼是壓低的階梯金字塔側影金色翼端板＋上下兩層翼面，後輪上方兩側從肩部往外下垂的擋泥板外擴唇；深翡翠金屬綠配綠松石、海菊蛤紅與金，前擋泥板前緣一對亮金色細縫頭燈、黑曜石色座艙罩',
   material: 'ABS',
   density_g_cm3: 1.05,
   wallThickness_mm: 0.8,
@@ -413,36 +413,91 @@ export const quetzalSerpentBody = makePolyBody({
     parts.push({ geometry: buildWingPlane(WING_PLANES[0]), mat: 'red2', solid: true, outline: true, name: 'terrace-wing-lower' });
     parts.push({ geometry: buildWingPlane(WING_PLANES[1]), mat: 'green2', solid: true, outline: true, name: 'terrace-wing-upper' });
 
-    // 後側導流片（車身色）：每側一片沿稜線下方往外下垂 14° 的厚導流片（厚 1.4、四周倒角 0.5，斷面看得出厚度），x −16 → −60，
-    // 外緣是一道平順的弧（後輪處最寬 |z| 46），根部整段埋進立板 1.6 mm；俯視在後輪處外擴成寬的後腰
-    /** @type {(x: number) => number} 根部 |z|：埋進立板 1.6 mm（跟著車身波浪，越過後輪胎面外緣） */
-    const zr = (x) => halfW(x) - 1.6;
-    /** @type {number} 導流片底面高度（後平台稜線下 2.6） */
-    const finY = ridgeY(-40) - 2.6;
-    /** @type {number[][]} 外緣（由前到後） */
-    const finEdge = [
-      [-16, zr(-16) + 0.6],
-      [-20, 40],
-      [-24, 44.8],
-      [-30, 46.4],
-      [-48, 46.4],
-      [-55, 45.2],
-      [-58.5, 42],
-      [-60.5, zr(-60.5) + 0.6],
+    // 後側擋泥板外擴唇（車身色）：每側一片從肩部（稜線上方、輪拱切口頂之上）往外伸、往外下垂約 17° 的唇，x −12 → −62.5，前後兩端收回肩部；
+    // 斷面是根部厚 1.3、外緣厚 0.8 的楔形（看得出厚度）。後輪段的根部壓在肩部殼面上、高過後輪拱切口頂（28.5），從側面看不會在唇和車身之間留縫
+    /**
+     * 唇根部頂面高度：後輪拱切口高過稜線（27.8）的那一段（x −46 → −34）抬到 29.5，蓋過切口頂 28.5；前後兩段降到 28.2，根部埋進側壁上緣，不會翹出肩部
+     * @type {(x: number) => number}
+     */
+    const lipTop = (x) => 28.2 + 1.3 * smoothstep(-53, -46, x) * (1 - smoothstep(-34, -27, x));
+    /** @type {number} 往外的下垂斜率（tan 17°） */
+    const DROOP = 0.3;
+    /** @type {(x: number) => number} 根部 |z|：肩部，側壁往內 2.5 mm（埋進頂面） */
+    const lipRoot = (x) => halfW(x) - 2.5;
+    /** @type {number[][]} 外緣 |z|（由前到後的折線，兩端回到根部外 0.6） */
+    const lipEdge = [
+      [-12, lipRoot(-12) + 0.6],
+      [-19, 36.5],
+      [-25, 43],
+      [-31, 46.6],
+      [-47, 46.6],
+      [-54, 45.4],
+      [-59, 41.5],
+      [-62.5, lipRoot(-62.5) + 0.6],
     ];
-    /** @type {number[][]} 根部（由後到前） */
-    const finRoot = [-60.5, -54, -48, -42, -36, -30, -24, -18, -16].map((x) => [x, zr(x)]);
-    /** @type {THREE.BufferGeometry[]} */
-    const sideVanes = [];
-    for (const sg of [-1, 1]) {
-      const g = bevelSlab([...finEdge, ...finRoot].map(([x, z]) => [x, sg * z]), finY, 1.4, 0.5);
-      // 以根部（|z| 36）為軸往外下垂 14°，順著側壁往外流出去，像擋泥板外擴的唇
-      g.translate(0, -finY, -sg * 36);
-      g.rotateX((sg * 14 * Math.PI) / 180);
-      g.translate(0, finY, sg * 36);
-      sideVanes.push(g);
-    }
-    parts.push({ geometry: mergeGeos(sideVanes), mat: 'green2', solid: true, outline: true, name: 'side-flares' });
+    /** @type {(x: number) => number} 外緣 |z|（折線內插） */
+    const edgeZ = (x) => {
+      for (let i = 0; i < lipEdge.length - 1; i++) {
+        const [x0, z0] = lipEdge[i];
+        const [x1, z1] = lipEdge[i + 1];
+        if (x <= x0 && x >= x1) {
+          return lerp(z0, z1, (x0 - x) / (x0 - x1));
+        }
+      }
+      return lipRoot(x) + 0.6;
+    };
+    /** @type {number} 站數（16 站，面數和原本的平板相當） */
+    const LIP_N = 16;
+    /** @type {(sg: number) => THREE.BufferGeometry} 一側的唇：每站 4 點（根頂、緣頂、緣底、根底），相鄰站之間接成封閉的楔形條 */
+    const buildLip = (sg) => {
+      /** @type {number[][][]} */
+      const rings = [];
+      for (let i = 0; i < LIP_N; i++) {
+        const x = lerp(-12, -62.5, i / (LIP_N - 1));
+        const zr = lipRoot(x);
+        const ze = Math.max(edgeZ(x), zr + 0.6);
+        const yt = lipTop(x);
+        const ye = yt - DROOP * (ze - zr);
+        rings.push([
+          [x, yt, sg * zr],
+          [x, ye, sg * ze],
+          [x, ye - 0.8, sg * ze],
+          [x, yt - 1.3, sg * zr],
+        ]);
+      }
+      /** @type {number[]} */
+      const pos = [];
+      /** @type {(a: number[], b: number[], c: number[]) => void} */
+      const tri = (a, b, c) => {
+        if (sg > 0) {
+          pos.push(...a, ...b, ...c);
+        } else {
+          pos.push(...a, ...c, ...b);
+        }
+      };
+      for (let i = 0; i < LIP_N - 1; i++) {
+        const r0 = rings[i];
+        const r1 = rings[i + 1];
+        for (let k = 0; k < 4; k++) {
+          const k1 = (k + 1) % 4;
+          tri(r0[k], r1[k], r1[k1]);
+          tri(r0[k], r1[k1], r0[k1]);
+        }
+      }
+      // 兩端封口
+      const f = rings[0];
+      const l = rings[LIP_N - 1];
+      tri(f[0], f[2], f[1]);
+      tri(f[0], f[3], f[2]);
+      tri(l[0], l[1], l[2]);
+      tri(l[0], l[2], l[3]);
+      const g = new THREE.BufferGeometry();
+      g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+      g.computeVertexNormals();
+      return g;
+    };
+    const sideVanes = [buildLip(1), buildLip(-1)];
+    parts.push({ geometry: mergeGeos(sideVanes), mat: 'green2', solid: true, outline: true, name: 'rear-fender-lips' });
 
     /** @type {number} 頂面貼紙的前緣（鼻尖前留 1.5 mm） */
     const xDecalMax = X_NOSE - 1.5;
@@ -518,7 +573,7 @@ export const quetzalSerpentBody = makePolyBody({
     density_g_cm3: 'SPEC 1.14：ABS 約 1.05 g/cm³（推估）',
     wallThickness_mm: '推估：射出 ABS 殼 0.8 mm（同其他款）',
     geometry: '本檔站位產生器 P＋topY / ridgeY / tableroY（推估）：鼻尖 x 76.5；頂面平台由後到前 34 → 31 → 27.5 → 23.5（車尾另降一階到 31），階面長 1.6；前擋泥板外側稜線抬高 6；座艙罩頂 38.5、尾翼頂 42（全車最高）；前擋泥板半寬 33（罩住 26 mm 前輪頂）；前後輪拱 R15.5（26 mm 輪半徑 13 + 2.5，只支援 26 mm 輪）',
-    wing: '尾翼翼端板（|z| 20、厚 1.6，三階的階梯側影，頂 42）、兩層翼面（厚 1.6，頂面 39.6 / 42）、後側導流片每側 1 片（厚 1.4）、鼻面單刃（厚 1.2）、腹側裙板：ABS 實心件（推估），質量 = 封閉體積 × 1.05 g/cm³；根部埋進殼面或相接的零件',
+    wing: '尾翼翼端板（|z| 20、厚 1.6，三階的階梯側影，頂 42）、兩層翼面（厚 1.6，頂面 39.6 / 42）、後擋泥板外擴唇每側 1 片（楔形斷面，厚 1.3 → 0.8）、鼻面單刃（厚 1.2）、腹側裙板：ABS 實心件（推估），質量 = 封閉體積 × 1.05 g/cm³；根部埋進殼面或相接的零件',
     myth: '階梯金字塔（六層 talud-tablero）、藍底彩繪、黑曜石嵌片：MYTH_RESEARCH A2（特奧蒂瓦坎羽蛇神殿）；綠咬鵑羽：A1；綠松石 / 海菊蛤紅 / 螺貝白：A6（大英博物館雙頭蛇）；階梯回紋：A7',
     mounts: '對齊 chassis-midship 的車殼安裝點（SPEC 1.14）',
   },
