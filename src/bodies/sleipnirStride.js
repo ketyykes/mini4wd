@@ -325,17 +325,18 @@ const STRAKES_PER_SIDE = 4;
 const STRAKE_Y0 = 12.4;
 
 /**
- * 第 i 道刀形飾條的側視外形 (x, y)（i = 0 最前）：下端寬 5、往後上方約 45° 收成一個尖；越後面的越長
- * （下端 x 17 → −5.5、每 7.5 mm 一道；尖端 x 8 → −18.7、高 19.5 → 25.5，都在腰線 26 以下、離前後輪拱 ≥ 4 mm）
+ * 第 i 道刀形飾條的側視外形 (x, y)（i = 0 最前）：下端寬 6.6、往後上方約 45° 收成一個尖；越後面的越長
+ * （下端 x 17 → −5.5、每 7.5 mm 一道；尖端 x 8 → −18.7、高 23 → 25.7，都在腰線 26 以下、離前後輪拱 ≥ 4 mm）
+ * 4 道幾乎一樣大、間距相等，一側一眼數得出 4、兩側合計 8
  * @type {(i: number) => number[][]}
  */
 const strakeOutline = (i) => {
   const x0 = 17 - 7.5 * i;
   return [
     [x0 + 1.4, STRAKE_Y0],
-    [x0 - 9 - 1.4 * i, 19.5 + 2 * i],
-    [x0 - 6, 16],
-    [x0 - 3.6, STRAKE_Y0],
+    [x0 - 9 - 1.4 * i, 23 + 0.9 * i],
+    [x0 - 7.4, 17.4],
+    [x0 - 5.2, STRAKE_Y0],
   ];
 };
 
@@ -397,9 +398,9 @@ const CONFIG = {
     /** @type {BodyPart[]} */
     const parts = [];
 
-    // ── 引擎蓋鋸齒背鰭：沿中線（x 46 → 17）每 3.2 mm 一片、彼此交疊的細長刀形，往後順梳 9.5 mm，高 2.0–2.8 mm（厚 1.3，根部埋進殼面 1 mm），停在座艙罩前 ──
+    // ── 引擎蓋鋸齒背鰭：沿中線（x 46 → 17）每 3.6 mm 一片、彼此交疊的細長刀形，往後順梳 9.5 mm，高 2.0–2.8 mm（厚 1.3，根部埋進殼面 1 mm），停在座艙罩前 ──
     parts.push({
-      geometry: maneRow(46, 17, 3.2, 9.5, (x) => lerp(2.0, 2.8, (x - 17) / 29), 0, 1.3, 0),
+      geometry: maneRow(46, 17, 3.625, 9.5, (x) => lerp(2.0, 2.8, (x - 17) / 29), 0, 1.3, 0),
       mat: 'silver',
       solid: true,
       outline: true,
@@ -424,15 +425,35 @@ const CONFIG = {
       // 翼面 y 39.6 → 40.8（翼頂比座艙罩頂約 40.2 高 0.6 mm，V7），中央壓在鋸齒冠尖上
       {
         const pts = [...TAIL_WING_HALF, ...TAIL_WING_HALF.slice(1, -1).reverse().map(([x, z]) => [x, -z])];
-        const shape = new THREE.Shape(pts.map(([x, z]) => new THREE.Vector2(x, -z)));
-        const wing = new THREE.ExtrudeGeometry(shape, { depth: 1.2, bevelEnabled: false });
-        // (X, Y, Z) → (X, Z, −Y)：形狀平面轉成水平，厚度朝上
-        wing.rotateX(-Math.PI / 2);
-        // 後緣微翹 2°
-        wing.translate(58, 0, 0);
-        wing.rotateZ((-2 * Math.PI) / 180);
-        wing.translate(-58, 39.6, 0);
-        parts.push({ geometry: wing, mat: 'silver', solid: true, outline: true, name: 'saw-tail-wing' });
+        /** @type {number[][]} 深藍翼面的半邊外形：前緣比金色底板內縮約 0.6 mm，後緣停在鋸齒根部前（8 個鋸齒尖整個留金色） */
+        const TOP_HALF = [
+          [-58.7, 0],
+          [-59.2, 7.2],
+          [-61.6, 13.8],
+          [-64.8, 17.8],
+          [-69.2, 18.6],
+          [-69.2, 0],
+        ];
+        const topPts = [...TOP_HALF, ...TOP_HALF.slice(1, -1).reverse().map(([x, z]) => [x, -z])];
+        /**
+         * 翼板：外形 (x, z)，厚 depth、底面在翼板座標 y0
+         * @type {(outline: number[][], y0: number, depth: number) => THREE.BufferGeometry}
+         */
+        const plate = (outline, y0, depth) => {
+          const shape = new THREE.Shape(outline.map(([x, z]) => new THREE.Vector2(x, -z)));
+          const g = new THREE.ExtrudeGeometry(shape, { depth, bevelEnabled: false });
+          // (X, Y, Z) → (X, Z, −Y)：形狀平面轉成水平，厚度朝上
+          g.rotateX(-Math.PI / 2);
+          g.translate(0, y0, 0);
+          // 後緣微翹 2°
+          g.translate(58, 0, 0);
+          g.rotateZ((-2 * Math.PI) / 180);
+          g.translate(-58, 39.6, 0);
+          return g;
+        };
+        // 金色底板（外形全尺寸）＋上面一片深藍翼面：俯視是深藍底、前緣與兩端一圈金邊，後緣 8 個金色鋸齒尖
+        parts.push({ geometry: plate(pts, 0, 1.2), mat: 'gold', solid: true, outline: true, name: 'saw-tail-wing' });
+        parts.push({ geometry: plate(topPts, 1.2, 0.3), mat: 'night', solid: true, outline: true, name: 'saw-tail-wing-top' });
       }
     }
 
