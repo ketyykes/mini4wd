@@ -106,7 +106,7 @@ const bridgeHalfW = (x) => lerp(BRIDGE.hw0, BRIDGE.hw1, (BRIDGE.x0 - x) / (BRIDG
 const RAINBOW = ['rbRed', 'rbOrange', 'rbGold', 'rbGreen', 'rbBlue'];
 
 /** @type {{ x0: number, x1: number, xBell: number, y0: number, y1: number, r0: number, r1: number, rBell: number }} 加拉爾號角導管：前輪後方 x0 → 後輪前 x1 沿側裙一路張開，x1 之後再外張成喇叭口（口朝後） */
-const HORN = { x0: 22, x1: -16, xBell: -21.5, y0: 18.6, y1: 17.4, r0: 1.8, r1: 5.0, rBell: 6.8 };
+const HORN = { x0: 22, x1: -14.5, xBell: -19.5, y0: 20.6, y1: 21.6, r0: 1.8, r1: 4.2, rBell: 5.4 };
 
 /** @type {(x: number) => { y: number, r: number }} 號角導管在 x 處的中心高度與半徑（錐形，最後一段外張成喇叭口） */
 const hornAt = (x) => {
@@ -119,7 +119,7 @@ const hornAt = (x) => {
 };
 
 /**
- * 號角導管（半管薄殼）：只做側壁外面那半圈（管心貼在側壁外表面內 0.4 mm），沿 x 掃過；口端開放朝後
+ * 號角導管（半管薄殼）：只做側壁外面那半圈（管心在側壁外表面內 1.9 mm；喇叭口外緣不超出後輪拱半寬，正面面積不增加），沿 x 掃過；口端開放朝後
  * @type {(sgn: number) => THREE.BufferGeometry}
  */
 const buildHornDuct = (sgn) => {
@@ -132,7 +132,7 @@ const buildHornDuct = (sgn) => {
     const x = lerp(HORN.x0, HORN.xBell, i / nx);
     const { y, r } = hornAt(x);
     const a = -Math.PI / 2 + (Math.PI * k) / na;
-    return [x, y + r * Math.sin(a), sgn * (Q.hw(x) - 0.4 + r * Math.cos(a))];
+    return [x, y + r * Math.sin(a), sgn * (Q.hw(x) - 1.9 + r * Math.cos(a))];
   };
   for (let i = 0; i < nx; i++) {
     for (let k = 0; k < na; k++) {
@@ -200,7 +200,7 @@ const ribTopY = (x, zc) => {
 };
 
 /**
- * 橋拱拱肋（側視，立板厚 0.8）：貼在腹板外側的一道銀色拱肋，讀成一座拱橋
+ * 橋拱拱肋（側視，立板厚 0.6）：貼在腹板外側的一道銀色拱肋，讀成一座拱橋
  * @type {(zc: number) => THREE.BufferGeometry}
  */
 const buildArchPier = (zc) => {
@@ -216,7 +216,7 @@ const buildArchPier = (zc) => {
     lower.push([x, Math.max(deckAt(x, zc), yt - ARCH_RIB.w)]);
   }
   /** @type {THREE.BufferGeometry[]} */
-  return finPlate([...upper, ...lower.reverse()], zc, 0.8);
+  return finPlate([...upper, ...lower.reverse()], zc, 0.6);
 };
 
 /** @type {(x: number) => number} 座艙罩俯視半寬（同 canopy 站位） */
@@ -342,7 +342,7 @@ export const heimdallHornBody = makePolyBody({
       };
       parts.push({ geometry: mergeGeos([web(zc), web(-zc)]), mat: 'iceSolid', solid: true, outline: true, name: 'bridge-webs' });
       parts.push({
-        geometry: mergeGeos([buildArchPier(zc + 0.8), buildArchPier(-zc - 0.8)]),
+        geometry: mergeGeos([buildArchPier(zc + 0.55), buildArchPier(-zc - 0.55)]),
         mat: 'silver',
         solid: true,
         outline: true,
@@ -413,7 +413,7 @@ export const heimdallHornBody = makePolyBody({
           const ring = new THREE.TorusGeometry(r + 0.2, 0.4, 6, 18, Math.PI);
           ring.rotateZ(-Math.PI / 2);
           ring.rotateY(s > 0 ? -Math.PI / 2 : Math.PI / 2);
-          ring.translate(x, y, s * (Q.hw(x) - 0.4));
+          ring.translate(x, y, s * (Q.hw(x) - 1.9));
           rings.push(ring);
         }
       }
@@ -426,7 +426,7 @@ export const heimdallHornBody = makePolyBody({
     wallThickness_mm: '推估：射出 ABS 殼 0.8 mm（同其他車殼）',
     geometry: '本檔站位產生器（推估，比例取自四視圖 04）：殼 x −66 ~ 76、橋翼後緣 −70；T 形鼻翼半寬 40、頂 20、厚約 3.4；兩前輪之間窄鼻半寬 22.5（前輪外露）、後輪拱 41.5、車尾 36；中脊從鼻翼 17.5 爬升到橋翼前緣 43、橋下降到 31，橋翼頂 44.2 為全車最高',
     bridge: '彩虹橋翼：ABS 平板厚 1.0，x −4 → −70、半寬 12 → 19；左右各一道拱肋（肋寬 1.8）＋兩根立柱，立板厚 1.2、位於 |z| 11；兩緣白邊＋五色細線各寬 0.95 mm（推估）',
-    horn: '號角導管：ABS 半管薄殼（壁厚同殼 0.8），沿側裙從 x 22 到 −16 半徑 1.8 → 5.0，之後外張成半徑 6.8 的喇叭口（口朝後，x −21.5）；兩道象牙白半圈箍環（推估）',
+    horn: '號角導管：ABS 半管薄殼（壁厚同殼 0.8），沿側裙從 x 22 到 −14.5 半徑 1.8 → 4.2，之後外張成半徑 5.4 的喇叭口（口朝後，x −19.5）；兩道象牙白半圈箍環（推估）',
     wheelArches: '後 R17.5（31 mm 輪胎半徑 15.5 + 2 mm）；前輪在窄鼻外側外露（車身半寬 22.5 < 輪胎內側 24.75），可裝 26 / 31 mm 輪',
     mounts: '對齊 chassis-midship 的車殼安裝點（SPEC 1.14）',
   },
