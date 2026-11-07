@@ -126,22 +126,57 @@ const ARCHES = [
 const CANOPY = { x0: 32, x1: -16, peakX: 10, rise: 10.5, halfW: 13.5 };
 
 /**
- * 車尾雙鏡：一片橫跨車寬、伸出車尾兩側的白色扁翼板，上面並排立著兩面銅鏡（鏡面朝後、上緣往前傾）。
- * x0 / x1 = 翼板前後緣；y = 翼板底面高度；halfW = 翼板半寬；thick = 翼板厚；
- * mirrorR = 鏡半徑；mirrorZ = 兩面鏡中心的 |z|；mirrorX = 鏡面 x；tilt = 鏡面上緣往前傾的角度（度）
- * @type {{ x0: number, x1: number, y: number, halfW: number, thick: number, mirrorR: number, mirrorZ: number, mirrorX: number, tilt: number }}
+ * 車尾鏡翼（四視圖 22）：兩片相連、平躺的橢圓鏡面盤（俯視 8 字形，拋光銅鏡），外緣一圈金色鏡緣，兩支寬扁翼柱撐在兩片盤的中心下方。
+ * x / y = 盤心 x 與盤底面高度；a / b = 每片橢圓沿 x / z 的半軸；c = 兩片盤中心的 |z|；thick = 盤厚；pitch = 往後上仰角（度）；
+ * n = 超橢圓指數（2 = 正橢圓，略大於 2 讓盤尾比較飽滿）
+ * @type {{ x: number, y: number, a: number, b: number, c: number, thick: number, pitch: number, n: number }}
  */
-const MIRRORS = { x0: -50, x1: -64, y: 32.6, halfW: 46, thick: 1.0, mirrorR: 6.2, mirrorZ: 13, mirrorX: -58, tilt: 36 };
+const MIRROR_WING = { x: -53, y: 41, a: 11, b: 23.5, c: 22.5, thick: 0.9, pitch: 0, n: 2.6 };
 
 /**
- * 鼻頭兩側往後掠的薄片（四視圖 22 前輪前方那三片尖片，改成往後掠）：左右各 3 片水平薄片，
- * 根部貼在鼻側（前後兩點），尖端往後外伸到前輪拱前方。y = 高度；xf / xb = 根部前後點；tx / tz = 尖端位置（|z|）
- * @type {{ y: number, xf: number, xb: number, tx: number, tz: number }[]}
+ * 兩片相連超橢圓盤的外框（局部座標 u = 沿 x、w = 沿 z；俯視 8 字形）：右盤取 w ≥ 0 的弧、左盤鏡射，
+ * 兩盤在 w = 0 相交處形成前後兩個內凹的腰
+ * @type {(a: number, b: number, c: number, n: number, seg: number, grow: number) => number[][]} grow = 外框往外放大的量
  */
-const NOSE_FINS = [
-  { y: 24, xf: 64, xb: 58, tx: 56.5, tz: 34 },
-  { y: 20, xf: 66, xb: 60, tx: 58, tz: 33 },
-  { y: 16, xf: 68, xb: 62, tx: 59.5, tz: 31.5 },
+const figureEightOutline = (a, b, c, n, seg, grow) => {
+  const A = a + grow;
+  const B = b + grow;
+  const e = 2 / n;
+  /** @type {(v: number) => number} 保留正負號的次方 */
+  const sp = (v) => Math.sign(v) * Math.abs(v) ** e;
+  const phi0 = Math.asin(Math.min(1, (c / B) ** (n / 2)));
+  /** @type {number[][]} */
+  const right = [];
+  for (let i = 0; i <= seg; i++) {
+    const phi = -phi0 + ((Math.PI + 2 * phi0) * i) / seg;
+    right.push([A * sp(Math.cos(phi)), c + B * sp(Math.sin(phi))]);
+  }
+  const left = right.map(([u, w]) => [-u, -w]);
+  return [...right, ...left];
+};
+
+/**
+ * 中間挖空的水平板（俯視外框 outer、挖空 inner，點位 [x, z]），底面高 y、厚 thick
+ * @type {(outer: number[][], inner: number[][], y: number, thick: number) => THREE.BufferGeometry}
+ */
+const holedFlatPlate = (outer, inner, y, thick) => {
+  const shape = new THREE.Shape(outer.map(([x, z]) => new THREE.Vector2(x, -z)));
+  shape.holes.push(new THREE.Path(inner.map(([x, z]) => new THREE.Vector2(x, -z))));
+  const g = new THREE.ExtrudeGeometry(shape, { depth: thick, bevelEnabled: false });
+  g.rotateX(-Math.PI / 2);
+  g.translate(0, y, 0);
+  return g;
+};
+
+/**
+ * 鼻頭兩側的立體鬚刃（四視圖 22 前輪前方那三片刀片）：左右各 3 片壓扁的四角錐刀刃，根部埋在鼻側、往後外掠並微微上翹，
+ * 三片上下錯開、互相平行（不從同一點放射）。rx / ry = 根部位置；len = 刃長；yaw = 往外掠角；rise = 上翹角（度）
+ * @type {{ rx: number, ry: number, len: number, yaw: number, rise: number }[]}
+ */
+const NOSE_BLADES = [
+  { rx: 63, ry: 24, len: 11, yaw: 24, rise: 10 },
+  { rx: 65.5, ry: 20, len: 10, yaw: 24, rise: 10 },
+  { rx: 68, ry: 16, len: 9, yaw: 24, rise: 10 },
 ];
 
 /**
@@ -172,7 +207,7 @@ const materials = () => ({
   // 金色金屬漆：鼻面板
   sunGold: namedMaterial('paint-sun-gold', { color: 0xd6b157, metalness: 0.6, roughness: 0.3, clearcoat: 0.6, clearcoatRoughness: 0.15 }),
   // 銅鏡（真金屬；名稱含 -brass → Blender metallic）
-  mirror: namedMaterial('trim-bronze-mirror-brass', { color: 0xd2a062, metalness: 0.8, roughness: 0.34, clearcoat: 0.3 }),
+  mirror: namedMaterial('trim-bronze-mirror-brass', { color: 0xf0c470, metalness: 0.8, roughness: 0.14, clearcoat: 0.6 }),
   // 白色尾翼支柱（緞面射出件）
   pylon: namedMaterial('paint-pylon-white-abs', { color: 0xeeebe3, roughness: 0.55 }),
   // 鼻側薄片、翼板描邊、鏡緣：金色金屬漆
@@ -245,102 +280,53 @@ export const amaterasuMirrorBody = makePolyBody({
     parts.push({ geometry: mergeGeos(ARCHES.map((a) => buildProfileLiner(a, 22.9, profile))), mat: 'liner', shell: true, name: 'arch-liners' });
     parts.push({ geometry: mergeGeos(ARCHES.map((a) => buildArchWell(a, 22.9, 12.3, 17.8, chassisBlockedNearArch))), mat: 'liner', shell: true, name: 'arch-wells' });
 
-    // 車尾扁翼板（白，伸出車尾兩側）＋兩支扁支柱
-    const plate = flatPlate(
-      [
-        [MIRRORS.x0, -MIRRORS.halfW],
-        [MIRRORS.x0, MIRRORS.halfW],
-        [MIRRORS.x1 + 2, MIRRORS.halfW],
-        [MIRRORS.x1, MIRRORS.halfW - 3],
-        [MIRRORS.x1, -MIRRORS.halfW + 3],
-        [MIRRORS.x1 + 2, -MIRRORS.halfW],
-      ],
-      MIRRORS.y,
-      MIRRORS.thick,
+    // 車尾鏡翼：兩片相連的平躺橢圓鏡面盤＋金色鏡緣（中空環，包住盤緣）＋兩支寬扁翼柱
+    const tilt = (MIRROR_WING.pitch * Math.PI) / 180;
+    /** @type {(g: THREE.BufferGeometry) => THREE.BufferGeometry} 繞盤心往後上仰（尾端比前端高） */
+    const pitchUp = (g) => g.translate(-MIRROR_WING.x, -MIRROR_WING.y, 0).rotateZ(-tilt).translate(MIRROR_WING.x, MIRROR_WING.y, 0);
+    const toWorld = (/** @type {number[][]} */ pts) => pts.map(([u, w]) => [MIRROR_WING.x + u, w]);
+    const { a, b, c, n } = MIRROR_WING;
+    const disc = pitchUp(flatPlate(toWorld(figureEightOutline(a, b, c, n, 28, 0)), MIRROR_WING.y, MIRROR_WING.thick));
+    parts.push({ geometry: disc, mat: 'mirror', solid: true, outline: true, name: 'mirror-wing-discs' });
+    const rim = pitchUp(
+      holedFlatPlate(toWorld(figureEightOutline(a, b, c, n, 28, 0.9)), toWorld(figureEightOutline(a, b, c, n, 28, -0.1)).reverse(), MIRROR_WING.y - 0.3, MIRROR_WING.thick + 0.6),
     );
-    parts.push({ geometry: plate, mat: 'white', solid: true, outline: true, name: 'mirror-wing-plate' });
-    const edge = flatPlate(
-      [
-        [MIRRORS.x0 + 0.7, -MIRRORS.halfW - 0.7],
-        [MIRRORS.x0 + 0.7, MIRRORS.halfW + 0.7],
-        [MIRRORS.x1 + 1.6, MIRRORS.halfW + 0.7],
-        [MIRRORS.x1 - 0.7, MIRRORS.halfW - 3],
-        [MIRRORS.x1 - 0.7, -MIRRORS.halfW + 3],
-        [MIRRORS.x1 + 1.6, -MIRRORS.halfW - 0.7],
-      ],
-      MIRRORS.y - 0.3,
-      0.3,
-    );
-    parts.push({ geometry: edge, mat: 'clawGold', solid: true, outline: true, name: 'mirror-wing-edge' });
+    parts.push({ geometry: rim, mat: 'clawGold', solid: true, outline: true, name: 'mirror-wing-rim' });
     /** @type {THREE.BufferGeometry[]} */
-    const struts = [];
+    const pylons = [];
     for (const side of [-1, 1]) {
-      const zc = side * 21;
-      const yDeck = P.yTop(-57) - 1.5;
-      struts.push(
+      const yDeck = P.yTop(MIRROR_WING.x + 4) - 1.5;
+      pylons.push(
         finPlate(
           [
-            [MIRRORS.x0 - 2, yDeck],
-            [MIRRORS.x0 - 3, MIRRORS.y + 0.2],
-            [MIRRORS.x1 + 4, MIRRORS.y + 0.2],
-            [MIRRORS.x1 + 6, yDeck],
+            [MIRROR_WING.x + 10, yDeck],
+            [MIRROR_WING.x + 4, MIRROR_WING.y + 0.2],
+            [MIRROR_WING.x - 3, MIRROR_WING.y + 0.2],
+            [MIRROR_WING.x + 2, yDeck],
           ],
-          zc,
-          2.4,
+          side * MIRROR_WING.c * 0.62,
+          2.6,
         ),
       );
     }
-    parts.push({ geometry: mergeGeos(struts), mat: 'pylon', solid: true, outline: true, name: 'mirror-wing-struts' });
-    // 兩面銅鏡（八咫鏡）：鏡身圓盤（16 段、軸沿 x、鏡面朝後）＋金色鏡緣環（24×6）＋鏡前的三角托架
-    const tilt = (MIRRORS.tilt * Math.PI) / 180;
-    const cy = MIRRORS.y + MIRRORS.thick + MIRRORS.mirrorR * Math.cos(tilt) + 0.3;
+    parts.push({ geometry: mergeGeos(pylons), mat: 'pylon', solid: true, outline: true, name: 'mirror-wing-pylons' });
+    // 鼻頭兩側立體鬚刃（金）：四角錐（4 段）壓扁成刀刃，根部埋進鼻側 1 mm
     /** @type {THREE.BufferGeometry[]} */
-    const discs = [];
-    /** @type {THREE.BufferGeometry[]} */
-    const rims = [];
-    /** @type {THREE.BufferGeometry[]} */
-    const brackets = [];
-    for (const side of [-1, 1]) {
-      const zc = side * MIRRORS.mirrorZ;
-      const disc = new THREE.CylinderGeometry(MIRRORS.mirrorR, MIRRORS.mirrorR, 1.2, 16);
-      disc.rotateZ(Math.PI / 2);
-      disc.rotateZ(-tilt);
-      disc.translate(MIRRORS.mirrorX, cy, zc);
-      discs.push(disc);
-      const rim = new THREE.TorusGeometry(MIRRORS.mirrorR - 0.2, 0.45, 6, 24);
-      rim.rotateY(Math.PI / 2);
-      rim.rotateZ(-tilt);
-      rim.translate(MIRRORS.mirrorX - 0.5, cy, zc);
-      rims.push(rim);
-      brackets.push(
-        finPlate(
-          [
-            [MIRRORS.mirrorX + 0.4, MIRRORS.y + MIRRORS.thick - 0.2],
-            [MIRRORS.mirrorX + 6, MIRRORS.y + MIRRORS.thick - 0.2],
-            [MIRRORS.mirrorX + 0.4 + 0.6 * MIRRORS.mirrorR * Math.sin(tilt), cy + 0.6 * MIRRORS.mirrorR],
-          ],
-          zc,
-          1.6,
-        ),
-      );
-    }
-    parts.push({ geometry: mergeGeos(discs), mat: 'mirror', solid: true, outline: true, name: 'bronze-mirrors' });
-    parts.push({ geometry: mergeGeos(rims), mat: 'clawGold', solid: true, outline: true, name: 'bronze-mirror-rims' });
-    parts.push({ geometry: mergeGeos(brackets), mat: 'pylon', solid: true, outline: true, name: 'bronze-mirror-brackets' });
-    // 鼻頭兩側往後掠的金色薄片（水平板，厚 0.8）
-    /** @type {THREE.BufferGeometry[]} */
-    const fins = [];
-    for (const f of NOSE_FINS) {
+    const blades = [];
+    for (const f of NOSE_BLADES) {
       for (const side of [-1, 1]) {
-        const pts = [
-          [f.xf, side * (P.hw(f.xf) - 1.2)],
-          [f.tx, side * f.tz],
-          [f.xb, side * (P.hw(f.xb) - 1.2)],
-        ];
-        fins.push(flatPlate(side > 0 ? pts : pts.slice().reverse(), f.y - 0.4, 0.8));
+        const g = new THREE.ConeGeometry(2.4, f.len, 4);
+        g.translate(0, f.len / 2, 0);
+        // 尖端朝 −x（往後）
+        g.rotateZ(Math.PI / 2);
+        g.scale(1, 0.32, 1);
+        g.rotateZ((-f.rise * Math.PI) / 180);
+        g.rotateY((side * f.yaw * Math.PI) / 180);
+        g.translate(f.rx, f.ry, side * (P.hw(f.rx) - 1));
+        blades.push(g);
       }
     }
-    parts.push({ geometry: mergeGeos(fins), mat: 'clawGold', solid: true, outline: true, name: 'nose-swept-fins' });
+    parts.push({ geometry: mergeGeos(blades), mat: 'clawGold', solid: true, outline: true, name: 'nose-whisker-blades' });
 
     // ---- 貼紙 ----
     // 座艙框（金，座艙罩外圍 1.2 mm）
