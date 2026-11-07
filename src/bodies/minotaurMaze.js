@@ -1,4 +1,4 @@
-// 米諾陶洛斯（body-minotaur-maze，神話組・希臘）：照四視圖 18 的「階梯鼻、大座艙、高車尾、單柱牛角新月尾翼」重新建模；車上沒有牛的頭、臉、眼、鼻孔、鼻環。
+// 米諾陶洛斯（body-minotaur-maze，神話組・希臘）：照四視圖 18 的「階梯鼻、大座艙開口、高車尾、單柱牛角新月尾翼」重新建模；車上沒有牛的頭、臉、眼、鼻孔、鼻環。
 // 牛角 → 尾翼：一片新月形的尾翼，中央最低、兩端往上翹並往前彎（後視、俯視都是新月），單柱撐在車尾中線。
 // 迷宮 → 階梯鼻與鼻面回圈：鼻子是往上疊兩階的平台（側視三層階梯），鼻面上四道同心 U 形黑線一圈套一圈（四視圖鼻面的同心線，讀成克諾索斯方形迷宮的迴圈）；
 // 側裙是黑底上的奶油白連續回紋帶（線性迷宮），從收腰往車尾斜升的黑色板塊收在後輪前；一條金色阿里阿德涅之線沿黑色板塊上緣從鼻端走到車尾。
@@ -144,9 +144,6 @@ const materials = () => ({
   clay2: namedMaterial('paint-terracotta-clay', { color: 0xc4652f, roughness: 0.7, clearcoat: 0.04, side: THREE.DoubleSide }),
   inner: namedMaterial('shell-inner-dark', { color: 0x1a1716, roughness: 0.85, side: THREE.BackSide }),
   edge: namedMaterial('shell-edge-black', { color: 0x1b1817, roughness: 0.6, side: THREE.DoubleSide }),
-  cockpit: namedMaterial('shell-inner-dark', { color: 0x1a1716, roughness: 0.85, side: THREE.DoubleSide }),
-  // 煙燻座艙罩（有色透明 PC，帶一點赭色）
-  glass: namedMaterial('pc-tint-umber-smoke', { color: 0x3a2a22, roughness: 0.06, specularIntensity: 0.6, transparent: true, opacity: 0.66, envMapIntensity: 0.5, depthWrite: false, side: THREE.DoubleSide }),
   liner: namedMaterial('shell-wheelwell-umber', { color: 0x2a201b, roughness: 0.8, side: THREE.DoubleSide }),
   dCream: decalMaterial('decal-fresco-cream', { color: 0xefe4c8, roughness: 0.6 }),
   dBlack: decalMaterial('decal-slip-black', { color: 0x1b1918, roughness: 0.5 }),
@@ -157,23 +154,8 @@ const materials = () => ({
   mount: namedMaterial('abs-mount-black', { color: 0x222326, roughness: 0.6 }),
 });
 
-/** 座艙罩（大而後傾，四視圖 18 的大座艙）：x 30 → −26 */
-const CANOPY = {
-  section: 'ellipse',
-  stations: (() => {
-    /** @type {{ x: number, yBase: number, yTop: number, halfW: number }[]} */
-    const out = [];
-    const n = 20;
-    for (let i = 0; i <= n; i++) {
-      const u = i / n;
-      const x = lerp(30, -26, u);
-      const halfW = i === 0 || i === n ? 2.4 : 11.6 * Math.sin(Math.PI * u ** 0.75) ** 0.5;
-      const rise = 7.6 * Math.sin(Math.PI * u ** 0.62) ** 0.7;
-      out.push({ x, yBase: 0, yTop: rise, halfW });
-    }
-    return out;
-  })(),
-};
+/** @type {{ x0: number, x1: number, hz: number, r: number }} 開放座艙（迷宮中心）：方形開口的前後端、半寬、圓角 */
+const COCKPIT = { x0: -16, x1: 6, hz: 7.4, r: 1.4 };
 
 /** @type {{ xMid: number, yMid: number, span: number, sweep: number, lift: number }} 新月尾翼：中央 (x, y)、半翼展、翼端往前彎的量、翼端上翹的量 */
 const HORN = { xMid: -61, yMid: 39.8, span: 44, sweep: 8, lift: 7 };
@@ -191,9 +173,9 @@ const CONFIG = {
   mythSeries: 'greek',
   mythTheme: 'minotaur',
   form: 'stepped-labyrinth-nose',
-  roof: 'canopy',
+  roof: 'open-cockpit',
   wing: 'horn-crescent-mono',
-  theme: '陶土橘四驅車：前寬後窄的車身：±44 的寬肩前擋泥板、往上疊兩階的階梯短鼻與鼻面三道同心 U 形黑線（方形迷宮的迴圈）、大而後傾的煙燻座艙罩、窄而高的車尾（俯視後輪外露）；側裙黑色板塊從收腰往車尾斜升，板塊上奶油白連續回紋帶，上緣一條發光金線（阿里阿德涅之線）；車尾單柱撐起黑色牛角新月尾翼，中央最低、兩端上翹前彎，頂面一道陶土色新月條',
+  theme: '陶土橘四驅車：前寬後窄的車身：±44 的寬肩前擋泥板、往上疊兩階的階梯短鼻與鼻面三道同心 U 形黑線（方形迷宮的迴圈）、方形開放座艙（迷宮中心，黑框）、窄而高的車尾（俯視後輪外露）；側裙黑色板塊從收腰往車尾斜升，板塊上奶油白連續回紋帶，上緣一條發光金線（阿里阿德涅之線）；車尾單柱撐起黑色牛角新月尾翼，中央最低、兩端上翹前彎，頂面一道陶土色新月條',
   material: 'ABS',
   density_g_cm3: 1.05,
   wallThickness_mm: 0.8,
@@ -206,20 +188,44 @@ const CONFIG = {
     { x: 40, y: 13, radius: 15.2, cutZFrom: 23.8 },
     { x: -40, y: 13, radius: 15.2, cutZFrom: 23.8 },
   ],
-  canopy: CANOPY,
+  openings: [
+    {
+      id: '迷宮中心座艙',
+      shape: 'fn',
+      sd: (x, y, z) => (y < 26 ? 10 : sdRoundRect(x, Math.abs(z), COCKPIT.x0, COCKPIT.x1, -COCKPIT.hz, COCKPIT.hz, COCKPIT.r)),
+    },
+  ],
   sideZMin: 28,
   zones: () => [
     // 側裙黑色板塊
     { mat: 'black', keep: (x, y, z) => (onSide(x, z) ? splitY(x) - y : -1) },
-    // 座艙框：座艙罩四周一圈黑（中線兩側 0.2 半寬、x −30 ~ 34）
-    { mat: 'black', keep: (x, y, z) => (onSide(x, z) ? -1 : Math.min(0.24 * P.hw(x) - Math.abs(z), x + 30, 34 - x)) },
+    // 座艙框：開放座艙四周 2 mm 一圈黑
+    { mat: 'black', keep: (x, y, z) => (onSide(x, z) ? -1 : -sdRoundRect(x, Math.abs(z), COCKPIT.x0 - 2, COCKPIT.x1 + 2, -COCKPIT.hz - 2, COCKPIT.hz + 2, 2)) },
     { mat: 'clay', keep: () => 1 },
   ],
-  mats: { inner: 'inner', edge: 'edge', cap: 'clay', cockpit: 'cockpit', glass: 'glass', mount: 'mount' },
+  mats: { inner: 'inner', edge: 'edge', cap: 'clay', mount: 'mount' },
   materials,
   extras: (kit) => {
     /** @type {BodyPart[]} */
     const parts = [];
+    // ── 座艙井壁：沿開口往下 4 mm 的方形井（0.8 mm 壁，頂端埋進殼內；沒有底）──
+    {
+      const t = 0.8;
+      const depth = 4;
+      /** @type {(x: number) => number} 中線殼面高度（往下 0.3 埋進殼內） */
+      const yTopAt = (x) => kit.surf.topY(x, 0) - 0.3;
+      const yBot = Math.min(yTopAt(COCKPIT.x0), yTopAt(COCKPIT.x1)) - depth;
+      const h = Math.max(yTopAt(COCKPIT.x0), yTopAt(COCKPIT.x1)) - yBot;
+      const lx = COCKPIT.x1 - COCKPIT.x0;
+      const xc = (COCKPIT.x0 + COCKPIT.x1) / 2;
+      /** @type {THREE.BufferGeometry[]} */
+      const walls = [];
+      for (const sg of [-1, 1]) {
+        walls.push(new THREE.BoxGeometry(lx + 2 * t, h, t).translate(xc, yBot + h / 2, sg * (COCKPIT.hz + t / 2)));
+        walls.push(new THREE.BoxGeometry(t, h, 2 * COCKPIT.hz).translate(sg > 0 ? COCKPIT.x1 + t / 2 : COCKPIT.x0 - t / 2, yBot + h / 2, 0));
+      }
+      parts.push({ geometry: mergeGeos(walls), mat: 'black2', solid: true, name: 'cockpit-well' });
+    }
     // ── 牛角新月尾翼（黑）：扁橢圓斷面沿新月中心線掃掠，弦長中央 12 → 翼端 1.4、厚 1.8 → 0.8 ──
     /** @type {(t: number) => number} 從中央到翼端的比例（0 中央、1 翼端） */
     const fromMid = (t) => Math.abs(2 * t - 1);
@@ -331,7 +337,7 @@ const CONFIG = {
   src: {
     density_g_cm3: 'SPEC 1.14：ABS 約 1.05 g/cm³（推估）',
     wallThickness_mm: '推估：射出 ABS 殼 0.8 mm（同其他車殼）',
-    geometry: '本檔站位產生器 P（推估，造型比例取自 shared/design/body-minotaur-maze/fourview.png 與 fourview_trace.txt，縮到底盤尺寸）：殼長 130（−64 ~ 鼻端 66）；鼻端兩階（中線 27.4 → 24.2 於 x 52、23.4 → 20.4 於 x 59）、中央頂 35.8、座艙罩頂約 38.6、新月尾翼中央 39.8 → 翼端約 46.8；寬：前擋泥板 ±44、收腰 ±33、後擋泥板 ±32、車尾 ±25、鼻端 ±9；新月尾翼 ±44',
+    geometry: '本檔站位產生器 P（推估，造型比例取自 shared/design/body-minotaur-maze/fourview.png 與 fourview_trace.txt，縮到底盤尺寸）：殼長 130（−64 ~ 鼻端 66）；鼻端兩階（中線 27.4 → 24.2 於 x 52、23.4 → 20.4 於 x 59）、中央頂 35.8、新月尾翼中央 39.8 → 翼端約 46.8；寬：前擋泥板 ±44、收腰 ±33、後擋泥板 ±32、車尾 ±25、鼻端 ±9；新月尾翼 ±44',
     wheelArches: '前後 R15.2（26 mm 輪胎半徑 13 + 2.2 mm）',
     wing: '新月尾翼：ABS 扁橢圓斷面實體件（弦長 12 → 1.4、厚 1.8 → 0.8，推估），半翼展 44、翼端前彎 8、上翹 7；中央單柱厚 2.4',
     mounts: '對齊 chassis-midship 的車殼安裝點（SPEC 1.14）',
