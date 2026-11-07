@@ -325,18 +325,24 @@ const STRAKES_PER_SIDE = 4;
 const STRAKE_Y0 = 12.4;
 
 /**
- * 第 i 道刀形飾條的側視外形 (x, y)（i = 0 最前）：下端寬 6.6、往後上方約 45° 收成一個尖；越後面的越長
- * （下端 x 17 → −5.5、每 7.5 mm 一道；尖端 x 8 → −18.7、高 23 → 25.7，都在腰線 26 以下、離前後輪拱 ≥ 4 mm）
- * 4 道幾乎一樣大、間距相等，一側一眼數得出 4、兩側合計 8
- * @type {(i: number) => number[][]}
+ * 第 i 道刀形飾條的側視外形 (x, y)（i = 0 最前）：分成前後錯開的兩段三角刃——下段（下端寬 5.6，尖端往後上方到 y 18.6）、
+ * 上段（底邊在 y 19.6、比下段往後退 4.8 mm，尖端到 y 23 → 25.7）；一側 4 道共 8 段，單一側視就數得到「八」
+ * （下端 x 17 → −5.5、每 7.5 mm 一道；尖端 x 8 → −18.7，都在腰線 26 以下、離前後輪拱 ≥ 4 mm）
+ * @type {(i: number) => number[][][]}
  */
 const strakeOutline = (i) => {
   const x0 = 17 - 7.5 * i;
   return [
-    [x0 + 1.4, STRAKE_Y0],
-    [x0 - 9 - 1.4 * i, 23 + 0.9 * i],
-    [x0 - 7.4, 17.4],
-    [x0 - 5.2, STRAKE_Y0],
+    [
+      [x0 + 1.4, STRAKE_Y0],
+      [x0 - 5.6, 18.6],
+      [x0 - 4.2, STRAKE_Y0],
+    ],
+    [
+      [x0 - 3.4, 19.6],
+      [x0 - 9 - 1.4 * i, 23 + 0.9 * i],
+      [x0 - 6.4, 19.6],
+    ],
   ];
 };
 
@@ -398,9 +404,9 @@ const CONFIG = {
     /** @type {BodyPart[]} */
     const parts = [];
 
-    // ── 引擎蓋鋸齒背鰭：沿中線（x 46 → 17）每 3.6 mm 一片、彼此交疊的細長刀形，往後順梳 9.5 mm，高 2.0–2.8 mm（厚 1.3，根部埋進殼面 1 mm），停在座艙罩前 ──
+    // ── 引擎蓋鋸齒背鰭：沿中線（x 46 → 17）每 5.8 mm 一片、彼此交疊的細長刀形，往後順梳 9.5 mm，高 2.0–2.8 mm（厚 1.3，根部埋進殼面 1 mm），停在座艙罩前 ──
     parts.push({
-      geometry: maneRow(46, 17, 3.625, 9.5, (x) => lerp(2.0, 2.8, (x - 17) / 29), 0, 1.3, 0),
+      geometry: maneRow(46, 17, 5.8, 9.5, (x) => lerp(2.0, 2.8, (x - 17) / 29), 0, 1.3, 0),
       mat: 'silver',
       solid: true,
       outline: true,
@@ -465,7 +471,7 @@ const CONFIG = {
       const strakes = [];
       for (const sg of [-1, 1]) {
         for (let i = 0; i < STRAKES_PER_SIDE; i++) {
-          strakes.push(finPlate(strakeOutline(i), sg * zc, 1.6));
+          strakes.push(...strakeOutline(i).map((pts) => finPlate(pts, sg * zc, 1.6)));
         }
       }
       parts.push({ geometry: mergeGeos(strakes), mat: 'gold', solid: true, outline: true, name: 'eight-strakes' });
