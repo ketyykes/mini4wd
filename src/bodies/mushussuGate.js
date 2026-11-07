@@ -1,8 +1,8 @@
 // 伊什塔爾城門（body-mushussu-gate，神話組・美索不達米亞）：照四視圖 09 建模——寬平的方鼻頭、前移的六角座艙、從座艙一路緩降到車尾的快背，
 // 前翼子板頂比引擎蓋中線高（引擎蓋是兩道翼子板稜線之間的低谷）；車上沒有任何動物的頭、臉、腳。
 // 四視圖的蜂巢格柵鼻 → 鼻端斜面上的「釉磚格」：金框裡一格格錯縫的黃釉磚；四個角上的小翼片 → 階梯形城垛（美索不達米亞城牆的三階雉堞）；
-// 車尾 → 城門：兩座門塔（後翼子板上的階梯形尾鰭）夾著一道頂緣排滿三階雉堞的城牆尾翼；六角座艙是深色的城門拱道（金框）。
-// 塗裝：青金石藍釉磚車身（錯縫磚縫）、側牆上緣一列白瓣金心玫瑰花飾帶、兩輪之間的土黃釉磚階梯側板、金色細線、瀝青黑裙帶。
+// 車尾 → 城門：兩座門塔（車尾甲板上的階梯形尾鰭）架起一片浮在甲板上、頂緣排三座三階雉堞的城牆尾翼；六角座艙是深色的城門拱道（金框）。
+// 塗裝：青金石藍釉磚車身（錯縫磚縫）、側牆上緣一列白瓣金心玫瑰花飾帶、兩輪之間的土黃釉磚折線切面側板（上緣白色折線）、金色細線、瀝青黑裙帶。
 // 穆修胡修只留抽象的鱗紋（土黃側板上的金色鱗線）。設計：shared/design/body-mushussu-gate/DESIGN.md（文物對應 MYTH_RESEARCH 第 4 節 M1–M5）。
 // 配色取自 M2 / 4-2（青金石釉藍、黃釉、黑白金邊框與玫瑰花飾）；圖形全部自繪；不含任何文字。剖面為本檔站位產生器（推估）。
 import * as THREE from 'three';
@@ -22,7 +22,7 @@ const X_FRONT = 74;
 const XS = [-73, -70, -62, -52, -40, -28, -14, 0, 14, 28, 40, 50, 58, 64, 68, 71, 74];
 /** @type {Record<string, (x: number) => number>} */
 const P = {
-  // 俯視半寬（肩稜線）：寬平的方鼻頭 37–39（四視圖俯視的寬鼻）、前後翼子板 44.5、腰身 23（四視圖俯視的深收腰）、窄方尾 24–27.5（讓開 ±42.5 的後導輪）
+  // 俯視半寬（肩稜線）：寬平的方鼻頭 37–39（四視圖俯視的寬鼻）、前後翼子板 44.5、腰身 23（四視圖俯視的深收腰，外側另有切面側板蓋住底盤）、窄方尾 24–27.5（讓開 ±42.5 的後導輪）
   hw: monoCurve(XS, [24, 25, 27.5, 36, 44.5, 35, 25, 23, 25, 35, 44.5, 43.5, 40.5, 39, 38.5, 38, 37]),
   // 中線高度：鼻端斜面 16 → 引擎蓋 29.5 → 座艙頂 37.8（x 0，四視圖側視的最高點）→ 快背一路緩降到車尾 31
   yTop: monoCurve(XS, [31, 32.2, 33.5, 34.6, 35.4, 36.4, 37.5, 37.8, 36.2, 33.4, 31, 29.5, 28.6, 27.6, 25.5, 21, 16]),
@@ -104,12 +104,14 @@ const rosetteBandY = (x) => P.yS(x) - 3.4;
 const ROS_BAND_H = 2.3;
 
 /**
- * 土黃釉磚側板的上緣（側視階梯線）：兩輪之間由前往後一階一階升高（像階梯形雉堞的側影），每階寬 7、高 1.6
+ * 土黃釉磚側板的上緣（側視折線切面）：前輪後方貼著裙帶起筆，往後斜升，在 x 0 折一次、斜率變緩，到後輪前方 21
  * @type {(x: number) => number}
  */
 const ochreTopY = (x) => {
-  const k = Math.max(0, Math.min(4, Math.floor((18 - x) / 7)));
-  return 17.2 + 1.6 * k;
+  if (x >= 0) {
+    return lerp(19.4, 16, Math.min(1, x / 21));
+  }
+  return lerp(19.4, 21, Math.min(1, -x / 21));
 };
 /** @type {(x: number, y: number) => number} 土黃側板（兩輪之間、裙帶之上、階梯線之下；負值 = 板內） */
 const ochreSd = (x, y) => Math.max(y - ochreTopY(x), P.yLow(x) + SKIRT_H - y, x - 21, -21 - x, 2.2 - archDist(x, y));
@@ -192,6 +194,7 @@ const materials = () => ({
   bitumen: namedMaterial('paint-bitumen-black-matte', { color: 0x1a1a1a, roughness: 0.72, clearcoat: 0.05 }),
   bitumen2: namedMaterial('paint-bitumen-black-matte', { color: 0x1a1a1a, roughness: 0.72, clearcoat: 0.05, side: THREE.DoubleSide }),
   // 金邊（真金屬：-brass 結尾）
+  white2: namedMaterial('paint-glaze-white', { color: 0xf1ede2, roughness: 0.4, clearcoat: 0.5, side: THREE.DoubleSide }),
   gold2: namedMaterial('trim-gold-brass', { color: 0xc8a24a, roughness: 0.3, metalness: 0.8, clearcoat: 0.3, side: THREE.DoubleSide }),
   inner: namedMaterial('shell-inner-dark', { color: 0x131a26, roughness: 0.85, side: THREE.BackSide }),
   edge: namedMaterial('shell-edge-lapis', { color: 0x173b78, roughness: 0.5, side: THREE.DoubleSide }),
@@ -242,20 +245,56 @@ const WALL_X = -69.5;
 /** @type {number} */
 const WALL_T = 1.2;
 /** @type {number} 城牆尾翼半寬（兩端接門塔） */
-const WALL_HALF = 21.8;
+const WALL_HALF = 15.2;
 /** @type {number} 城牆頂（雉堞底）高度 */
-const WALL_TOP = 35.4;
+const WALL_TOP = 37.8;
+/** @type {number} 城牆底緣：浮在車尾甲板上方，下面留一道看得穿的縫（真正的尾翼） */
+const WALL_BOTTOM = 34.8;
 /** @type {number} 門塔（後翼子板上的階梯形尾鰭）中心 |z| 與板厚 */
-const TOWER_Z = 22.6;
+const TOWER_Z = 15.9;
 /** @type {number} */
-const TOWER_T = 1.4;
+const TOWER_T = 1.2;
 /**
  * 門塔側視輪廓（x, y）：前緣從後翼子板稜線斜升，頂緣往後三階升高（階梯形雉堞的側影），後緣直落並埋進車尾殼面
  * @type {number[][]}
  */
-const TOWER_PTS = [[-50, 30.4], [-56, 35.6], [-59, 35.6], [-59, 37.2], [-62.5, 37.2], [-62.5, 38.8], [-66, 38.8], [-66, 40.4], [-71.5, 40.4], [-72.5, 38.8], [-72.5, 27.5], [-62, 29.5], [-56, 29.6]];
+const TOWER_PTS = [[-50, 32.6], [-55, 36], [-58, 36], [-58, 37.8], [-61.5, 37.8], [-61.5, 39.4], [-65, 39.4], [-65, 41], [-71.5, 41], [-72.5, 39.6], [-72.5, 29.2], [-62, 31.4], [-56, 32.2]];
 /** @type {number} 前翼子板小城垛片的中心 |z|（貼在翼子板稜線上） */
 const FRONT_TAB_Z = 28;
+
+/** @type {number} 折線切面側板的 |z|（板中心）與板厚 */
+const SKIRT_Z = 32.6;
+/** @type {number} */
+const SKIRT_T = 0.8;
+/** @type {(x: number) => number} 切面側板上緣（折線）：前輪後方 21，往後陡升，x 4 折一次（24.8），再緩升到後輪前方 25.8 */
+const skirtTopY = (x) => (x >= 4 ? lerp(24.8, 21, (x - 4) / 17) : lerp(24.8, 25.8, (4 - x) / 25));
+
+/**
+ * 兩輪之間的折線切面側板與上緣白色飾條（左右各一）
+ * @type {() => { plate: THREE.BufferGeometry, trim: THREE.BufferGeometry }}
+ */
+const buildCreaseSkirt = () => {
+  /** @type {(pts: number[][], zc: number, thick: number) => THREE.BufferGeometry} */
+  const extrude = (pts, zc, thick) => {
+    const g = new THREE.ExtrudeGeometry(new THREE.Shape(pts.map(([x, y]) => new THREE.Vector2(x, y))), { depth: thick, bevelEnabled: false });
+    g.translate(0, 0, zc - thick / 2);
+    return g;
+  };
+  /** @type {number[]} 折線的三個轉折 x（前 → 後） */
+  const ks = [21, 4, -21];
+  const top = ks.map((x) => [x, skirtTopY(x)]);
+  const platePts = [[21, 13.2], ...top, [-21, 13.2]];
+  const trimPts = [...top.map(([x, y]) => [x, y + 0.7]), ...top.slice().reverse().map(([x, y]) => [x, y - 0.5])];
+  /** @type {THREE.BufferGeometry[]} */
+  const plates = [];
+  /** @type {THREE.BufferGeometry[]} */
+  const trims = [];
+  for (const sg of [-1, 1]) {
+    plates.push(extrude(platePts, sg * SKIRT_Z, SKIRT_T));
+    trims.push(extrude(trimPts, sg * (SKIRT_Z + 0.05), SKIRT_T + 0.3));
+  }
+  return { plate: mergeGeos(plates), trim: mergeGeos(trims) };
+};
 
 /**
  * 車尾城門與前翼子板的城垛片
@@ -276,8 +315,8 @@ const buildGate = () => {
     g.translate(xc - thick / 2, 0, 0);
     return g;
   };
-  // 城牆尾翼：底緣埋進車尾殼面（y 30.5），頂緣 4 座三階雉堞（每階高 1.0）
-  const wallPts = [[-WALL_HALF, 30.5], ...crenelEdge(-WALL_HALF, WALL_HALF, WALL_TOP, 4, 1.0), [WALL_HALF, 30.5]];
+  // 城牆尾翼：架在兩座門塔之間、底緣離開甲板，頂緣 3 座三階雉堞（每階高 1.0）
+  const wallPts = [[-WALL_HALF, WALL_BOTTOM], ...crenelEdge(-WALL_HALF, WALL_HALF, WALL_TOP, 3, 1.0), [WALL_HALF, WALL_BOTTOM]];
   const wall = frontPlate(wallPts, WALL_T, WALL_X);
   // 牆頂下的金色飾帶（寬 1.1，比牆厚 0.4）
   const giltPts = [[-WALL_HALF, WALL_TOP - 1.6], [WALL_HALF, WALL_TOP - 1.6], [WALL_HALF, WALL_TOP - 0.5], [-WALL_HALF, WALL_TOP - 0.5]];
@@ -291,8 +330,8 @@ const buildGate = () => {
   // 門塔頂緣的金邊：沿三階頂緣往下 1 mm 的帶
   const stepTop = TOWER_PTS.slice(1, 10);
   const giltBand = [...stepTop, ...stepTop.slice().reverse().map(([x, y]) => [x, y - 1])];
-  // 前翼子板小城垛片：側視是一座三階雉堞（底寬 11、每階高 1.8），底緣埋進翼子板稜線
-  const tabPts = [[54, 31], [54, 33.6], [52.4, 33.6], [52.4, 35.4], [50.8, 35.4], [50.8, 37.2], [46.2, 37.2], [46.2, 35.4], [44.6, 35.4], [44.6, 33.6], [43, 33.6], [43, 31], [48.5, 30]];
+  // 前翼子板小城垛片：側視是一座三階雉堞（底寬 11、每階高 1.4），底緣埋進翼子板稜線
+  const tabPts = [[54, 31], [54, 33.2], [52.4, 33.2], [52.4, 34.6], [50.8, 34.6], [50.8, 36], [46.2, 36], [46.2, 34.6], [44.6, 34.6], [44.6, 33.2], [43, 33.2], [43, 31], [48.5, 30]];
   for (const sg of [-1, 1]) {
     towers.push(sidePlate(TOWER_PTS, TOWER_T, sg * TOWER_Z));
     towerGilt.push(sidePlate(giltBand, TOWER_T + 0.4, sg * TOWER_Z));
@@ -311,20 +350,20 @@ export const mushussuGateBody = makePolyBody({
   form: 'glazed-grille-fastback',
   roof: 'closed',
   wing: 'gate-tower-crenel',
-  theme: '寬平方鼻頭、前移六角座艙、緩降快背的四驅車披上伊什塔爾城門的釉磚：鼻端斜面金框裡的錯縫黃釉磚格、青金石藍釉磚車身、深藍黑亮釉的六角城門拱道座艙（金框）、前翼子板上的小階梯雉堞片、側牆上緣的白瓣金心玫瑰花飾帶、兩輪之間的土黃釉磚階梯側板（金色鱗紋）；車尾是城門——兩座階梯形門塔尾鰭夾著頂緣排滿三階雉堞的城牆尾翼',
+  theme: '寬平方鼻頭、前移六角座艙、緩降快背的四驅車披上伊什塔爾城門的釉磚：鼻端斜面金框裡的錯縫黃釉磚格、青金石藍釉磚車身、深藍黑亮釉的六角城門拱道座艙（金框）、前翼子板上的小階梯雉堞片、側牆上緣的白瓣金心玫瑰花飾帶、兩輪之間的土黃釉磚折線切面側板（白色折線、金色鱗紋）；車尾是城門——兩座階梯形門塔尾鰭架起一片浮在甲板上、頂緣排三座三階雉堞的城牆尾翼',
   material: 'ABS',
   density_g_cm3: 1.05,
   wallThickness_mm: 0.8,
   stations: STATIONS,
   hard: [1, 3, 4],
-  step: 0.65,
+  step: 0.7,
   wheelArches: ARCHES,
   openings: [{ id: '車尾城門口', shape: 'fn', sd: gateGapSd }],
   sideZMin: 22,
   zones: () => [
     // 牆腳瀝青黑裙帶
     { mat: 'bitumen', keep: (x, y, z) => (Math.abs(z) > wallZ(x, y) - 0.4 ? P.yLow(x) + SKIRT_H - y : -1) },
-    // 兩輪之間的土黃釉磚階梯側板
+    // 兩輪之間的土黃釉磚折線切面側板
     { mat: 'ochre', keep: (x, y, z) => (Math.abs(z) > wallZ(x, y) - 0.4 ? -ochreSd(x, y) : -1) },
     // 六角城門拱道座艙
     { mat: 'arch', keep: (x, y, z) => (onTop(x, y) ? -cabinSd(x, z) : -1) },
@@ -485,13 +524,19 @@ export const mushussuGateBody = makePolyBody({
           return -1;
         }
         const d = ochreSd(x, y);
-        const edge = Math.min(-d, d + 0.6);
-        const scales = Math.min(-d - 1.4, scaleLine(x, y));
+        const below = ochreTopY(x) - y;
+        const edge = below > 0.3 ? Math.min(-d, d + 0.6) : -1;
+        const scales = Math.min(-d - 1.4, below - 1.8, scaleLine(x, y));
         return Math.max(edge, scales);
       }, { offset: 0.12 }),
       mat: 'dGold',
       name: 'decal-ochre-panel-gold',
     });
+    // 折線切面側板（兩輪之間，|z| 32.6 的直立板）：土黃釉面，上緣是一條往後斜升、在 x 4 折一次的折線，沿折線一條白色飾條；
+    // 板子擋住深收腰下方的底盤，俯視只看得到板厚
+    const skirt = buildCreaseSkirt();
+    parts.push({ geometry: skirt.plate, mat: 'ochre2', solid: true, outline: true, name: 'crease-side-plate' });
+    parts.push({ geometry: skirt.trim, mat: 'white2', solid: true, outline: true, name: 'crease-side-trim-white' });
 
     // 車尾城門（gate-tower-crenel）＋前翼子板小城垛片
     const gate = buildGate();
@@ -507,10 +552,10 @@ export const mushussuGateBody = makePolyBody({
     wallThickness_mm: '推估：射出 ABS 殼 0.8 mm（同其他款）',
     fourview: 'shared/design/body-mushussu-gate/fourview.png（四視圖 09）與 fourview_trace.txt：側視頂線、俯視半寬、正視低谷引擎蓋的比例照圖，高度整體縮到合法範圍（推估）',
     geometry:
-      '本檔站位產生器 P（推估）：殼 x −73 → 74；肩線半寬 方鼻 37–39、翼子板 44.5、腰 23、車尾 24–27.5；車尾中央 |z| < 13 切出城門口（x < −63）（＋牆腳外張 0.6，外框半寬 ≤ 48.0）；中線 鼻端 16、引擎蓋 29.5、座艙頂 37.8（x 0）、車尾 31；翼子板稜線 32.5–32.6；門塔頂 40.4（全車最高）；側裙下緣 12.5，車尾 20 讓開後導輪',
+      '本檔站位產生器 P（推估）：殼 x −73 → 74；肩線半寬 方鼻 37–39、翼子板 44.5、腰 23、車尾 24–27.5；車尾中央 |z| < 13 切出城門口（x < −63）（＋牆腳外張 0.6，外框半寬 ≤ 48.0）；中線 鼻端 16、引擎蓋 29.5、座艙頂 37.8（x 0）、車尾 31；翼子板稜線 32.5–32.6；門塔頂 41（全車最高）；側裙下緣 12.5，車尾 20 讓開後導輪',
     wheelArches: '前後 R17.5（31 mm 輪胎半徑 15.5 + 2 mm），不切輪拱可裝；輪拱內襯＋輪胎內側環形擋板（buildArchWell）',
-    gate: '城牆尾翼：x −69.5、厚 1.2、半寬 21.8，牆頂 35.4，4 座三階雉堞每階高 1.0；門塔尾鰭 |z| 22.6、厚 1.4，頂緣三階 35.6 → 40.4；前翼子板城垛片 |z| 28、厚 1.4、底寬 11、高約 6；ABS 實心件（推估），質量 = 封閉體積 × 1.05 g/cm³',
-    livery: '鼻端釉磚格 半寬 19、磚 4.6 × 2.2；六角座艙 x −18 → 40、最寬半寬 12.2；玫瑰花飾帶在肩線下 3.4、半高 2.3、間距 5.4；土黃側板 x −21 → 21、上緣每 7 mm 升 1.6（皆為貼紙 / 塗裝分區，推估）',
+    gate: '城牆尾翼：x −69.5、厚 1.2、半寬 15.2，底緣 34.8 浮在甲板上、牆頂 37.8，3 座三階雉堞每階高 1.0；門塔尾鰭 |z| 15.9、厚 1.2，頂緣三階 36 → 41；前翼子板城垛片 |z| 28、厚 1.4、底寬 11、高約 5；ABS 實心件（推估），質量 = 封閉體積 × 1.05 g/cm³',
+    livery: '鼻端釉磚格 半寬 19、磚 4.6 × 2.2；六角座艙 x −18 → 40、最寬半寬 12.2；玫瑰花飾帶在肩線下 3.4、半高 2.3、間距 5.4；土黃側板 x −21 → 21；折線切面側板 |z| 32.6、厚 0.8、上緣 21 → 24.8（x 4）→ 25.8，白色飾條高 1.2（皆為貼紙 / 塗裝分區，推估）',
     myth: '伊什塔爾城門的青金石藍釉磚、黃釉、金邊框、玫瑰花飾、拱門與階梯形雉堞（MYTH_RESEARCH M2、M3）；穆修胡修只取鱗紋（M1），不做頭、角、腳、尾',
     mounts: '對齊 chassis-midship 的車殼安裝點（SPEC 1.14）',
   },
