@@ -1,9 +1,9 @@
 // 阿波羅七弦琴（body-apollo-lyre，神話組・希臘）：只用阿波羅的持物與象徵，車上沒有人像、臉、手或神像。
-// 照四視圖 06 建模，但壓低、加寬輪拱做回四驅車的矮寬感：寬平的鏟形低鼻、鼓起的前後擋泥板、戰車車斗形的開放座艙，
+// 照四視圖 06 建模，但壓低、加寬輪拱做回四驅車的矮寬感：寬平低鼻上下兩層前擾流片、鼓起的前後擋泥板、戰車車斗形的開放座艙，
 // 車尾一道 C 形環翼（側視是往前勾的 C，正視是跨過整個車寬的門形環）。
 // 元素：
-// (1) 七弦琴 → C 形環翼就是琴框（兩側立柱 = 琴臂、頂樑 = 琴軛），頂樑到後甲板的琴橋之間拉七道金弦；
-// (2) 太陽（後期與太陽神赫利俄斯合一）→ 四個輪拱外圍的金色放射線；
+// (1) 七弦琴 → C 形環翼就是琴框（兩側金色立柱 = 琴臂、頂樑 = 琴軛），頂樑到後甲板的琴橋之間拉七道金弦；
+// (2) 太陽戰車（後期與太陽神赫利俄斯合一）→ 戰車車斗形的開放座艙、四個輪拱外圍兩道金色輪圈弧線；
 // (3) 月桂 → 兩側車門上一枝月桂葉形切割（深色葉片沿金色細莖排列）。
 // 設計：shared/design/body-apollo-lyre/DESIGN.md（典故來源與文物對應寫在 DESIGN.md）。剖面為本檔站位產生器（推估）。
 // 塗裝全為自創，不含任何廠商 / 作品名稱、商標或文字。
@@ -51,11 +51,11 @@ const P = {
   yTop: monoCurve(XS, [30, 30.6, 31, 31.4, 32, 32.4, 33, 33.4, 33.6, 33.6, 33.4, 32.8, 30.6, 27, 23.6, 20.4, 17.6, 15]),
   // 肩稜線基本高度：兩輪之間低到 26，前後輪上方沿眉線拱起到 31.5（鼓起的擋泥板）
   yS: monoCurve(XS, [26, 27, 27.5, 27.8, 28, 27.5, 26.5, 26, 26, 26.5, 27.5, 28, 26.5, 23.5, 20.5, 18, 16, 14.5]),
-  // 俯視半寬：前段是窄鼻、前輪外露（半寬 16）；後輪上方外擴到 40 的寬擋泥板，C 形環翼跨在上面——俯視「前窄後寬」的三角形
-  hw: monoCurve(XS_HW, [32, 35.5, 38.5, 40, 40, 38, 30, 23, 20, 17.5, 16.5, 16, 16, 16, 15.5, 14.5, 13, 11.5, 9.5]),
-  // 側裙下緣：兩輪之間抬到 14
-  yLow: monoCurve(XS, [12, 11.2, 10.5, 10.5, 11, 12.5, 14, 14, 14, 13, 11.5, 10.5, 10.5, 11, 11.6, 12, 12.3, 12.5]),
-  // 白色中央寬條紋半寬（鼻端 → 座艙前、座艙後 → 車尾）
+  // 俯視半寬：後輪上方外擴到 38.5 的寬擋泥板，C 形環翼跨在上面；兩輪之間的側箱 29（把底盤側框蓋住）；前輪上方收成 16 的窄鼻、前輪外露
+  hw: monoCurve(XS_HW, [31, 34, 37, 38.5, 38.5, 36.5, 32, 29.5, 29, 29, 28.5, 22, 16.5, 16, 15.5, 14.5, 13, 11.5, 9.5]),
+  // 側裙下緣：兩輪之間壓到 11.5，把底盤側框封起來
+  yLow: monoCurve(XS, [12, 11.2, 10.5, 10.5, 11, 11.5, 11.5, 11.5, 11.5, 11.5, 11.5, 10.5, 10.5, 11, 11.6, 12, 12.3, 12.5]),
+  // 金色中央寬條紋半寬（鼻端 → 座艙前、座艙後 → 車尾）
   stripe: monoCurve(XS, [8, 8.5, 9, 9, 9, 9, 9, 9, 9, 9, 9, 8.5, 8, 7, 6, 5, 4.5, 4]),
 };
 
@@ -91,6 +91,9 @@ const ARCHES = [
   { x: 40, y: 13, radius: 17.5, cutZFrom: 22.5 },
   { x: -40, y: 13, radius: 17.5, cutZFrom: 22.5 },
 ];
+
+/** @type {number[]} 鼻頭前擾流片底面高度（下層、上層） */
+const FRONT_WING_Y = [13.4, 18];
 
 /** @type {{ id: string, view: string, shape: string, pts: number[][], depth: number }} 開放座艙（太陽戰車的車斗）：俯視 D 形，前緣圓、後緣平直，下凹 4 */
 const COCKPIT = {
@@ -182,14 +185,13 @@ const laurel = (u, v) => {
 
 /** @type {() => Record<string, THREE.Material>} */
 const materials = () => ({
-  // 太陽金黃：主色（亮面）
-  sun: namedMaterial('paint-sun-yellow', { color: 0xf3b21a, roughness: 0.28, clearcoat: 0.85, clearcoatRoughness: 0.1 }),
-  // 象牙白：中央寬條紋、C 形環翼（亮面）
-  white: namedMaterial('paint-ivory-white', { color: 0xf6f2e8, roughness: 0.3, clearcoat: 0.85, clearcoatRoughness: 0.1 }),
-  whiteSolid: namedMaterial('paint-ivory-white', { color: 0xf6f2e8, roughness: 0.3, clearcoat: 0.85, clearcoatRoughness: 0.1, side: THREE.DoubleSide }),
+  // 亮白：主色（亮面）
+  white: namedMaterial('paint-bright-white', { color: 0xf7f6f2, roughness: 0.25, clearcoat: 0.9, clearcoatRoughness: 0.08 }),
+  // 金漆：中央寬條紋（金屬漆）
+  goldPaint: namedMaterial('paint-metallic-gold', { color: 0xc99a2e, metalness: 0.6, roughness: 0.3, clearcoat: 0.8, clearcoatRoughness: 0.1 }),
   // 黑曜底緣（緞面）
   onyx: namedMaterial('paint-onyx-black', { color: 0x16130f, roughness: 0.55, clearcoat: 0.25 }),
-  // 真金屬金：琴弦、琴橋（名稱含 -brass → Blender metallic）
+  // 真金屬金：C 形琴臂、琴軛、琴弦、琴橋、前擾流片（名稱含 -brass → Blender metallic）
   gold: namedMaterial('trim-gold-brass', { color: 0xd9ab3c, metalness: 0.85, roughness: 0.26, clearcoat: 0.3 }),
   tub: namedMaterial('cockpit-tub', { color: 0x16130f, roughness: 0.8, side: THREE.DoubleSide }),
   cockpit: namedMaterial('cockpit-dark', { color: 0x1c1915, roughness: 0.7, side: THREE.DoubleSide }),
@@ -197,7 +199,7 @@ const materials = () => ({
   edge: namedMaterial('shell-edge-onyx', { color: 0x16130f, roughness: 0.6, side: THREE.DoubleSide }),
   liner: namedMaterial('shell-wheelwell-onyx', { color: 0x1a1713, roughness: 0.7, side: THREE.DoubleSide }),
   mount: namedMaterial('abs-mount-black', { color: 0x222326, roughness: 0.6 }),
-  dGold: decalMaterial('decal-gold-ray', { color: 0xb07a1e, metalness: 0.75, roughness: 0.3 }),
+  dGold: decalMaterial('decal-gold-line', { color: 0xc99a2e, metalness: 0.75, roughness: 0.3 }),
   // 月桂葉切割：深橄欖黑（霧面）
   dCut: decalMaterial('decal-laurel-cut', { color: 0x1d2014, roughness: 0.7 }),
   // 頭燈：琥珀色低強度自發光（Blender 不過曝）
@@ -214,7 +216,7 @@ export const apolloLyreBody = makePolyBody({
   form: 'sun-shovel',
   roof: 'open-cockpit',
   wing: 'lyre-hoop',
-  theme: '七弦琴、太陽與月桂：壓低加寬的金黃車身、寬平鏟形低鼻、鼓起的前後擋泥板與白色中央寬條紋；車尾一道白色 C 形環翼當琴框，頂樑到後甲板琴橋之間拉七道金弦；四個輪拱外圍金色放射線，兩側車門一枝深色月桂葉形切割',
+  theme: '七弦琴、太陽戰車與月桂：壓低的亮白車身、低鼻上下兩層金色前擾流片、鼓起的後擋泥板與金色中央寬條紋、戰車車斗形開放座艙；車尾一道金色 C 形環翼當琴框，頂樑到後甲板琴橋之間拉七道金弦；四個輪拱外圍兩道金色輪圈弧線，兩側車門一枝深色月桂葉形切割',
   material: 'ABS',
   density_g_cm3: 1.05,
   wallThickness_mm: 0.8,
@@ -229,12 +231,12 @@ export const apolloLyreBody = makePolyBody({
   zones: () => [
     // 黑曜底緣
     { mat: 'onyx', keep: (x, y) => P.yLow(x) + 1.8 - y },
-    // 白色中央寬條紋
-    { mat: 'white', keep: (x, y, z) => P.stripe(x) - Math.abs(z) },
-    // 太陽金黃
-    { mat: 'sun', keep: () => 1 },
+    // 金色中央寬條紋
+    { mat: 'goldPaint', keep: (x, y, z) => P.stripe(x) - Math.abs(z) },
+    // 亮白
+    { mat: 'white', keep: () => 1 },
   ],
-  capFrontBands: [{ mat: 'sun' }],
+  capFrontBands: [{ mat: 'white' }],
   mats: { inner: 'inner', edge: 'edge', cap: 'onyx', recess: 'tub', recessWall: 'cockpit', mount: 'mount' },
   materials,
   extras: (kit) => {
@@ -244,17 +246,17 @@ export const apolloLyreBody = makePolyBody({
     parts.push({ geometry: mergeGeos(ARCHES.map((a) => buildProfileLiner(a, 22.9, profile))), mat: 'liner', shell: true, name: 'arch-liners' });
     parts.push({ geometry: mergeGeos(ARCHES.map((a) => buildArchWell(a, 22.9, 12.3, 17.8, chassisBlockedNearArch))), mat: 'liner', shell: true, name: 'arch-wells' });
 
-    // ── C 形環翼（琴框）：兩側 C 形琴臂（白，厚 2.2）＋琴軛頂樑（白），根部埋進後擋泥板 ──
+    // ── C 形環翼（琴框）：兩側 C 形琴臂（金，厚 2.2）＋琴軛頂樑（金），根部埋進後擋泥板 ──
     {
       const arm = bandOutline(ARM_PATH, (t) => lerp(3.8, 2.8, t));
-      parts.push({ geometry: mergeGeos([finPlate(arm, ARM_Z, 2.2), finPlate(arm, -ARM_Z, 2.2)]), mat: 'whiteSolid', solid: true, outline: true, name: 'lyre-arms' });
+      parts.push({ geometry: mergeGeos([finPlate(arm, ARM_Z, 2.2), finPlate(arm, -ARM_Z, 2.2)]), mat: 'gold', solid: true, outline: true, name: 'lyre-arms' });
       const yoke = [
         [YOKE.x1, -ARM_Z],
         [YOKE.x0, -ARM_Z],
         [YOKE.x0, ARM_Z],
         [YOKE.x1, ARM_Z],
       ];
-      parts.push({ geometry: flatPlate(yoke, YOKE.y, YOKE.t), mat: 'whiteSolid', solid: true, outline: true, name: 'lyre-yoke' });
+      parts.push({ geometry: flatPlate(yoke, YOKE.y, YOKE.t), mat: 'gold', solid: true, outline: true, name: 'lyre-yoke' });
     }
     // ── 七道金弦（實體細圓柱 r 0.45、8 段）與後甲板上的金色琴橋 ──
     {
@@ -270,9 +272,29 @@ export const apolloLyreBody = makePolyBody({
       bridge.translate(STRING_X, yDeck + 0.2, 0);
       parts.push({ geometry: mergeGeos([...strings, bridge]), mat: 'gold', solid: true, outline: true, name: 'lyre-strings' });
     }
+    // ── 鼻頭上下兩層前擾流片（金）：下層寬、上層窄，兩端往後掠，都在鼻端前緣之內 ──
+    {
+      const lower = [
+        [64, -23],
+        [70, -24.5],
+        [77, -20],
+        [77, 20],
+        [70, 24.5],
+        [64, 23],
+      ];
+      const upper = [
+        [63, -17.5],
+        [68, -18.5],
+        [74, -15],
+        [74, 15],
+        [68, 18.5],
+        [63, 17.5],
+      ];
+      parts.push({ geometry: mergeGeos([flatPlate(lower, FRONT_WING_Y[0], 1.1), flatPlate(upper, FRONT_WING_Y[1], 1.1)]), mat: 'gold', solid: true, outline: true, name: 'front-spoiler-pair' });
+    }
 
     // ---- 貼紙 ----
-    // 輪拱外圍的太陽放射線：每個輪拱上半圈 11 道金線（內緣寬、往外收尖），內緣再一道金色弧線
+    // 輪拱外圍兩道金色輪圈弧線（戰車車輪的輪圈，上半圈）
     parts.push({
       geometry: kit.decal((x, y, z) => {
         if (Math.abs(z) < 26) {
@@ -280,24 +302,17 @@ export const apolloLyreBody = makePolyBody({
         }
         let best = -1;
         for (const a of ARCHES) {
-          const dx = x - a.x;
-          const dy = y - a.y;
-          const r = Math.hypot(dx, dy);
-          const th = Math.atan2(dy, dx);
-          if (th < 0.3 || th > Math.PI - 0.3) {
+          const r = Math.hypot(x - a.x, y - a.y);
+          const th = Math.atan2(y - a.y, x - a.x);
+          if (th < 0.25 || th > Math.PI - 0.25) {
             continue;
           }
-          const rim = 0.35 - Math.abs(r - 19.1);
-          const k = Math.round((th - 0.3) / ((Math.PI - 0.6) / 10));
-          const thk = 0.3 + (k * (Math.PI - 0.6)) / 10;
-          const q = (r - 19.6) / 5.2;
-          const ray = q < 0 || q > 1 ? -1 : lerp(0.75, 0.15, q) - Math.abs(th - thk) * r;
-          best = Math.max(best, rim, ray);
+          best = Math.max(best, 0.4 - Math.abs(r - 19.2), 0.3 - Math.abs(r - 21.2));
         }
         return Math.min(best, y - P.yLow(x) - 2);
       }),
       mat: 'dGold',
-      name: 'decal-sun-rays',
+      name: 'decal-wheel-rim-arcs',
     });
     // 兩側車門的月桂葉形切割（深色葉片）＋金色細莖
     for (const side of [-1, 1]) {
@@ -312,7 +327,7 @@ export const apolloLyreBody = makePolyBody({
         name: `decal-laurel-stem-${side}`,
       });
     }
-    // 白色條紋兩側的金色細邊
+    // 金色條紋兩側的金色細邊
     parts.push({
       geometry: kit.decal((x, y, z) => Math.min(0.35 - Math.abs(Math.abs(z) - P.stripe(x) - 0.45), 76.5 - x, x + 69.5, cockpitSd(x, y, z) - 0.3)),
       mat: 'dGold',
@@ -339,8 +354,9 @@ export const apolloLyreBody = makePolyBody({
     density_g_cm3: 'SPEC 1.14：ABS 約 1.05 g/cm³（推估）',
     wallThickness_mm: '推估：射出 ABS 殼 0.8 mm（同其他車殼）',
     fourview: 'shared/design/fourview-ref/fourview_06_v1.png（AI 參考圖，只取造型：寬平低鼻、鼓起的擋泥板、短座艙、車尾 C 形環翼；四視圖偏超跑，已壓低車身、加寬輪拱；尺寸以底盤為準）',
-    geometry: '本檔站位產生器 P（推估）：殼 x −70 ~ 77；中線鼻端 15、座艙段 33.6、後甲板 30、開放座艙（D 形戰車車斗）下凹 4、環翼頂約 48.3（全車最高）；半寬前段 16（前輪外露）、後輪上方 40、鼻端 9.5、車尾 32',
+    geometry: '本檔站位產生器 P（推估）：殼 x −70 ~ 77；中線鼻端 15、座艙段 33.6、後甲板 30、開放座艙（D 形戰車車斗）下凹 4、環翼頂約 48.3（全車最高）；半寬前段 16（前輪外露）、兩輪之間 29（側箱蓋住底盤側框）、後輪上方 38.5、鼻端 9.5、車尾 31；兩輪之間下緣 11.5',
     lyre: 'C 形琴臂：ABS 實心帶狀板，寬 3.8 → 2.8、厚 2.2，|z| 36.6；琴軛頂樑 x −58.5 ~ −50.5、厚 1.2、跨 ±36.6；七道琴弦為 r 0.45 的實心圓柱（8 段），間距 4.5；琴橋 3 × 2.4 × 31（推估）',
+    frontSpoilers: '前擾流片：ABS 實心平板厚 1.1；下層底面高 13.4、x 64 → 77、半寬 24.5；上層底面高 18、x 63 → 74、半寬 18.5（推估）',
     wheelArches: '前後 R17.5（31 mm 輪胎半徑 15.5 + 2 mm），可裝 26 / 31 mm 輪',
     mounts: '對齊 chassis-midship 的車殼安裝點（SPEC 1.14）',
   },
