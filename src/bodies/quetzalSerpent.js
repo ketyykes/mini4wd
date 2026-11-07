@@ -1,7 +1,7 @@
 // 羽蛇（body-quetzal-serpent，神話組・阿茲特克 / 馬雅）：特奧蒂瓦坎羽蛇神殿的階梯金字塔、綠咬鵑羽、黑曜石刀。
 // 不做蛇頭、眼、牙與蛇信。照四視圖 02 建模：
-// (1) 層疊的羽 → 迴力鏢海鷗翼：俯視是往前尖的人字形、後視是中央下凹兩端上翹的 M 形，上層翡翠綠、下層朱紅兩片錯開疊起，
-//     翼端立一片往後拉長的綠咬鵑羽片（金色羽軸）；兩片階梯金字塔側影的金色支柱把翼架在車尾；
+// (1) 層疊的羽 → 迴力鏢海鷗翼：俯視是往前尖的人字形、後視是中央下凹兩端上翹、左右對稱的 M 形；翼前段翡翠綠，
+//     後段是朱紅與翡翠綠相間的羽紋格、後緣一排羽尖；翼端立一片往後拉長的綠咬鵑羽片（金色羽軸）；兩片黑曜石翼柱架在車尾；
 // (2) 黑曜石刀 → 鏟形鼻上的刀狀擾流：寬而薄的鏟形鼻，中線立一把黑曜石色的刀刃，鼻頭中央再往前伸一支金色尖刺；
 // (3) 階梯金字塔 → 側面 talud-tablero：肩線下是一段直立的綠松石立板（上面是連續的階梯回紋）、再一階、朱紅斜坡到下緣（兩輪之間往外伸成側箱封住底盤）；
 // (4) 紋樣與配色：頂面兩道往前尖的朱紅人字帶＋金邊（四視圖的 V 形分色）；翡翠綠金屬漆（主色）＋朱紅＋綠松石＋金。
@@ -18,14 +18,14 @@ import { monoCurve, buildStations } from './gazelleLeap.js';
 /** @type {number} 車尾 x */
 const X_TAIL = -70;
 /** @type {number} 殼面鼻尖 x（鏟形鼻；中央尖刺再往前伸到 SPIKE_TIP） */
-const X_NOSE = 70;
+const X_NOSE = 66;
 
 /** @type {number[]} 站位參數表（x 由後到前，前後軸 x = ±40，推估） */
-const XS = [-70, -64, -56, -48, -40, -30, -20, -10, 0, 12, 24, 32, 40, 48, 54, 59.5, 64, 67, 70];
+const XS = [-70, -64, -56, -48, -40, -30, -20, -10, 0, 12, 24, 32, 40, 48, 53, 57.5, 61.5, 64, 66];
 /** @type {Record<string, (x: number) => number>} */
 const P = {
   // 俯視半寬：後輪上方 34 全罩 → 兩輪之間 25 → 前輪段 26（前輪胎面往外露出 8 mm）→ 前輪前方再展開成比前輪段還寬的方形鏟鼻（30.5，鼻尖 28）
-  hw: monoCurve(XS, [30, 33, 34, 34, 34, 33, 29.5, 26, 25, 25, 25.5, 26, 26, 26.5, 29.5, 30.5, 30.5, 29.5, 28]),
+  hw: monoCurve(XS, [30, 33, 35, 36, 36, 34, 29.5, 26, 25, 25, 25.5, 26, 26, 26.5, 31, 33, 33, 32, 30]),
   // 中線頂：鼻尖 17.5（薄的鏟形鼻）→ 前擋泥板之間的低谷 28 → 座艙段 33 → 車尾 29.5
   yC: monoCurve(XS, [29.5, 30.5, 31, 31.5, 32, 32.5, 33, 33, 33, 32.5, 31, 29.5, 28.5, 27.5, 25.5, 23, 20.5, 19, 17.5]),
   // 肩線（銳利）：前擋泥板稜線 34 高過中線 6（V 形引擎蓋）；前後輪上方 ≥ 32.5，高過 R17.5 輪拱頂
@@ -125,7 +125,7 @@ const fretSd = (u, v) => {
 
 /** @type {{ x0: number, sweep: number, w: number }[]} 頂面朱紅人字帶：中線前緣 x0、往兩側每 1 mm 後退 sweep、帶寬 w（引擎蓋一道、座艙後一道） */
 const CHEVRONS = [
-  { x0: 60, sweep: 0.55, w: 9 },
+  { x0: 57, sweep: 0.55, w: 9 },
   { x0: -22, sweep: 0.5, w: 7 },
 ];
 /**
@@ -151,20 +151,37 @@ const WING_PEAK_Z = 33;
  */
 const dihedral = (az) => (az <= WING_PEAK_Z ? (5.5 * az) / WING_PEAK_Z : 5.5 - 1 * smoothstep(WING_PEAK_Z, WING_SPAN, az));
 
+/** @type {number} 羽紋格寬（沿 z）：翼後半段切成一格一格的羽片 */
+const FEATHER_W = WING_SPAN / 7;
+/** @type {number} 羽片尖端往後伸出的長度（後緣在每格中央收成尖） */
+const FEATHER_TIP = 2.6;
+/** @type {number} 翼面前段（整片翡翠綠）佔弦長的比例；之後是羽紋格 */
+const FEATHER_U = 0.5;
+
 /**
- * 迴力鏢翼片：俯視往前尖的人字形（前緣中線 xf、後緣中線 xr，往兩側後掠 sweep），沿 z 切 24 段，每段依上反抬高；厚 thick
- * @type {(o: { xf: number, xr: number, sweep: number, span: number, y: number, thick: number }) => THREE.BufferGeometry}
+ * 翼後緣的羽尖：每格中央往後伸 FEATHER_TIP、格界回到 0（後緣是一排往後尖的羽片）
+ * @type {(az: number) => number}
  */
-const buildChevronWing = ({ xf, xr, sweep, span, y, thick }) => {
-  const n = 24;
-  /** @type {number[][]} 每站 [z, 前緣 x, 後緣 x, 底高] */
+const featherTip = (az) => {
+  const u = az / FEATHER_W - Math.floor(az / FEATHER_W);
+  return FEATHER_TIP * (1 - Math.abs(2 * u - 1));
+};
+
+/**
+ * 迴力鏢海鷗翼的一條：z 從 z0 到 z1、弦向比例 u0 → u1 的封閉實體（俯視往前尖的人字形，後緣帶羽尖），每 0.75 mm 一站，依上反抬高；厚 thick
+ * @type {(w: { xf: number, xr: number, sweep: number, span: number, y: number, thick: number }, z0: number, z1: number, u0: number, u1: number) => THREE.BufferGeometry}
+ */
+const buildWingStrip = ({ xf, xr, sweep, span, y, thick }, z0, z1, u0, u1) => {
+  const n = Math.max(2, Math.ceil((z1 - z0) / 0.75));
+  /** @type {number[][]} 每站 [z, 前 x, 後 x, 底高] */
   const rows = [];
-  for (let i = -n; i <= n; i++) {
-    const z = (span * i) / n;
+  for (let i = 0; i <= n; i++) {
+    const z = lerp(z0, z1, i / n);
     const az = Math.abs(z);
-    // 翼梢 4 mm 收成往後的圓角
-    const tipCut = 3 * smoothstep(span - 5, span, az);
-    rows.push([z, xf - sweep * az - tipCut, xr - sweep * az, y + dihedral(az)]);
+    // 翼梢 5 mm 收成往後的圓角
+    const front = xf - sweep * az - 3 * smoothstep(span - 5, span, az);
+    const rear = xr - sweep * az - featherTip(az);
+    rows.push([z, lerp(front, rear, u0), lerp(front, rear, u1), y + dihedral(az)]);
   }
   /** @type {number[]} */
   const pos = [];
@@ -172,16 +189,16 @@ const buildChevronWing = ({ xf, xr, sweep, span, y, thick }) => {
   // 頂點順序 (a, c, b)：外法線朝外
   const tri = (a, b, c) => pos.push(...a, ...c, ...b);
   for (let i = 0; i < rows.length - 1; i++) {
-    const [z0, f0, r0, y0] = rows[i];
-    const [z1, f1, r1, y1] = rows[i + 1];
-    const A = [f0, y0 + thick, z0];
-    const B = [r0, y0 + thick, z0];
-    const C = [r1, y1 + thick, z1];
-    const D = [f1, y1 + thick, z1];
-    const a = [f0, y0, z0];
-    const b = [r0, y0, z0];
-    const c = [r1, y1, z1];
-    const d = [f1, y1, z1];
+    const [za, f0, r0, y0] = rows[i];
+    const [zb, f1, r1, y1] = rows[i + 1];
+    const A = [f0, y0 + thick, za];
+    const B = [r0, y0 + thick, za];
+    const C = [r1, y1 + thick, zb];
+    const D = [f1, y1 + thick, zb];
+    const a = [f0, y0, za];
+    const b = [r0, y0, za];
+    const c = [r1, y1, zb];
+    const d = [f1, y1, zb];
     // 上面、下面、前緣、後緣
     tri(A, C, B);
     tri(A, D, C);
@@ -193,7 +210,7 @@ const buildChevronWing = ({ xf, xr, sweep, span, y, thick }) => {
     tri(b, C, c);
   }
   // 兩端封口
-  for (const [k, s] of [
+  for (const [k, sg] of [
     [0, 1],
     [rows.length - 1, -1],
   ]) {
@@ -202,7 +219,7 @@ const buildChevronWing = ({ xf, xr, sweep, span, y, thick }) => {
     const B = [r, yy + thick, z];
     const a = [f, yy, z];
     const b = [r, yy, z];
-    if (s > 0) {
+    if (sg > 0) {
       tri(a, A, B);
       tri(a, B, b);
     } else {
@@ -216,35 +233,47 @@ const buildChevronWing = ({ xf, xr, sweep, span, y, thick }) => {
   return g;
 };
 
-/** @type {{ xf: number, xr: number, sweep: number, span: number, y: number, thick: number }} 上層翼（翡翠綠）：中央底 41.6，峰點頂 48.5 */
-const WING_UPPER = { xf: -45, xr: -53.5, sweep: 0.3, span: WING_SPAN, y: 41.6, thick: 1.4 };
-/** @type {{ xf: number, xr: number, sweep: number, span: number, y: number, thick: number }} 下層翼（朱紅）：往前錯開 4.5、低 2.6、翼展短 5 */
-const WING_LOWER = { xf: -40.5, xr: -48.5, sweep: 0.3, span: WING_SPAN - 5, y: 39, thick: 1.3 };
+/**
+ * 海鷗翼的羽紋格：翼後半段每格一條，parity 0 = 中央那格與隔格（朱紅）、1 = 其餘（翡翠綠）；左右對稱
+ * @type {(parity: number) => THREE.BufferGeometry}
+ */
+const buildFeatherCells = (parity) => {
+  /** @type {THREE.BufferGeometry[]} */
+  const geos = [];
+  const cells = Math.round(WING_SPAN / FEATHER_W);
+  for (let k = 0; k < cells; k++) {
+    if (k % 2 !== parity) {
+      continue;
+    }
+    const z0 = k * FEATHER_W;
+    const z1 = Math.min(WING_SPAN, (k + 1) * FEATHER_W);
+    if (k === 0) {
+      // 中央那格跨中線，一條做完
+      geos.push(buildWingStrip(WING, -z1, z1, FEATHER_U, 1));
+    } else {
+      geos.push(buildWingStrip(WING, z0, z1, FEATHER_U, 1), buildWingStrip(WING, -z1, -z0, FEATHER_U, 1));
+    }
+  }
+  return mergeGeos(geos);
+};
 
-/** @type {number} 階梯支柱的 |z| */
+/** @type {{ xf: number, xr: number, sweep: number, span: number, y: number, thick: number }} 海鷗翼：弦長 12，中央底 41.4，峰點頂 48.5 */
+const WING = { xf: -43, xr: -55, sweep: 0.3, span: WING_SPAN, y: 41.4, thick: 1.6 };
+/** @type {number} 翼柱的 |z| */
 const PYLON_Z = 13;
 /**
- * 階梯支柱側視外形 (x, y)：階梯金字塔側影——三階往後升高，頂面兩階分別嵌進下層翼與上層翼；底邊埋進車尾甲板
+ * 翼柱側視外形 (x, y)：前緣往後上方斜升的梯形板，頂邊嵌進翼底 0.6 mm，底邊埋進車尾甲板
  * @type {number[][]}
  */
 const PYLON = (() => {
-  const yUp = WING_UPPER.y + dihedral(PYLON_Z) + 0.7;
-  const yLo = WING_LOWER.y + dihedral(PYLON_Z) + 0.6;
-  const xLoF = WING_LOWER.xf - WING_LOWER.sweep * PYLON_Z;
-  const xUpF = WING_UPPER.xf - WING_UPPER.sweep * PYLON_Z;
-  const xUpR = WING_UPPER.xr - WING_UPPER.sweep * PYLON_Z;
+  const yUp = WING.y + dihedral(PYLON_Z) + 0.6;
+  const xUpF = WING.xf - WING.sweep * PYLON_Z;
+  const xUpR = WING.xr - WING.sweep * PYLON_Z;
   return [
-    [-31, 30.5],
-    [-33, 33.5],
-    [-37, 33.5],
-    [-39, 36.5],
-    [xLoF + 0.5, 36.5],
-    [xLoF + 0.5, yLo],
-    [xUpF + 0.5, yLo],
-    [xUpF + 0.5, yUp],
-    [xUpR + 1, yUp],
-    [-62, 36],
-    [-63, 30],
+    [-31, 29.5],
+    [xUpF - 1, yUp],
+    [xUpR + 2.5, yUp],
+    [-60, 29.5],
   ];
 })();
 
@@ -253,9 +282,9 @@ const PYLON = (() => {
  * @type {number[][]}
  */
 const TIP_FEATHER = (() => {
-  const y = WING_UPPER.y + dihedral(WING_SPAN);
-  const xf = WING_UPPER.xf - WING_UPPER.sweep * WING_SPAN - 3;
-  const xr = WING_UPPER.xr - WING_UPPER.sweep * WING_SPAN;
+  const y = WING.y + dihedral(WING_SPAN);
+  const xf = WING.xf - WING.sweep * WING_SPAN - 3;
+  const xr = WING.xr - WING.sweep * WING_SPAN;
   return [
     [xf + 1, y + 1.4],
     [xr, y + 1.8],
@@ -274,9 +303,9 @@ const TIP_FEATHER = (() => {
  * @type {number[][]}
  */
 const TIP_QUILL = (() => {
-  const y = WING_UPPER.y + dihedral(WING_SPAN);
-  const xf = WING_UPPER.xf - WING_UPPER.sweep * WING_SPAN - 3;
-  const xr = WING_UPPER.xr - WING_UPPER.sweep * WING_SPAN;
+  const y = WING.y + dihedral(WING_SPAN);
+  const xf = WING.xf - WING.sweep * WING_SPAN - 3;
+  const xr = WING.xr - WING.sweep * WING_SPAN;
   return [
     [xf + 2, y + 1],
     [xr - 6, y - 3.5],
@@ -288,12 +317,12 @@ const TIP_QUILL = (() => {
 /** @type {number} 鼻頭中央尖刺的刺尖 x（不超過現行版鼻尖 78.6） */
 const SPIKE_TIP = 78.1;
 /** @type {number} 尖刺根部 x（埋進鼻段殼面） */
-const SPIKE_ROOT = 64;
+const SPIKE_ROOT = 61;
 /** @type {number} 尖刺中心線高度（鼻端面上下緣中間） */
-const SPIKE_Y = 16.5;
+const SPIKE_Y = 17.4;
 
 /**
- * 鼻頭中央往前的尖刺：菱形斷面的四角錐（根部半寬 3.6、半高 2），根部埋進鼻段，刺尖往前
+ * 鼻頭中央往前的尖刺：菱形斷面的四角錐（根部半寬 4.2、半高 2），根部埋進鼻段，刺尖往前
  * @type {() => THREE.BufferGeometry}
  */
 const buildNoseSpike = () => {
@@ -301,19 +330,19 @@ const buildNoseSpike = () => {
   const g = new THREE.ConeGeometry(1, len, 4, 1);
   // 錐尖原本朝 +y：轉成朝 +x，再壓成菱形斷面
   g.rotateZ(-Math.PI / 2);
-  g.scale(1, 2, 3.6);
+  g.scale(1, 2, 4.2);
   g.translate(SPIKE_ROOT + len / 2, SPIKE_Y, 0);
   return g;
 };
 
-/** @type {number[][]} 黑曜石刀刃（側視，中線上）：鼻段上的一片背鰭，刃尖在 x 68.5 往前，刃背沿鼻面升到 x 54；下緣埋進殼面 */
+/** @type {number[][]} 黑曜石刀刃（側視，中線上）：鼻段上的一片背鰭，刃尖在 x 65.5 往前，刃背沿鼻面升到 x 54；下緣埋進殼面 */
 const NOSE_BLADE = [
-  [68.5, 20.6],
-  [60.5, 25.6],
-  [54, 28.6],
-  [51.5, 26],
-  [59.5, 22],
-  [67, 18],
+  [65.5, 21],
+  [57.5, 25.8],
+  [51, 28.6],
+  [48.5, 26],
+  [56.5, 22.4],
+  [64, 18.3],
 ];
 
 /**
@@ -359,7 +388,7 @@ const materials = () => ({
   // 立板：綠松石馬賽克的霧面；斜坡：海菊蛤紅霧面
   turq: namedMaterial('paint-turquoise-mosaic', { color: 0x2bb3a3, roughness: 0.62, clearcoat: 0.1 }),
   red: namedMaterial('paint-spondylus-red', { color: 0xb8402a, roughness: 0.62, clearcoat: 0.1 }),
-  // 真金屬：階梯支柱、羽軸、鼻頭尖刺（Blender 依 -brass 結尾換成金屬）
+  // 真金屬：羽軸、鼻頭尖刺（Blender 依 -brass 結尾換成金屬）
   gold: namedMaterial('trim-gold-brass', { color: 0xd9b24a, roughness: 0.3, metalness: 0.8, clearcoat: 0.3, side: THREE.DoubleSide }),
   // 黑曜石刀：黑色亮面
   obsidian: namedMaterial('paint-obsidian-blade', { color: 0x101114, roughness: 0.12, metalness: 0.3, clearcoat: 1, clearcoatRoughness: 0.04, side: THREE.DoubleSide }),
@@ -383,7 +412,7 @@ export const quetzalSerpentBody = makePolyBody({
   form: 'obsidian-spade',
   roof: 'canopy',
   wing: 'boomerang-plume',
-  theme: '特奧蒂瓦坎羽蛇神殿的階梯金字塔、綠咬鵑羽與黑曜石刀，不做蛇頭：寬而薄的鏟形鼻中線立一把黑曜石刀刃、鼻頭中央往前伸一支金色尖刺，前擋泥板稜線高過中線成 V 形引擎蓋；車尾迴力鏢海鷗翼（俯視往前尖、後視中央下凹兩端上翹的 M 形），上層翡翠綠、下層朱紅兩片錯開疊成羽，翼端各立一片綠咬鵑長羽片（金色羽軸），兩片階梯金字塔側影的金色支柱架起；側面是綠松石立板（階梯回紋）＋朱紅斜坡（兩輪之間外伸側箱封住底盤）；頂面兩道朱紅人字帶＋金邊，翡翠綠金屬漆配朱紅、綠松石與金',
+  theme: '特奧蒂瓦坎羽蛇神殿的階梯金字塔、綠咬鵑羽與黑曜石刀，不做蛇頭：寬而薄的鏟形鼻中線立一把黑曜石刀刃、鼻頭中央往前伸一支金色尖刺，前擋泥板稜線高過中線成 V 形引擎蓋；車尾迴力鏢海鷗翼（俯視往前尖、後視中央下凹兩端上翹的 M 形），翼前段翡翠綠、後段朱紅與翡翠綠相間的羽紋格（後緣羽尖），翼端各立一片綠咬鵑長羽片（金色羽軸），兩片黑曜石翼柱架起；側面是綠松石立板（階梯回紋）＋朱紅斜坡（兩輪之間外伸側箱封住底盤）；頂面兩道朱紅人字帶＋金邊，翡翠綠金屬漆配朱紅、綠松石與金',
   material: 'ABS',
   density_g_cm3: 1.05,
   wallThickness_mm: 0.8,
@@ -435,17 +464,13 @@ export const quetzalSerpentBody = makePolyBody({
     parts.push({ geometry: finPlate(NOSE_BLADE, 0, 1.2), mat: 'obsidian', solid: true, outline: true, name: 'obsidian-nose-blade' });
     // 鼻頭中央往前的金色尖刺
     parts.push({ geometry: buildNoseSpike(), mat: 'gold', solid: true, outline: true, name: 'gold-nose-spike' });
-    // 迴力鏢翼：上層翡翠綠、下層朱紅
-    parts.push({ geometry: buildChevronWing(WING_UPPER), mat: 'green2', solid: true, outline: true, name: 'boomerang-wing-upper' });
-    parts.push({ geometry: buildChevronWing(WING_LOWER), mat: 'vermilion2', solid: true, outline: true, name: 'boomerang-wing-lower' });
-    // 階梯支柱與羽片外側的羽軸（金）
-    parts.push({
-      geometry: mergeGeos([finPlate(PYLON, PYLON_Z, 1.4), finPlate(PYLON, -PYLON_Z, 1.4), finPlate(TIP_QUILL, WING_SPAN + 0.2, 0.5), finPlate(TIP_QUILL, -WING_SPAN - 0.2, 0.5)]),
-      mat: 'gold',
-      solid: true,
-      outline: true,
-      name: 'step-pylons-and-quills',
-    });
+    // 海鷗翼：前段整片翡翠綠，後段是左右對稱、朱紅與翡翠綠相間的羽紋格（後緣羽尖）
+    parts.push({ geometry: mergeGeos([buildWingStrip(WING, -WING_SPAN, WING_SPAN, 0, FEATHER_U), buildFeatherCells(1)]), mat: 'green2', solid: true, outline: true, name: 'gull-wing-green' });
+    parts.push({ geometry: buildFeatherCells(0), mat: 'vermilion2', solid: true, outline: true, name: 'gull-wing-feathers' });
+    // 翼柱（黑曜石）
+    parts.push({ geometry: mergeGeos([finPlate(PYLON, PYLON_Z, 1.6), finPlate(PYLON, -PYLON_Z, 1.6)]), mat: 'obsidian', solid: true, outline: true, name: 'wing-pylons' });
+    // 羽片外側的羽軸（金）
+    parts.push({ geometry: mergeGeos([finPlate(TIP_QUILL, WING_SPAN + 0.2, 0.5), finPlate(TIP_QUILL, -WING_SPAN - 0.2, 0.5)]), mat: 'gold', solid: true, outline: true, name: 'plume-quills' });
     // 翼端的綠咬鵑羽片（翡翠綠）
     parts.push({
       geometry: mergeGeos([finPlate(TIP_FEATHER, WING_SPAN - 0.6, 1.2), finPlate(TIP_FEATHER, -WING_SPAN + 0.6, 1.2)]),
@@ -492,8 +517,8 @@ export const quetzalSerpentBody = makePolyBody({
   src: {
     density_g_cm3: 'SPEC 1.14：ABS 約 1.05 g/cm³（推估）',
     wallThickness_mm: '推估：射出 ABS 殼 0.8 mm（同其他款）',
-    geometry: '本檔站位產生器 P（推估），比例取自四視圖 02（shared/design/body-quetzal-serpent/fourview_trace.txt）縮到底盤：殼面鼻尖 x 70（離地 17.5 的薄鏟形鼻）、尖刺到 x 78.1、車尾 −70；半寬後輪 34 / 腰 25（腰線以下側箱 27.3）/ 前輪 26（前輪露出）/ 鏟鼻 30.5、鼻尖 28；前擋泥板稜線 34；座艙罩頂約 39.5；海鷗翼峰點頂 48.5（全車最高）；前後輪拱 R17.5',
-    wing: '迴力鏢翼兩層（上層厚 1.4、翼展半寬 42；下層厚 1.3、半寬 37；後視 M 形：中央往外升 5.5 到 |z| 33 再垂 1）、階梯支柱（|z| 13、厚 1.4）、翼端羽片（厚 1.2）與金色羽軸（厚 0.5）、黑曜石刀刃（厚 1.2）、鼻頭尖刺（菱形斷面四角錐，根部 7.2 × 4、長 14.1）：ABS 實心件（推估），質量 = 封閉體積 × 1.05 g/cm³；支柱與刀刃底邊埋進殼面',
+    geometry: '本檔站位產生器 P（推估），比例取自四視圖 02（shared/design/body-quetzal-serpent/fourview_trace.txt）縮到底盤：殼面鼻尖 x 66（離地 17.5 的薄鏟形鼻）、尖刺到 x 78.1、車尾 −70；半寬後輪 36 / 腰 25（腰線以下側箱 27.3）/ 前輪 26（前輪露出）/ 鏟鼻 33、鼻尖 30；前擋泥板稜線 34；座艙罩頂約 39.5；海鷗翼峰點頂 48.5（全車最高）；前後輪拱 R17.5',
+    wing: '海鷗翼（厚 1.6、弦長 12、翼展半寬 42，後緣 7 格羽尖伸出 2.6；後視 M 形：中央往外升 5.5 到 |z| 33 再垂 1）、黑曜石翼柱（|z| 13、厚 1.6）、翼端羽片（厚 1.2）與金色羽軸（厚 0.5）、黑曜石刀刃（厚 1.2）、鼻頭尖刺（菱形斷面四角錐，根部 8.4 × 4、長 17.1）：ABS 實心件（推估），質量 = 封閉體積 × 1.05 g/cm³；支柱與刀刃底邊埋進殼面',
     myth: '階梯金字塔（talud-tablero）：MYTH_RESEARCH A2（特奧蒂瓦坎羽蛇神殿）；綠咬鵑羽：A1；綠松石 / 海菊蛤紅 / 螺貝白：A6（大英博物館雙頭蛇）；階梯回紋：A7；黑曜石刀：A2 神殿的黑曜石嵌片與中美洲黑曜石工具',
     mounts: '對齊 chassis-midship 的車殼安裝點（SPEC 1.14）',
   },
