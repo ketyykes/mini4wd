@@ -131,7 +131,7 @@ const CANOPY = { x0: 32, x1: -16, peakX: 10, rise: 10.5, halfW: 13.5 };
  * mirrorR = 鏡半徑；mirrorZ = 兩面鏡中心的 |z|；mirrorX = 鏡面 x；tilt = 鏡面上緣往前傾的角度（度）
  * @type {{ x0: number, x1: number, y: number, halfW: number, thick: number, mirrorR: number, mirrorZ: number, mirrorX: number, tilt: number }}
  */
-const MIRRORS = { x0: -50, x1: -64, y: 32.6, halfW: 46, thick: 1.0, mirrorR: 7.1, mirrorZ: 13, mirrorX: -58, tilt: 10 };
+const MIRRORS = { x0: -50, x1: -64, y: 32.6, halfW: 46, thick: 1.0, mirrorR: 6.2, mirrorZ: 13, mirrorX: -58, tilt: 36 };
 
 /**
  * 鼻頭兩側往後掠的薄片（四視圖 22 前輪前方那三片尖片，改成往後掠）：左右各 3 片水平薄片，
@@ -293,7 +293,7 @@ export const amaterasuMirrorBody = makePolyBody({
     parts.push({ geometry: mergeGeos(struts), mat: 'pylon', solid: true, outline: true, name: 'mirror-wing-struts' });
     // 兩面銅鏡（八咫鏡）：鏡身圓盤（16 段、軸沿 x、鏡面朝後）＋金色鏡緣環（24×6）＋鏡前的三角托架
     const tilt = (MIRRORS.tilt * Math.PI) / 180;
-    const cy = MIRRORS.y + MIRRORS.thick + MIRRORS.mirrorR + 0.3;
+    const cy = MIRRORS.y + MIRRORS.thick + MIRRORS.mirrorR * Math.cos(tilt) + 0.3;
     /** @type {THREE.BufferGeometry[]} */
     const discs = [];
     /** @type {THREE.BufferGeometry[]} */
@@ -363,7 +363,7 @@ export const amaterasuMirrorBody = makePolyBody({
     wallThickness_mm: '推估：射出 ABS 殼 0.8 mm（同其他車殼）；座艙罩同厚度以殼面積計入質量',
     geometry: '本檔站位產生器 P（推估，造型照 shared/design/body-amaterasu-mirror/fourview.png 四視圖 22 的比例，尺寸照底盤）：殼長 144（車尾 −68 ~ 鼻尖 76）、外框長 144（扁翼板在殼內）；後甲板 31.5、鼻尖 16、前擋泥板頂約 32、座艙頂約 41.5、銅鏡頂 48.2；後輪臀 ±38、細腰 ±26（側裙下緣 ±35）、前輪上方 ±35；前擋泥板眉線為前輪拱同心圓 R19.2',
     wheelArches: '前後 R17.5（31 mm 輪胎半徑 15.5 + 2 mm），可裝 26 / 31 mm 輪',
-    wing: '車尾雙鏡（ABS 實心件，推估）：扁翼板 x −50 ~ −64、半寬 46（伸出車尾兩側）、底面高 32.6、厚 1.0＋外大 0.7、厚 0.3 的金色描邊板；兩支扁支柱在 |z| 21、厚 2.4；兩面銅鏡 R7.1、厚 1.2（16 段）、中心 |z| 13、鏡面朝後、上緣前傾 10°，金色鏡緣環（24×6），鏡前三角托架厚 1.6',
+    wing: '車尾雙鏡（ABS 實心件，推估）：扁翼板 x −50 ~ −64、半寬 46（伸出車尾兩側）、底面高 32.6、厚 1.0＋外大 0.7、厚 0.3 的金色描邊板；兩支扁支柱在 |z| 21、厚 2.4；兩面銅鏡 R6.2、厚 1.2（16 段）、中心 |z| 13、鏡面朝後上方、上緣前傾 36°，金色鏡緣環（24×6），鏡前三角托架厚 1.6',
     claws: '鼻頭往後掠薄片（ABS 實心水平板，厚 0.8，推估）：左右各 3 片，高 24 / 20 / 16，根部貼鼻側 x 64–58 / 66–60 / 68–62，尖端往後外伸到 x 56.5 / 58 / 59.5、|z| 34 / 33 / 31.5（在前輪拱前方）',
     palette: '珍珠白主色＋金色鼻面板、薄片、翼板描邊、鏡緣與進氣口側壁＋銅鏡＋漆黑底緣；不用朱紅（和九尾狐的白＋朱紅分開）；色碼參考 MYTH_RESEARCH 6-2（白 #F7F5F0、金 #C9A54A，推估），實際用 #F6F4EE、#D6B157、#C9A54A',
     mounts: '對齊 chassis-midship 的車殼安裝點（SPEC 1.14）',
