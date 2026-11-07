@@ -1,345 +1,670 @@
-// 疊板長船（body-serpent-longship，神話組・北歐）：維京長船只用元素表現，車上沒有龍頭、蛇頭、臉。
-// 造型照四視圖 20：方正的寬鈍鼻（整條琥珀色燈帶）、短引擎罩、座艙置中的封閉罩、後輪拱上斜切的三道百葉，
-// 招牌是車尾的三層疊片尾翼——這裡就是疊板（clinker）：三片木板一片比一片高、一片比一片後，像船殼的板一片壓一片，最上一片是紅白直條帆。
-// 船殼 → 側面：外肩以下三道往外疊的疊板（每道下緣外凸成唇、接縫往內一階），接縫線沿船舷曲線在前後端微微上揚，接縫上一排鐵鉚釘點。
-// 設計：shared/design/body-serpent-longship/DESIGN.md（文物：Oseberg / Gokstad 船的疊板船殼，MYTH_RESEARCH 北歐節 N1、N2、N5、N6）。
-// 塗裝全為自創；不用盧恩字母、不含文字與商標。
+// 捲首長船（body-serpent-longship，神話組・北歐）：維京長船主題只用元素表現，車上沒有蛇或龍的頭、臉、眼。
+// 船 → 車身：側面 4 道往外疊的疊板（clinker）稜線沿前低後平的船舷排成速度線（最上一道漆赭紅），船舷下每側 5 面圓盾，第 3 道疊板上一排槳孔圓環；
+// 船首柱 → 鼻尖：赭紅龍骨脊從座艙前沿甲板中線往前，在鼻尖往上捲成一圈捲渦（Oseberg 船艏柱的盤捲，只取螺旋、不做頭）；
+// 條紋方帆 → 尾翼：四視圖 20 的雙層平尾翼，上層翼面印赭紅 / 奶油白直條帆，兩端各一片焦油色端板掛一面翼端盾；
+// 四視圖的煙燻座艙罩蓋在座艙口上，鼻頭船首柱下一條金色橫向燈條。
+// 側視是一把低平的刀（F1 刀鋒型）：船首從前輪上方一路壓低到鼻尖，兩輪之間微凹，船尾不翹高。
+// 船殼寬並往下包（船舷在前後輪上方蓋住輪胎上半部、中段側面往下到 y 10 擋住電池艙），四輪與電池艙不外露。
+// 設計：shared/design/body-serpent-longship/DESIGN.md（典故、借用的古代語彙、和市售車殼 / 現代作品 / 既有車殼的差異）。
+// 造型回到出土文物（MYTH_RESEARCH N1、N2、N5–N7）：Oseberg 船艏柱的盤捲、Gokstad 陪葬的整船盾牌、疊板船殼的鉚釘列；
+// 不用任何盧恩字母或符號、不用白藍配色。
+// 塗裝全為自創：焦油黑褐船殼＋赭紅 / 奶油白對半分區的圓盾與直條帆＋青銅盾心與鉚釘點列＋疊板邊緣淺木色細線；不含任何文字、號碼、商標。
 import * as THREE from 'three';
-import { makePolyBody, finPlate, flatPlate } from './polyBody.js';
-import { namedMaterial, decalMaterial, mergeGeos, lerp } from './loft.js';
+import { makePolyBody, finPlate } from './polyBody.js';
+import { namedMaterial, decalMaterial, mergeGeos, lerp, sdRoundRect } from './loft.js';
 import { monoCurve, buildStations } from './gazelleLeap.js';
+import { buildArchWell, chassisBlockedNearArch } from './kitsuneNinetail.js';
 
 /** @typedef {import('./loft.js').BodyPart} BodyPart */
 
-/** @type {number} 鈍鼻前緣 x */
-const X_FRONT = 73;
-/** @type {number} 殼後端 x */
-const X_REAR = -64;
-
-/** @type {number[]} 中線參數的站位 */
-const XS = [-64, -58, -50, -40, -30, -20, -10, 0, 10, 20, 28, 36, 44, 52, 60, 66, 70, 73];
+/** 船身站位節點（x 由後到前；前後軸 x = ±40；船尾尖 −66、船首尖 73；船首柱捲渦與帆翼另外以實體件製作） */
+const XS = [-66, -62, -56, -48, -40, -28, -14, 0, 14, 28, 40, 48, 56, 63, 69, 73];
 /** @type {Record<string, (x: number) => number>} */
 const P = {
-  // 甲板中線：鈍鼻頂 25 → 短引擎罩升到座艙前 30.5 → 座艙段 31 → 後甲板緩降到車尾 31
-  yc: monoCurve(XS, [31, 31.6, 32.2, 32.4, 32.2, 31.8, 31.4, 31, 30.8, 30.4, 29.6, 28.6, 27.8, 27, 26.2, 25.6, 25.2, 25]),
+  // 船舷上緣（sheer line）：側視是一把前低後平的刀——船首從前輪上方 32.4 一路壓到船首尖 17.5（V3 鼻尖低），
+  // 兩輪之間微凹到 30.2（前後輪上方各鼓起一段，讀成擋泥板），船尾往後收低到 30.5、不翹高（翹高的船尾側視又方又高）。
+  // 前後輪上方甲板 = 船舷 − 0.9 ≥ 31.5（31 mm 輪拱頂 30.5 之上）
+  sheer: monoCurve(XS, [30.5, 31.2, 32, 32.4, 32.4, 31.4, 30.4, 30.2, 30.6, 31.6, 32.4, 30.4, 26, 22.3, 19.2, 17.5]),
+  // 船舷半寬：前後輪上方最寬 35（船舷蓋住輪胎上半部，31 mm 輪胎外側面 |z| 34.75），中段收到 27.5，
+  // 往船首 / 船尾收尖；船殼要夠寬，四輪與電池艙才不會全露在船殼外
+  // 船首收尖段（x 48 / 56 / 63 / 69 / 73：21.5 / 13.5 / 9.5 / 6.2 / 4）收得比前輪拱窄很多，俯視是細長的尖船首；留一點寬度讓船首柱的根部埋得進甲板
+  hw: monoCurve(XS, [2.4, 4.5, 10, 21.5, 35, 30.5, 28, 27.5, 28, 30.5, 35, 21.5, 13.5, 9.5, 6.2, 4]),
+  // 船身下緣：中段 10（剛好在底盤側壁頂 9.4 之上，側面擋住電池艙），往船尾彎上去（龍骨上翹）；
+  // 前後卡榫處（x 52 / −50）約 15，遮住卡座吊耳；船首 / 船尾下緣壓低到前後齒輪不從船尖下方露出
+  // 船首下緣不往上翹（上翹的 forefoot 會讓車頭開口露出底盤），壓在 15.6–16 封住車頭
+  yLow: monoCurve(XS, [27.5, 21.5, 16.5, 14, 12.5, 10.4, 10, 10, 10, 10.4, 12.5, 14.2, 15.5, 15.6, 15.8, 16]),
+  // 船底收向龍骨的下緣半寬：中段 25.5（船殼下段幾乎垂直往下，像龍骨側板）；前後輪處由輪拱切開（cutZFrom 21）
+  keel: monoCurve(XS, [1.5, 3, 7.5, 18.5, 31, 28, 26, 25.5, 26, 28, 31, 18, 10.5, 6.8, 4.3, 2.6]),
 };
 
-/** @type {number[]} 俯視與下緣的站位 */
-const XS_HW = [-64, -60, -52, -40, -28, -21, -9, 2, 13, 23, 32, 42, 52, 58, 64, 69, 73];
-/** @type {Record<string, (x: number) => number>} */
-const Q = {
-  // 俯視半寬：一艘窄長的船殼坐在底盤上，四輪都在船殼外側——前後輪之間船身鼓成梭形（最寬 37），輪子旁收到 21.2（疊板唇外凸 0.6 後離 31 mm 輪胎內側還有 1 mm 以上），前輪前方張開成 30 的寬鈍鼻、後輪後方張開成 26.5 的方尾
-  hw: monoCurve(XS_HW, [26.5, 25.5, 21.2, 21.2, 21.2, 21.2, 32, 37, 32, 21.2, 21.2, 21.2, 21.2, 23.5, 29, 30, 29]),
-  // 下緣
-  lo: monoCurve(XS_HW, [17.5, 16.8, 15.6, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15.2, 15.6, 15.8, 16, 16]),
-};
-
-/** @type {(x: number) => number} 船舷頂高：四輪在船殼外側、不需要輪拱；船舷照長船的 sheer 往船首、船尾上揚（兩端比甲板高約 3.6） */
-const yFender = (x) => P.yc(x) - 0.6 + 4.2 * Math.abs((x - 4) / 69) ** 2.4;
-
-/** @type {number} 疊板接縫的內外階差（mm） */
-const LAP = 1.2;
+/** @type {number} 甲板蓋板比船舷頂低多少（船舷欄成一道低矮的護欄，不下沉） */
+const DECK_DROP = 0.9;
+/** @type {number} 甲板中線拱高（蓋板是一片弧面而不是平板；拱高壓低以減少正面面積） */
+const DECK_CROWN = 1.2;
 
 /**
- * 兩道疊板接縫的高度（由上往下）：跟著船舷（sheer）走，放在外肩下方看得到的那一段（底盤側框以上）
- * @type {(x: number) => number[]}
+ * 甲板蓋板上的小座艙開口：甲板是和船舷齊平的木板蓋板（開放式船斗不像比賽用車殼），
+ * 只在中段留一個 24 × 18 mm 的圓角方口（舵手 / 划手位），深 4.5 mm
+ * @type {{ x0: number, x1: number, hz: number, r: number, depth: number }}
  */
-const lapLines = (x) => {
-  const lo = Q.lo(x);
-  const top = yFender(x) - 3.2;
-  const y0 = Math.max(lo + 3.4, top - 2.2);
-  const y1 = Math.max(lo + 1.2, Math.min(y0 - 1.8, top - 5.2));
-  return [y0, y1];
+const HATCH = { x0: -14, x1: 10, hz: 9, r: 3, depth: 4.5 };
+/** @type {number} 疊板道數 */
+const STRAKES = 4;
+/** @type {number} 疊板接縫往內的階差（mm） */
+const LAP_STEP = 0.8;
+
+/**
+ * 該站的寬度縮放（兩端船尖附近，船舷欄、疊板階差等比例縮小，避免剖面點交錯）
+ * @type {(x: number) => number}
+ */
+const tipScale = (x) => Math.min(1, P.hw(x) / 20);
+
+/**
+ * 該站的幾何量：甲板高、船舷欄內緣 z、每道疊板的上緣 / 下緣（lip）
+ * @type {(x: number) => { sheer: number, hw: number, yLow: number, deckY: number, zi: number, strakes: { zTop: number, yTop: number, zLip: number, yLip: number }[] }}
+ */
+const stationAt = (x) => {
+  const sheer = P.sheer(x);
+  const hw = P.hw(x);
+  const yLow = P.yLow(x);
+  const keel = Math.min(P.keel(x), hw - 0.5);
+  const k = tipScale(x);
+  const deckY = sheer - DECK_DROP;
+  // 船舷欄厚度（外側船殼到內壁）至少 1.5 mm：船首 / 船尾尖端只用 3k 的話會小於殼厚 0.8，殼內面會從外側穿出（Blender 看到內面色塊）
+  const zi = Math.max(0.4, hw - Math.max(3 * k, 1.5));
+  const yTop0 = sheer - 1.4;
+  const h = (yTop0 - yLow) / STRAKES;
+  const half = (LAP_STEP * k) / 2;
+  /** @type {(y: number) => number} 船殼斷面曲線：上段近乎垂直、下段往龍骨收（舭部彎曲，平方根曲線） */
+  const zc = (y) => keel + (hw - keel) * Math.sqrt(Math.max(0, Math.min(1, (y - yLow) / (yTop0 - yLow))));
+  /** @type {{ zTop: number, yTop: number, zLip: number, yLip: number }[]} */
+  const strakes = [];
+  for (let i = 0; i < STRAKES; i++) {
+    const yTop = yTop0 - i * h;
+    const yLip = yTop - h;
+    // 每道疊板：上緣比斷面曲線內收半階、下緣唇外凸半階 → 接縫處往內一階（上一道的下緣蓋在下一道外面）
+    strakes.push({ zTop: i === 0 ? hw : zc(yTop) - half, yTop, zLip: zc(yLip) + half, yLip });
+  }
+  return { sheer, hw, yLow, deckY, zi, strakes };
 };
 
 /**
- * 半剖面 11 點：甲板中線 → 甲板邊 → 輪拱內稜 → 輪拱頂 → 外肩 → 第 1 道疊板（上緣內收）→ 唇 → 內階 → 第 2 道唇 → 內階 → 第 3 道下緣
+ * 半剖面 12 點：甲板中線 → 甲板邊 → 船舷欄內壁頂 → 船舷欄頂 → 外側船舷角（第 1 道疊板上緣）→ 4 道疊板（每道：下緣唇、往內一階的下一道上緣）→ 船身下緣
  * @type {(x: number) => number[][]}
  */
 const profile = (x) => {
-  const yc = P.yc(x);
-  const hw = Q.hw(x);
-  const lo = Q.lo(x);
-  const yf = Math.max(yFender(x), yc - 0.6);
-  const zd = Math.min(15, hw - 14);
-  const [y0, y1] = lapLines(x);
-  const h = LAP / 2;
-  return [
-    [0, yc],
-    [zd, yc - 0.5],
-    [zd + 3, yf - 0.3],
-    [hw - 3, yf],
-    [hw - h, yf - 2.6],
-    [hw + h, y0],
-    [hw - h, y0],
-    [hw + h, y1],
-    [hw - h, y1],
-    [hw + h, lo + 0.4],
-    [hw + h, lo],
+  const s = stationAt(x);
+  const k = tipScale(x);
+  /** @type {number[][]} */
+  const pts = [
+    [0, s.deckY + DECK_CROWN * k],
+    [s.zi - 1.2 * k, s.deckY],
+    [s.zi, s.sheer - 0.6],
+    [s.hw - 0.4 * k, s.sheer],
+    [s.hw, s.sheer - 1.4],
   ];
+  s.strakes.forEach((st, i) => {
+    pts.push([st.zLip, st.yLip]);
+    if (i < STRAKES - 1) {
+      pts.push([s.strakes[i + 1].zTop, st.yLip]);
+    }
+  });
+  return pts;
 };
 
-/** @type {{ x: number, pts: number[][] }[]} */
-const STATIONS = buildStations(X_REAR, X_FRONT, 2, profile);
-
-/** @type {{ x: number, y: number, radius: number, cutZFrom: number }[]} 前後輪拱（R17.5：31 mm 輪胎半徑 15.5 + 2 mm）；輪子旁船殼半寬 21.2、在輪胎內側，輪拱實際上不切殼 */
-const ARCHES = [
-  { x: 40, y: 13, radius: 17.5, cutZFrom: 30 },
-  { x: -40, y: 13, radius: 17.5, cutZFrom: 30 },
-];
+// 船首 / 船尾尖端曲率大，每 1 mm 一站；中段 2 mm
+const STATIONS = [...buildStations(-66, -54, 1, profile).slice(0, -1), ...buildStations(-54, 60, 2, profile).slice(0, -1), ...buildStations(60, 73, 1, profile)];
 
 /**
- * 三層疊片尾翼：每片 [前緣 x, 後緣 x, 板底 y]，一片比一片高、一片比一片往後（像疊板一片壓一片），半寬 24，厚 1.0
- * @type {number[][]}
+ * 剖面參數 s 的分段點（和 polyBody 的 createSmoothPolySurface 同一算法：各段平均長度占比），給塗裝分區判斷「甲板 / 外側船殼」
+ * @type {number[]}
  */
-const PLANKS = [
-  [-50.5, -61.5, 35.2],
-  [-54.5, -65.5, 37.7],
-  [-58.5, -69.5, 40.2],
-];
-/** @type {number} 疊片半寬 */
-const PLANK_HW = 24;
-/** @type {number} 疊片厚 */
-const PLANK_T = 1.0;
-/** @type {number} 紅白直條寬（mm） */
-const STRIPE_W = 4;
+const BRK = (() => {
+  const n = STATIONS[0].pts.length;
+  const seg = [];
+  for (let i = 0; i < n - 1; i++) {
+    let l = 0;
+    for (const st of STATIONS) {
+      l += Math.hypot(st.pts[i + 1][0] - st.pts[i][0], st.pts[i + 1][1] - st.pts[i][1]);
+    }
+    seg.push(Math.max(0.5, l / STATIONS.length));
+  }
+  const total = seg.reduce((a, b) => a + b, 0);
+  const out = [0];
+  for (const l of seg) {
+    out.push(out[out.length - 1] + l / total);
+  }
+  return out;
+})();
+
+/** @type {(x: number) => number} 甲板中線頂高 */
+const deckTop = (x) => P.sheer(x) - DECK_DROP + DECK_CROWN * tipScale(x);
+
+/** @type {number[]} 圓盾中心 x（每側 5 面，間距 10；盾徑 10.8 → 相鄰兩面互相疊 0.8 mm，像 Gokstad 船舷外互疊的盾列） */
+const SHIELD_X = [-20, -10, 0, 10, 20];
+/** @type {number} 圓盾半徑 */
+const SHIELD_R = 5.4;
+/** @type {number} 圓盾厚度 */
+const SHIELD_T = 0.6;
+/** @type {number[]} 槳孔中心 x（每側 4 個，在盾與盾之間的正下方） */
+const OAR_PORT_X = [-15, -5, 5, 15];
 
 /** @type {() => Record<string, THREE.Material>} */
 const materials = () => ({
-  // 主色：橡木（緞面：paint- 且 roughness > 0.5 → Blender 緞面）
-  oak: namedMaterial('paint-oak-plank', { color: 0xa8743f, roughness: 0.6, clearcoat: 0.15 }),
-  oakSolid: namedMaterial('paint-oak-plank', { color: 0xa8743f, roughness: 0.6, clearcoat: 0.15 }),
-  oakLight: namedMaterial('paint-oak-deck-light', { color: 0xc99a62, roughness: 0.58, clearcoat: 0.15 }),
-  // 焦油黑（最下一道疊板、鼻面）
-  tar: namedMaterial('paint-tar-black', { color: 0x231a14, roughness: 0.62, clearcoat: 0.1 }),
-  tarSolid: namedMaterial('paint-tar-black', { color: 0x231a14, roughness: 0.62, clearcoat: 0.1 }),
-  // 帆：紅、奶油白（亮面漆）
-  red: namedMaterial('paint-sail-red', { color: 0xb3262a, roughness: 0.38, clearcoat: 0.6 }),
-  cream: namedMaterial('paint-sail-cream', { color: 0xf0e6cf, roughness: 0.4, clearcoat: 0.6 }),
-  lamp: decalMaterial('lamp-amber', { color: 0xffb640, emissive: 0xd88a1a, emissiveIntensity: 0.6, roughness: 0.1, clearcoat: 1.0 }),
-  well: namedMaterial('cockpit-tub', { color: 0x2a1c12, roughness: 0.85, side: THREE.DoubleSide }),
-  wellWall: namedMaterial('cockpit-dark', { color: 0x3a2618, roughness: 0.8, side: THREE.DoubleSide }),
-  inner: namedMaterial('shell-inner-dark', { color: 0x1b1511, roughness: 0.85, side: THREE.BackSide }),
-  edge: namedMaterial('shell-edge-oak', { color: 0x8a5c30, roughness: 0.6, side: THREE.DoubleSide }),
-  liner: namedMaterial('shell-wheelwell-tar', { color: 0x1e1712, roughness: 0.7, side: THREE.DoubleSide }),
+  // 霧面材質（神話款要有材質對比）：焦油木船殼、深色橡木甲板、盾面、帆布為霧面（roughness 0.6–0.8、低 clearcoat）
+  tar: namedMaterial('paint-tar-brown', { color: 0x2a1d16, roughness: 0.72, clearcoat: 0.08, clearcoatRoughness: 0.6 }),
+  deck: namedMaterial('paint-deck-oak', { color: 0x4f3422, roughness: 0.78, clearcoat: 0 }),
+  deck2: namedMaterial('paint-deck-oak', { color: 0x3f2a1b, roughness: 0.78, clearcoat: 0, side: THREE.DoubleSide }),
+  ochre: namedMaterial('paint-ochre-red', { color: 0xa8432a, roughness: 0.62, clearcoat: 0.1 }),
+  ochre2: namedMaterial('paint-ochre-red', { color: 0xa8432a, roughness: 0.62, clearcoat: 0.1, side: THREE.DoubleSide }),
+  cream: namedMaterial('paint-cream-white', { color: 0xeee0c0, roughness: 0.6, clearcoat: 0.1, side: THREE.DoubleSide }),
+  // 帆索：麻繩色（霧面）
+  rope: namedMaterial('paint-rope-hemp', { color: 0xc9ae80, roughness: 0.8, clearcoat: 0 }),
+  // 真金屬（青銅盾心）：名稱含 -brass → Blender 換成金屬材質
+  bronze: namedMaterial('trim-bronze-brass', { color: 0xb08d57, metalness: 0.8, roughness: 0.32, clearcoat: 0.2 }),
+  // 擋風罩：深色煙燻 PC（V5 有色座艙；名稱 pc-smoke → Blender 煙燻 PC）
+  smoke: namedMaterial('pc-smoke-umber', { color: 0x1c130d, roughness: 0.05, clearcoat: 1.0, transparent: true, opacity: 0.85 }),
+  inner: namedMaterial('shell-inner-dark', { color: 0x1d1612, roughness: 0.85, side: THREE.BackSide }),
+  edge: namedMaterial('shell-edge-tar', { color: 0x3a2a20, roughness: 0.7, side: THREE.DoubleSide }),
+  liner: namedMaterial('shell-wheelwell-tar', { color: 0x3a2a20, roughness: 0.75, side: THREE.DoubleSide }),
+  dPale: decalMaterial('decal-pale-wood', { color: 0xc9ae80, roughness: 0.65 }),
+  dCream: decalMaterial('decal-cream-white', { color: 0xeee0c0, roughness: 0.6 }),
+  dSeam: decalMaterial('decal-deck-seam', { color: 0x2e2018, roughness: 0.8 }),
+  dBronze: decalMaterial('decal-bronze-rivet', { color: 0xb8925a, metalness: 0.75, roughness: 0.32 }),
+  dGoldBar: decalMaterial('decal-prow-gold-bar', { color: 0xe0b444, metalness: 0.8, roughness: 0.25, emissive: 0x7a5a10, emissiveIntensity: 0.35 }),
   mount: namedMaterial('abs-mount-black', { color: 0x222326, roughness: 0.6 }),
-  // 鐵鉚釘、百葉暗槽、紅白甲板條紋
-  dIron: decalMaterial('decal-iron-rivet', { color: 0x3a3a3c, metalness: 0.7, roughness: 0.4 }),
-  dSlot: decalMaterial('decal-louver-slot', { color: 0x120d0a, roughness: 0.8 }),
-  dRed: decalMaterial('decal-sail-red', { color: 0xb3262a, roughness: 0.4 }),
-  dCream: decalMaterial('decal-sail-cream', { color: 0xf0e6cf, roughness: 0.4 }),
 });
 
 /**
- * 一片疊片（俯視四角倒角的長方形）
- * @type {(p: number[], hw: number, y: number, t: number) => THREE.BufferGeometry}
+ * 平面曲線掃掠（中心線在 z = zc 的 x–y 平面上）：斷面為橢圓，rz = 厚度方向（z）半徑、rn = 平面內法向半徑。
+ * 和 sweepEllipse 不同的是側向固定為 z 軸，所以中心線可以通過垂直方向（螺旋捲）而不會翻轉；兩端封口，為封閉網格。
+ * @type {(pts: number[][], zc: number, n: number, radius: (t: number) => number[], seg?: number) => THREE.BufferGeometry}
  */
-const plankGeo = ([x0, x1, y], hw, t) => {
-  const c = 1.6;
-  return flatPlate(
-    [
-      [x0, hw - c],
-      [x0 - c, hw],
-      [x1, hw],
-      [x1, -hw],
-      [x0 - c, -hw],
-      [x0, -hw + c],
-    ],
-    y,
-    t,
+const sweepPlanar = (pts, zc, n, radius, seg = 14) => {
+  const curve = new THREE.CatmullRomCurve3(
+    pts.map(([x, y]) => new THREE.Vector3(x, y, zc)),
+    false,
+    'centripetal',
   );
+  const side = new THREE.Vector3(0, 0, 1);
+  /** @type {THREE.Vector3[][]} */
+  const rings = [];
+  for (let i = 0; i <= n; i++) {
+    const t = i / n;
+    const c = curve.getPointAt(t);
+    const tg = curve.getTangentAt(t);
+    const vert = new THREE.Vector3().crossVectors(side, tg).normalize();
+    const [rz, rn] = radius(t);
+    /** @type {THREE.Vector3[]} */
+    const ring = [];
+    for (let k = 0; k < seg; k++) {
+      const a = (2 * Math.PI * k) / seg;
+      ring.push(c.clone().addScaledVector(side, Math.cos(a) * rz).addScaledVector(vert, Math.sin(a) * rn));
+    }
+    rings.push(ring);
+  }
+  /** @type {number[]} */
+  const pos = [];
+  for (let i = 0; i < n; i++) {
+    for (let k = 0; k < seg; k++) {
+      const a = rings[i][k];
+      const b = rings[i][(k + 1) % seg];
+      const c = rings[i + 1][(k + 1) % seg];
+      const d = rings[i + 1][k];
+      pos.push(a.x, a.y, a.z, d.x, d.y, d.z, c.x, c.y, c.z, a.x, a.y, a.z, c.x, c.y, c.z, b.x, b.y, b.z);
+    }
+  }
+  for (const [ring, flip] of [
+    [rings[0], false],
+    [rings[n], true],
+  ]) {
+    const cx = ring.reduce((acc, p) => acc.add(p), new THREE.Vector3()).multiplyScalar(1 / seg);
+    for (let k = 0; k < seg; k++) {
+      const a = ring[k];
+      const b = ring[(k + 1) % seg];
+      if (flip) {
+        pos.push(cx.x, cx.y, cx.z, b.x, b.y, b.z, a.x, a.y, a.z);
+      } else {
+        pos.push(cx.x, cx.y, cx.z, a.x, a.y, a.z, b.x, b.y, b.z);
+      }
+    }
+  }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  g.computeVertexNormals();
+  return g;
 };
 
 /**
- * 開放甲板艙（長船中段的划手艙）：甲板上的凹槽，俯視是前後尖的梭形，深 5 mm（槽底約 y 26，在齒輪蓋與馬達之上）
- * @type {{ id: string, view: 'top', shape: 'poly', pts: number[][], depth: number }}
+ * 船首柱捲渦的中心線（側視 x–y，接在甲板龍骨脊的前端）：沿鼻尖往前，再往上、往後捲一圈。
+ * 只取 Oseberg 船艏柱的螺旋，末端收細成一個尖，不做頭。最前緣（含斷面半徑）不超過 x 77.5（鼻尖上限）
+ * @type {number[][]}
  */
-const DECK_WELL = {
-  id: '開放甲板艙',
-  view: 'top',
-  shape: 'poly',
-  pts: [
-    [22, 0],
-    [18, 5.5],
-    [10, 9],
-    [-2, 10],
-    [-12, 9],
-    [-19, 5.5],
-    [-22, 0],
-  ],
-  depth: 5,
+const PROW_SCROLL = [
+  [65.2, 19.6],
+  [70.7, 19.6],
+  [74.4, 20.8],
+  [75.9, 23.4],
+  [74.7, 26.2],
+  [72.2, 27],
+  [70.5, 25.4],
+  [71.4, 23.6],
+];
+/** @type {number} 龍骨脊接到捲渦的位置（沿整條中心線的比例） */
+const PROW_T = 0.7;
+/**
+ * 龍骨脊＋船首柱的斷面半徑 [z 向半厚, 平面內半高]：甲板上是寬而低的圓脊，到鼻尖變成窄而高的板條（船首柱是一片立著的木板），捲渦末端收細
+ * @type {(t: number) => number[]}
+ */
+const PROW_RAD = (t) => {
+  if (t < PROW_T) {
+    return [lerp(2.3, 1.3, t / PROW_T), lerp(1.5, 2.1, t / PROW_T)];
+  }
+  const q = (t - PROW_T) / (1 - PROW_T);
+  return [lerp(1.3, 0.9, q), lerp(2.1, 1, q)];
 };
 
-/** @type {number[]} 划手橫座（橫跨甲板艙的橡木條）的 x */
-const THWART_X = [12, 2, -8];
+/**
+ * 雙層平尾翼（四視圖 20 車尾那兩片疊著的平翼）：下層焦油色、上層印赭紅 / 奶油白直條帆；兩片都是前高後低一點點的平板，
+ * 兩端各一片焦油色端板把兩層串起來，端板外側掛翼端盾。x0 前緣、x1 後緣、hs 半翼展
+ * @type {{ x0: number, x1: number, hs: number, yLow: number, yHigh: number, thick: number, stripes: number }}
+ */
+const WING = { x0: -49, x1: -65, hs: 19, yLow: 35.2, yHigh: 39.4, thick: 1, stripes: 7 };
+/** @type {number} 翼端盾的半徑（比船舷的盾小一號） */
+const END_SHIELD_R = 4.4;
+
+/**
+ * 平板（x0–x1、z0–z1、底面高 y、厚 t）
+ * @type {(x0: number, x1: number, z0: number, z1: number, y: number, t: number) => THREE.BufferGeometry}
+ */
+const slab = (x0, x1, z0, z1, y, t) => {
+  const g = new THREE.BoxGeometry(Math.abs(x1 - x0), t, Math.abs(z1 - z0));
+  g.translate((x0 + x1) / 2, y + t / 2, (z0 + z1) / 2);
+  return g;
+};
+
+/**
+ * 雙層平尾翼：下層一片焦油色；上層沿翼展切成 stripes 道直條（赭紅 / 奶油白相間，最外兩道赭紅）；兩端端板
+ * @type {() => { tar: THREE.BufferGeometry, ochre: THREE.BufferGeometry, cream: THREE.BufferGeometry }}
+ */
+const buildWing = () => {
+  /** @type {THREE.BufferGeometry[]} */
+  const ochre = [];
+  /** @type {THREE.BufferGeometry[]} */
+  const cream = [];
+  for (let i = 0; i < WING.stripes; i++) {
+    const z0 = -WING.hs + (2 * WING.hs * i) / WING.stripes;
+    const z1 = -WING.hs + (2 * WING.hs * (i + 1)) / WING.stripes;
+    (i % 2 === 0 ? ochre : cream).push(slab(WING.x0 - 2, WING.x1, z0, z1, WING.yHigh, WING.thick));
+  }
+  /** @type {THREE.BufferGeometry[]} */
+  const tar = [slab(WING.x0 + 1, WING.x1 + 1, -WING.hs + 1, WING.hs - 1, WING.yLow, WING.thick)];
+  // 端板：側視是前低後高的梯形，下緣落到後甲板
+  for (const sg of [-1, 1]) {
+    tar.push(
+      finPlate(
+        [
+          [WING.x0 + 1, 31.6],
+          [WING.x1 - 0.5, 31.6],
+          [WING.x1 - 0.5, WING.yHigh + WING.thick + 0.6],
+          [WING.x0 - 2.5, WING.yHigh + WING.thick + 0.6],
+        ],
+        sg * (WING.hs + 0.5),
+        1.0,
+      ),
+    );
+  }
+  return { tar: mergeGeos(tar), ochre: mergeGeos(ochre), cream: mergeGeos(cream) };
+};
+
+/**
+ * 圓盾（單面）：實心圓盤（焦油色盾緣）＋外側面對半分區的赭紅 / 奶油白兩片薄面＋青銅盾心（扁球）。
+ * 對半分區用直線（不用十字四分、不用放射狀，避免任何被挪用的十字 / 日輪圖形）。
+ * (x, yc) = 盾心；zBase = 盾背面貼著的 |z|；tilt = 分區線的傾角；r = 盾半徑
+ * @type {(x: number, yc: number, zBase: number, sg: number, tilt: number, r?: number) => { disc: THREE.BufferGeometry, faceA: THREE.BufferGeometry, faceB: THREE.BufferGeometry, boss: THREE.BufferGeometry }}
+ */
+const shieldAt = (x, yc, zBase, sg, tilt, r = SHIELD_R) => {
+  const disc = new THREE.CylinderGeometry(r, r, SHIELD_T, 16);
+  disc.rotateX(Math.PI / 2);
+  disc.translate(x, yc, sg * (zBase + SHIELD_T / 2 + 0.05));
+  const zFace = sg * (zBase + SHIELD_T + 0.12);
+  /** @type {(a0: number) => THREE.BufferGeometry} 半圓薄面（盾緣留 0.6 mm 焦油色） */
+  const half = (a0) => {
+    const sh = new THREE.Shape();
+    const rr = r - 0.6;
+    sh.moveTo(rr * Math.cos(a0), rr * Math.sin(a0));
+    sh.absarc(0, 0, rr, a0, a0 + Math.PI, false);
+    sh.lineTo(rr * Math.cos(a0), rr * Math.sin(a0));
+    const g = new THREE.ShapeGeometry(sh, 8);
+    if (sg < 0) {
+      g.rotateY(Math.PI);
+    }
+    g.translate(x, yc, zFace);
+    return g;
+  };
+  const boss = new THREE.SphereGeometry(1, 10, 6);
+  boss.scale(1.7, 1.7, 0.9);
+  boss.translate(x, yc, sg * (zBase + SHIELD_T + 0.2));
+  return { disc, faceA: half(Math.PI / 2 + tilt), faceB: half(-Math.PI / 2 + tilt), boss };
+};
+
+/**
+ * 船舷盾列的第 i 面盾：盾心在船舷下 4.4（盾頂只高出船舷 1 mm，盾列沿船側排成一條帶，不在正面輪廓上方多出一圈），貼在該高度的外側船殼上。
+ * 奇數面盾往外多 0.35 mm，疊在偶數面盾外面（互疊的盾列）；相鄰兩面盾的分區線左右鏡射，盾列讀成有節奏的交替
+ * @type {(x: number, sg: number, i: number) => ReturnType<typeof shieldAt>}
+ */
+const buildShield = (x, sg, i) => {
+  const yc = stationAt(x).sheer - 4.4;
+  const lift = i % 2 === 1 ? 0.35 : 0;
+  return shieldAt(x, yc, hullZAt(x, yc) + lift, sg, (i % 2 === 0 ? 1 : -1) * 0.5);
+};
+
+/**
+ * 該站外側船殼在高度 y 的 |z|（沿剖面點 4 以下的疊板折線內插；超出範圍取端點）
+ * @type {(x: number, y: number) => number}
+ */
+const hullZAt = (x, y) => {
+  const pts = profile(x).slice(4);
+  if (y >= pts[0][1]) {
+    return pts[0][0];
+  }
+  for (let i = 0; i < pts.length - 1; i++) {
+    const [z0, y0] = pts[i];
+    const [z1, y1] = pts[i + 1];
+    if (y <= y0 && y >= y1) {
+      return y0 - y1 < 1e-6 ? Math.min(z0, z1) : lerp(z1, z0, (y - y1) / (y0 - y1));
+    }
+  }
+  return pts[pts.length - 1][0];
+};
+
+/**
+ * 輪拱內襯（參考 zeppelin-xtail 的 buildHullLiner）：輪拱切口後面的上半圈圓柱面（半徑 = 輪拱半徑 + 0.3），
+ * z 從船殼內面（外側 |z| − 1）往內 depth（不小於 zIn）；只做在船身下緣以上（不在船殼外面多出一片），擋住從側面看進去的殼內空腔與底盤
+ * @type {(arch: { x: number, y: number, radius: number }, zIn: number, depth: number) => THREE.BufferGeometry}
+ */
+const buildArchLiner = (arch, zIn, depth) => {
+  const r = arch.radius + 0.3;
+  const n = 48;
+  /** @type {number[]} */
+  const pos = [];
+  for (const sg of [-1, 1]) {
+    for (let i = 0; i < n; i++) {
+      const t0 = 0.12 + ((Math.PI - 0.24) * i) / n;
+      const t1 = 0.12 + ((Math.PI - 0.24) * (i + 1)) / n;
+      const x0 = arch.x + r * Math.cos(t0);
+      const y0 = arch.y + r * Math.sin(t0);
+      const x1 = arch.x + r * Math.cos(t1);
+      const y1 = arch.y + r * Math.sin(t1);
+      if (y0 < P.yLow(x0) + 0.4 || y1 < P.yLow(x1) + 0.4) {
+        continue;
+      }
+      // 船殼本身比內襯內緣還窄的地方（船首 / 船尾收尖段）不做，避免露在船殼外的細條
+      if (hullZAt(x0, y0) - 1 < zIn + 1 || hullZAt(x1, y1) - 1 < zIn + 1) {
+        continue;
+      }
+      const zo0 = Math.max(zIn + 0.5, hullZAt(x0, y0) - 1);
+      const zo1 = Math.max(zIn + 0.5, hullZAt(x1, y1) - 1);
+      const A = [x0, y0, sg * Math.max(zIn, zo0 - depth)];
+      const B = [x1, y1, sg * Math.max(zIn, zo1 - depth)];
+      const C = [x1, y1, sg * zo1];
+      const D = [x0, y0, sg * zo0];
+      // 法線朝輪心
+      if (sg > 0) {
+        pos.push(...A, ...C, ...B, ...A, ...D, ...C);
+      } else {
+        pos.push(...A, ...B, ...C, ...A, ...C, ...D);
+      }
+    }
+  }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  g.computeVertexNormals();
+  return g;
+};
 
 export const serpentLongshipBody = makePolyBody({
   id: 'body-serpent-longship',
-  name: '疊板長船',
+  name: '捲首長船',
   style: 'myth',
   phase: 8,
   mythSeries: 'norse',
   mythTheme: 'serpent-longship',
   form: 'clinker-hull',
-  roof: 'open-cockpit',
+  roof: 'canopy',
   wing: 'strake-stack',
-  theme: '維京長船用元素表現：窄長船殼坐在底盤上、四輪在外側，中段開放甲板艙（三條划手橫座），船舷往船首船尾上揚（紅色船舷欄），方正鈍鼻與整條琥珀燈帶、側面三道往外疊的疊板（深、淺木色與焦油黑）（接縫沿船舷曲線前後上揚、接縫上一排鐵鉚釘）、後輪拱上斜切三道百葉，車尾三層疊片尾翼一片比一片高、一片比一片後（像疊板），最上一片是紅白直條帆；橡木色配焦油黑，紅白條紋',
+  theme: '維京長船用元素表現：前低後平的刀形船身、鼻尖往上捲一圈的船首柱捲渦（赭紅龍骨脊一路接到座艙前）、側面 4 道疊板速度線（最上一道赭紅）、船舷下每側 5 面圓盾與一排槳孔、座艙口上一個煙燻座艙罩、鼻頭金色橫向燈條、車尾雙層平尾翼（上層印赭紅 / 奶油白直條帆，兩端端板掛翼端盾）',
   material: 'ABS',
   density_g_cm3: 1.05,
   wallThickness_mm: 0.8,
   stations: STATIONS,
-  // 殼面網格 0.7 mm：車身表面積大，放寬網格讓面數留在效能預算內
-  step: 0.7,
-  hard: [1, 2, 4, 5, 6, 7, 8, 9],
-  wheelArches: ARCHES,
-  recesses: [DECK_WELL],
+  // 銳利稜線：甲板邊、船舷欄內壁頂、外側船舷角、每道疊板的下緣唇與內階（船舷欄頂 3 為圓角）
+  hard: [1, 2, 4, 5, 6, 7, 8, 9, 10],
+  wheelArches: [
+    { x: 40, y: 13, radius: 17.5, cutZFrom: 21 },
+    { x: -40, y: 13, radius: 17.5, cutZFrom: 21 },
+  ],
+  recesses: [
+    {
+      id: '小座艙',
+      view: 'top',
+      shape: 'fn',
+      sd: (x, y, z) => sdRoundRect(x, Math.abs(z), HATCH.x0, HATCH.x1, -HATCH.hz, HATCH.hz, HATCH.r),
+      depth: HATCH.depth,
+    },
+  ],
   innerSkipRecess: true,
-  sideZMin: 26,
-  zones: () => {
-    /** @type {(x: number, y: number, z: number) => number} 最下一道疊板（第二道接縫以下的外側面） */
-    const lowStrake = (x, y, z) => Math.min(lapLines(x)[1] + 0.05 - y, Math.abs(z) - (Q.hw(x) - 1.2));
-    /** @type {(x: number, y: number, z: number) => number} 中間一道疊板（兩道接縫之間，淺木色） */
-    const midStrake = (x, y, z) => Math.min(lapLines(x)[0] + 0.05 - y, Math.abs(z) - (Q.hw(x) - 1.2));
-    /** @type {(x: number, y: number, z: number) => number} 船舷欄（外肩斜面）：沿 sheer 的紅色細欄 */
-    const gunwale = (x, y, z) => Math.min(Math.abs(z) - (Q.hw(x) - 3.2), y - (yFender(x) - 1.4), 71.5 - x);
-    return [
-      { mat: 'tar', keep: (x, y, z) => Math.max(lowStrake(x, y, z), Math.min(x - 71.5, y - 15)) },
-      { mat: 'oakLight', keep: midStrake },
-      { mat: 'red', keep: gunwale },
-      { mat: 'oak', keep: () => 1 },
-    ];
-  },
-  mats: { inner: 'inner', edge: 'edge', cap: 'tar', recess: 'well', recessWall: 'wellWall', mount: 'mount' },
+  sideZMin: 30,
+  zones: () => [
+    // 甲板與船舷欄內壁（剖面點 0–2）：橡木色
+    { mat: 'deck', keep: (x, y, z, s) => BRK[2] + 1e-4 - Math.abs(s) },
+    // 賽車條：最上一道疊板漆赭紅，從鼻尖沿船舷一路往後掃到船尾；疊板在船首往下收，紅條就是一條從鼻尖斜向後上的速度線
+    { mat: 'ochre', keep: (x, y, z, s) => Math.min(Math.abs(s) - BRK[4] + 1e-4, BRK[5] + 1e-4 - Math.abs(s)) },
+    { mat: 'tar', keep: () => 1 },
+  ],
+  mats: { inner: 'inner', edge: 'edge', cap: 'tar', recess: 'deck2', recessWall: 'deck2', mount: 'mount' },
   materials,
   extras: (kit) => {
     /** @type {BodyPart[]} */
     const parts = [];
-    // ── 三層疊片尾翼：下兩片橡木、最上一片紅白直條帆；兩支焦油黑立柱＋兩側薄端板把三片串起來 ──
+    // 龍骨脊＋船首柱捲渦（赭紅，一條連續的掃掠件）：低矮圓脊從座艙前沿甲板中線往前（V4 中央隆起的概念，圓脊不是 V 形），
+    // 到鼻尖變成立著的板條、往上往後捲一圈
+    parts.push({
+      geometry: sweepPlanar(
+        [
+          [17, deckTop(17) + 1.2],
+          [28, deckTop(28) + 1.1],
+          [40, deckTop(40) + 0.8],
+          [52, deckTop(52) + 0.5],
+          [62, deckTop(62) + 0.3],
+          ...PROW_SCROLL,
+        ],
+        0,
+        48,
+        PROW_RAD,
+        8,
+      ),
+      mat: 'ochre',
+      solid: true,
+      outline: true,
+      name: 'keel-ridge-prow-scroll',
+    });
+    // 雙層平尾翼
     {
-      parts.push({ geometry: mergeGeos([plankGeo(PLANKS[0], PLANK_HW, PLANK_T), plankGeo(PLANKS[1], PLANK_HW, PLANK_T)]), mat: 'oakSolid', solid: true, outline: true, name: 'strake-wing-lower' });
-      // 最上一片：沿翼展切成紅白直條（奇數條紅、偶數條白）
-      /** @type {THREE.BufferGeometry[][]} */
-      const bands = [[], []];
-      const [x0, x1, y] = PLANKS[2];
-      const n = Math.round((2 * PLANK_HW) / STRIPE_W);
-      for (let i = 0; i < n; i++) {
-        const za = -PLANK_HW + i * STRIPE_W;
-        const zb = za + STRIPE_W;
-        // 兩端條紋帶倒角（前緣外角）
-        const cut = (z) => (Math.abs(z) > PLANK_HW - 1.6 ? 1.6 - (PLANK_HW - Math.abs(z)) : 0);
-        const pts = [
-          [x0 - cut(za), za],
-          [x0 - cut(zb), zb],
-          [x1, zb],
-          [x1, za],
-        ];
-        bands[i % 2].push(flatPlate(pts, y, PLANK_T));
-      }
-      parts.push({ geometry: mergeGeos(bands[0]), mat: 'red', solid: true, outline: true, name: 'striped-sail-red' });
-      parts.push({ geometry: mergeGeos(bands[1]), mat: 'cream', solid: true, outline: true, name: 'striped-sail-cream' });
-      // 立柱（|z| 9，厚 1.2）：從後甲板斜升穿過三片
-      /** @type {(zc: number) => THREE.BufferGeometry} */
-      const strut = (zc) =>
-        finPlate(
-          [
-            [-49, P.yc(-49) - 1.2],
-            [-56, P.yc(-56) - 1.2],
-            [-67, PLANKS[2][2] + 0.3],
-            [-60, PLANKS[2][2] + 0.3],
-          ],
-          zc,
-          1.2,
-        );
-      // 端板（|z| 24，厚 1.0）：沿三片的外緣串成一道階梯
-      /** @type {(zc: number) => THREE.BufferGeometry} */
-      const endPlate = (zc) =>
-        finPlate(
-          [
-            [-51, PLANKS[0][2] - 0.6],
-            [-61.5, PLANKS[0][2] - 0.6],
-            [-69.5, PLANKS[2][2] + 1.6],
-            [-59, PLANKS[2][2] + 1.6],
-          ],
-          zc,
-          1.0,
-        );
-      parts.push({ geometry: mergeGeos([strut(9), strut(-9), endPlate(PLANK_HW + 0.5), endPlate(-PLANK_HW - 0.5)]), mat: 'tarSolid', solid: true, outline: true, name: 'strake-wing-struts' });
+      const wing = buildWing();
+      parts.push({ geometry: wing.tar, mat: 'tar', solid: true, outline: true, name: 'twin-wing-tar' });
+      parts.push({ geometry: wing.ochre, mat: 'ochre', solid: true, outline: true, name: 'twin-wing-sail-ochre' });
+      parts.push({ geometry: wing.cream, mat: 'cream', solid: true, outline: true, name: 'twin-wing-sail-cream' });
     }
-    // ── 疊板接縫上的鐵鉚釘點（每 4 mm 一顆，半徑 0.4） ──
+    // 鼻頭金色橫向燈條：船首柱下方一圈繞過船首的金色橫帶（正面看是一條橫向燈條）
     parts.push({
-      geometry: kit.decal((x, y, z) => {
-        if (Math.abs(z) < Q.hw(x) - 1) {
-          return -1;
-        }
-        const [y0, y1] = lapLines(x);
-        const xr = x - Math.round(x / 4) * 4;
-        let best = -1;
-        for (const yl of [y0, y1]) {
-          best = Math.max(best, 0.42 - Math.hypot(xr, y - (yl + 1.1)));
-        }
-        return Math.min(best, 69 - x, x + 62);
-      }, { offset: 0.1 }),
-      mat: 'dIron',
-      name: 'decal-clinker-rivets',
+      geometry: kit.decal((x, y, z) => Math.min(x - 55, 1.3 - Math.abs(y - (stationAt(x).sheer - 3.4))), { offset: 0.12 }),
+      mat: 'dGoldBar',
+      name: 'decal-prow-gold-bar',
     });
-    // ── 後輪拱上斜切三道百葉（暗槽） ──
-    parts.push({
-      geometry: kit.decal((x, y, z) => {
-        const az = Math.abs(z);
-        let best = -1;
-        for (let i = 0; i < 3; i++) {
-          const xc = -32 - i * 4.2;
-          // 斜槽：往外後方斜，寬 1.5、長 8
-          const u = (x - xc) + 0.45 * (az - 30);
-          const v = az - 30 - 0.45 * (x - xc);
-          best = Math.max(best, Math.min(0.75 - Math.abs(u), 4 - Math.abs(v)));
-        }
-        return Math.min(best, y - (yFender(x) - 1.8));
-      }, { offset: 0.1 }),
-      mat: 'dSlot',
-      name: 'decal-haunch-louvers',
-    });
-    // ── 甲板中央紅白條紋：鼻頂 → 甲板艙前、甲板艙後 → 車尾（紅 2 道夾白 1 道） ──
-    for (const [mat, z0, z1] of [['dRed', 1.6, 3.2], ['dCream', 0, 1.6]]) {
-      parts.push({
-        geometry: kit.decal((x, y, z) => {
-          const az = Math.abs(z);
-          const inX = Math.max(Math.min(71 - x, x - 23.5), Math.min(-23.5 - x, x + 62));
-          return Math.min(inX, z1 - az, az - z0 + (z0 === 0 ? 1 : 0), y - P.yc(x) + 1.2);
-        }, { offset: 0.1 }),
-        mat,
-        name: `decal-deck-stripe-${mat}`,
+    // 頂面起伏（避免頂面是一整片平甲板、座艙只是凹洞）：
+    // 1) 座艙罩：整個座艙口上一個深色煙燻的低矮座艙罩（四視圖 20 的座艙罩，長 30、寬 21、高出甲板約 4.4 mm）
+    // 2) 座艙後方焦油色低矮整流背（頭枕整流罩，往後收進甲板）
+    {
+      /**
+       * 上半橢球＋平底封口（封閉網格；只做甲板以上那一半，不在船殼內多算一整顆橢球的質量）
+       * @type {(r: number[], c: number[]) => THREE.BufferGeometry}
+       */
+      const dome = (r, c) => {
+        const top = new THREE.SphereGeometry(1, 16, 6, 0, 2 * Math.PI, 0, Math.PI / 2).toNonIndexed();
+        const cap = new THREE.CircleGeometry(1, 16);
+        cap.rotateX(Math.PI / 2);
+        const g = mergeGeos([top, cap.toNonIndexed()]);
+        g.scale(r[0], r[1], r[2]);
+        g.translate(c[0], c[1], c[2] ?? 0);
+        return g;
+      };
+      parts.push({ geometry: dome([15, 5.6, 10.5], [-2, deckTop(-2) - 1.2]), mat: 'smoke', solid: true, outline: true, name: 'cockpit-canopy' });
+      parts.push({ geometry: dome([10, 2.8, 6.5], [-27, deckTop(-27) - 0.9]), mat: 'tar', solid: true, outline: true, name: 'headrest-fairing' });
+    }
+    // 船舷圓盾：每側 5 面
+    /** @type {THREE.BufferGeometry[]} */
+    const discs = [];
+    /** @type {THREE.BufferGeometry[]} */
+    const facesRed = [];
+    /** @type {THREE.BufferGeometry[]} */
+    const facesCream = [];
+    /** @type {THREE.BufferGeometry[]} */
+    const bosses = [];
+    for (const sg of [-1, 1]) {
+      SHIELD_X.forEach((x, i) => {
+        const sh = buildShield(x, sg, i);
+        discs.push(sh.disc);
+        facesRed.push(sh.faceA);
+        facesCream.push(sh.faceB);
+        bosses.push(sh.boss);
       });
     }
-    // ── 划手橫座：三條橡木條橫跨甲板艙，頂面比甲板低 0.6 mm ──
-    {
-      /** @type {THREE.BufferGeometry[]} */
-      const bars = [];
-      for (const xt of THWART_X) {
-        const hw = 10.6;
-        const y = P.yc(xt) - 1.6;
-        const g = new THREE.BoxGeometry(1.8, 1.0, 2 * hw);
-        g.translate(xt, y, 0);
-        bars.push(g);
-      }
-      parts.push({ geometry: mergeGeos(bars), mat: 'oakSolid', solid: true, name: 'deck-thwarts' });
+    // 翼端盾：雙層平尾翼兩端端板外側各掛一面圓盾
+    for (const sg of [-1, 1]) {
+      const sh = shieldAt((WING.x0 + WING.x1) / 2 - 1, (31.6 + WING.yHigh) / 2 + 0.6, WING.hs + 1.0, sg, sg * 0.5, END_SHIELD_R);
+      discs.push(sh.disc);
+      facesRed.push(sh.faceA);
+      facesCream.push(sh.faceB);
+      bosses.push(sh.boss);
     }
-    // ── 鈍鼻琥珀燈帶：鼻面上一整條（鼻面外 0.05 mm 的薄片） ──
+    parts.push({ geometry: mergeGeos(discs), mat: 'tar', solid: true, outline: true, name: 'shields' });
+    parts.push({ geometry: mergeGeos(facesRed), mat: 'ochre2', name: 'shield-faces-ochre' });
+    parts.push({ geometry: mergeGeos(facesCream), mat: 'cream', name: 'shield-faces-cream' });
+    parts.push({ geometry: mergeGeos(bosses), mat: 'bronze', solid: true, name: 'shield-bosses' });
+    // 輪拱內襯（前後）：從殼內面一路做到 |z| 21（輪拱切口起點；只深 3 mm 的話，寬船殼會露出殼內空腔），擋住切口裡的殼內空腔與底盤
+    parts.push({
+      geometry: mergeGeos([buildArchLiner({ x: 40, y: 13, radius: 17.5 }, 21, 14), buildArchLiner({ x: -40, y: 13, radius: 17.5 }, 21, 14)]),
+      mat: 'liner',
+      shell: true,
+      name: 'arch-liners',
+    });
+    // 輪胎內側環形擋板（kitsune 的 buildArchWell，|z| 22.9；離 31 mm 輪內側面 1.85 mm）
+    parts.push({
+      geometry: mergeGeos([{ x: 40, y: 13 }, { x: -40, y: 13 }].map((a) => buildArchWell(a, 22.9, 12.3, 17.8, chassisBlockedNearArch))),
+      mat: 'liner',
+      shell: true,
+      name: 'arch-wells',
+    });
+    // 小座艙裡的一條划手橫座（實心橫板，兩端埋進座艙壁）
     {
-      const g = new THREE.PlaneGeometry(2 * (Q.hw(X_FRONT) - 3.5), 2.6);
-      g.rotateY(Math.PI / 2);
-      g.translate(X_FRONT + 0.05, 21.6, 0);
-      parts.push({ geometry: g, mat: 'lamp', name: 'lamp-amber-bar' });
+      const g = new THREE.BoxGeometry(2.2, 0.9, 2 * HATCH.hz + 0.6);
+      g.translate(-1, stationAt(-1).deckY - HATCH.depth + 2.2, 0);
+      parts.push({ geometry: g, mat: 'deck', solid: true, name: 'thwart' });
     }
+
+    /** @type {(s: number) => boolean} 剖面參數在外側船殼（第 1 道疊板上緣以下） */
+    const outerSide = (s) => Math.abs(s) > BRK[4] - 1e-4;
+    // 疊板邊緣淺木色細線：每道疊板下緣唇上方 0.15–0.85 mm（線寬 0.7）
+    parts.push({
+      geometry: kit.decal((x, y, z, s) => {
+        if (!outerSide(s)) {
+          return -1;
+        }
+        const st = stationAt(x).strakes;
+        let d = Infinity;
+        for (const k of st) {
+          d = Math.min(d, Math.abs(y - (k.yLip + 0.5)));
+        }
+        return Math.min(0.35 - d, x + 64, 71 - x);
+      }),
+      mat: 'dPale',
+      name: 'decal-strake-edges',
+    });
+    // 青銅鉚釘點列：每道疊板下緣唇上方 1.6 mm，每 3.5 mm 一顆（直徑 0.9）；第 3 道疊板留給槳孔，不放鉚釘
+    parts.push({
+      geometry: kit.decal((x, y, z, s) => {
+        if (!outerSide(s)) {
+          return -1;
+        }
+        const ph = (((x + 1.75) % 3.5) + 3.5) % 3.5;
+        const du = Math.abs(ph - 1.75);
+        const st = stationAt(x).strakes;
+        let d = Infinity;
+        st.forEach((k, i) => {
+          if (i !== 2) {
+            d = Math.min(d, Math.hypot(du, y - (k.yLip + 1.6)));
+          }
+        });
+        return Math.min(0.45 - d, x + 60, 66 - x);
+      }, { offset: 0.08 }),
+      mat: 'dBronze',
+      name: 'decal-rivets',
+    });
+    // 槳孔：第 3 道疊板上一排淺木色圓環（外徑 3.5、線寬 0.76），圓心比疊板中線高 0.3，不壓到下緣的淺木色細線
+    parts.push({
+      geometry: kit.decal((x, y, z, s) => {
+        if (!outerSide(s)) {
+          return -1;
+        }
+        const k = stationAt(x).strakes[2];
+        const yc = (k.yTop + k.yLip) / 2 + 0.3;
+        let d = Infinity;
+        for (const px of OAR_PORT_X) {
+          d = Math.min(d, Math.hypot(x - px, y - yc));
+        }
+        return 0.38 - Math.abs(d - 1.35);
+      }),
+      mat: 'dPale',
+      name: 'decal-oar-ports',
+    });
+    // 甲板賽車條：龍骨脊兩側各一道奶油白直條（|z| 4.6–7.4，落在兩道木板縫之間），從鼻尖一路往後到帆腳，和帆的直條呼應
+    parts.push({
+      geometry: kit.decal((x, y, z, s) => {
+        if (Math.abs(s) > BRK[1] - 0.002 || (x > HATCH.x0 - 1.5 && x < HATCH.x1 + 1.5)) {
+          return -1;
+        }
+        return Math.min(1.4 - Math.abs(Math.abs(z) - 6), x - WING.x0, 66 - x);
+      }),
+      mat: 'dCream',
+      name: 'decal-deck-stripes',
+    });
+    // 甲板木板縫：沿 x 的深色細線，每 4 mm 一道（只畫在甲板平面上）
+    parts.push({
+      geometry: kit.decal((x, y, z, s) => {
+        if (Math.abs(s) > BRK[1] - 0.002) {
+          return -1;
+        }
+        const ph = ((Math.abs(z) + 2) % 4) - 2;
+        return 0.3 - Math.abs(ph);
+      }),
+      mat: 'dSeam',
+      name: 'decal-deck-seams',
+    });
     return parts;
   },
   src: {
     density_g_cm3: 'SPEC 1.14：ABS 約 1.05 g/cm³（推估）',
-    wallThickness_mm: '推估：射出 ABS 殼 0.8 mm（同其他車殼）',
-    geometry: '本檔站位產生器（推估，比例取自四視圖 20）：殼 x −64 ~ 73、鈍鼻頂 25、座艙段甲板 31、中段開放甲板艙深 5 mm（三條划手橫座）；俯視是窄長船殼：四輪在外側，前後輪之間鼓成梭形最寬 37，輪子旁 21.2、寬鈍鼻 30、方尾 26.5；側面三道疊板，接縫階差 1.2 mm；船舷往船首、船尾上揚約 3.6 mm',
-    wing: '三層疊片尾翼：三片 ABS 平板厚 1.0、弦 11、半寬 24，板底 35.2 / 37.7 / 40.2、每片往後退 4 mm；立柱厚 1.2（|z| 9）、端板厚 1.0（|z| 24.5）（推估）；條紋帆的紅白直條是後世重建船與圖像常見的樣式（推估，未對應特定出土文物）',
-    rivets: '疊板接縫的鐵鉚釘：Gokstad 等疊板船以鐵鉚釘固定上下板（MYTH_RESEARCH N6：板與板重疊約 30 mm）；車上以半徑 0.4、間距 4 mm 的點列表現（推估）',
-    wheelArches: '四輪在船殼外側（輪子旁船殼半寬 21.2＋疊板唇 0.6，在 26 / 31 mm 輪胎內側），R17.5 輪拱只是保留間隙定義，不切殼；可裝 26 / 31 mm 輪',
+    wallThickness_mm: '推估：射出 ABS 殼 0.8 mm（同其他款）',
+    geometry: '本檔站位產生器 P（推估）：船身 x −66 ~ 73；船舷上緣 船尾 30.5 → 後輪 32.4 → 中段 30.2 → 前輪 32.4 → 船首尖 17.5（刀形）、船首下緣 15.6–16（封住車頭）；前後輪上方最寬 ±35（蓋住 31 mm 輪胎外側面 ±34.75）、中段 ±27.5（盾面外緣約 ±29.5）、側面下緣中段 y 10；船首柱捲渦前緣 x 82.2、翼端盾後緣 −69.1，車殼外框 151.3 mm（SPEC 1.14a：碰撞方塊長 ≤ 153 mm 才不會在立體橋刮路面）；頂高 43.7（翼端盾頂）；盾心在船舷下 4.4 mm',
+    strakes: '4 道疊板，每道下緣唇往內 0.8 mm 一階（推估：1/32 縮尺下看得到的最小階差；Gokstad / Oseberg 船為疊板船殼，見 DESIGN.md）；第 3 道疊板每側 4 個槳孔圓環（貼紙；Oseberg 船每側 15 個槳孔，縮尺後只放 4 個）',
+    shields: '每側 5 面圓盾，半徑 5.4、厚 0.6 mm 實心 ABS（推估；Gokstad 船舷每側 32 面盾，縮尺後只放 5 面）',
+    wheelArches: '前後 R17.5（31 mm 輪胎半徑 15.5 + 2 mm），甲板高 = 船舷 − 0.9 ≥ 31.5（輪拱頂 30.5 之上）；另有 buildArchWell 輪胎內側環形擋板（|z| 22.9）',
+    deck: '甲板蓋板 = 船舷頂 − 0.9 mm、中線拱 1.2 mm；小座艙 x −14 ~ 10、|z| ≤ 9、深 4.5 mm、內有一條划手橫座（推估）',
+    prow: '龍骨脊＋船首柱捲渦為一條實心 ABS 掃掠件（48 × 8 段）：甲板上是寬 4.6 × 高 3 mm 的圓脊，到鼻尖變成厚 2.6 × 高 4.2 mm 的立板，往上往後捲一圈（捲渦外徑約 8 mm、頂 y 約 28），末端收細；只取 Oseberg 船艏柱的盤捲，不做頭（推估）',
+    wing: '雙層平尾翼：下層焦油色平板 15 × 36 mm（y 35.2）、上層 18 × 38 mm（y 39.4）沿翼展切成 7 道直條（赭紅 4、奶油白 3），厚各 1 mm；兩端端板厚 1 mm、下緣落在後甲板，外側各一面半徑 4.4 mm 的翼端盾（推估；直條帆是自創塗裝，沒有查證過對應的文物）',
+    canopy: '座艙罩：煙燻 PC 半橢球 30 × 21 mm、高出甲板約 4.4 mm（推估，比例取自四視圖 20）',
+    prowBar: '鼻頭金色橫向燈條：船首 x 55 以前、船舷下 3.4 mm 一圈 2.6 mm 寬的金色貼紙帶（推估）',
     mounts: '對齊 chassis-midship 的車殼安裝點（SPEC 1.14）',
   },
 });
