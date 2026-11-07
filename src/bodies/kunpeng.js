@@ -3,8 +3,8 @@
 // 造型：平滑流線的低趴全罩——細長低鼻、一路直線斜升的平順楔形引擎蓋（前擋泥板不鼓起）、中段透明窗、座艙後是一路緩降到圓收車尾的長甲板；
 //       俯視是修長前尖的鯤身，前後輪上方微微隆起；側面前輪後方一組鰓狀斜百葉、後甲板一整片橫向百葉。
 // (1) 鯤的鰓 → 前輪後方三道往後斜的鰓狀進氣縫（深藍縫配銅色唇線）；
-// (2) 鵬的羽 → 後甲板五片層疊的橫向羽片百葉（實體薄片，後緣上翹、一片比一片高，像疊起的飛羽）、後擋泥板頂上和殼面連續、往外後展開的一對後掠尖角鵬翼；車尾端面一條紅色尾燈條；
-// (3) 水 → 風的兩色 livery（照四視圖的青綠＋米白）：前下半青綠（北冥的水）、後上半米白（扶搖的風），中間一條往前上斜切的乾淨分界，
+// (2) 鵬的羽 → 後甲板五片平行貼伏的橫向羽片（實體薄片，一樣低、不上翹，側視不成鋸齒）、後擋泥板頂上和殼面連續、翼尖沿車身外緣往後長長伸出的一對新月形鵬翼；車尾端面一條紅色尾燈條；
+// (3) 水 → 風的 livery（照四視圖的青綠＋米白）：鼻端深海藍 → 藍綠 → 青綠的平行漸層（北冥的水）、後上半米白（扶搖的風），中間一條往前上斜切的乾淨分界，
 //     分界上一條銅色細線（水擊三千里）；羽片、鵬翼用同一個青綠襯在米白後甲板上，深藍只留在鰓縫當點綴。
 // 設計：shared/design/body-kunpeng/DESIGN.md（典故與文物對應 MYTH_RESEARCH 第 7 節 Z1–Z4；黑名單 7-3）。剖面為本檔站位產生器（推估）。
 // 不寫任何文字（含「Kunpeng」字樣）、不做晶片紋、不做紅色魚身 / 海豚形、不做龍角龍鬚。
@@ -85,6 +85,9 @@ const shellZAt = (x, y) => {
 const materials = () => ({
   // 水 → 風兩色（照四視圖）：前下半青綠（亮面珍珠漆），後上半米白，一條斜切分界
   deep: namedMaterial('paint-qing-green-pearl', { color: 0x17695f, roughness: 0.3, metalness: 0.2, clearcoat: 0.9, clearcoatRoughness: 0.1 }),
+  // 鼻端往青綠過渡的兩段：深海藍 → 藍綠（分界和主分界平行，不畫線，看起來是漸層）
+  sea: namedMaterial('paint-deep-sea-blue-pearl', { color: 0x0e3a5c, roughness: 0.3, metalness: 0.2, clearcoat: 0.9, clearcoatRoughness: 0.1 }),
+  seaGreen: namedMaterial('paint-sea-teal-pearl', { color: 0x12525f, roughness: 0.3, metalness: 0.2, clearcoat: 0.9, clearcoatRoughness: 0.1 }),
   mist: namedMaterial('paint-cream-white', { color: 0xeee3c6, roughness: 0.42, clearcoat: 0.6, clearcoatRoughness: 0.2 }),
   // 羽片百葉、鵬翼：同一個青綠（實體件），襯在米白的後甲板上
   wing: namedMaterial('paint-qing-green-feather', { color: 0x17695f, roughness: 0.36, metalness: 0.15, clearcoat: 0.8, clearcoatRoughness: 0.15 }),
@@ -114,6 +117,8 @@ const flowS = (x, y) => x - 0.9 * (y - 20);
 
 /** @type {number} 青綠 / 米白的分界（flowS 值）：一條往後下、往前上的斜切線 */
 const SPLIT_S = 2;
+/** @type {number[]} 鼻端深海藍、藍綠兩段的起點（flowS 值，和 SPLIT_S 平行） */
+const SEA_S = [38, 21];
 
 /** @type {{ x: number, y: number, radius: number, cutZFrom: number }[]} 前後輪拱（R17.5：31 mm 輪胎半徑 15.5 + 2 mm） */
 const ARCHES = [
@@ -163,15 +168,15 @@ const gillLipSd = (x, y) => {
  * @type {{ x: number, chord: number, lift: number, hz: number }[]}
  */
 const FEATHERS = [
-  { x: -24, chord: 5.4, lift: 1.4, hz: 15.5 },
-  { x: -31, chord: 5.6, lift: 1.8, hz: 16 },
-  { x: -38, chord: 5.8, lift: 2.2, hz: 16 },
-  { x: -45, chord: 6, lift: 2.6, hz: 15.5 },
-  { x: -52, chord: 6.4, lift: 3, hz: 14.5 },
+  { x: -24, chord: 5.4, lift: 0.5, hz: 15.5 },
+  { x: -31, chord: 5.6, lift: 0.5, hz: 16 },
+  { x: -38, chord: 5.8, lift: 0.5, hz: 16 },
+  { x: -45, chord: 6, lift: 0.5, hz: 15.5 },
+  { x: -52, chord: 6.4, lift: 0.5, hz: 14.5 },
 ];
 
 /**
- * 一片羽片：側視是前緣貼甲板、後緣上翹的薄楔（厚 0.9 mm），橫跨 |z| ≤ hz，後緣中央往後凸成羽尖；底面埋進甲板 1 mm
+ * 一片羽片：側視是前緣貼甲板、後緣只抬 lift 的薄楔（厚 0.9 mm），橫跨 |z| ≤ hz，後緣中央往後凸成羽尖；底面埋進甲板 1 mm
  * @type {(f: { x: number, chord: number, lift: number, hz: number }, topY: (x: number, z: number) => number) => THREE.BufferGeometry}
  */
 const buildFeather = (f, topY) => {
@@ -295,17 +300,17 @@ const buildLiner = (arch, depth) => {
 const TAIL_LIGHT = { x0: -72.5, x1: -71.4, y0: 20.4, y1: 21.8, hz: 10 };
 
 /**
- * 鵬翼（俯視，|z| 側）：後擋泥板頂上往外後方展開的一對薄翼，翼根貼著殼面、從擋泥板稜往外緩降，翼尖是一個乾淨的後掠尖角（後緣內凹一道弧）；
+ * 鵬翼（俯視，|z| 側）：後擋泥板頂上往外後方展開的一對薄翼，翼根貼著殼面、從擋泥板稜往外緩降，前緣在 |z| 46 轉成沿外緣往後伸的新月翼尖（翼尖 x −70），後緣內凹一道弧；
  * 輪胎外緣（|z| 37.75）上方的翼底仍比 31 mm 後輪頂 28.5 高 1.5 mm 以上
  * @type {number[][]} 每點 [x, |z|]
  */
 const PENG_WING = [
-  [-22, 20],
-  [-38, 38],
-  [-50, 46],
-  [-61, 47.5],
-  [-57, 38],
-  [-63, 20],
+  [-28, 20],
+  [-37, 38],
+  [-42, 46],
+  [-70, 47.8],
+  [-60, 42],
+  [-50, 20],
 ];
 
 /**
@@ -412,7 +417,7 @@ export const kunpengBody = makePolyBody({
   form: 'gill-teardrop',
   roof: 'clear',
   wing: 'feather-louver-deck',
-  theme: '鯤鵬（鰓羽長身）：平滑流線的低趴全罩，細長低鼻一路直線斜升成平順楔形（前擋泥板不鼓起）到中段透明窗，座艙後一路緩降到圓收車尾的長甲板；俯視是修長、前尖的鯤身。前輪後方三道往後斜的鰓狀進氣縫（鯤的鰓），後甲板五片層疊上翹的青綠羽片百葉、後擋泥板頂上和殼面連續往外後展開、翼尖後掠的一對青綠鵬翼（鵬的羽），車尾端面一條紅色尾燈條；塗裝照四視圖前下半青綠、後上半米白，一條往前上斜切的分界加銅色細線',
+  theme: '鯤鵬（鰓羽長身）：平滑流線的低趴全罩，細長低鼻一路直線斜升成平順楔形到中段透明窗，座艙後一路緩降到圓收車尾的長甲板；俯視是修長、前尖的鯤身，後擋泥板頂上一對和殼面連續、翼尖沿外緣往後長長伸出的新月形青綠鵬翼。前輪後方三道往後斜的鰓狀進氣縫（鯤的鰓），後甲板五片平行貼伏的青綠羽片，車尾端面一條紅色尾燈條；塗裝鼻端深海藍漸層到青綠、後上半米白，一條往前上斜切的分界加銅色細線',
   material: 'ABS',
   density_g_cm3: 1.05,
   wallThickness_mm: 0.8,
@@ -429,6 +434,8 @@ export const kunpengBody = makePolyBody({
       keep: (x, y, z) => Math.min(P.cw(x) - 0.4 - Math.abs(z), x - CANOPY_X0, CANOPY_X1 - x, y - P.yH(x) - 0.25),
     },
     // 前下半青綠、後上半米白
+    { mat: 'sea', keep: (x, y) => flowS(x, y) - SEA_S[0] },
+    { mat: 'seaGreen', keep: (x, y) => flowS(x, y) - SEA_S[1] },
     { mat: 'deep', keep: (x, y) => flowS(x, y) - SPLIT_S },
     { mat: 'mist', keep: () => 1 },
   ],
