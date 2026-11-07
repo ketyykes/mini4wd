@@ -46,6 +46,21 @@
 - 總分 50 + 6.86 × 5 = **84.30**（基準 89.65）。
 - **決定**：分數沒進步，但這是使用者要求的重建模，不能整批退回；照 GOAL 的「舊版較好的款給 2 輪機會」，iter-137 修，修完再盲評，再輸就退回 e0f2c34 版。
 
+## iter-137（02:47 派工）
+- 8 組照 iter-136 評審逐款修（`shared/stage10/brief-iter137.md`），03:15–03:40 陸續交件、先交先合併、先交先出圖。
+- 主 agent 看圖後追加：trojan 鼻頭青銅鋸齒＋下緣 W 鋸條在 front34 像一排牙 → b 組改成木色平頭板帶（`0c7bee7`）。
+- **輪廓標記的判斷**（P20 量法不能被繞過）：
+  - sleipnir 的馬蹄鐵金管跨出殼面、俯視看得到，f 組為了 IoU 不標 `outline` → 主 agent 不接受（silhouette.js 量外輪廓，開口不算挖空）；改成車尾甲板外緣的 U 形貼紙（`255c94c`）。
+  - yaga 進氣槽的塗黑內襯標 `solid` 不標 `outline` → 接受：藏在開口裡的深色內襯不算外形，是前幾階段就有的做法（30 個車殼檔都有 liner，包含非神話款）。
+- 合併後重算 IoU（03:4x）：各組同時改、看不到彼此新版，出現 5 對 ≥ 0.85（gundestrup × 舊 yaga 側 0.901、amaterasu × sleipnir / zeppelin 俯 0.862、cerberus × tanngrisnir 俯 0.860、nezha × mars 俯 0.852、nezha × minotaur 0.850）→ d、g 組修，yaga 新版 h 組量過對 gundestrup 0.837。
+- mars 第一次出圖失敗：匯出時剛好 cherry-pick 別組 commit，vite 重新載入中斷匯出（`Execution context was destroyed`），重排就好。之後合併盡量避開匯出中，最後逐款核對出圖時間。
+
+- **計分（04:02–04:16，全部 iter-137 版）**：20/20。P16_collision_patches 66.9 s（1.52 s／款）、P18_pairwise 284.0 s、P20_body_variety 36.3 s、P08 54.8 s、P17_phase7_laps 114.3 s。
+- **評審（04:1x，換一位新評審，`shared/reviews/iter-137/REVIEW.md`）**：本輪 6.71、舊陣容 7.29；猜題 9/9。盲評新版較好 9 款：cerberus、minotaur、sleipnir、firebird、yaga、khepri、kitsune、kunpeng、quetzal；舊版較好 7 款：trojan、serpent-longship、gullinbursti、tanngrisnir、gundestrup、heimdall、mushussu。
+- **決定**：連兩輪輸給舊版的 trojan、serpent-longship、gullinbursti、tanngrisnir、gundestrup 依 GOAL 退回 `e0f2c34` 版（`git checkout e0f2c34 -- src/bodies/<檔>.js`）。heimdall、mushussu 只輸一輪（iter-136 新版較好），iter-138 再修一次。
+- 退回後 P20 不過：舊 tanngrisnir × amaterasu 俯 0.861、舊 trojan × poseidon 俯 0.854。舊版不動，iter-138 由 d 組（amaterasu）、a 組（poseidon）閃開。
+- 總分（外觀用 iter-137 評審）50 + 6.71 × 5 = 83.55；這個分數是退回前的版本。
+
 # 第十階段：神話車殼依 LG1 家族從頭重塑（2026-11-05 12:0x 起，截止 15:30）
 
 ## 第 0 輪（12:00–12:15）
