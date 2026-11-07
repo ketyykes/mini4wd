@@ -4,7 +4,7 @@
 // 設計：shared/design/body-sleipnir-stride/DESIGN.md（典故：《散文埃達》Gylfaginning「Sleipnir … has eight feet」，MYTH_RESEARCH 北歐節 N9、N12）。
 // 塗裝全為自創；不用盧恩字母、不含文字與商標；不重現 Tjängvide 圖像石的騎士構圖。
 import * as THREE from 'three';
-import { makePolyBody, flatPlate, finPlate } from './polyBody.js';
+import { makePolyBody, flatPlate, sweepEllipse } from './polyBody.js';
 import { namedMaterial, decalMaterial, mergeGeos, lerp } from './loft.js';
 import { monoCurve, buildStations, fenderFloor, smoothMax } from './gazelleLeap.js';
 import { buildProfileLiner } from './khepriScarab.js';
@@ -29,8 +29,8 @@ const P = {
 const XS_HW = [-67, -64, -56, -46, -38, -28, -18, -8, 2, 12, 22, 32, 42, 52, 56, 59, 66, 72, 77];
 /** @type {Record<string, (x: number) => number>} */
 const Q = {
-  // 俯視半寬：修長的窄車尾 21–22.5（後輪外露，車尾另有寬尾刃）→ 往前漸寬 → 前輪拱 41 → 盾形尖鼻（直邊收到鼻尖 2）
-  hw: monoCurve(XS_HW, [21, 21.5, 22.5, 22.5, 22.5, 22.5, 23, 24, 26.5, 30, 36, 40.5, 41, 40.5, 38, 33.5, 22.5, 11.5, 2]),
+  // 俯視半寬：修長的窄車尾 20–21（後輪外露，車尾另有寬尾刃）→ 往前漸寬 → 前輪拱 41 → 盾形尖鼻（直邊收到鼻尖 2）
+  hw: monoCurve(XS_HW, [20, 20.5, 21, 21, 21, 21, 22, 24, 26.5, 30, 36, 40.5, 41, 40.5, 38, 33.5, 22.5, 11.5, 2]),
   // 下緣
   lo: monoCurve(XS_HW, [17, 16.5, 15.5, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15.2, 15.5, 15.8, 16, 15.6, 15]),
 };
@@ -151,12 +151,14 @@ const knotHood = makeKnot({ a: 3.4, b: 3.6, v0: 21.5, x0: 24, x1: 58 });
 /** @type {(x: number, v: number) => number} 座艙後窄車尾甲板兩側的交織帶 */
 const knotTail = makeKnot({ a: 3.0, b: 3.0, v0: 11.5, x0: -63, x1: -30 });
 
+/** @type {number[]} 車尾八道水平細鰭的高度（左右各 4 片，車尾直牆 y 17 → 30 之間等距） */
+const TAIL_FIN_Y = [18.6, 21.6, 24.6, 27.6];
+
 /** @type {() => Record<string, THREE.Material>} */
 const materials = () => ({
   // 主色：珍珠銀白（上半身）；輔色：深靛藍（側壁與下緣）；金：真金屬（名稱含 -brass → Blender metallic）
   navy: namedMaterial('paint-pearl-silverwhite', { color: 0xe3e6eb, roughness: 0.26, metalness: 0.25, clearcoat: 1.0, clearcoatRoughness: 0.05 }),
   navyDark: namedMaterial('paint-deep-indigo', { color: 0x1a2462, roughness: 0.4, metalness: 0.2, clearcoat: 0.6 }),
-  fin: namedMaterial('trim-diffuser-steel', { color: 0x8d949e, metalness: 0.8, roughness: 0.35 }),
   gold: namedMaterial('trim-gold-brass', { color: 0xd6aa3c, metalness: 0.85, roughness: 0.28, clearcoat: 0.3 }),
   goldSolid: namedMaterial('trim-gold-brass', { color: 0xd6aa3c, metalness: 0.85, roughness: 0.28, clearcoat: 0.3 }),
   glass: namedMaterial('pc-smoke-tint', { color: 0x1c2030, roughness: 0.05, specularIntensity: 0.6, transparent: true, opacity: 0.55, envMapIntensity: 0.5, depthWrite: false, side: THREE.DoubleSide }),
@@ -181,7 +183,7 @@ export const sleipnirStrideBody = makePolyBody({
   form: 'eightfold-shield',
   roof: 'canopy',
   wing: 'gilt-ducktail',
-  theme: '八足神駒用「八」與奔馳表現，不做馬頭與腿：盾形尖鼻（中央稜線、金色盾緣）、修長低伏的楔形車身、座艙偏後，車尾整片往上翹成鴨尾（金色 U 形框＋金色尾刃）；兩側前後輪之間深色側板上各 8 道往後斜的金色飾條，前後兩組各自由短到長，像奔馳的步幅；珍珠銀白為主、深靛藍側壁為輔，金色 V 形前緣、車尾甲板 U 形馬蹄鐵金邊，引擎蓋與車尾甲板上深靛藍北歐交織帶，車尾直牆下段鋼色擴散器鰭片',
+  theme: '八足神駒用「八」與奔馳表現，不做馬頭與腿：盾形尖鼻（中央稜線、金色盾緣）、修長低伏的楔形車身、座艙偏後，車尾整片往上翹成鴨尾（金色 U 形框＋金色尾刃）；兩側前後輪之間深色側板上各 8 道往後斜的金色飾條，前後兩組各自由短到長，像奔馳的步幅；珍珠銀白為主、深靛藍側壁為輔，金色 V 形前緣、車尾甲板 U 形馬蹄鐵金邊，引擎蓋與車尾甲板上深靛藍北歐交織帶，車尾直牆左右各 4 片朝後的金色水平細鰭（八足）、鼻頭金色 V 形尖楔邊',
   material: 'ABS',
   density_g_cm3: 1.05,
   wallThickness_mm: 0.8,
@@ -307,31 +309,38 @@ export const sleipnirStrideBody = makePolyBody({
       mat: 'dGold',
       name: 'decal-horseshoe-rim',
     });
-    // ── 車尾擴散器格柵：車尾直牆下段 5 片往後伸的鋼色直立鰭 ──
+    // ── 車尾八道水平細鰭（八足）：車尾直牆左右各 4 片朝後伸的金色水平薄鰭，上下等距 ──
     {
       /** @type {THREE.BufferGeometry[]} */
       const fins = [];
-      for (const zc of [-14, -7, 0, 7, 14]) {
-        fins.push(finPlate([[X_REAR + 0.6, 17.4], [X_REAR - 3.2, 17.4], [X_REAR - 3.2, 22.5], [X_REAR + 0.6, 27]], zc, 1.0));
+      for (const sg of [-1, 1]) {
+        for (const y of TAIL_FIN_Y) {
+          fins.push(flatPlate([[X_REAR + 0.8, sg * 3.5], [X_REAR - 3.4, sg * 4.5], [X_REAR - 3.4, sg * 16.5], [X_REAR + 0.8, sg * 17.5]], y, 0.7));
+        }
       }
-      fins.push(finPlate([[X_REAR + 0.6, 17.4], [X_REAR - 3.2, 17.4], [X_REAR - 3.2, 18.4], [X_REAR + 0.6, 18.4]], 0, 30));
-      parts.push({ geometry: mergeGeos(fins), mat: 'fin', solid: true, name: 'rear-diffuser-fins' });
+      parts.push({ geometry: mergeGeos(fins), mat: 'goldSolid', solid: true, outline: true, name: 'tail-eight-fins' });
     }
-    // ── 鴨尾尾刃：車尾上緣往後伸出的金色薄刃，後緣 8 個鋸齒尖（找回舊版的金色齒列） ──
+    // ── 鼻頭金色 V 形尖楔邊：沿盾形鼻兩側外緣內 2 mm 的金色圓條，在鼻尖會合成 V ──
+    {
+      /** @type {number[][]} */
+      const half = [];
+      for (let i = 0; i <= 26; i++) {
+        const x = lerp(50, 76, i / 26);
+        const z = Math.max(0, Q.hw(x) - 2.2);
+        half.push([x, kit.surf.topY(x, z) + 0.45, z]);
+      }
+      const path = [...half.map(([x, y, z]) => [x, y, -z]), ...half.slice(0, -1).reverse()];
+      parts.push({ geometry: sweepEllipse(path, 160, () => [0.75, 0.75], 8), mat: 'goldSolid', solid: true, outline: true, name: 'nose-gold-chevron' });
+    }
+    // ── 鴨尾尾刃：車尾上緣往後伸出的金色薄刃（俯視微微內凹的弧） ──
     {
       const y = P.yc(X_REAR) - 1.4;
       /** @type {number[][]} */
       const pts = [];
-      /** @type {(z: number) => number} 齒根連線（俯視微微內凹的弧） */
-      const root = (z) => X_REAR - 1.2 - 1.2 * (z / 36.5) ** 2;
-      // 後緣 8 個金色鋸齒尖（又一個「八」）：齒根之間往後伸 3 mm 的尖
-      const teeth = 8;
-      for (let i = 0; i < teeth; i++) {
-        const za = lerp(-36.5, 36.5, i / teeth);
-        const zm = lerp(-36.5, 36.5, (i + 0.5) / teeth);
-        pts.push([root(za), za], [root(zm) - 3, zm]);
+      for (let i = 0; i <= 10; i++) {
+        const z = lerp(-36.5, 36.5, i / 10);
+        pts.push([X_REAR - 1.6 - 1.6 * (z / 36.5) ** 2, z]);
       }
-      pts.push([root(36.5), 36.5]);
       pts.push([X_REAR + 3.5, 36.5], [X_REAR + 3.5, -36.5]);
       parts.push({ geometry: flatPlate(pts, y, 1.2), mat: 'goldSolid', solid: true, outline: true, name: 'gilt-ducktail-blade' });
     }
@@ -342,7 +351,9 @@ export const sleipnirStrideBody = makePolyBody({
     wallThickness_mm: '推估：射出 ABS 殼 0.8 mm（同其他車殼）',
     geometry: '本檔站位產生器（推估，比例取自四視圖 30）：殼 x −67 ~ 77、盾形鼻尖頂 15；中央稜線 → 座艙段 32、座艙罩頂約 38.5；車尾鴨尾翹到 38.5；俯視盾形鼻、前輪拱半寬 41、往後收成修長車尾 22.5（後輪外露）、尾刃半寬 36.5',
     blades: '八道腿線：每側 8 道金色貼紙飾條（下寬 1.8、上寬 1.2、高 5.6–6.7 mm、後傾約 39°，貼在深色側板上），下端 x 22 ~ −5.2、前後兩組各 4 道（推估）',
-    ducktail: '鴨尾尾刃：ABS 平板厚 1.2、半寬 36.5，後緣 8 個往後伸 3 mm 的鋸齒尖（推估）',
+    ducktail: '鴨尾尾刃：ABS 平板厚 1.2、半寬 36.5，往後伸 1.6–3.2 mm（推估）',
+    tailFins: '車尾八道水平細鰭：ABS 平板厚 0.7，左右各 4 片，|z| 3.5–17.5、朝後伸 3.4 mm（推估）',
+    chevron: '鼻頭 V 形金邊：直徑 1.5 mm 的 ABS 圓條，沿盾形鼻外緣內 2.2 mm 從 x 50 到鼻尖（推估）',
     wheelArches: '前 R17.5（31 mm 輪胎半徑 15.5 + 2 mm）；後輪在修長車尾外側外露（車身半寬 22.5 < 輪胎內側 24.75），可裝 26 / 31 mm 輪',
     mounts: '對齊 chassis-midship 的車殼安裝點（SPEC 1.14）',
   },
