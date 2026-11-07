@@ -64,12 +64,17 @@ const profile = (x) => {
   const yS = shoulderY(x);
   const t = tuckAt(x);
   const yL = Math.min(P.yLow(x), yS - 2);
+  // 鼻錐與車尾變窄時，脊、凹谷、擋泥板頂三層起伏擠在幾 mm 內會捏出皺摺：逐漸併成一道單純的拱（脊頂到肩線稜）；
+  // 鼻錐從半寬 42（前擋泥板前坡）開始、車尾從 36 開始（不削到後輪上方的牛臀）
+  const e = smoothstep(18, x > 0 ? 42 : 36, hw);
+  /** @type {(z: number, y: number) => number[]} 該點的高度往拱面靠 */
+  const crown = (z, y) => [z, lerp(yS + (yC - yS) * (1 - Math.min(1, z / hw) ** 2.4), y, e)];
   return [
     [0, yC],
-    [sw, yC - 0.9],
-    [vz, yV],
-    [fz, yF],
-    [hw - 1.4, lerp(yF, yS, 0.45)],
+    crown(sw, yC - 0.9),
+    crown(vz, yV),
+    crown(fz, yF),
+    crown(hw - 1.4, lerp(yF, yS, 0.45)),
     [hw, yS],
     [hw - 0.62 * t, lerp(yS, yL, 0.5)],
     [hw - t, yL],
@@ -170,7 +175,7 @@ const greekKey = (u, v) => {
  * 新月鰭的外形參數：鰭根是一條直線，沿前擋泥板頂外側（x 30–53、|z| 41，擋泥板最寬的一段），鰭尖收成一點在後上方（x 12、y 48，懸在腰段外上方）；隨高度往外傾 28°（俯視鰭尖伸出腰段外緣，外框半寬 47.5 ≤ 48）
  * @type {{ xLead: number, xTrail: number, xTip: number, yTip: number, zRoot: number, cantDeg: number, thick: number, nc: number, ns: number }}
  */
-const FIN = { xLead: 53, xTrail: 30, xTip: 12, yTip: 48, zRoot: 41, cantDeg: 28, thick: 1.4, nc: 6, ns: 8 };
+const FIN = { xLead: 53, xTrail: 30, xTip: 12, yTip: 48, zRoot: 41, cantDeg: 8, thick: 2.4, nc: 6, ns: 8 };
 
 /**
  * 新月鰭（前擋泥板頂的金色立鰭，左右各一）：側視是新月形——前緣外凸、從擋泥板頂陡升再往後掃，後緣內凹，兩緣在後上方收成尖端；
@@ -196,7 +201,7 @@ const crescentFin = (top, sg) => {
     const xr = Math.min(xLead, Math.max(xTrail, x));
     const yRoot = top(xr, sg * zRoot) - 1.0;
     const y = lerp(yRoot, yTip, lerp(hL, hT, u));
-    const zLocal = side * (thick / 2) * tdist(u) * lerp(1, 0.2, s);
+    const zLocal = side * (thick / 2) * tdist(u) * lerp(1, 0.3, s);
     return [x, y, sg * (zRoot + Math.max(0, y - yRoot) * tan + zLocal)];
   };
   const pos = [];
