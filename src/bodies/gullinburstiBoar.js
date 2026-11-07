@@ -332,6 +332,8 @@ export const gullinburstiBoarBody = makePolyBody({
   density_g_cm3: 1.05,
   wallThickness_mm: 0.8,
   stations: STATIONS,
+  // 殼面網格邊長 0.7 mm（寬殼表面積大，放寬網格讓碰撞格耗時壓在 1000 ms 內）
+  step: 0.7,
   // 點 1–6 都是稜線（座艙泡邊、引擎蓋谷底外緣、擋泥板內外稜、最寬處、下稜）
   hard: [1, 2, 3, 4, 5, 6],
   wheelArches: ARCHES,
