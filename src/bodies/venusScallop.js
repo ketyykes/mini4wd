@@ -85,8 +85,8 @@ const LAMP = [64.5, 24];
 /** @type {number} 珍珠頭燈半徑 */
 const LAMP_R = 2.5;
 
-/** @type {{ cx: number, r0: number, halfAngle: number, ribs: number, y: number, t: number, kz: number }} 扇貝翼板：鉸點 (cx, 0)，外緣半徑 r0，放射角 ±halfAngle，橫向放大 kz 倍（橢圓扇，翼展 ±45、後緣伸到 x −75.5） */
-const SHELL = { cx: -42, r0: 33.5, halfAngle: (64 * Math.PI) / 180, ribs: 9, y: 42.4, t: 0.7, kz: 1.5 };
+/** @type {{ cx: number, r0: number, halfAngle: number, ribs: number, y: number, t: number, kz: number }} 扇貝翼板：鉸點 (cx, 0)，外緣半徑 r0，放射角 ±halfAngle，橫向放大 kz 倍（窄角扇橫向放大，往車尾外張：兩角在 x −67.7、翼展 ±45，後緣伸到 x −75.5） */
+const SHELL = { cx: -42, r0: 33.5, halfAngle: (40 * Math.PI) / 180, ribs: 9, y: 42.4, t: 0.7, kz: 2.1 };
 /** @type {number} 尾翼端板 |z| */
 const PLATE_Z = 27;
 /** @type {number} 下層翼板高度 */
@@ -353,7 +353,7 @@ const CONFIG = {
     wallThickness_mm: '推估：射出 ABS 殼 0.8 mm（同其他車殼）',
     geometry: '本檔站位產生器 P（推估，比例照四視圖 31）：殼 x −70 → 77；中線甲板 後甲板 32.6 → 鼻尖 16.5；座艙罩高出甲板 9.8（頂 ≈ 39.8，x −2）；擋泥板頂 前輪 33.6、後輪 34.6、腰 28.6；半寬 車尾 33.6、後輪 40、腰 30.4、前輪 37.2、鼻部 x 64–74 外擴到 46–47、鼻尖 42',
     wheelArches: '前後 R17.5（31 mm 輪胎半徑 15.5 + 2 mm，同 zeppelin / griffin），cutZFrom 21；輪拱內襯用 gazelle 的 buildArchLiner',
-    wing: '兩階尾翼：端板（厚 1.0，|z| 27）、下層翼板（厚 0.7、y 37.2）、扇貝翼板（厚 0.7、y 42.4、鉸點 x −42、外緣半徑 33.5（後緣 x −75.5）、±64°、橫向放大 1.5 倍成翼展 ±45 的橢圓扇、9 條放射金肋 0.8 × 0.5）、鉸點座，皆為實心 ABS 件，質量 = 封閉體積 × 1.05 g/cm³（推估）',
+    wing: '兩階尾翼：端板（厚 1.0，|z| 27）、下層翼板（厚 0.7、y 37.2）、扇貝翼板（厚 0.7、y 42.4、鉸點 x −42、外緣半徑 33.5（後緣 x −75.5）、±40°、橫向放大 2.1 倍成往車尾外張的扇形（兩角 x −67.7、翼展 ±45）、9 條放射金肋 0.8 × 0.5）、鉸點座，皆為實心 ABS 件，質量 = 封閉體積 × 1.05 g/cm³（推估）',
     symbols: '扇貝殼：Pompeii「Casa della Venere in conchiglia」花園壁畫（Wikipedia〈Venus (mythology)〉）；玫瑰：Porta Collina 的維納斯祭儀獻玫瑰（同條目）；珍珠：凱撒在 Venus Genetrix 神廟獻上鑲不列顛珍珠的胸甲（Wikipedia〈Temple of Venus Genetrix〉）。造型皆為抽象化的車身零件與貼紙，不出人像',
     mounts: '對齊 chassis-midship 的車殼安裝點（SPEC 1.14）',
   },
