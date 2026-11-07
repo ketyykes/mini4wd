@@ -1,7 +1,7 @@
 // 聖甲蟲凱布利推日（body-khepri-scarab，神話組・埃及）：照四視圖 05 的「圓弧車殼、鼻端大橢圓進氣口、長座艙、鴨尾車尾＋兩排格柵、車身分割帶」建模；車上沒有甲蟲的頭、眼、觸角、腳，也沒有人像。
 // 甲蟲殼 → 車殼平面：兩輪之間鼓成 ±36 的橢圓殼（最寬處在收腰段），四個輪子露在殼外，俯視像一片圓拱的甲蟲背殼；座艙罩是不透明的金色聖甲蟲圓頂。
 // 鞘翅 → 座艙後方的兩片深青金石鞘翅面板：中央金色鞘翅縫、金色外框，外緣一列綠松石／青金石交錯的羽格（翼片）；車尾是往上翹的鴨尾，尾面兩排格柵。
-// 日盤 → 鼻端大橢圓進氣口正上方一枚直立的紅玉髓金框日盤，聖甲蟲把太陽往前推（MYTH_RESEARCH E-a）；只有一枚日盤，鼻端沒有燈眼。
+// 日盤 → 座艙罩正前方中線上一枚直立的紅玉髓金框日盤，金色圓頂在後把太陽往前推（MYTH_RESEARCH E-a）；左右對稱，鼻端只有進氣口，沒有燈眼。
 // 胸飾 → 引擎蓋上一道弧形金框紅玉髓格帶；側面一條金色寬分割帶，上方綠松石、下方青金石。
 // 設計：shared/design/body-khepri-scarab/DESIGN.md（MYTH_RESEARCH 埃及節 E1、E2、E3；黑名單 E10：不用 V 形引擎蓋、沒有大顎）。
 // 塗裝：綠松石（費昂斯釉）為主色，青金石側面下半與深青金石鞘翅、金（真金屬）分割帶與圓頂、紅玉髓日盤與胸飾格；不含任何廠商 / 作品名稱、商標、文字或神的人臉。
@@ -16,8 +16,8 @@ import { monoCurve, buildStations } from './gazelleLeap.js';
 const XS = [-58, -52, -46, -40, -34, -16, -4, 8, 20, 34, 40, 46, 54, 62, 66, 70];
 /** @type {Record<string, (x: number) => number>} */
 const P = {
-  // 半寬：橢圓甲蟲殼——收腰段最寬（±36），前後輪上方收到 ±30 / ±33（輪子露在殼外），圓鼻 ±26.5，鴨尾車尾 ±27.5
-  hw: monoCurve(XS, [27.5, 30.5, 33, 33, 34.5, 35.7, 36, 35, 33.5, 30, 30, 30, 29.5, 29, 28, 26.5]),
+  // 半寬：橢圓甲蟲殼——收腰段最寬（±36），前後輪上方收到 ±30 / ±33（輪子露在殼外），鈍鼻往前張開到 ±33（鏟形），鴨尾車尾 ±27.5
+  hw: monoCurve(XS, [27.5, 29.8, 32, 33, 34, 35.7, 36, 35, 33.5, 30, 30, 30, 29.5, 31, 33, 32.5]),
   // 中央頂線：鴨尾往上翹（35.6），往前一路降到鈍鼻（21.4）
   yC: monoCurve(XS, [35.6, 34.2, 33.4, 33, 32.8, 32, 31.2, 30, 28.6, 26.2, 25.4, 24.6, 23.6, 22.6, 22, 21.4]),
   // 殼肩（0.68 半寬）
@@ -25,7 +25,7 @@ const P = {
   // 最寬處：前後輪上方鼓到 30 以上（31 mm 輪胎頂 28.5 + 間隙），前段比引擎蓋高，像兩道擋泥板隆起
   yE: monoCurve(XS, [31.6, 31, 30.4, 30.4, 29.8, 26.2, 25.4, 25.6, 27, 29.6, 30.2, 29.6, 26.4, 23.6, 22.4, 20.8]),
   // 側壁下緣
-  yLow: monoCurve(XS, [19, 16, 13.8, 13, 12.9, 12.6, 12.5, 12.5, 12.5, 12.6, 13, 13.4, 13.6, 13.2, 12.9, 12.8]),
+  yLow: monoCurve(XS, [15.4, 14.4, 13.6, 13, 12.9, 12.6, 12.5, 12.5, 12.5, 12.6, 13, 13.4, 13.6, 13.2, 12.9, 12.8]),
 };
 
 /**
@@ -197,8 +197,8 @@ const CANOPY = {
   })(),
 };
 
-/** @type {{ x: number, lift: number, tiltDeg: number, r: number }} 鼻端日盤：中心 x、中心離殼面的高度、盤面法線仰角、半徑（下半埋進鼻端） */
-const SUN = { x: 66.4, lift: 1.4, tiltDeg: 12, r: 5.4 };
+/** @type {{ x: number, lift: number, tiltDeg: number, r: number }} 座艙前日盤：中心 x、中心離殼面的高度、盤面法線仰角、半徑（立在中線上，下緣埋進引擎蓋 1 mm） */
+const SUN = { x: 39.6, lift: 4.4, tiltDeg: 8, r: 5.4 };
 
 /** @type {{ x: number, y: number, rz: number, ry: number }} 鼻端大橢圓進氣口：正面 x、中心高度、半寬、半高 */
 const INTAKE = { x: 70, y: 16.8, rz: 11, ry: 2.9 };
@@ -222,7 +222,7 @@ export const khepriScarabBody = makePolyBody({
   form: 'scarab-oval-shell',
   roof: 'canopy',
   wing: 'elytra-ducktail',
-  theme: '綠松石＋青金石圓弧四驅車：兩輪之間鼓成橢圓甲蟲殼、四輪露在殼外；鈍鼻正面一個金唇大橢圓進氣口（內有兩道橫格），進氣口正上方一枚直立的紅玉髓金框日盤（聖甲蟲推日）；引擎蓋上弧形金框紅玉髓胸飾格帶；長而低的金色聖甲蟲圓頂座艙罩；座艙後方兩片深青金石鞘翅面板（金色鞘翅縫與外框、外緣綠松石羽格）收成往上翹的鴨尾，鴨尾上一片金色翹唇、尾面兩排格柵；側面金色寬分割帶，上方綠松石、下方青金石',
+  theme: '綠松石＋青金石圓弧四驅車：兩輪之間鼓成橢圓甲蟲殼、四輪露在殼外；鈍鼻正面一個金唇大橢圓進氣口（內有兩道橫格），座艙罩正前方中線上一枚直立的紅玉髓金框日盤（聖甲蟲推日）；引擎蓋上弧形金框紅玉髓胸飾格帶；長而低的金色聖甲蟲圓頂座艙罩；座艙後方兩片深青金石鞘翅面板（金色鞘翅縫與外框、外緣綠松石羽格）收成往上翹的鴨尾，鴨尾上一片金色翹唇、尾面兩排格柵；側面金色寬分割帶，上方綠松石、下方青金石',
   material: 'ABS',
   density_g_cm3: 1.05,
   wallThickness_mm: 0.8,
@@ -248,7 +248,7 @@ export const khepriScarabBody = makePolyBody({
   extras: (kit) => {
     /** @type {BodyPart[]} */
     const parts = [];
-    // ── 鼻端日盤（實體件）：金框圓盤＋紅玉髓盤心，盤面朝前、微微仰起，下半埋進鼻端，立在進氣口正上方 ──
+    // ── 座艙前日盤（實體件）：金框圓盤＋紅玉髓盤心，立在座艙罩正前方的中線上、盤面朝前，聖甲蟲的圓頂從後面把太陽往前推 ──
     {
       const cy = kit.surf.topY(SUN.x, 0) + SUN.lift;
       /** @type {(r: number, h: number) => THREE.BufferGeometry} 往前上方傾的圓盤 */
@@ -259,7 +259,7 @@ export const khepriScarabBody = makePolyBody({
         return g;
       };
       parts.push({ geometry: disc(SUN.r, 1.4), mat: 'gold', solid: true, outline: true, name: 'sun-disc-rim' });
-      parts.push({ geometry: disc(SUN.r - 1.1, 1.8), mat: 'carnelian', solid: true, name: 'sun-disc-face' });
+      parts.push({ geometry: disc(SUN.r - 1.1, 1.8), mat: 'carnelian', solid: true, outline: true, name: 'sun-disc-face' });
     }
 
     // ── 鼻端大橢圓進氣口：金色唇框、深色底板（擋住後方底盤）、兩道綠松石橫格 ──
@@ -272,7 +272,7 @@ export const khepriScarabBody = makePolyBody({
         const w = 2 * INTAKE.rz * Math.sqrt(1 - (dy / INTAKE.ry) ** 2) - 0.6;
         slats.push(new THREE.BoxGeometry(0.6, 0.55, w).translate(INTAKE.x + 0.9, INTAKE.y + dy, 0));
       }
-      parts.push({ geometry: mergeGeos(slats), mat: 'faience', solid: true, name: 'intake-slats' });
+      parts.push({ geometry: mergeGeos(slats), mat: 'faience', solid: true, outline: true, name: 'intake-slats' });
     }
 
     // ── 鴨尾金色翹唇（後緣上翹 14°）與尾面兩排格柵 ──
@@ -291,7 +291,7 @@ export const khepriScarabBody = makePolyBody({
           }
         }
       }
-      parts.push({ geometry: mergeGeos(slots), mat: 'void', solid: true, name: 'tail-grille-slots' });
+      parts.push({ geometry: mergeGeos(slots), mat: 'void', solid: true, outline: true, name: 'tail-grille-slots' });
     }
 
     // 輪拱內襯（前後，R17.5）
@@ -351,25 +351,16 @@ export const khepriScarabBody = makePolyBody({
       mat: 'dCarnelian',
       name: 'decal-pectoral-cells',
     });
-    // 尾燈：鴨尾左右一對細長紅燈
-    {
-      /** @type {THREE.BufferGeometry[]} */
-      const lamps = [];
-      for (const sg of [-1, 1]) {
-        const l = new THREE.BoxGeometry(0.8, 1.4, 9);
-        l.translate(-58.2, 32, sg * 14);
-        lamps.push(l);
-      }
-      parts.push({ geometry: mergeGeos(lamps), mat: 'tail', solid: true, name: 'lamp-tail' });
-    }
+    // 尾燈：格柵上方一整條橫貫的細長紅燈條（不做成左右一對燈點）
+    parts.push({ geometry: new THREE.BoxGeometry(0.8, 1.2, 40).translate(-58.2, 32, 0), mat: 'tail', solid: true, outline: true, name: 'lamp-tail' });
     return parts;
   },
   src: {
     density_g_cm3: 'SPEC 1.14：ABS 約 1.05 g/cm³（推估）',
     wallThickness_mm: '推估：射出 ABS 殼 0.8 mm（同其他車殼）',
-    geometry: '本檔站位產生器 P（推估，造型比例取自 shared/design/body-khepri-scarab/fourview.png 與 fourview_trace.txt，縮到底盤尺寸）：殼長 128（鴨尾 −58 ~ 圓鼻 70）；鴨尾頂 35.6、中央頂 33.4、座艙罩頂約 37.6、日盤頂約 28；鼻端正面 12.8 ~ 21.4；寬：收腰 ±36、前輪上方 ±30、後輪上方 ±33、鼻端 ±26.5、鴨尾 ±27.5',
+    geometry: '本檔站位產生器 P（推估，造型比例取自 shared/design/body-khepri-scarab/fourview.png 與 fourview_trace.txt，縮到底盤尺寸）：殼長 128（鴨尾 −58 ~ 圓鼻 70）；鴨尾頂 35.6、中央頂 33.4、座艙罩頂約 37.6、日盤頂約 35.4；鼻端正面 12.8 ~ 21.4；寬：收腰 ±36、前輪上方 ±30、後輪上方 ±33、鼻端 ±33、鴨尾 ±27.5',
     wheelArches: '前後 R17.5（31 mm 輪胎半徑 15.5 + 2 mm）',
-    sunDisc: '鼻端日盤：ABS 圓盤 R5.4、厚 1.4（金框）＋R4.3、厚 1.8（紅玉髓盤心），盤面法線仰角 12°（推估）',
+    sunDisc: '鼻端日盤：ABS 圓盤 R5.4、厚 1.4（金框）＋R4.3、厚 1.8（紅玉髓盤心），盤面法線仰角 8°，立在 x 39.6 中線（推估）',
     intake: '鼻端進氣口：橢圓 22 × 5.8，金唇框 24.2 × 8、深色底板與兩道橫格（ABS 實體件，推估）',
     ducktail: '鴨尾翹唇：ABS 板 7 × 51.2、厚 1，後緣上翹 14°；尾面兩排格柵槽各 10 個（推估）',
     mounts: '對齊 chassis-midship 的車殼安裝點（SPEC 1.14）',
