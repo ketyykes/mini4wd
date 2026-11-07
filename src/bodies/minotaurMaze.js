@@ -1,12 +1,12 @@
 // 米諾陶洛斯（body-minotaur-maze，神話組・希臘）：照四視圖 18 的「三層階梯鼻、大型多面座艙罩、高車尾、單柱牛角新月尾翼」建模；車上沒有牛的頭、臉、眼、鼻孔、鼻環。
 // 牛角 → 尾翼：一片加粗的金色新月形尾翼，中央最低、兩端往上翹並往前彎（後視、俯視都是新月），單柱撐在車尾中線，整片高過座艙罩頂。
-// 迷宮 → 階梯鼻與紋樣：楔形鼻上疊三層同心梯形階梯（正視三圈梯形、側視三階，一圈比一圈小），頂面藍橘交錯、側面奶油白；引擎蓋上一個克諾索斯方形迷宮徽記；
+// 迷宮 → 階梯鼻與紋樣：楔形鼻上疊三層同心梯形階梯（正視三圈梯形、側視三階，一圈比一圈小），頂面陶土橘、側面與正面奶油白；座艙罩正前方一道橫向細線迷宮帶；
 // 座艙罩後方到車尾的背脊上一整條奶油白底黑回紋帶；側面下半是壁畫藍板塊，板塊上奶油白連續回紋帶，上緣一條金色阿里阿德涅之線。
 // 設計：shared/design/body-minotaur-maze/DESIGN.md（MYTH_RESEARCH G6、G9、G10、G12、G13）。剖面為本檔站位產生器（推估）；塗裝全為自創，不含任何文字、號碼或商標。
 // 塗裝：陶土橘（霧面）為主色，克諾索斯壁畫藍（緞面）做側面下半，奶油白做回紋與描線，金色做尾翼與細線。
 import * as THREE from 'three';
 import { makePolyBody, finPlate, sweepEllipse } from './polyBody.js';
-import { namedMaterial, decalMaterial, sideDecal, sdRoundRect, mergeGeos, lerp } from './loft.js';
+import { namedMaterial, decalMaterial, sideDecal, mergeGeos, lerp } from './loft.js';
 import { buildProfileLiner } from './khepriScarab.js';
 import { monoCurve, buildStations, smoothNormals } from './gazelleLeap.js';
 
@@ -125,19 +125,19 @@ const greekKey = (u, v) => {
 
 /**
  * 三層階梯鼻（實體件，疊在殼面鼻端上）：每層的後端 x、前端 x、後端半寬、前端半寬、色；每層高 1.5，後端 10 mm 斜升接進引擎蓋
- * 頂面陶土橘 / 壁畫藍交錯，側面與正面奶油白：正視三圈同心梯形、側視三階，一圈比一圈小（迷宮的方折迴圈）
+ * 頂面陶土橘，側面與正面奶油白：正視三圈同心梯形、側視三階，一圈比一圈小（迷宮的方折迴圈）
  * @type {{ xr: number, xf: number, wr: number, wf: number, mat: string }[]}
  */
 const TIERS = [
-  { xr: 34, xf: 65.4, wr: 16, wf: 7.6, mat: 'blue' },
+  { xr: 34, xf: 65.4, wr: 16, wf: 7.6, mat: 'clay' },
   { xr: 36, xf: 60, wr: 12, wf: 6.2, mat: 'clay' },
-  { xr: 38, xf: 54.4, wr: 8, wf: 4, mat: 'blue' },
+  { xr: 38, xf: 54.4, wr: 8, wf: 4, mat: 'clay' },
 ];
 /** @type {number} 每層高度 */
 const TIER_H = 1.5;
 
-/** @type {{ x: number }} 方形迷宮徽記中心（引擎蓋中線） */
-const MAZE = { x: 26.6 };
+/** @type {{ x0: number, hz: number }} 座艙罩前方橫向迷宮帶：帶後緣 x、半寬（線性回紋沿 z 走） */
+const MAZE = { x0: 17, hz: 14.4 };
 
 /** @type {{ x0: number, x1: number, hz: number }} 背脊回紋帶：前後端與半寬（座艙罩後緣到車尾） */
 const SPINE = { x0: -64, x1: -27, hz: 4.2 };
@@ -148,7 +148,6 @@ const materials = () => ({
   clay: namedMaterial('paint-terracotta-clay', { color: 0xc4652f, roughness: 0.7, clearcoat: 0.04 }),
   // 克諾索斯壁畫藍（緞面）：側面下半
   blue: namedMaterial('paint-fresco-blue', { color: 0x2e5b85, roughness: 0.48, clearcoat: 0.2, clearcoatRoughness: 0.35 }),
-  blue2: namedMaterial('paint-fresco-blue', { color: 0x2e5b85, roughness: 0.48, clearcoat: 0.2, clearcoatRoughness: 0.35, side: THREE.DoubleSide }),
   // 階梯鼻的側面與正面：奶油白
   cream2: namedMaterial('paint-fresco-cream', { color: 0xefe4c8, roughness: 0.55, side: THREE.DoubleSide }),
   black2: namedMaterial('paint-slip-black', { color: 0x1b1817, roughness: 0.52, clearcoat: 0.15, clearcoatRoughness: 0.4, side: THREE.DoubleSide }),
@@ -207,7 +206,7 @@ const CONFIG = {
   form: 'stepped-labyrinth-nose',
   roof: 'canopy',
   wing: 'horn-crescent-mono',
-  theme: '陶土橘＋壁畫藍雙色四驅車：±42.6 的寬肩前擋泥板、疊在楔形鼻上的三層同心梯形階梯（頂面藍 / 橘交錯、側面與正面奶油白，一圈比一圈小）、引擎蓋上的克諾索斯方形迷宮徽記、大型梯形剖面深茶色座艙罩、窄而高的車尾（俯視後輪外露）；擋泥板肩稜上奶油白描線，座艙罩後方到車尾的背脊一整條奶油白底黑回紋帶；側面下半壁畫藍板塊從收腰往車尾斜升，板塊上奶油白連續回紋帶，上緣一條發光金線（阿里阿德涅之線）；車尾單柱撐起加粗的金色牛角新月尾翼，高過座艙罩頂，中央最低、兩端上翹前彎，頂面一道陶土色新月條',
+  theme: '陶土橘＋壁畫藍雙色四驅車：±42.6 的寬肩前擋泥板、疊在楔形鼻上的三層同心梯形階梯（頂面陶土橘、側面與正面奶油白，一圈比一圈小）、座艙罩正前方的橫向細線迷宮帶、大型梯形剖面深茶色座艙罩、窄而高的車尾（俯視後輪外露）；擋泥板肩稜上奶油白描線，座艙罩後方到車尾的背脊一整條奶油白底黑回紋帶；側面下半壁畫藍板塊從收腰往車尾斜升，板塊上奶油白連續回紋帶，上緣一條發光金線（阿里阿德涅之線）；車尾單柱撐起加粗的金色牛角新月尾翼，高過座艙罩頂，中央最低、兩端上翹前彎，頂面一道陶土色新月條',
   material: 'ABS',
   density_g_cm3: 1.05,
   wallThickness_mm: 0.8,
@@ -273,7 +272,7 @@ const CONFIG = {
       parts.push({ geometry: pylon, mat: 'black2', solid: true, name: 'horn-wing-pylon' });
     }
 
-    // ── 三層階梯鼻：每層一片 0.8 mm 殼板（頂面、兩側、正面；奶油白，側面與正面露出白邊），頂面另貼一層藍 / 橘色片（裝飾，浮 0.05 mm）──
+    // ── 三層階梯鼻：每層一片 0.8 mm 殼板（頂面、兩側、正面；奶油白，側面與正面露出白邊），頂面另貼一層陶土橘色片（裝飾，浮 0.05 mm）──
     {
       /** @type {(arr: number[]) => THREE.BufferGeometry} 三角形頂點陣列 → 平面法線幾何 */
       const geo = (arr) => {
@@ -287,7 +286,7 @@ const CONFIG = {
       /** @type {THREE.BufferGeometry[]} */
       const solids = [];
       /** @type {Record<string, number[]>} 各色頂面色片 */
-      const tops = { blue: [], clay: [] };
+      const tops = { clay: [] };
       TIERS.forEach((t, i) => {
         const n = 16;
         /** @type {number[][][]} 每個斷面 [左下, 左上, 右上, 右下] */
@@ -325,7 +324,6 @@ const CONFIG = {
         solids.push(geo(arr));
       });
       parts.push({ geometry: mergeGeos(solids), mat: 'cream2', shell: true, outline: true, name: 'nose-steps' });
-      parts.push({ geometry: geo(tops.blue), mat: 'blue2', name: 'nose-step-tops-blue' });
       parts.push({ geometry: geo(tops.clay), mat: 'clay2', name: 'nose-step-tops-clay' });
     }
 
@@ -333,25 +331,11 @@ const CONFIG = {
     parts.push({ geometry: mergeGeos(ARCHES.map((a) => buildProfileLiner(a, 22.4, profile))), mat: 'liner', shell: true, name: 'arch-liners' });
 
     // ── 貼紙 ──
-    // 方形迷宮徽記（克諾索斯銀幣背面的方折迷宮）：引擎蓋中線上（座艙罩與階梯鼻之間），三圈同心方框、每圈在相反側留一個缺口，黑線寬 0.9
+    // 座艙罩正前方一道橫向細線迷宮帶（黑色連續回紋沿 z 走，帶寬約 5.7）
     parts.push({
-      geometry: kit.decal((x, y, z) => {
-        if (onSide(x, z)) {
-          return -1;
-        }
-        let d = Infinity;
-        for (let k = 1; k <= 3; k++) {
-          const h = 2.6 * k;
-          const ring = Math.abs(sdRoundRect(x, z, MAZE.x - h, MAZE.x + h, -h, h, 0.6));
-          // 缺口：最內圈封閉（不留缺口，避免讀成字母），其餘奇數圈開在車頭側、偶數圈開在車尾側（寬 2 mm）
-          const gapX = k % 2 ? MAZE.x + h : MAZE.x - h;
-          const inGap = k > 1 && Math.abs(z) < 1 && Math.abs(x - gapX) < 0.8;
-          d = Math.min(d, inGap ? Infinity : ring);
-        }
-        return 0.45 - d;
-      }, { offset: 0.1 }),
+      geometry: kit.decal((x, y, z) => (onSide(x, z) || Math.abs(z) > MAZE.hz ? -1 : -greekKey(z + MAZE.hz, x - MAZE.x0 + KEY_Y0 + 0.9)), { offset: 0.1 }),
       mat: 'dBlack',
-      name: 'decal-knossos-maze',
+      name: 'decal-maze-band',
     });
     // 擋泥板肩稜（0.55 半寬的銳利稜線）上一道奶油白描線（寬 0.7），從鼻端第一階走到車尾
     parts.push({
