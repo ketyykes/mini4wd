@@ -54,8 +54,8 @@ const P = {
   crestW: monoCurve(XS, [2.5, 4, 6, 8.5, 10.5, 11, 11, 10, 9, 9, 9, 9, 9, 8, 6, 4.5, 3, 2]),
   // 肩稜線基本高度（前後輪上方再沿眉線拱起）
   yS: monoCurve(XS, [28.5, 28.5, 29, 29.5, 30, 30, 29.5, 29, 29, 29, 29.2, 29.5, 27.5, 23.5, 19, 16.2, 14.2, 13]),
-  // 俯視半寬：兩輪之間的側箱 28.5（把底盤側框蓋住），前後輪上方 31，殼尾收成 14 的鈍尾（把尾端齒輪箱蓋住），飛鏢尾從殼尾上緣伸出，車頭 5.5
-  hw: monoCurve(XS_HW, [14, 17, 21, 25, 28.5, 31, 30, 29, 28.5, 28.5, 28.5, 29.5, 31, 31, 29, 24.5, 20, 13.5, 8, 5.5]),
+  // 俯視半寬：兩輪之間的側箱 28.5（把底盤側框蓋住），前後輪上方 31，殼尾收成 14 的鈍尾（把尾端齒輪箱蓋住），飛鏢尾從殼尾上緣伸出；中央鼻在兩支叉刃之間收窄到 9.5（x 63）
+  hw: monoCurve(XS_HW, [14, 17, 21, 25, 28.5, 31, 30, 29, 28.5, 28.5, 28.5, 29.5, 31, 31, 29, 24.5, 16, 9.5, 6, 4.5]),
   // 側裙下緣：兩輪之間壓到 11.5，把底盤側框封起來；殼尾下緣 15.5，尾端封住
   yLow: monoCurve(XS, [15.5, 14, 13, 12.5, 12, 11.5, 11.5, 11.5, 11.5, 11.5, 11.5, 12, 12.5, 13, 13, 13, 13, 13]),
 };
@@ -117,12 +117,12 @@ const canopyHalfW = (x) => {
  * @type {number[][]} (x, y) 折點，由前往後
  */
 const BOLT_LINE = [
-  [73, 15],
-  [26, 26],
-  [19, 21],
-  [-27, 29.5],
-  [-34, 24.5],
-  [-71, 30.5],
+  [66, 14],
+  [30, 27.5],
+  [21, 18.5],
+  [-24, 29.5],
+  [-33, 20.5],
+  [-63, 31],
 ];
 
 /** @type {(x: number) => number} 分色線高度（折線依 x 內插；折回段用較陡的那段） */
@@ -166,24 +166,39 @@ const HOOD_BOLT = [
 ];
 
 /** @type {number} 飛鏢尾末端十字小鰭水平片半翼展 */
-const CROSS_Z = 15;
+const CROSS_Z = 17;
 
-/** @type {{ x0: number, x1: number, y: number, r: number }} 飛鏢尾（實體長錐）：x0 錐底（埋在後中脊裡）、x1 錐尖、軸心高 y、錐底半徑 r；殼尾 −62 之後伸出 13 mm */
-const TAIL_CONE = { x0: -44, x1: -75.2, y: 29.5, r: 9 };
+/** @type {{ x0: number, x1: number, y: number, r: number }} 飛鏢尾（薄殼長錐）：x0 錐底（埋在後中脊裡）、x1 錐尖、軸心高 y、錐底半徑 r；殼尾 −62 之後伸出 14.5 mm */
+const TAIL_CONE = { x0: -44, x1: -76.5, y: 30, r: 11 };
 
-/** @type {number} 水平叉刃的底面高度 */
+/** @type {number} 叉刃平板的底面高度 */
 const PRONG_Y = 18.5;
 
-/** @type {number[][]} 水平叉刃（+z 側）俯視外形 (x, z)：從前擋泥板前緣（前輪前方）伸出，外緣、內緣各折一次，尖端 (77.5, 24.5)；兩刃之間是中央鼻 */
+/** @type {number} 叉刃平板與立刃的厚度 */
+const PRONG_T = 3.2;
+
+/** @type {number[][]} 叉刃平板（+z 側）俯視外形 (x, z)：前輪前方往前伸、在中央鼻外側越過鼻端，尖端 (77.5, 17) */
 const PRONG = [
-  [56, 11],
-  [56, 30],
-  [59.5, 37.5],
-  [62.5, 31],
-  [77.5, 24.5],
-  [67, 20],
-  [68.5, 15.5],
-  [59.5, 11],
+  [50, 10],
+  [50, 20.5],
+  [56, 21.5],
+  [64, 22.5],
+  [77.2, 17],
+  [66, 10.5],
+  [57, 9],
+];
+
+/** @type {number} 立刃中心 |z| */
+const PRONG_KEEL_Z = 15.5;
+
+/** @type {number[][]} 立刃側視外形 (x, y)：從引擎蓋上長出的刃脊，往前降到叉刃尖端，讓叉刃在側視也看得到厚度 */
+const PRONG_KEEL = [
+  [42, 27],
+  [44, 31.5],
+  [58, 28.5],
+  [77.2, 20.5],
+  [77.2, 18.5],
+  [56, 18.5],
 ];
 
 /** @type {() => Record<string, THREE.Material>} */
@@ -218,7 +233,7 @@ export const zeusThunderboltBody = makePolyBody({
   form: 'thunder-fork',
   roof: 'canopy',
   wing: 'oakleaf-cross',
-  theme: '雷霆杖與神殿柱：寶藍細長低楔車頭前端分岔成兩支往前伸的亮黃水平叉刃，車身肩線與引擎蓋外緣切出兩道稜線，側面寶藍／亮黃之間一道白邊鋸齒閃電折線，引擎蓋一道亮黃閃電；座艙後的中脊刻著柱身溝槽，車尾伸出一支亮黃長飛鏢尾，末端是寶藍十字小鰭（雷霆杖柄頭）',
+  theme: '雷霆杖與神殿柱：寶藍細長低楔車頭前端分岔成兩支厚 3.2、左右分開的亮黃叉刃（平板＋從引擎蓋長出的立刃，尖端越過鼻端），車身肩線與引擎蓋外緣切出兩道稜線，側面寶藍／亮黃之間一道白邊鋸齒閃電折線，引擎蓋一道亮黃閃電；座艙後的中脊刻著柱身溝槽，車尾伸出一支亮黃長飛鏢尾，末端是寶藍十字小鰭（雷霆杖柄頭）',
   material: 'ABS',
   density_g_cm3: 1.05,
   wallThickness_mm: 0.8,
@@ -260,42 +275,44 @@ export const zeusThunderboltBody = makePolyBody({
     parts.push({ geometry: mergeGeos(ARCHES.map((a) => buildProfileLiner(a, 22.9, profile))), mat: 'liner', shell: true, name: 'arch-liners' });
     parts.push({ geometry: mergeGeos(ARCHES.map((a) => buildArchWell(a, 22.9, 12.3, 17.8, chassisBlockedNearArch))), mat: 'liner', shell: true, name: 'arch-wells' });
 
-    // ── 水平叉刃（實體，亮黃）：兩支鋸齒形平板從前擋泥板前緣往前伸，尖端越過中央鼻端，俯視是一道叉口 ──
-    parts.push({ geometry: mergeGeos([1, -1].map((sg) => flatPlate(PRONG.map(([x, z]) => [x, sg * z]), PRONG_Y, 2))), mat: 'yellow', solid: true, outline: true, name: 'thunderbolt-prongs' });
+    // ── 兩支叉刃（實體，亮黃）：厚 3.2 的平板＋從引擎蓋長出的立刃（斷面倒 T），左右分開、尖端越過中央鼻端 13.5 mm ──
+    const plates = [1, -1].map((sg) => flatPlate(PRONG.map(([x, z]) => [x, sg * z]), PRONG_Y, PRONG_T));
+    const keels = [1, -1].map((sg) => finPlate(PRONG_KEEL, sg * PRONG_KEEL_Z, PRONG_T));
+    parts.push({ geometry: mergeGeos([...plates, ...keels]), mat: 'yellow', solid: true, outline: true, name: 'thunderbolt-prongs' });
 
-    // ── 車尾：長飛鏢尾（亮黃，錐底埋在後中脊、殼尾之後伸出 13 mm）＋末端寶藍十字小鰭（雷霆杖柄頭） ──
+    // ── 車尾：長飛鏢尾（亮黃薄殼錐，錐底埋在後中脊、殼尾之後伸出 14.5 mm）＋末端寶藍十字小鰭（雷霆杖柄頭） ──
     {
       const len = TAIL_CONE.x0 - TAIL_CONE.x1;
-      const cone = new THREE.CylinderGeometry(0.3, TAIL_CONE.r, len, 16, 1);
+      const cone = new THREE.CylinderGeometry(0.3, TAIL_CONE.r, len, 20, 1, true);
       // 圓柱軸 +y 轉到 −x（錐尖朝後）
       cone.rotateZ(Math.PI / 2);
       cone.translate((TAIL_CONE.x0 + TAIL_CONE.x1) / 2, TAIL_CONE.y, 0);
-      parts.push({ geometry: cone, mat: 'yellow', solid: true, outline: true, name: 'dart-tail' });
-      // 十字小鰭：殼尾後方的飛鏢尾上，錐尖再往後伸出 6.7；直立片上下各伸出（上 40、下 21.5），水平片翼展 ±CROSS_Z，前緣都往後掠
+      parts.push({ geometry: cone, mat: 'yellow', shell: true, outline: true, name: 'dart-tail' });
+      // 十字小鰭：殼尾後方的飛鏢尾上，錐尖再往後伸出 5；直立片上下各伸出（上 42、下 20.5），水平片翼展 ±CROSS_Z，前緣都往後掠
       const fin = [
-        [-61.5, TAIL_CONE.y],
-        [-66, 40],
-        [-68.5, 40],
-        [-68.5, 21.5],
-        [-66, 21.5],
+        [-63.5, TAIL_CONE.y],
+        [-68.5, 42],
+        [-71.5, 42],
+        [-71.5, 20.5],
+        [-68.5, 20.5],
       ];
       parts.push({ geometry: finPlate(fin, 0, 1.4), mat: 'blue', solid: true, outline: true, name: 'cross-fin-vertical' });
       const wing = [
-        [-61.5, -1],
-        [-66, -CROSS_Z],
+        [-63.5, -1],
         [-68.5, -CROSS_Z],
+        [-71.5, -CROSS_Z],
+        [-71.5, CROSS_Z],
         [-68.5, CROSS_Z],
-        [-66, CROSS_Z],
-        [-61.5, 1],
+        [-63.5, 1],
       ];
       parts.push({ geometry: flatPlate(wing, TAIL_CONE.y - 0.6, 1.2), mat: 'blue', solid: true, outline: true, name: 'cross-fin-horizontal' });
     }
 
     // ---- 貼紙 ----
-    // 鋸齒閃電折線的白色邊線（線寬 1.2）
+    // 鋸齒閃電折線的白色邊線（線寬 2.2，從鼻端貫穿到殼尾）
     for (const side of [-1, 1]) {
       parts.push({
-        geometry: kit.decal(sideDecal((u, v) => polylineDist(BOLT_LINE, side * u, v) - 0.6, { x0: 0, y0: 0, zMin: 8, side })),
+        geometry: kit.decal(sideDecal((u, v) => polylineDist(BOLT_LINE, side * u, v) - 1.1, { x0: 0, y0: 0, zMin: 8, side })),
         mat: 'dWhite',
         name: `decal-bolt-edge-${side}`,
       });
