@@ -1,5 +1,5 @@
 // 車殼快速自檢：質量、外框、間隙、規則檢查（26 / 31 mm 輪）、和其他所有車殼的輪廓 IoU、致敬款（phase 4）的型式差異
-// 用法：npx vite-node scripts/body-check.mjs <body-id>[,<body-id>...]
+// 用法：pnpm dlx vite-node scripts/body-check.mjs <body-id>[,<body-id>...]
 import { listBodies, getBody, bodyMassProps } from '../src/bodies/index.js';
 import { bodyIoU } from '../src/bodies/silhouette.js';
 import { assemble, loadConfig } from '../src/assembly.js';
@@ -10,7 +10,7 @@ const IOU_MAX = 0.85;
 /** @type {string[]} */
 const ids = (process.argv[2] ?? '').split(',').filter(Boolean);
 if (ids.length === 0) {
-  console.log('用法：npx vite-node scripts/body-check.mjs <body-id>[,<body-id>...]');
+  console.log('用法：pnpm dlx vite-node scripts/body-check.mjs <body-id>[,<body-id>...]');
   process.exit(1);
 }
 

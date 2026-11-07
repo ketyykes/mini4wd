@@ -25,11 +25,11 @@
 
 ## 快速開始
 
-需要 Node.js 22.12 以上（vitest 的要求）。跑測試還需要 Python 3。
+需要 Node.js 22.12 以上（vitest 的要求）和 pnpm（版本見 `package.json` 的 `packageManager`；可用 `corepack enable` 啟用）。跑測試還需要 Python 3。
 
 ```bash
-npm install
-npm run dev
+pnpm install
+pnpm run dev
 ```
 
 瀏覽器會自動開啟 `http://localhost:47321/web/index.html`。這個 port 是固定的，被占用時會直接報錯，不會改用其他 port。
@@ -54,13 +54,13 @@ npm run dev
 
 | 指令 | 說明 |
 | --- | --- |
-| `npm run dev` | 啟動開發伺服器 |
-| `npm test` | 跑全部 vitest 測試（`tests/`），包含物理、規則與瀏覽器測試 |
-| `npm run score` | 跑 P01–P20 共 20 項驗證並計分 |
-| `npm run render` | 用無頭 Chromium 為每款車殼截圖，輸出到 `renders/` |
+| `pnpm run dev` | 啟動開發伺服器 |
+| `pnpm test` | 跑全部 vitest 測試（`tests/`），包含物理、規則與瀏覽器測試 |
+| `pnpm run score` | 跑 P01–P20 共 20 項驗證並計分 |
+| `pnpm run render` | 用無頭 Chromium 為每款車殼截圖，輸出到 `renders/` |
 | `node scripts/export-glb.mjs [<車殼 id>] [--config <名稱>]` | 匯出 GLB 到 `exports/`，給 Blender 展示圖使用（車殼 id 用 `none` 只匯出底盤與零件） |
 
-`npm test` 和 `npm run score` 很吃 CPU，會透過 `scripts/heavy.py` 取得檔案鎖，同一時間只跑一個。
+`pnpm test` 和 `pnpm run score` 很吃 CPU，會透過 `scripts/heavy.py` 取得檔案鎖，同一時間只跑一個。
 
 ## 專案結構
 

@@ -1,5 +1,5 @@
 // 效能預算與風阻：每款車殼的三角面數（殼面 / 實體 / 裝飾）、碰撞格建立耗時、整車正面面積（模擬器風阻用的就是它）、車殼頂高與頂高 / 長度
-// 用法：npx vite-node scripts/body-tris.mjs [body-id,...]   （不帶參數 = 全部車殼；最後印出中位數與預算）
+// 用法：pnpm dlx vite-node scripts/body-tris.mjs [body-id,...]   （不帶參數 = 全部車殼；最後印出中位數與預算）
 import { listBodies, bodyMassProps } from '../src/bodies/index.js';
 import { bodyCollisionCells } from '../src/bodies/collision.js';
 import * as THREE from 'three';

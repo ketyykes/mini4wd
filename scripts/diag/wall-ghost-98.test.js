@@ -1,5 +1,5 @@
 // 診斷：9-8 二段導輪前後組裝在換道橋下坡被牆面四邊形對角線內部邊的錯誤法向（落在牆面平面內）踢翻；印出速度突變步的接觸法向
-// npx vitest run --config scripts/diag/vitest.diag.config.js scripts/diag/wall-ghost-98.test.js --silent=false
+// pnpm exec vitest run --config scripts/diag/vitest.diag.config.js scripts/diag/wall-ghost-98.test.js --silent=false
 import { beforeAll, test } from 'vitest';
 import { assemble, loadConfig } from '../../src/assembly.js';
 import { buildCircuit } from '../../src/track.js';

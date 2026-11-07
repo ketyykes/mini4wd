@@ -1,5 +1,5 @@
 // B15 診斷：31 mm 輪的輪拱切除區內，各車殼被切到的是薄殼、實體件還是裝飾件
-// npx vitest run --config scripts/diag/vitest.diag.config.js scripts/diag/b15-arch-zone.test.js --silent=false
+// pnpm exec vitest run --config scripts/diag/vitest.diag.config.js scripts/diag/b15-arch-zone.test.js --silent=false
 import { test } from 'vitest';
 import * as THREE from 'three';
 import { listBodies, bodyMassProps } from '../../src/bodies/index.js';

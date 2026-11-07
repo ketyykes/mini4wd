@@ -3,6 +3,7 @@
   "version": "0.0.0",
   "private": true,
   "type": "module",
+  "packageManager": "pnpm@10.18.3",
   "scripts": {
     "dev": "vite --port 47321 --strictPort --open /web/index.html",
     "test": "python3 scripts/heavy.py --label mini4wd-vitest -- node node_modules/vitest/vitest.mjs run",

@@ -1,5 +1,5 @@
 // 由零件目錄與車殼目錄產生 Markdown 表格（給 FINAL_REPORT / SPEC 對照用，數值直接取自程式資料）
-// 用法：npx vite-node scripts/parts-table.mjs
+// 用法：pnpm dlx vite-node scripts/parts-table.mjs
 import { allParts } from '../src/parts/index.js';
 import { listBodies, bodyMassProps } from '../src/bodies/index.js';
 import { assemble, loadConfig, listConfigs } from '../src/assembly.js';

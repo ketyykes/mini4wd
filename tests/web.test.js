@@ -94,7 +94,7 @@ beforeAll(async () => {
   browser = await chromium.launch({ args: browserArgs() });
   page = await browser.newPage({ viewport: { width: 1600, height: 900 } });
   page.on('pageerror', (e) => pageErrors.push(e.message));
-  // 首頁（npm run dev 開的 /web/index.html，沒有 ?view=）要直接看到換件頁
+  // 首頁（pnpm run dev 開的 /web/index.html，沒有 ?view=）要直接看到換件頁
   await page.goto(`${baseUrl}/web/index.html`);
   await page.waitForURL(/garage\.html/, { timeout: 30000 });
   await waitGarageReady(page);

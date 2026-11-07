@@ -1,5 +1,5 @@
 // B8 診斷：Rapier 0.21 凸多面體對刀口 / 球的接觸法向偏離斜面，旋轉方塊與解析值一致（AR 斜面架碰撞體因此用旋轉方塊）。
-// npx vitest run --config scripts/diag/vitest.diag.config.js scripts/diag/b8-hull.test.js --silent=false
+// pnpm exec vitest run --config scripts/diag/vitest.diag.config.js scripts/diag/b8-hull.test.js --silent=false
 import { test } from 'vitest';
 import RAPIER from '@dimforge/rapier3d-compat';
 test('hull', async () => {

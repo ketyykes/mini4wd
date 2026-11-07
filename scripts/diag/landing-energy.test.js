@@ -1,5 +1,5 @@
 // 落地瞬間機械能回升診斷：步長縮放、各能量項拆解。
-// npx vitest run --config scripts/diag/vitest.diag.config.js scripts/diag/landing-energy.test.js --silent=false
+// pnpm exec vitest run --config scripts/diag/vitest.diag.config.js scripts/diag/landing-energy.test.js --silent=false
 import { beforeAll, test } from 'vitest';
 import { spec } from '../../src/spec.js';
 import * as sim from '../../src/sim.js';

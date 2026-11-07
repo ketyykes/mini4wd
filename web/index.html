@@ -10,7 +10,7 @@
   </head>
   <body>
     <script type="module">
-      // 有 ?view= 時是截圖頁（scripts/render.mjs）；沒有時（例如 npm run dev 開首頁）導向換件車庫，保留其他查詢參數
+      // 有 ?view= 時是截圖頁（scripts/render.mjs）；沒有時（例如 pnpm run dev 開首頁）導向換件車庫，保留其他查詢參數
       if (new URLSearchParams(location.search).has('view')) {
         import('./main.js');
       } else {

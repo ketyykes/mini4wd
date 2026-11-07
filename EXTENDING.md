@@ -80,5 +80,5 @@ slot 值的寫法：
 - 車殼慣性用 `bodyMassProps().inertia_gmm2` 的完整中心張量；組裝輸出 `inertiaTensor_kgm2`、`inertiaFrame` 及主慣性 `inertia_kgm2`。新的剛體必須把主軸方向一併交給 Rapier；轉動動能也要先轉入主軸。
 - `sweepZ` 表示滑動的完整掃掠，不能只檢查兩個端點；同一滑板上的零件需保留相同運動，不能獨立掃掠後互相比較。
 - 滑動板的彈簧衝量由 `applySliderSpringImpulses` 以整個有關節系統的 `M⁻¹Q` 施加，不能只對車身和一塊板加原始剛體衝量，否則會暫時破壞共同角速度。`sliderLimits.test.js` 檢查這項關係，以及未碰牆時的預測式止擋、線動量／動能與不做位置投影。
-- 重運算用 `python3 scripts/heavy.py --label <說明> -- <指令> [參數]`。`npm test`、`npm run render`、`npm run score` 與根目錄 `render/run.sh` 已接入。其他專案可使用相同腳本，並將 `MINI4WD_HEAVY_LOCK` 設為同一個絕對路徑。預設為系統暫存目錄的 `codex-heavy-compute.lock`；不要刪除這個鎖檔，核心鎖會隨持有程序結束釋放。
+- 重運算用 `python3 scripts/heavy.py --label <說明> -- <指令> [參數]`。`pnpm test`、`pnpm run render`、`pnpm run score` 與根目錄 `render/run.sh` 已接入。其他專案可使用相同腳本，並將 `MINI4WD_HEAVY_LOCK` 設為同一個絕對路徑。預設為系統暫存目錄的 `codex-heavy-compute.lock`；不要刪除這個鎖檔，核心鎖會隨持有程序結束釋放。
 - `python3 scripts/heavy_test.py` 檢查跨程序互斥、失效回收、wrapper 被殺而 child 仍活著、逾時及訊號轉送。只有使用相同協定的工作才會互斥。
