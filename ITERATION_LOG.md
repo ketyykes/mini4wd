@@ -82,6 +82,17 @@
   - 最終 25 款：舊版 8 款（trojan、serpent-longship、gullinbursti、tanngrisnir、gundestrup、mushussu、khepri、yaga）＋新版現有款 8 款（cerberus、minotaur、kitsune、kunpeng、quetzal、firebird 為 iter-139 版；heimdall、sleipnir 為 iter-138 版）＋新 9 位神（iter-139 版）。退回後 P20 通過。
 - 總分（iter-139 評審）50 + 7.07 × 5 = **85.35**。
 
+## 凍結後（06:16–07:30）：最終量測、展示、評審、計分
+- **空機量測**（06:17，`scripts/body-tris.mjs`，25 款神話）：正面面積平均 **2827.6 mm²**（第 0 輪現行值 2838.6 → −0.4%；第十二階段另一量法 2784.4 → +1.6%；上限 2924）；最多三角面 289,525（上限 754,824）；碰撞格每款平均 359 ms、最大 < 1000 ms（iter-138 量到的 1000+ 是 Blender 同時在跑的雜訊）；頂高最大 48.9 mm、頂高 / 長度 0.244–0.354；全長最大 153.9 mm；整車 124.7–132.9 g。
+- **IoU**（`shared/stage10/myth-iou.mjs`）：全部 44 款最大 0.842（aero-wing × mantis-scythe，非神話）＜ 0.85；神話組最大 0.839（serpent-longship × zeus 俯視），神話 300 對裡 ≥ 0.80 有 50 對 → GOAL「神話組 < 0.80」**沒達成**。
+- **31 mm 輪**：神話 21 / 25 款不切輪拱合法；第十二階段 16 款裡原本合法的 12 款都還合法（quetzal 新版從不合法變合法）。
+- **展示**：17 款（新版）64 samples 5 視角重出（06:17–07:10，每款約 3 分鐘）；退回舊版的 8 款沿用 `render/out/before-p13/` 的 64 samples 5 視角。`lineup_myth*.png`（含新的 `lineup_myth_roman.png`）、`before_after_myth_p13.png`、`fourview_vs_model_p13.png`（新工具 `shared/stage10/fourview_vs_model.sh`）。
+  - 小插曲：第一次產陣容圖在 zsh 下 `$G` 沒有拆成多個參數，lineup.sh 找不到圖而沒輸出；改用 `bash -c` 重跑。
+- **最終盲評**（07:1x，第五位新評審，`shared/reviews/final-p13/REVIEW.md`；只看陣容圖，甲＝最終 25 款、乙＝舊 16 款）：錨點 7.14；最終 7 / 7 / 7.5 / 7 / 7 / 7.5 / 7 = **7.14**；舊 7 / 7.5 / 7.5 / 6.5 / 7.5 / 7.5 / 7 = **7.21**。差 −0.07，GOAL「新陣容 ≥ 舊 + 0.5」**沒達成**；炫砲度 7（目標 8.5）、多樣性 7（目標 8）也沒達成。
+  - 評審在陣容圖上認為 firebird、kunpeng、kitsune、minotaur、cerberus、sleipnir 的舊版較好。**主 agent 不據此退回**：前四輪並排是四位不同評審，這 6 款裡 kunpeng 4 輪、cerberus／minotaur／kitsune／firebird 3 輪、sleipnir 2 輪判新版較好；且這位評審自己也指出舊版 cerberus、kitsune、minotaur 讀成獸頭／狐狸面具／牛頭，和使用者「以元素為主」的要求衝突。
+- **最終計分**（07:13–07:28，凍結版 `72ae19c`）：**20/20**（231 項全過）。P16_collision_patches 70.0 s（每款 1.59 s，基準 1.70，−6.6%）、P18_pairwise 275.2 s（每款 6.25 s，基準 7.69，−19%）、P20_body_variety 45.6 s（每款 1.04 s，基準 1.11，−6%）；總耗時分別比基準多 17%、2%、18%（車款 35 → 44），都沒有逾時。P17_phase7_laps 114.2 s、P08_mass 57.5 s。
+- 總分（最終評審）50 + 7.14 × 5 = **85.70**（基準盲評 7.36 → 89.65；不同評審的尺不能直接比）。
+
 # 第十階段：神話車殼依 LG1 家族從頭重塑（2026-11-05 12:0x 起，截止 15:30）
 
 ## 第 0 輪（12:00–12:15）
