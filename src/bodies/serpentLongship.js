@@ -117,8 +117,8 @@ const materials = () => ({
   red: namedMaterial('paint-sail-red', { color: 0xb3262a, roughness: 0.38, clearcoat: 0.6 }),
   cream: namedMaterial('paint-sail-cream', { color: 0xf0e6cf, roughness: 0.4, clearcoat: 0.6 }),
   lamp: decalMaterial('lamp-amber', { color: 0xffb640, emissive: 0xd88a1a, emissiveIntensity: 0.6, roughness: 0.1, clearcoat: 1.0 }),
-  glass: namedMaterial('pc-smoke-tint', { color: 0x1e1c1a, roughness: 0.05, specularIntensity: 0.6, transparent: true, opacity: 0.55, envMapIntensity: 0.5, depthWrite: false, side: THREE.DoubleSide }),
-  cockpit: namedMaterial('cockpit-dark', { color: 0x16120f, roughness: 0.7, side: THREE.DoubleSide }),
+  well: namedMaterial('cockpit-tub', { color: 0x2a1c12, roughness: 0.85, side: THREE.DoubleSide }),
+  wellWall: namedMaterial('cockpit-dark', { color: 0x3a2618, roughness: 0.8, side: THREE.DoubleSide }),
   inner: namedMaterial('shell-inner-dark', { color: 0x1b1511, roughness: 0.85, side: THREE.BackSide }),
   edge: namedMaterial('shell-edge-oak', { color: 0x8a5c30, roughness: 0.6, side: THREE.DoubleSide }),
   liner: namedMaterial('shell-wheelwell-tar', { color: 0x1e1712, roughness: 0.7, side: THREE.DoubleSide }),
@@ -150,6 +150,29 @@ const plankGeo = ([x0, x1, y], hw, t) => {
   );
 };
 
+/**
+ * 開放甲板艙（長船中段的划手艙）：甲板上的凹槽，俯視是前後尖的梭形，深 5 mm（槽底約 y 26，在齒輪蓋與馬達之上）
+ * @type {{ id: string, view: 'top', shape: 'poly', pts: number[][], depth: number }}
+ */
+const DECK_WELL = {
+  id: '開放甲板艙',
+  view: 'top',
+  shape: 'poly',
+  pts: [
+    [22, 0],
+    [18, 5.5],
+    [10, 9],
+    [-2, 10],
+    [-12, 9],
+    [-19, 5.5],
+    [-22, 0],
+  ],
+  depth: 5,
+};
+
+/** @type {number[]} 划手橫座（橫跨甲板艙的橡木條）的 x */
+const THWART_X = [12, 2, -8];
+
 export const serpentLongshipBody = makePolyBody({
   id: 'body-serpent-longship',
   name: '疊板長船',
@@ -158,9 +181,9 @@ export const serpentLongshipBody = makePolyBody({
   mythSeries: 'norse',
   mythTheme: 'serpent-longship',
   form: 'clinker-hull',
-  roof: 'canopy',
+  roof: 'open-cockpit',
   wing: 'strake-stack',
-  theme: '維京長船用元素表現：窄長船殼坐在底盤上、四輪在外側，船舷往船首船尾上揚（紅色船舷欄），方正鈍鼻與整條琥珀燈帶、側面三道往外疊的疊板（深、淺木色與焦油黑）（接縫沿船舷曲線前後上揚、接縫上一排鐵鉚釘）、後輪拱上斜切三道百葉，車尾三層疊片尾翼一片比一片高、一片比一片後（像疊板），最上一片是紅白直條帆；橡木色配焦油黑，紅白條紋',
+  theme: '維京長船用元素表現：窄長船殼坐在底盤上、四輪在外側，中段開放甲板艙（三條划手橫座），船舷往船首船尾上揚（紅色船舷欄），方正鈍鼻與整條琥珀燈帶、側面三道往外疊的疊板（深、淺木色與焦油黑）（接縫沿船舷曲線前後上揚、接縫上一排鐵鉚釘）、後輪拱上斜切三道百葉，車尾三層疊片尾翼一片比一片高、一片比一片後（像疊板），最上一片是紅白直條帆；橡木色配焦油黑，紅白條紋',
   material: 'ABS',
   density_g_cm3: 1.05,
   wallThickness_mm: 0.8,
@@ -169,20 +192,8 @@ export const serpentLongshipBody = makePolyBody({
   step: 0.7,
   hard: [1, 2, 4, 5, 6, 7, 8, 9],
   wheelArches: ARCHES,
-  canopy: {
-    section: 'ellipse',
-    // 置中的座艙罩 x 22 → −18
-    stations: (() => {
-      /** @type {{ x: number, yBase: number, yTop: number, halfW: number }[]} */
-      const out = [];
-      for (let i = 0; i <= 20; i++) {
-        const u = i / 20;
-        const x = lerp(22, -18, u);
-        out.push({ x, yBase: 0, yTop: 8.4 * Math.sin(Math.PI * u ** 0.85) ** 0.55, halfW: Math.max(1.5, 10.5 * Math.sin(Math.PI * u ** 0.9) ** 0.45) });
-      }
-      return out;
-    })(),
-  },
+  recesses: [DECK_WELL],
+  innerSkipRecess: true,
   sideZMin: 26,
   zones: () => {
     /** @type {(x: number, y: number, z: number) => number} 最下一道疊板（第二道接縫以下的外側面） */
@@ -198,7 +209,7 @@ export const serpentLongshipBody = makePolyBody({
       { mat: 'oak', keep: () => 1 },
     ];
   },
-  mats: { inner: 'inner', edge: 'edge', cap: 'tar', glass: 'glass', cockpit: 'cockpit', mount: 'mount' },
+  mats: { inner: 'inner', edge: 'edge', cap: 'tar', recess: 'well', recessWall: 'wellWall', mount: 'mount' },
   materials,
   extras: (kit) => {
     /** @type {BodyPart[]} */
@@ -288,17 +299,30 @@ export const serpentLongshipBody = makePolyBody({
       mat: 'dSlot',
       name: 'decal-haunch-louvers',
     });
-    // ── 甲板中央紅白條紋：鼻頂 → 座艙前、座艙後 → 車尾（紅 2 道夾白 1 道） ──
+    // ── 甲板中央紅白條紋：鼻頂 → 甲板艙前、甲板艙後 → 車尾（紅 2 道夾白 1 道） ──
     for (const [mat, z0, z1] of [['dRed', 1.6, 3.2], ['dCream', 0, 1.6]]) {
       parts.push({
         geometry: kit.decal((x, y, z) => {
           const az = Math.abs(z);
-          const inX = Math.max(Math.min(71 - x, x - 23.5), Math.min(-19.5 - x, x + 62));
+          const inX = Math.max(Math.min(71 - x, x - 23.5), Math.min(-23.5 - x, x + 62));
           return Math.min(inX, z1 - az, az - z0 + (z0 === 0 ? 1 : 0), y - P.yc(x) + 1.2);
         }, { offset: 0.1 }),
         mat,
         name: `decal-deck-stripe-${mat}`,
       });
+    }
+    // ── 划手橫座：三條橡木條橫跨甲板艙，頂面比甲板低 0.6 mm ──
+    {
+      /** @type {THREE.BufferGeometry[]} */
+      const bars = [];
+      for (const xt of THWART_X) {
+        const hw = 10.6;
+        const y = P.yc(xt) - 1.6;
+        const g = new THREE.BoxGeometry(1.8, 1.0, 2 * hw);
+        g.translate(xt, y, 0);
+        bars.push(g);
+      }
+      parts.push({ geometry: mergeGeos(bars), mat: 'oakSolid', solid: true, name: 'deck-thwarts' });
     }
     // ── 鈍鼻琥珀燈帶：鼻面上一整條（鼻面外 0.05 mm 的薄片） ──
     {
@@ -312,7 +336,7 @@ export const serpentLongshipBody = makePolyBody({
   src: {
     density_g_cm3: 'SPEC 1.14：ABS 約 1.05 g/cm³（推估）',
     wallThickness_mm: '推估：射出 ABS 殼 0.8 mm（同其他車殼）',
-    geometry: '本檔站位產生器（推估，比例取自四視圖 20）：殼 x −64 ~ 73、鈍鼻頂 25、座艙段甲板 31、座艙罩頂約 39；俯視是窄長船殼：四輪在外側，前後輪之間鼓成梭形最寬 37，輪子旁 21.2、寬鈍鼻 30、方尾 26.5；側面三道疊板，接縫階差 1.2 mm；船舷往船首、船尾上揚約 3.6 mm',
+    geometry: '本檔站位產生器（推估，比例取自四視圖 20）：殼 x −64 ~ 73、鈍鼻頂 25、座艙段甲板 31、中段開放甲板艙深 5 mm（三條划手橫座）；俯視是窄長船殼：四輪在外側，前後輪之間鼓成梭形最寬 37，輪子旁 21.2、寬鈍鼻 30、方尾 26.5；側面三道疊板，接縫階差 1.2 mm；船舷往船首、船尾上揚約 3.6 mm',
     wing: '三層疊片尾翼：三片 ABS 平板厚 1.0、弦 11、半寬 24，板底 35.2 / 37.7 / 40.2、每片往後退 4 mm；立柱厚 1.2（|z| 9）、端板厚 1.0（|z| 24.5）（推估）；條紋帆的紅白直條是後世重建船與圖像常見的樣式（推估，未對應特定出土文物）',
     rivets: '疊板接縫的鐵鉚釘：Gokstad 等疊板船以鐵鉚釘固定上下板（MYTH_RESEARCH N6：板與板重疊約 30 mm）；車上以半徑 0.4、間距 4 mm 的點列表現（推估）',
     wheelArches: '四輪在船殼外側（輪子旁船殼半寬 21.2＋疊板唇 0.6，在 26 / 31 mm 輪胎內側），R17.5 輪拱只是保留間隙定義，不切殼；可裝 26 / 31 mm 輪',
