@@ -322,16 +322,21 @@ export const sleipnirStrideBody = makePolyBody({
       fins.push(finPlate([[X_REAR + 0.6, 17.4], [X_REAR - 3.2, 17.4], [X_REAR - 3.2, 18.4], [X_REAR + 0.6, 18.4]], 0, 30));
       parts.push({ geometry: mergeGeos(fins), mat: 'fin', solid: true, name: 'rear-diffuser-fins' });
     }
-    // ── 鴨尾尾刃：車尾上緣往後伸出的金色薄刃（俯視微微內凹的弧，兩角往後尖） ──
+    // ── 鴨尾尾刃：車尾上緣往後伸出的金色薄刃，後緣 8 個鋸齒尖（找回舊版的金色齒列） ──
     {
       const y = P.yc(X_REAR) - 1.4;
       /** @type {number[][]} */
       const pts = [];
-      const n = 10;
-      for (let i = 0; i <= n; i++) {
-        const z = lerp(-36.5, 36.5, i / n);
-        pts.push([X_REAR - 1.6 - 1.6 * (z / 36.5) ** 2, z]);
+      /** @type {(z: number) => number} 齒根連線（俯視微微內凹的弧） */
+      const root = (z) => X_REAR - 1.2 - 1.2 * (z / 36.5) ** 2;
+      // 後緣 8 個金色鋸齒尖（又一個「八」）：齒根之間往後伸 3 mm 的尖
+      const teeth = 8;
+      for (let i = 0; i < teeth; i++) {
+        const za = lerp(-36.5, 36.5, i / teeth);
+        const zm = lerp(-36.5, 36.5, (i + 0.5) / teeth);
+        pts.push([root(za), za], [root(zm) - 3, zm]);
       }
+      pts.push([root(36.5), 36.5]);
       pts.push([X_REAR + 3.5, 36.5], [X_REAR + 3.5, -36.5]);
       parts.push({ geometry: flatPlate(pts, y, 1.2), mat: 'goldSolid', solid: true, outline: true, name: 'gilt-ducktail-blade' });
     }
@@ -342,7 +347,7 @@ export const sleipnirStrideBody = makePolyBody({
     wallThickness_mm: '推估：射出 ABS 殼 0.8 mm（同其他車殼）',
     geometry: '本檔站位產生器（推估，比例取自四視圖 30）：殼 x −67 ~ 77、盾形鼻尖頂 15；中央稜線 → 座艙段 32、座艙罩頂約 38.5；車尾鴨尾翹到 38.5；俯視盾形鼻、前輪拱半寬 41、往後收成修長車尾 22.5（後輪外露）、尾刃半寬 36.5',
     blades: '八道腿線：每側 8 道金色貼紙飾條（下寬 1.8、上寬 1.2、高 5.6–6.7 mm、後傾約 39°，貼在深色側板上），下端 x 22 ~ −5.2、前後兩組各 4 道（推估）',
-    ducktail: '鴨尾尾刃：ABS 平板厚 1.2、半寬 36.5，往後伸 1.6–3.2 mm（推估）',
+    ducktail: '鴨尾尾刃：ABS 平板厚 1.2、半寬 36.5，後緣 8 個往後伸 3 mm 的鋸齒尖（推估）',
     wheelArches: '前 R17.5（31 mm 輪胎半徑 15.5 + 2 mm）；後輪在修長車尾外側外露（車身半寬 22.5 < 輪胎內側 24.75），可裝 26 / 31 mm 輪',
     mounts: '對齊 chassis-midship 的車殼安裝點（SPEC 1.14）',
   },
