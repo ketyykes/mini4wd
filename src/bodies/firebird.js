@@ -1,7 +1,7 @@
 // 火鳥（body-firebird，神話組・斯拉夫）：俄羅斯民間故事的火鳥（Zhar-ptitsa）——夜裡飛進果園偷金蘋果，整座園子像點了許多火；
 // 掉下的一根尾羽亮得像紅太陽（Magnus 1916 英譯 Afanasyev〈伊凡王子、光明鳥與灰狼〉）。
 // 車上不做鳥：主題只用「火羽」「金蘋果」「Khokhloma 漆器」三種元素表現。
-// 造型（F3 半罩露輪）：箭簇形的楔形尖鼻，前輪罩後半切開露出前輪，外緣留一支往後指的翼尖；
+// 造型（F3 半罩露輪）：箭簇形的楔形尖鼻，前輪罩後半切開露出前輪，切口前緣往外側微微後掠；
 // 車尾是 7 片從同一個翼根放射、往後上方張開的扇形尾翼（每片由翼根到翼梢深紅 → 火焰橘 → 金）；
 // 座艙罩是琥珀金色的透明半球，罩在金色底盤與金框上（金蘋果）。
 // 塗裝：殼面由鼻到尾深紅 → 朱紅 → 火焰橘三段漸層（車尾整段是火焰橘亮漆，不用深色，免得看起來像破洞），分界是往後疊的圓弧羽緣＋金線；鼻尖到座艙一支黑漆草葉形長條，
@@ -14,7 +14,7 @@ import { makePolyBody } from './polyBody.js';
 import { namedMaterial, decalMaterial, mergeGeos, lerp } from './loft.js';
 import { monoCurve, buildStations } from './gazelleLeap.js';
 import { buildProfileLiner } from './khepriScarab.js';
-import { buildArchWell, chassisBlockedNearArch } from './kitsuneNinetail.js';
+import { chassisBlockedNearArch } from './kitsuneNinetail.js';
 
 /** @typedef {import('./loft.js').BodyPart} BodyPart */
 
@@ -73,8 +73,10 @@ const archRingDist = (x, y) => Math.min(...ARCHES.map((a) => Math.hypot(x - a.x,
 
 /** @type {number} 前輪露出切口只切 |z| ≥ 這個值（輪胎內側面 22.75 之外） */
 const CUT_Z = 23.6;
-/** @type {(az: number) => number} 前輪露出切口的前緣 x（俯視往外側後掠：內側 x 44 → 外緣約 x 36，留下一支往後指的翼尖） */
-const cutFrontX = (az) => 44 - 0.5 * (az - CUT_Z);
+/** @type {number} 切口前緣的後掠率（俯視每往外 1 mm 往後 0.3 mm）：內側 x 44 → 外緣約 x 39.3，擋泥板後緣停在輪軸正上方附近，不往後懸出薄翼尖 */
+const CUT_SWEEP = 0.3;
+/** @type {(az: number) => number} 前輪露出切口的前緣 x（俯視往外側後掠） */
+const cutFrontX = (az) => 44 - CUT_SWEEP * (az - CUT_Z);
 /**
  * F3 半罩露輪：前輪罩後半切開（x 22 → cutFrontX），從上方與側面都看得到前輪胎面；切口後緣和輪拱後緣（x 22.5）接在一起，
  * 前緣是一條俯視後掠的斜線。負值 = 開口內
@@ -82,7 +84,7 @@ const cutFrontX = (az) => 44 - 0.5 * (az - CUT_Z);
  */
 const frontCutSd = (x, y, z) => {
   const az = Math.abs(z);
-  return Math.max(CUT_Z - az, 22 - x, (x - cutFrontX(az)) / Math.hypot(1, 0.5));
+  return Math.max(CUT_Z - az, 22 - x, (x - cutFrontX(az)) / Math.hypot(1, CUT_SWEEP));
 };
 
 /**
@@ -145,6 +147,9 @@ const materials = () => ({
   edge: namedMaterial('shell-edge-crimson', { color: 0x8a1512, roughness: 0.5, side: THREE.DoubleSide }),
   mount: namedMaterial('abs-mount-black', { color: 0x222326, roughness: 0.6 }),
   liner: namedMaterial('shell-wheelwell-black', { color: 0x15110f, roughness: 0.7, side: THREE.DoubleSide }),
+  // 前輪室封板（切口後方隔板、前擋泥板下的內襯與斷面牆）：比殼內面亮一階的紅（輪室多半在陰影裡，太深會讀成黑洞），
+  // 從切口看進去是封起來的紅色輪室
+  well: namedMaterial('shell-wheelwell-crimson', { color: 0xb33a22, roughness: 0.55, side: THREE.DoubleSide }),
   dGold: decalMaterial('decal-gold-khokhloma', { color: 0xd6a640, metalness: 0.75, roughness: 0.3 }),
   // 漿果：朱紅（在黑漆上要比殼面的朱紅亮）
   dBerry: decalMaterial('decal-berry-cinnabar', { color: 0xe23a22, roughness: 0.35 }),
@@ -159,15 +164,16 @@ const materials = () => ({
 const FAN_ROOT_X = -27;
 /**
  * 扇形尾翼的 4 種翼片（中央 1 片＋左右各 3 片，共 7 片）：[偏航角（度，往外側）, 長, 最大半寬, 翼梢高 y, 滾轉角（度，外緣往下）]。
- * 全部從同一個翼根放射、往後上方張開；中央最長最高，越外側越短越低、外緣垂得越多（翼面朝外上方，側視與 3/4 視角都看得到翼面的漸層）。
+ * 全部從同一個翼根放射、往後上方張開；中央最長最高，越外側越短越低、外緣略垂（翼面朝外上方，側視與 3/4 視角都看得到翼面的漸層；
+ * 外緣垂太多時最外側兩片會貼到車尾頂面上，從後方看像一片翹起的薄邊）。
  * V7：翼頂比座艙頂高約 7.5
  * @type {number[][]}
  */
 const FAN_BLADES = [
   [0, 50, 4.6, 44.4, 0],
-  [11, 48, 4.4, 43.4, 10],
-  [22, 44, 4.1, 41.4, 20],
-  [33, 38, 3.6, 39, 30],
+  [11, 48, 4.4, 43.8, 6],
+  [22, 44, 4.1, 42.8, 12],
+  [33, 38, 3.6, 41.6, 18],
 ];
 /** @type {[number, number, string][]} 翼片分段上色：[t0, t1, 材質鍵]（翼根深紅 → 火焰橘 → 金翼梢） */
 const FAN_SEGMENTS = [
@@ -304,6 +310,180 @@ const wingTipBand = (x, y, z) => {
   return w - (3 + tooth) * Math.max(0, fade);
 };
 
+/**
+ * 平面條帶：沿參數 t（0 → 1，n 段）每個取樣點給一對 [下緣點, 上緣點]（null = 這裡沒有板），相鄰兩個有效取樣之間接一個四邊形
+ * @type {(n: number, at: (t: number) => number[][] | null) => THREE.BufferGeometry}
+ */
+const buildStrip = (n, at) => {
+  /** @type {number[]} */
+  const pos = [];
+  let prev = at(0);
+  for (let i = 1; i <= n; i++) {
+    const cur = at(i / n);
+    if (prev && cur) {
+      const [A, B] = prev;
+      const [D, C] = cur;
+      pos.push(...A, ...D, ...C, ...A, ...C, ...B);
+    }
+    prev = cur;
+  }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  g.computeVertexNormals();
+  return g;
+};
+
+/**
+ * 車尾端面（x −58 的平面端蓋）的羽鱗弧線：往下垂的半圓弧（像一層層往下疊的羽鱗），每排錯開半格；
+ * 只留整段落在端蓋輪廓內（往內縮 0.7 mm）、黑漆裙帶之上的弧段。r0 / r1 = 弧帶內外半徑偏移（相對 R），dx = 離端蓋往後的距離
+ * @type {(r0: number, r1: number, dx: number) => THREE.BufferGeometry}
+ */
+const buildTailCapScales = (r0, r1, dx) => {
+  const x = STATIONS[0].x - dx;
+  const half = profile(STATIONS[0].x);
+  /** @type {(z: number) => number} 端蓋輪廓在 |z| 處的上緣 y（半剖面折線內插） */
+  const capTop = (z) => {
+    const az = Math.abs(z);
+    for (let i = 0; i < half.length - 1; i++) {
+      const [z0, y0] = half[i];
+      const [z1, y1] = half[i + 1];
+      if (az >= z0 && az <= z1 && z1 > z0) {
+        return lerp(y0, y1, (az - z0) / (z1 - z0));
+      }
+    }
+    return -Infinity;
+  };
+  const yMin = yRedBand(x) + 0.7;
+  /** @type {(z: number, y: number) => boolean} */
+  const inside = (z, y) => y > yMin && y < capTop(z) - 0.7;
+  const R = 3;
+  const n = 12;
+  /** @type {number[]} */
+  const pos = [];
+  for (let row = 0; row < 3; row++) {
+    const yc = 21 + row * 1.6 * R;
+    const off = row % 2 === 0 ? 0 : R;
+    for (let k = -4; k <= 4; k++) {
+      const zc = k * 2 * R + off;
+      for (let i = 0; i < n; i++) {
+        const a0 = Math.PI + (Math.PI * i) / n;
+        const a1 = Math.PI + (Math.PI * (i + 1)) / n;
+        const pts = [
+          [zc + (R + r0) * Math.cos(a0), yc + (R + r0) * Math.sin(a0)],
+          [zc + (R + r1) * Math.cos(a0), yc + (R + r1) * Math.sin(a0)],
+          [zc + (R + r1) * Math.cos(a1), yc + (R + r1) * Math.sin(a1)],
+          [zc + (R + r0) * Math.cos(a1), yc + (R + r0) * Math.sin(a1)],
+        ];
+        if (!pts.every(([z, y]) => inside(z, y))) {
+          continue;
+        }
+        const [A, B, C, D] = pts.map(([z, y]) => [x, y, z]);
+        // 法線朝車尾（−x）
+        pos.push(...A, ...C, ...B, ...A, ...D, ...C);
+      }
+    }
+  }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  g.computeVertexNormals();
+  return g;
+};
+
+/** @type {number} 前輪室封板的 |z|（和胎內側環形擋板同一平面） */
+const WELL_Z = 22.9;
+/** @type {number} 前輪擋泥板內襯半徑（R17.5 輪拱 + 0.3） */
+const WELL_R = 17.8;
+/** @type {(x: number) => number} 前輪拱圓（半徑 r）在 x 處的上緣 y（超出圓的範圍回傳 −∞） */
+const archTopY = (x, r) => {
+  const d = r * r - (x - ARCHES[0].x) ** 2;
+  return d > 0 ? ARCHES[0].y + Math.sqrt(d) : -Infinity;
+};
+/** @type {(x: number) => number} 前輪罩殘留部分（切口前緣之前）在 x 處的最內側 |z|（x ≥ 44 時整段都在） */
+const fenderZIn = (x) => Math.max(WELL_Z, x >= 44 ? WELL_Z : CUT_Z + (44 - x) / CUT_SWEEP);
+
+/**
+ * 前輪室封板（右側；左側鏡射）：前輪罩後半切開後，從切口看進去原本是殼內的空腔（暗洞）與擋泥板下方的空腔（從後方看像一片翹起的薄邊）。
+ * 用 5 片板把輪室圍起來：
+ * (0) 胎內側環形擋板（|z| 22.9，輪拱圓心為圓心、半徑 12.3 → 17.8 的上半圈，避開底盤側框與安裝柱）：把輪室和殼內空腔隔開；
+ * (1) 胎內側隔板（|z| 22.9）：切口範圍內、R17.6 圓以外、底盤側框之上，到殼頂內面；
+ * (2) 切口後壁（x 21.7）：殼內面的斷面，從底盤側框或側裙下緣到殼頂內面；
+ * (3) 擋泥板內襯：R17.8 圓柱面，從切口前緣往前到擋泥板收窄處；
+ * (4) 擋泥板斷面牆：沿切口前緣，從內襯到殼頂內面，讓擋泥板後緣看起來是實心的端面
+ * @type {(topY: (x: number, z: number) => number) => THREE.BufferGeometry}
+ */
+const buildFrontWell = (topY) => {
+  /** @type {(x: number, y: number, z: number) => number[]} */
+  const v = (x, y, z) => [x, y, z];
+  const geos = [];
+  // (0) 胎內側環形擋板（徑向 2 段）
+  for (const [r0, r1] of [
+    [12.3, 15],
+    [15, 17.8],
+  ]) {
+    geos.push(
+      buildStrip(30, (t) => {
+        const a = lerp(0.1, Math.PI - 0.1, t);
+        const p0 = [ARCHES[0].x + r0 * Math.cos(a), ARCHES[0].y + r0 * Math.sin(a)];
+        const p1 = [ARCHES[0].x + r1 * Math.cos(a), ARCHES[0].y + r1 * Math.sin(a)];
+        if (chassisBlockedNearArch(p0[0], p0[1]) || chassisBlockedNearArch(p1[0], p1[1])) {
+          return null;
+        }
+        return [v(p0[0], p0[1], WELL_Z), v(p1[0], p1[1], WELL_Z)];
+      }),
+    );
+  }
+  // (1) 胎內側隔板
+  geos.push(
+    buildStrip(24, (t) => {
+      const x = lerp(21.6, 44.5, t);
+      const yb = Math.max(x < 26.8 ? 22.4 : -Infinity, archTopY(x, 17.6), 13);
+      const yt = topY(x, WELL_Z) - 0.9;
+      return yt > yb + 0.1 ? [v(x, yb, WELL_Z), v(x, yt, WELL_Z)] : null;
+    }),
+  );
+  // (2) 切口後壁：底盤側框（|z| ≤ 26.5）之上，外側一路到側裙下緣
+  const XB = 21.7;
+  const zMax = P.hw(XB) - 0.4;
+  for (const [z0, z1, yb] of [
+    [WELL_Z, 26.5, 22.4],
+    [26.5, zMax, P.yLow(XB) + 0.4],
+  ]) {
+    geos.push(
+      buildStrip(5, (t) => {
+        const z = lerp(z0, z1, t);
+        const yt = topY(XB, z) - 0.9;
+        return yt > yb + 0.1 ? [v(XB, yb, z), v(XB, yt, z)] : null;
+      }),
+    );
+  }
+  // (3) 擋泥板內襯：R17.8 圓柱面，角度從切口外緣（x 39.2）往前到 x 56
+  geos.push(
+    buildStrip(20, (t) => {
+      const a = lerp(Math.acos(-0.8 / WELL_R), Math.acos(16 / WELL_R), t);
+      const x = ARCHES[0].x + WELL_R * Math.cos(a);
+      const y = ARCHES[0].y + WELL_R * Math.sin(a);
+      const z0 = fenderZIn(x);
+      const z1 = P.hw(x) - 0.4;
+      return z1 > z0 + 0.1 ? [v(x, y, z0), v(x, y, z1)] : null;
+    }),
+  );
+  // (4) 擋泥板斷面牆：沿切口前緣（往外側後掠的斜線，往殼內退 0.25）
+  const zEnd = P.hw(cutFrontX(39)) - 0.4;
+  geos.push(
+    buildStrip(8, (t) => {
+      const z = lerp(CUT_Z, zEnd, t);
+      const x = cutFrontX(z) + 0.25;
+      const yb = archTopY(x, WELL_R) - 0.1;
+      const yt = topY(x, z) - 0.3;
+      return yt > yb + 0.1 ? [v(x, yb, z), v(x, yt, z)] : null;
+    }),
+  );
+  const right = mergeGeos(geos);
+  const left = right.clone();
+  left.scale(1, 1, -1);
+  return mergeGeos([right, left]);
+};
+
 export const firebirdBody = makePolyBody({
   id: 'body-firebird',
   name: '火鳥火羽',
@@ -348,10 +528,10 @@ export const firebirdBody = makePolyBody({
       shell: true,
       name: 'arch-liner-rear',
     });
-    // 前輪胎內側的環形擋板（|z| 22.9）：擋住從切口看進殼內空腔的視線
+    // 前輪胎內側的環形擋板（|z| 22.9）＋前輪室封板（隔板、切口後壁、擋泥板內襯與斷面牆）：從切口看進去是封起來的深紅輪室
     parts.push({
-      geometry: buildArchWell(ARCHES[0], 22.9, 12.3, 17.8, chassisBlockedNearArch),
-      mat: 'liner',
+      geometry: buildFrontWell((x, z) => kit.surf.topY(x, z)),
+      mat: 'well',
       shell: true,
       name: 'arch-well-front',
     });
@@ -384,6 +564,19 @@ export const firebirdBody = makePolyBody({
       }),
       mat: 'dGold',
       name: 'decal-canopy-frame',
+    });
+    // 前擋泥板後緣金邊：沿切口前緣的頂面一道 0.8 mm 金線，讓擋泥板後緣讀成收邊的端面
+    parts.push({
+      geometry: kit.decal((x, y, z) => {
+        const az = Math.abs(z);
+        if (az < CUT_Z || y < P.yS(x) - 0.05) {
+          return -1;
+        }
+        const d = x - cutFrontX(az);
+        return Math.min(d - 0.05, 0.85 - d);
+      }, { offset: 0.1 }),
+      mat: 'dGold',
+      name: 'decal-fender-trailing-edge',
     });
     // 肩線金線（沿稜線內側）
     parts.push({
@@ -432,49 +625,79 @@ export const firebirdBody = makePolyBody({
       mat: 'dBerry',
       name: 'decal-blade-berries',
     });
-    // 頂面羽鱗：往後疊的扇形羽片（金色弧線 0.6 mm），從前輪上方一路鋪到車尾，座艙兩側到肩線；避開黑漆長條與背脊線
+    // 頂面羽鱗：往後疊的扇形羽片（金色弧線 0.7 mm，外圈一道 0.35 mm 黑漆描邊，讓金紋在橘底上跳出來），
+    // 從前輪上方一路鋪到車尾，座艙兩側到肩線；避開黑漆長條與背脊線（扇尾翼根之後沒有背脊線，鋪到中線旁）
+    /** @type {(x: number, y: number, z: number) => number} 頂面羽鱗弧的半徑差（NaN = 這裡不鋪） */
+    const wingScaleDr = (x, y, z) => {
+      const az = Math.abs(z);
+      const zIn = x < FAN_ROOT_X ? 1.2 : canopyHalfW(x) + 3.2;
+      if (x < -57 || x > 47 || az < zIn || az > P.hw(x) - 2.6 || wingTipBand(x, y, z) < 0.6 || bladeKeep(x, y, z) > -1) {
+        return NaN;
+      }
+      const R = 3.4;
+      const row = Math.round((az - 6) / (1.6 * R));
+      const zc = 6 + row * 1.6 * R;
+      const off = row % 2 === 0 ? 0 : R;
+      const xc = Math.round((x - off) / (2 * R)) * 2 * R + off;
+      // 羽片弧：圓心在 (xc + R·0.6, zc)，只取後半圈（x < 圓心）
+      const cx = xc + 0.6 * R;
+      if (x > cx) {
+        return NaN;
+      }
+      return Math.hypot(x - cx, az - zc) - R;
+    };
     parts.push({
       geometry: kit.decal((x, y, z) => {
-        const az = Math.abs(z);
-        if (x < -57 || x > 47 || az < canopyHalfW(x) + 3.2 || az > P.hw(x) - 2.6 || wingTipBand(x, y, z) < 0.6 || bladeKeep(x, y, z) > -1) {
-          return -1;
-        }
-        const R = 3.4;
-        const row = Math.round((az - 6) / (1.6 * R));
-        const zc = 6 + row * 1.6 * R;
-        const off = row % 2 === 0 ? 0 : R;
-        const xc = Math.round((x - off) / (2 * R)) * 2 * R + off;
-        // 羽片弧：圓心在 (xc + R·0.6, zc)，只取後半圈（x < 圓心）
-        const cx = xc + 0.6 * R;
-        const r = Math.hypot(x - cx, az - zc);
-        if (x > cx) {
-          return -1;
-        }
-        return 0.3 - Math.abs(r - R);
-      }, { offset: 0.1 }),
+        const dr = wingScaleDr(x, y, z);
+        return Number.isNaN(dr) ? -1 : 0.35 - Math.abs(dr);
+      }, { offset: 0.12 }),
       mat: 'dGold',
       name: 'decal-wing-scales',
     });
-    // 車尾側壁羽鱗：後輪後方收窄的車尾側壁（輪胎內側）鋪同一種扇形羽片弧線（側視 (x, y) 格），車尾不留整片素面
     parts.push({
       geometry: kit.decal((x, y, z) => {
-        const az = Math.abs(z);
-        if (x > -38 || az < P.hw(x) - 0.2 || y > P.yS(x) - 0.8 || y < yRedBand(x) + 0.6 || (az > 22.8 && archRingDist(x, y) < 1.2)) {
-          return -1;
-        }
-        const R = 3;
-        const row = Math.round((y - 13) / (1.6 * R));
-        const yc = 13 + row * 1.6 * R;
-        const off = row % 2 === 0 ? 0 : R;
-        const cx = Math.round((x - off) / (2 * R)) * 2 * R + off + 0.6 * R;
-        if (x > cx) {
-          return -1;
-        }
-        return 0.3 - Math.abs(Math.hypot(x - cx, y - yc) - R);
+        const dr = wingScaleDr(x, y, z);
+        return Number.isNaN(dr) ? -1 : 0.2 - Math.abs(dr - 0.55);
       }, { offset: 0.1 }),
+      mat: 'dBlack',
+      name: 'decal-wing-scales-ink',
+    });
+    // 車尾側壁羽鱗：後輪後方收窄的車尾側壁（輪胎內側）鋪同一種扇形羽片弧線（側視 (x, y) 格）＋黑漆描邊，車尾不留整片素面
+    /** @type {(x: number, y: number, z: number) => number} 側壁羽鱗弧的半徑差（NaN = 這裡不鋪） */
+    const tailScaleDr = (x, y, z) => {
+      const az = Math.abs(z);
+      if (x > -38 || az < P.hw(x) - 0.2 || y > P.yS(x) - 0.8 || y < yRedBand(x) + 0.6 || (az > 22.8 && archRingDist(x, y) < 1.2)) {
+        return NaN;
+      }
+      const R = 3;
+      const row = Math.round((y - 13) / (1.6 * R));
+      const yc = 13 + row * 1.6 * R;
+      const off = row % 2 === 0 ? 0 : R;
+      const cx = Math.round((x - off) / (2 * R)) * 2 * R + off + 0.6 * R;
+      if (x > cx) {
+        return NaN;
+      }
+      return Math.hypot(x - cx, y - yc) - R;
+    };
+    parts.push({
+      geometry: kit.decal((x, y, z) => {
+        const dr = tailScaleDr(x, y, z);
+        return Number.isNaN(dr) ? -1 : 0.35 - Math.abs(dr);
+      }, { offset: 0.12 }),
       mat: 'dGold',
       name: 'decal-tail-side-scales',
     });
+    parts.push({
+      geometry: kit.decal((x, y, z) => {
+        const dr = tailScaleDr(x, y, z);
+        return Number.isNaN(dr) ? -1 : 0.2 - Math.abs(dr - 0.55);
+      }, { offset: 0.1 }),
+      mat: 'dBlack',
+      name: 'decal-tail-side-scales-ink',
+    });
+    // 車尾端面羽鱗（正後方那一面）：往下垂的金色半圓弧＋黑漆描邊
+    parts.push({ geometry: buildTailCapScales(-0.35, 0.35, 0.12), mat: 'dGold', name: 'decal-tail-cap-scales' });
+    parts.push({ geometry: buildTailCapScales(0.35, 0.75, 0.1), mat: 'dBlack', name: 'decal-tail-cap-scales-ink' });
     // 側面飛羽：金橙羽面＋直的黑漆羽軸＋深紅斜向羽枝細紋；每片下緣 0.6 mm 黑影，讓上片疊在下片上
     /** @type {(x: number, y: number, z: number) => boolean} 側裙（肩線以下、輪拱外） */
     const onSkirt = (x, y, z) => Math.abs(z) > P.hw(x) - 0.2 && y < P.yS(x) - 0.6 && y > yRedBand(x) + 0.3 && archRingDist(x, y) > 1.2;
@@ -542,8 +765,8 @@ export const firebirdBody = makePolyBody({
     density_g_cm3: 'SPEC 1.14：ABS 約 1.05 g/cm³（推估）',
     wallThickness_mm: '推估：射出 ABS 殼 0.8 mm（同其他車殼）；座艙罩同厚度以殼面積計入質量',
     geometry: '本檔站位產生器 P（推估）：殼面 x −58 ~ 75（鼻尖），扇形尾翼翼梢約 x −75；殼頂 31.6–32.6、座艙罩頂 38、扇形尾翼頂約 45.5（V7：尾翼比座艙頂高 ≤ 10）；前輪上方半寬 39.2（側裙外張 1.0）',
-    wheelArches: '前後 R17.5（31 mm 輪胎半徑 15.5 + 2 mm），可裝 26 / 31 mm 輪；前輪罩後半切開露出輪胎（x 22 起，前緣俯視後掠：內側 x 44、外緣約 x 36，|z| ≥ 23.6）；後輪有輪拱內襯，前輪有胎內側環形擋板',
-    fan: '扇形尾翼：7 片 ABS 平板（厚 1.1 mm，推估），偏航 0° / ±11° / ±22° / ±33°、長 50 / 48 / 44 / 38 mm、最大半寬 4.6 → 3.6 mm、外緣下垂 0° / 10° / 20° / 30°，同一翼根（x −27 背脊）放射，翼梢高 44.4 → 39；每片分三段上色（深紅、火焰橘、金），上表面中線一條黑漆羽軸凸條（寬 0.9 → 0.3、高 0.15 mm）；翼根座為金色扁橢球；質量 = 封閉體積 × 1.05 g/cm³',
+    wheelArches: '前後 R17.5（31 mm 輪胎半徑 15.5 + 2 mm），可裝 26 / 31 mm 輪；前輪罩後半切開露出輪胎（x 22 起，前緣俯視後掠：內側 x 44、外緣約 x 39.3，|z| ≥ 23.6）；後輪有輪拱內襯；前輪室以深紅封板圍起（胎內側環形擋板與隔板、切口後壁、擋泥板內襯與斷面牆）',
+    fan: '扇形尾翼：7 片 ABS 平板（厚 1.1 mm，推估），偏航 0° / ±11° / ±22° / ±33°、長 50 / 48 / 44 / 38 mm、最大半寬 4.6 → 3.6 mm、外緣下垂 0° / 6° / 12° / 18°，同一翼根（x −27 背脊）放射，翼梢高 44.4 → 41.6；每片分三段上色（深紅、火焰橘、金），上表面中線一條黑漆羽軸凸條（寬 0.9 → 0.3、高 0.15 mm）；翼根座為金色扁橢球；質量 = 封閉體積 × 1.05 g/cm³',
     canopy: '座艙罩（金蘋果）：琥珀金透明半橢球殼 30 × 21 mm、罩下殼面貼金、高 8 mm，16 × 6 段，以殼面積 × 0.8 mm 計入質量（推估）',
     palette: 'Khokhloma 漆器的黑＋朱紅＋金與捲莖、漿果母題（研究來源見 DESIGN.md S3）；金蘋果與發亮的尾羽取自 Afanasyev 故事（S2）；色碼自訂（推估）',
     mounts: '對齊 chassis-midship 的車殼安裝點（SPEC 1.14）',
