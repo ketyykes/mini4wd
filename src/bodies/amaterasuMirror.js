@@ -87,7 +87,7 @@ const P = {
 };
 
 /** @type {number} 前後輪之間側裙下緣的半寬 */
-const SILL_W = 37;
+const SILL_W = 35;
 
 /**
  * 半剖面 7 點：中線 → 頂面 → 肩稜線（銳利）→ 微外張的側裙
@@ -100,7 +100,7 @@ const profile = (x) => {
   const h = P.hw(x);
   const d = t - s;
   const flare = smoothstep(1, 8, h);
-  // 前後輪之間的側裙往外張到 ±37、下半段是直立側牆，從上面和側面都看不到底盤側框
+  // 前後輪之間的側裙往外張到 ±35、下半段是直立側牆，從上面和側面都看不到底盤側框
   const sill = Math.max(h + 1.2 * flare, SILL_W * smoothstep(-24, -16, x) * smoothstep(24, 16, x));
   return [
     [0, t],
@@ -130,7 +130,7 @@ const CANOPY = { x0: 32, x1: -16, peakX: 10, rise: 10.5, halfW: 13.5 };
  * lobeA / lobeB = 橢圓盤沿 x / z 的半軸；lobeC = 橢圓盤中心的 |z|；pitch = 往後上仰角（度）
  * @type {{ x: number, y: number, mirrorR: number, lobeA: number, lobeB: number, lobeC: number, thick: number, pitch: number }}
  */
-const WING = { x: -55, y: 43.6, mirrorR: 12, lobeA: 11, lobeB: 14, lobeC: 12, thick: 0.9, pitch: 9 };
+const WING = { x: -55, y: 43.6, mirrorR: 12, lobeA: 11, lobeB: 19, lobeC: 18, thick: 0.8, pitch: 9 };
 
 /**
  * 兩片相連橢圓盤的外框（局部座標 u = 沿 x、w = 沿 z；俯視 8 字形）：右盤取 w ≥ 0 的弧、左盤鏡射，
@@ -278,7 +278,7 @@ export const amaterasuMirrorBody = makePolyBody({
     parts.push({ geometry: mergeGeos(ARCHES.map((a) => buildProfileLiner(a, 22.9, profile))), mat: 'liner', shell: true, name: 'arch-liners' });
     parts.push({ geometry: mergeGeos(ARCHES.map((a) => buildArchWell(a, 22.9, 12.3, 17.8, chassisBlockedNearArch))), mat: 'liner', shell: true, name: 'arch-wells' });
 
-    // 寬扁翼柱：側視是從後甲板往後上掠的板、後視是寬 7 mm 的扁柱，頂端托住 8 字盤
+    // 寬扁翼柱：側視是從後甲板往後上掠的板、後視是寬 6 mm 的扁柱，頂端托住 8 字盤
     const deckY = P.yTop(WING.x + 4) - 1.2;
     const pylon = finPlate(
       [
@@ -290,7 +290,7 @@ export const amaterasuMirrorBody = makePolyBody({
         [WING.x + 4, deckY],
       ],
       0,
-      7,
+      6,
     );
     parts.push({ geometry: pylon, mat: 'pylon', solid: true, outline: true, name: 'wing-pylon' });
     /** @type {(g: THREE.BufferGeometry) => THREE.BufferGeometry} 繞鏡心往後上仰（尾端比前端高，側視是一片後仰的翼） */
@@ -299,7 +299,7 @@ export const amaterasuMirrorBody = makePolyBody({
     const toWorld = (/** @type {number[][]} */ pts) => pts.map(([u, w]) => [WING.x + u, w]);
     const lobe = pitchUp(flatPlate(toWorld(figureEightOutline(WING.lobeA, WING.lobeB, WING.lobeC, 20, 0)), WING.y, WING.thick));
     parts.push({ geometry: lobe, mat: 'white', solid: true, outline: true, name: 'wing-figure-eight' });
-    const rim = pitchUp(flatPlate(toWorld(figureEightOutline(WING.lobeA, WING.lobeB, WING.lobeC, 20, 0.8)), WING.y - 0.4, 0.4));
+    const rim = pitchUp(flatPlate(toWorld(figureEightOutline(WING.lobeA, WING.lobeB, WING.lobeC, 20, 0.8)), WING.y - 0.3, 0.3));
     parts.push({ geometry: rim, mat: 'clawGold', solid: true, outline: true, name: 'wing-figure-eight-rim' });
     // 八咫鏡：大金色圓盤（16 段）蓋在兩盤相連的腰上＋鏡背金色凸環（24×6）＋中央鈕
     const disc = new THREE.CylinderGeometry(WING.mirrorR, WING.mirrorR, 1.0, 16);
@@ -348,9 +348,9 @@ export const amaterasuMirrorBody = makePolyBody({
   src: {
     density_g_cm3: 'SPEC 1.14：ABS 約 1.05 g/cm³（推估）',
     wallThickness_mm: '推估：射出 ABS 殼 0.8 mm（同其他車殼）；座艙罩同厚度以殼面積計入質量',
-    geometry: '本檔站位產生器 P（推估，造型照 shared/design/body-amaterasu-mirror/fourview.png 四視圖 22 的比例，尺寸照底盤）：殼長 144（車尾 −68 ~ 鼻尖 76）、外框長 144（8 字盤尾端在殼內）；後甲板 31.5、鼻尖 16、前擋泥板頂約 32、座艙頂約 41.5、翼面 43–47.4；後輪臀 ±38、細腰 ±26（側裙下緣 ±37）、前輪上方 ±35；前擋泥板眉線為前輪拱同心圓 R19.2',
+    geometry: '本檔站位產生器 P（推估，造型照 shared/design/body-amaterasu-mirror/fourview.png 四視圖 22 的比例，尺寸照底盤）：殼長 144（車尾 −68 ~ 鼻尖 76）、外框長 144（8 字盤尾端在殼內）；後甲板 31.5、鼻尖 16、前擋泥板頂約 32、座艙頂約 41.5、翼面 43–47.4；後輪臀 ±38、細腰 ±26（側裙下緣 ±35）、前輪上方 ±35；前擋泥板眉線為前輪拱同心圓 R19.2',
     wheelArches: '前後 R17.5（31 mm 輪胎半徑 15.5 + 2 mm），可裝 26 / 31 mm 輪',
-    wing: '尾翼（ABS 實心件，推估）：寬扁翼柱（後視寬 7、側視往後上掠）；8 字盤為兩個半軸 11 × 14 的橢圓、中心 |z| 12（全寬 ±26、厚 0.9）＋外大 0.8、厚 0.4 的金色下盤；八咫鏡圓盤 R12、厚 1.0（16 段）、鏡背凸環 R8.4（24×6）、中央鈕；翼面高 43.6、繞鏡心往後上仰 9°',
+    wing: '尾翼（ABS 實心件，推估）：寬扁翼柱（後視寬 6、側視往後上掠）；8 字盤為兩個半軸 11 × 19 的橢圓、中心 |z| 18（全寬 ±37，伸出車尾兩側、厚 0.8）＋外大 0.8、厚 0.3 的金色下盤；八咫鏡圓盤 R12、厚 1.0（16 段）、鏡背凸環 R8.4（24×6）、中央鈕；翼面高 43.6、繞鏡心往後上仰 9°',
     claws: '鼻頭爪片（ABS 實心四角錐，推估）：左右各 3 支，根部 x 57 / 60 / 63、高 25 / 20.5 / 16、長 12 / 11 / 10、根部寬 4.4、往外撇 6 / 4 / 2°',
     palette: '珍珠白主色＋金色鼻面板、鏡、爪片、8 字盤描邊與進氣口側壁＋漆黑底緣；不用朱紅（和九尾狐的白＋朱紅分開）；色碼參考 MYTH_RESEARCH 6-2（白 #F7F5F0、金 #C9A54A，推估），實際用 #F6F4EE、#D6B157、#C9A54A',
     mounts: '對齊 chassis-midship 的車殼安裝點（SPEC 1.14）',
