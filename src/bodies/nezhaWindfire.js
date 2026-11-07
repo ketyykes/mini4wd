@@ -9,7 +9,7 @@
 // 設計：shared/design/body-nezha-windfire/DESIGN.md（來源見該檔；MYTH_RESEARCH 中國節 7-3 的信仰注意事項）。剖面為本檔站位產生器（推估）。
 // 塗裝全為自創，不含任何廠商 / 作品名稱、商標、文字或人臉。
 import * as THREE from 'three';
-import { makePolyBody, flatPlate, finPlate } from './polyBody.js';
+import { makePolyBody } from './polyBody.js';
 import { namedMaterial, decalMaterial, mergeGeos, lerp, smoothstep } from './loft.js';
 import { monoCurve, buildStations } from './gazelleLeap.js';
 import { buildProfileLiner } from './khepriScarab.js';
@@ -38,9 +38,9 @@ const browY = (x) => {
 };
 
 /** @type {(x: number) => number} 肩稜線的基本高度：後輪臀 29.4，往前一路斜降到鼻尖 11.4（前輪上方另由眉線拱起） */
-const ySBase = monoCurve(XS, [28.4, 29, 29.4, 29.4, 29, 27.6, 26.4, 25.8, 24.6, 23.4, 22, 19.6, 17.2, 15.4, 13.4, 12.2, 11.4]);
+const ySBase = monoCurve(XS, [28.4, 29, 29.4, 29.4, 29, 27.6, 26.4, 25.8, 24.6, 23.4, 22, 19.6, 17.2, 15.4, 13.4, 12.4, 11.7]);
 /** @type {(x: number) => number} 中線殼頂的基本高度：後甲板 31，從座艙前一路直線斜降到矛尖鼻（鼻尖 11.8） */
-const yTopBase = monoCurve(XS, [30.4, 30.8, 31, 31, 30.8, 30.4, 30, 29, 27.4, 25.6, 23.4, 20.8, 18.4, 16.4, 14.2, 12.8, 11.8]);
+const yTopBase = monoCurve(XS, [30.4, 30.8, 31, 31, 30.8, 30.4, 30, 29, 27.4, 25.6, 23.4, 20.8, 18.4, 16.4, 14.4, 12.9, 11.9]);
 
 /** @type {(x: number) => number} 前輪拱圓柱（R17.5）在 x 處的頂高；圓柱外回傳 0 */
 const archTopY = (x) => {
@@ -77,14 +77,14 @@ const yTopMin = (x) => {
 /** @type {Record<string, (x: number) => number>} */
 const P = {
   // 俯視半寬（肩稜線）：寬方的車尾（後輪臀後方外擴到 ±44.5、車尾仍有 ±38，乾坤圈立在上面）、座艙兩側深收腰 ±25、
-  // 前輪上方 ±36（外擴的前輪拱）；前擋泥板在 x 54.2–55.6 收進輪拱切口邊界以內，之後是四視圖 29 的長尖鼻：俯視從前輪前方一路直線收成細長三角（x 58 ±15、x 64 ±9.6、x 69 ±6.2，鼻尖 ±0.4）
-  hw: monoCurve(XS_HW, [38, 43.5, 44.5, 43, 41.5, 33, 25, 25.4, 28.5, 32.5, 35.5, 36, 32.5, 29, 23.5, 20.2, 15, 12, 9.6, 6.2, 3.4, 0.4]),
+  // 前輪上方 ±36（外擴的前輪拱）；前擋泥板在 x 54.2–55.6 收進輪拱切口邊界以內，之後是四視圖 29 的長尖鼻：俯視從前輪前方一路直線收成細長三角（x 58 ±14.4、x 64 ±8.2、x 69 ±5，鼻尖 ±0.3；頂面、肩稜線、裙邊在鼻尖收成一點，是尖錐）
+  hw: monoCurve(XS_HW, [38, 43.5, 44.5, 43, 41.5, 33, 25, 25.4, 28.5, 32.5, 35.5, 36, 32.5, 29, 23.5, 20.2, 14.4, 11, 8.2, 5, 2.4, 0.3]),
   // 肩稜線高度：前輪上方沿眉線圓弧拱起（外擴輪拱）
   yS: (x) => smoothMax(ySBase(x), browY(x), 1.4),
   // 中線殼頂：前輪拱之間的引擎蓋比擋泥板低（最多低 3 mm，兩道輪拱夾著楔形引擎蓋）
   yTop: (x) => smoothMax(yTopBase(x), Math.max(yTopMin(x), smoothMax(ySBase(x), browY(x), 1.4) - 3), 0.8),
   // 側裙下緣：後軸之後往上收到 22（寬車尾的裙邊要高過後導輪頂 20.5）
-  yLow: monoCurve(XS, [22, 21.8, 14, 10.5, 10.5, 10.5, 10.5, 10.5, 10.5, 10.5, 10.5, 10.5, 11, 12, 12.4, 12.4, 12.4]),
+  yLow: monoCurve(XS, [22, 21.8, 14, 10.5, 10.5, 10.5, 10.5, 10.5, 10.5, 10.5, 10.5, 10.5, 11, 11.6, 11.6, 11.6, 11.4]),
 };
 
 /** @type {number} 前後輪之間側裙下緣的半寬 */
@@ -127,18 +127,18 @@ const ARCHES = [
 const CANOPY = { x0: 24, x1: -30, peakX: -8, rise: 10, halfW: 13 };
 
 /**
- * 乾坤圈：直立在口字框尾翼正中央的金色圓環（立在 yz 平面，從後面看是一個圓環），下緣頂著後甲板、上緣頂著框翼的上板。
+ * 乾坤圈：掛在空心方框尾翼後框條下方的金色圓環（立在 yz 平面，從後面看是框裡的一個圓環），上緣掛在後框條、下緣靠著後甲板。
  * x / yc = 環心；az / ay = 橫向 / 垂直半軸；tube = 管半徑
  * @type {{ x: number, yc: number, az: number, ay: number, tube: number }}
  */
-const RING = { x: -63, yc: 37.4, az: 6, ay: 5.4, tube: 1.1 };
+const RING = { x: -68.8, yc: 37.5, az: 6, ay: 5.4, tube: 1.1 };
 
 /**
- * 口字形框尾翼（四視圖 29 車尾）：兩片從後甲板立起、往後掠的側立板＋一片橫跨的上板，後視是一個「口」字。
- * x0 / x1 = 上板前後緣；y = 上板底面高度；halfW = 側立板的 |z|；thick = 板厚
+ * 空心方框尾翼（四視圖 29 車尾）：上框是四根細框條圍成的長方形（俯視中間空），兩側是從後甲板立起、往後掠的空心框形立板
+ * （側視中間空），後視是一個「口」字。x0 / x1 = 上框前後緣；y = 上框底面高度；halfW = 側立框的 |z|；thick = 框條厚；bar = 框條寬
  * @type {{ x0: number, x1: number, y: number, halfW: number, thick: number }}
  */
-const FRAME = { x0: -55, x1: -70, y: 44, halfW: 25, thick: 1.2 };
+const FRAME = { x0: -55, x1: -70, y: 44, halfW: 25, thick: 1.4, bar: 2.4 };
 
 /**
  * 橢圓環管（24 段 × 管斷面 6 段，封閉的環面）
@@ -223,10 +223,10 @@ const wheelRing = (x, y) => {
 const spineW = monoCurve([-70, -50, -30, 0, 20, 36, 56, 61, 77], [23, 22, 17, 16.5, 13, 7, 6.2, 7, 9]);
 
 /**
- * 深藍下裙的上緣：前後輪之間在裙邊上 6 mm，往鼻尖與車尾收到 3.5 mm
+ * 深藍下裙的上緣：前後輪之間在裙邊上 8.5 mm，往鼻尖與車尾收到 4.5 mm
  * @type {(x: number) => number}
  */
-const navyTop = (x) => P.yLow(x) + 3.5 + 2.5 * smoothstep(-58, -30, x) * smoothstep(64, 46, x);
+const navyTop = (x) => P.yLow(x) + 4.5 + 4 * smoothstep(-58, -30, x) * smoothstep(64, 46, x);
 
 /**
  * 火尖槍的槍刃火焰（朱紅，畫在長尖鼻上）：鼻尖到 x 66 是整片火焰，後緣是往後伸的 V 形火舌（中線最長，伸到 x 62）
@@ -289,6 +289,31 @@ const sideIntake = (x, y) => {
   return Math.min(16 - shear - x, x + 12 + 0.3 * shear, y - lo, hi - y, wheelFlame(x, y) < 0 ? 1 : -1);
 };
 
+/**
+ * 中間挖空的水平板（俯視外框 outer、挖空 inner，點位 [x, z]），底面高 y、厚 thick
+ * @type {(outer: number[][], inner: number[][], y: number, thick: number) => THREE.BufferGeometry}
+ */
+const holedFlatPlate = (outer, inner, y, thick) => {
+  const shape = new THREE.Shape(outer.map(([x, z]) => new THREE.Vector2(x, -z)));
+  shape.holes.push(new THREE.Path(inner.map(([x, z]) => new THREE.Vector2(x, -z))));
+  const g = new THREE.ExtrudeGeometry(shape, { depth: thick, bevelEnabled: false });
+  g.rotateX(-Math.PI / 2);
+  g.translate(0, y, 0);
+  return g;
+};
+
+/**
+ * 中間挖空的直立板（側視外框 outer、挖空 inner，點位 [x, y]），中心 z = zc、厚 thick
+ * @type {(outer: number[][], inner: number[][], zc: number, thick: number) => THREE.BufferGeometry}
+ */
+const holedFinPlate = (outer, inner, zc, thick) => {
+  const shape = new THREE.Shape(outer.map(([x, y]) => new THREE.Vector2(x, y)));
+  shape.holes.push(new THREE.Path(inner.map(([x, y]) => new THREE.Vector2(x, y))));
+  const g = new THREE.ExtrudeGeometry(shape, { depth: thick, bevelEnabled: false });
+  g.translate(0, 0, zc - thick / 2);
+  return g;
+};
+
 export const nezhaWindfireBody = makePolyBody({
   id: 'body-nezha-windfire',
   name: '哪吒風火',
@@ -346,25 +371,39 @@ export const nezhaWindfireBody = makePolyBody({
     parts.push({ geometry: mergeGeos(ARCHES.map((a) => buildProfileLiner(a, 22.9, profile))), mat: 'liner', shell: true, name: 'arch-liners' });
     parts.push({ geometry: mergeGeos(ARCHES.map((a) => buildArchWell(a, 22.9, 12.3, 17.8, chassisBlockedNearArch))), mat: 'liner', shell: true, name: 'arch-wells' });
 
-    // 口字框尾翼：上板（深紅）＋兩片側立板（深紅），外緣一圈金色描邊板
+    // 空心方框尾翼：上框（深紅，俯視中間空）＋外緣金色描邊＋兩片空心側立框（深紅，側視中間空）
     const deckAt = (/** @type {number} */ x) => P.yTop(x) - 1.5;
-    const top = flatPlate(
+    const B = FRAME.bar;
+    const W = FRAME.halfW + 1.2;
+    const top = holedFlatPlate(
       [
-        [FRAME.x0, -FRAME.halfW - 1],
-        [FRAME.x0, FRAME.halfW + 1],
-        [FRAME.x1, FRAME.halfW + 1],
-        [FRAME.x1, -FRAME.halfW - 1],
+        [FRAME.x0, -W],
+        [FRAME.x0, W],
+        [FRAME.x1, W],
+        [FRAME.x1, -W],
+      ],
+      [
+        [FRAME.x0 - B, -W + B],
+        [FRAME.x1 + B, -W + B],
+        [FRAME.x1 + B, W - B],
+        [FRAME.x0 - B, W - B],
       ],
       FRAME.y,
       FRAME.thick,
     );
     parts.push({ geometry: top, mat: 'crimson', solid: true, outline: true, name: 'frame-wing-top' });
-    const trim = flatPlate(
+    const trim = holedFlatPlate(
       [
-        [FRAME.x0 + 0.8, -FRAME.halfW - 1.8],
-        [FRAME.x0 + 0.8, FRAME.halfW + 1.8],
-        [FRAME.x1 - 0.8, FRAME.halfW + 1.8],
-        [FRAME.x1 - 0.8, -FRAME.halfW - 1.8],
+        [FRAME.x0 + 0.7, -W - 0.7],
+        [FRAME.x0 + 0.7, W + 0.7],
+        [FRAME.x1 - 0.7, W + 0.7],
+        [FRAME.x1 - 0.7, -W - 0.7],
+      ],
+      [
+        [FRAME.x0 - B + 0.4, -W + B - 0.4],
+        [FRAME.x1 + B - 0.4, -W + B - 0.4],
+        [FRAME.x1 + B - 0.4, W - B + 0.4],
+        [FRAME.x0 - B + 0.4, W - B + 0.4],
       ],
       FRAME.y - 0.3,
       0.3,
@@ -372,14 +411,22 @@ export const nezhaWindfireBody = makePolyBody({
     parts.push({ geometry: trim, mat: 'ringGold', solid: true, outline: true, name: 'frame-wing-trim' });
     /** @type {THREE.BufferGeometry[]} */
     const uprights = [];
+    const dF = deckAt(FRAME.x0 + 6);
+    const dR = deckAt(FRAME.x1 + 3);
     for (const side of [-1, 1]) {
       uprights.push(
-        finPlate(
+        holedFinPlate(
           [
-            [FRAME.x0 + 6, deckAt(FRAME.x0 + 6)],
+            [FRAME.x0 + 6, dF],
             [FRAME.x0, FRAME.y + 0.2],
             [FRAME.x1, FRAME.y + 0.2],
-            [FRAME.x1 + 3, deckAt(FRAME.x1 + 3)],
+            [FRAME.x1 + 3, dR],
+          ],
+          [
+            [FRAME.x0 + 3.2, dF + 2.4],
+            [FRAME.x1 + 5.2, dR + 2.4],
+            [FRAME.x1 + 2.6, FRAME.y - 2],
+            [FRAME.x0 - 1.6, FRAME.y - 2],
           ],
           side * FRAME.halfW,
           1.6,
@@ -387,7 +434,7 @@ export const nezhaWindfireBody = makePolyBody({
       );
     }
     parts.push({ geometry: mergeGeos(uprights), mat: 'crimson', solid: true, outline: true, name: 'frame-wing-uprights' });
-    // 乾坤圈：直立在框翼中央的金色圓環（24×6），上下頂住框翼上板與後甲板
+    // 乾坤圈：掛在後框條下方的金色圓環（24×6）
     parts.push({ geometry: buildRingTube(RING), mat: 'ringGold', solid: true, outline: true, name: 'qiankun-ring' });
 
     // ---- 貼紙 ----
