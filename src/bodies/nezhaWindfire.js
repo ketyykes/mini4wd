@@ -1,13 +1,15 @@
 // 哪吒風火（body-nezha-windfire，神話組・中國）：照四視圖 29 建模，哪吒只用《封神演義》裡的法寶表現（風火輪、乾坤圈、混天綾），
-// 不做神像、人形、臉、童子造型。四視圖 29 留下的造型：細長的矛尖鼻、從鼻尖一路斜升的長楔形背線、後移的多面切削座艙、
-// 前輪後方的大進氣口、車尾「口」字形的框形尾翼。四視圖像縮小的超跑，這裡壓低車頂、把前後輪拱外擴，做回四驅車的矮寬感。
-// 風火輪 → 前後輪拱周圍往後捲的金色火焰紋（輪框是底盤零件，不改）；乾坤圈 → 車尾的金色橢圓環箍，環內橫一片白色翼板（框形尾翼）；
-// 混天綾 → 從鼻尖分成兩道、沿引擎蓋往外掃、再順著兩側起伏到車尾的朱紅長帶（白邊）。
-// 配色：深紅車身、金火焰與環箍、白色翼板與綾帶白邊。不模仿動畫電影《哪吒之魔童降世》《哪吒之魔童鬧海》的角色或道具設計。
+// 不做神像、人形、臉、童子造型。四視圖 29 留下的造型：從兩個前擋泥板之間伸出的細長矛頭鼻、從鼻尖一路斜升的長楔形背線、
+// 後移的多面切削座艙、前輪後方的大進氣口、紅白藍三色分區（紅色中脊、白色側板、深藍下裙）。四視圖像縮小的超跑，這裡壓低車頂、
+// 把前後輪拱外擴，做回四驅車的矮寬感。
+// 火尖槍 → 矛頭鼻（頸部收細、槍刃微微鼓起再收成尖，槍刃前段是朱紅火焰、根部一道金色槍箍）；
+// 風火輪 → 前後輪拱外圍一圈金色輪圈紋＋往後捲的紅色火舌（輪框是底盤零件，不改）；
+// 乾坤圈 → 車尾立起的開放金色橢圓環箍，環的上半圈外緣一排往外捲的金色火焰齒；混天綾 → 兩側白色側板上起伏到車尾的朱紅長帶（金邊）。
+// 配色：深紅中脊、珍珠白側板、深藍下裙、金。不模仿動畫電影《哪吒之魔童降世》《哪吒之魔童鬧海》的角色或道具設計。
 // 設計：shared/design/body-nezha-windfire/DESIGN.md（來源見該檔；MYTH_RESEARCH 中國節 7-3 的信仰注意事項）。剖面為本檔站位產生器（推估）。
 // 塗裝全為自創，不含任何廠商 / 作品名稱、商標、文字或人臉。
 import * as THREE from 'three';
-import { makePolyBody, flatPlate } from './polyBody.js';
+import { makePolyBody } from './polyBody.js';
 import { namedMaterial, decalMaterial, mergeGeos, lerp, smoothstep } from './loft.js';
 import { monoCurve, buildStations } from './gazelleLeap.js';
 import { buildProfileLiner } from './khepriScarab.js';
@@ -75,8 +77,8 @@ const yTopMin = (x) => {
 /** @type {Record<string, (x: number) => number>} */
 const P = {
   // 俯視半寬（肩稜線）：寬方的車尾（後輪拱外擴到 ±41.5、車尾仍有 ±32，乾坤圈立在上面）、座艙兩側深收腰 ±25、
-  // 前輪上方 ±36（外擴的前輪拱）；前擋泥板在 x 54.2–55.6 收進輪拱切口邊界以內，之後是細長的矛尖鼻（x 58 ±12、x 64 ±6.6，鼻尖 ±0.6）
-  hw: monoCurve(XS_HW, [32, 37, 41, 41.5, 41.5, 33, 25, 25.4, 28.5, 32.5, 35.5, 36, 32.5, 29, 23.5, 20.2, 12, 9, 6.6, 3.6, 1.8, 0.6]),
+  // 前輪上方 ±36（外擴的前輪拱）；前擋泥板在 x 54.2–55.6 收進輪拱切口邊界以內，之後是從兩個擋泥板之間伸出的矛頭鼻（槍頸 x 61 ±6.4、槍刃最寬 x 64 ±7.6，鼻尖 ±0.4）
+  hw: monoCurve(XS_HW, [32, 37, 41, 41.5, 41.5, 33, 25, 25.4, 28.5, 32.5, 35.5, 36, 32.5, 29, 23.5, 20.2, 8.5, 6.4, 7.6, 5.6, 3, 0.4]),
   // 肩稜線高度：前輪上方沿眉線圓弧拱起（外擴輪拱）
   yS: (x) => smoothMax(ySBase(x), browY(x), 1.4),
   // 中線殼頂：前輪拱之間的引擎蓋比擋泥板低（最多低 3 mm，兩道輪拱夾著楔形引擎蓋）
@@ -84,6 +86,9 @@ const P = {
   // 側裙下緣：後軸之後往上收到 22（寬車尾的裙邊要高過後導輪頂 20.5）
   yLow: monoCurve(XS, [22, 21.8, 14, 10.5, 10.5, 10.5, 10.5, 10.5, 10.5, 10.5, 10.5, 10.5, 11, 12, 12.4, 12.4, 12.4]),
 };
+
+/** @type {number} 前後輪之間側裙下緣的半寬 */
+const SILL_W = 38;
 
 /**
  * 半剖面 7 點：中線 → 頂面 → 肩稜線（銳利）→ 微外張的側裙
@@ -96,14 +101,16 @@ const profile = (x) => {
   const h = P.hw(x);
   const d = t - s;
   const flare = smoothstep(1, 8, h);
+  // 前後輪之間的側裙往外張到 ±38、下半段是直立側牆，從上面和側面都看不到底盤側框
+  const sill = Math.max(h + 1.3 * flare, SILL_W * smoothstep(-24, -16, x) * smoothstep(24, 16, x));
   return [
     [0, t],
     [0.34 * h, t - 0.1 * d],
     [0.64 * h, t - 0.36 * d],
     [0.87 * h, t - 0.72 * d],
     [h, s],
-    [h + 0.9 * flare, lerp(s, lo, 0.5)],
-    [h + 1.3 * flare, lo],
+    [Math.max(h + 0.9 * flare, sill - 0.4), lerp(s, lo, 0.42)],
+    [sill, lo],
   ];
 };
 
@@ -120,10 +127,16 @@ const ARCHES = [
 const CANOPY = { x0: 24, x1: -30, peakX: -8, rise: 10, halfW: 13 };
 
 /**
- * 乾坤圈：車尾的金色橢圓環箍（立在 yz 平面，前後看是一個扁圓環）。x / yc = 環心；az / ay = 橫向 / 垂直半軸；tube = 管半徑
+ * 乾坤圈：車尾的開放金色橢圓環箍（立在 yz 平面，前後看是一個扁圓環，環內不放翼板）。x / yc = 環心；az / ay = 橫向 / 垂直半軸；tube = 管半徑
  * @type {{ x: number, yc: number, az: number, ay: number, tube: number }}
  */
-const RING = { x: -63, yc: 38.6, az: 26, ay: 8, tube: 1.25 };
+const RING = { x: -63, yc: 35.6, az: 25, ay: 7, tube: 1.25 };
+
+/**
+ * 乾坤圈外緣的火焰齒：上半圈（環角 22°–158°）9 支四角錐，長短交替，齒尖往順時針方向捲 24°（像環在旋轉時甩出的火）
+ * @type {{ n: number, from: number, to: number, len: number[], swirl: number, r: number }}
+ */
+const RING_TEETH = { n: 9, from: 22, to: 158, len: [4, 2.8], swirl: 24, r: 1.2 };
 
 /**
  * 橢圓環管（24 段 × 管斷面 6 段，封閉的環面）
@@ -161,9 +174,12 @@ const buildRingTube = (ring) => {
   return g;
 };
 
+/** @type {{ r0: number, r1: number }} 風火輪的金色輪圈紋：以輪拱圓心為中心的環帶內外半徑 */
+const WHEEL_RING = { r0: 18.4, r1: 20.4 };
+
 /**
- * 風火輪的火焰紋（輪拱周圍）：以輪拱圓心為中心，火焰外緣半徑 = 20 + 舌狀起伏（最高 6.2）；角度隨半徑往後偏，火舌往後上方捲（像輪子往前滾時被風吹向後）
- * @type {(x: number, y: number) => number} 正值 = 在火焰內
+ * 風火輪的火舌（輪圈紋外側）：火舌外緣半徑 = 20.4 + 舌狀起伏（後輪最高 7、前輪 5.4）；角度隨半徑往後偏，火舌往後上方捲（像輪子往前滾時被風吹向後）
+ * @type {(x: number, y: number) => number} 正值 = 在火舌內
  */
 const wheelFlame = (x, y) => {
   let best = -Infinity;
@@ -174,33 +190,64 @@ const wheelFlame = (x, y) => {
     if (dy < -1) {
       continue;
     }
-    const th = Math.atan2(dy, dx) - 0.07 * (r - 17.5);
+    const th = Math.atan2(dy, dx) - 0.08 * (r - 17.5);
     const tongue = (0.5 + 0.5 * Math.cos(7 * th)) ** 2.2;
-    best = Math.max(best, 20 + 6.2 * tongue - r);
+    const amp = a.x < 0 ? 7 : 5.4;
+    best = Math.max(best, WHEEL_RING.r1 + amp * tongue - r);
   }
   return best;
 };
 
 /**
- * 混天綾的中心線：前段在引擎蓋上（從鼻尖分成兩道往外掃到肩稜線），後段在側面（肩稜線下方起伏到車尾）
- * @type {{ topZ: (x: number) => number, sideY: (x: number) => number }}
+ * 風火輪的金色輪圈紋
+ * @type {(x: number, y: number) => number} 正值 = 在輪圈紋內
+ */
+const wheelRing = (x, y) => {
+  let best = -Infinity;
+  for (const a of ARCHES) {
+    const r = Math.hypot(x - a.x, y - a.y);
+    if (y - a.y < -1) {
+      continue;
+    }
+    best = Math.max(best, Math.min(r - WHEEL_RING.r0, WHEEL_RING.r1 - r));
+  }
+  return best;
+};
+
+/**
+ * 紅色中脊的半寬：車尾 ±22、座艙兩側 ±16.5，前擋泥板之間收成 ±6.2 的槍桿，矛頭鼻整支是紅色
+ * @type {(x: number) => number}
+ */
+const spineW = monoCurve([-70, -50, -30, 0, 20, 36, 56, 61, 77], [23, 22, 17, 16.5, 13, 7, 6.2, 7, 9]);
+
+/**
+ * 深藍下裙的上緣：前後輪之間在裙邊上 6 mm，往鼻尖與車尾收到 3.5 mm
+ * @type {(x: number) => number}
+ */
+const navyTop = (x) => P.yLow(x) + 3.5 + 2.5 * smoothstep(-58, -30, x) * smoothstep(64, 46, x);
+
+/**
+ * 火尖槍的槍刃火焰（朱紅，畫在矛頭鼻上）：鼻尖到 x 66 是整片火焰，後緣是往後伸的 V 形火舌（中線最長，伸到 x 62）
+ * @type {(x: number, z: number) => number} 正值 = 在火焰內
+ */
+const spearFlame = (x, z) => x - 62 - 4 * Math.min(1, Math.abs(z) / Math.max(1, P.hw(x)));
+
+/**
+ * 混天綾的中心線：側面段（前輪後方從肩稜線下方起伏，停在後輪的風火輪紋前）
+ * @type {{ sideY: (x: number) => number }}
  */
 const SASH = {
-  topZ: (x) => P.hw(x) * lerp(0.05, 1.02, smoothstep(76, 18, x)),
   sideY: (x) => P.yS(x) - 1.8 - 6 * Math.sin(Math.PI * smoothstep(22, -36, x)) * smoothstep(24, 14, x),
 };
 
 /**
- * 混天綾到中心線的距離（mm）：引擎蓋段只算頂面（肩稜線以上），側面段只算側壁
+ * 混天綾到中心線的距離（mm）：只畫側面段（引擎蓋是紅色中脊）
  * @type {(x: number, y: number, z: number) => number}
  */
 const sashDist = (x, y, z) => {
   const az = Math.abs(z);
   let d = Infinity;
-  if (x > 16 && x < 76 && y > P.yS(x) - 0.4) {
-    d = Math.min(d, Math.abs(az - SASH.topZ(x)));
-  }
-  if (x < 22 && x > -69 && az > P.hw(x) - 1) {
+  if (x < 22 && x > -21 && az > P.hw(x) - 1) {
     d = Math.min(d, Math.abs(y - SASH.sideY(x)));
   }
   return d;
@@ -210,12 +257,14 @@ const sashDist = (x, y, z) => {
 const materials = () => ({
   // 深紅：車身主色（亮面漆）
   crimson: namedMaterial('paint-crimson-red', { color: 0xa3161f, roughness: 0.28, clearcoat: 0.9, clearcoatRoughness: 0.08 }),
-  // 金色金屬漆：輪拱火焰
+  // 金色金屬漆：風火輪輪圈紋
   flameGold: namedMaterial('paint-flame-gold', { color: 0xd8a83c, metalness: 0.6, roughness: 0.3, clearcoat: 0.6, clearcoatRoughness: 0.15 }),
   // 真金屬（乾坤圈；名稱含 -brass → Blender metallic）
   ringGold: namedMaterial('trim-ring-gold-brass', { color: 0xc9a54a, metalness: 0.85, roughness: 0.25, clearcoat: 0.3 }),
-  // 白：環內翼板（緞面射出件）
-  white: namedMaterial('paint-wing-white-abs', { color: 0xf2efe8, roughness: 0.55 }),
+  // 珍珠白：側板
+  white: namedMaterial('paint-pearl-white', { color: 0xf3f1ec, roughness: 0.3, clearcoat: 0.8, clearcoatRoughness: 0.1 }),
+  // 深藍：下裙
+  navy: namedMaterial('paint-navy-blue', { color: 0x1c2a52, roughness: 0.32, clearcoat: 0.8, clearcoatRoughness: 0.1 }),
   ink: namedMaterial('paint-ink-black', { color: 0x15151a, roughness: 0.5, clearcoat: 0.3 }),
   glass: namedMaterial('pc-smoke-tint', { color: 0x24242c, roughness: 0.05, specularIntensity: 0.6, transparent: true, opacity: 0.55, envMapIntensity: 0.5, depthWrite: false, side: THREE.DoubleSide }),
   inner: namedMaterial('shell-inner-dark', { color: 0x1a1b1f, roughness: 0.85, side: THREE.BackSide }),
@@ -223,7 +272,6 @@ const materials = () => ({
   mount: namedMaterial('abs-mount-black', { color: 0x222326, roughness: 0.6 }),
   liner: namedMaterial('shell-wheelwell-black', { color: 0x1a1a1e, roughness: 0.7, side: THREE.DoubleSide }),
   dScarlet: decalMaterial('decal-sash-scarlet', { color: 0xe23a24, roughness: 0.35, clearcoat: 0.6 }),
-  dWhite: decalMaterial('decal-sash-white', { color: 0xf6f3ec, roughness: 0.32, clearcoat: 0.6 }),
   dGold: decalMaterial('decal-gold-line', { color: 0xd4b052, metalness: 0.75, roughness: 0.3 }),
   dInk: decalMaterial('decal-ink-black', { color: 0x15151a, roughness: 0.5, clearcoat: 0.2 }),
 });
@@ -249,7 +297,7 @@ export const nezhaWindfireBody = makePolyBody({
   form: 'spear-wedge-flare',
   roof: 'canopy',
   wing: 'qiankun-hoop',
-  theme: '照四視圖 29 建模並壓低加寬：矛尖長鼻、長楔形背線、後移多面座艙、外擴輪拱；風火輪化成輪拱周圍的金色火焰紋，乾坤圈化成車尾金色橢圓環箍（環內白翼板），混天綾是從鼻尖掃到車尾的朱紅白邊長帶；深紅車身',
+  theme: '照四視圖 29 建模並壓低加寬：從兩個前擋泥板之間伸出的火尖槍矛頭鼻（朱紅槍刃火焰、金槍箍）、長楔形背線、後移多面座艙、外擴輪拱；風火輪化成前後輪拱外圍的金色輪圈紋＋紅色火舌，乾坤圈是車尾開放的金色橢圓環箍（上半圈外緣火焰齒），混天綾是側板上的朱紅金邊長帶；紅色中脊、白色側板、深藍下裙',
   material: 'ABS',
   density_g_cm3: 1.05,
   wallThickness_mm: 0.8,
@@ -277,10 +325,15 @@ export const nezhaWindfireBody = makePolyBody({
   },
   sideZMin: 22,
   zones: () => [
-    // 輪拱周圍的金色火焰（只在側壁）
-    { mat: 'flameGold', keep: (x, y, z) => Math.min(wheelFlame(x, y), Math.abs(z) - P.hw(x) + 1.2) },
-    // 深紅車身
-    { mat: 'crimson', keep: () => 1 },
+    // 風火輪：金色輪圈紋＋紅色火舌（只在側壁）
+    { mat: 'flameGold', keep: (x, y, z) => Math.min(wheelRing(x, y), Math.abs(z) - P.hw(x) + 1.2) },
+    { mat: 'crimson', keep: (x, y, z) => Math.min(wheelFlame(x, y), Math.abs(z) - P.hw(x) + 1.2) },
+    // 深藍下裙
+    { mat: 'navy', keep: (x, y) => Math.min(navyTop(x) - y, 56 - x) },
+    // 深紅中脊（含整支矛頭鼻）
+    { mat: 'crimson', keep: (x, y, z) => spineW(x) - Math.abs(z) },
+    // 珍珠白側板
+    { mat: 'white', keep: () => 1 },
   ],
   capFrontBands: [{ mat: 'crimson' }],
   mats: { inner: 'inner', edge: 'edge', cap: 'crimson', glass: 'glass', cockpit: 'ink', mount: 'mount' },
@@ -305,19 +358,26 @@ export const nezhaWindfireBody = makePolyBody({
       posts.push(post);
     }
     parts.push({ geometry: mergeGeos(posts), mat: 'ringGold', solid: true, outline: true, name: 'qiankun-posts' });
-    // 環內白色翼板（框形尾翼的翼面）：弦長 9、寬到環的內緣
-    const halfSpan = RING.az - RING.tube - 0.2;
-    const plate = flatPlate(
-      [
-        [RING.x + 4.5, -halfSpan],
-        [RING.x + 4.5, halfSpan],
-        [RING.x - 4.5, halfSpan],
-        [RING.x - 4.5, -halfSpan],
-      ],
-      RING.yc - 0.6,
-      1.2,
-    );
-    parts.push({ geometry: plate, mat: 'white', solid: true, outline: true, name: 'hoop-wing-plate' });
+    // 乾坤圈外緣的火焰齒（金，四角錐 4 段）：齒根貼在環管外緣，沿橢圓外法線往外、再往順時針方向捲
+    /** @type {THREE.BufferGeometry[]} */
+    const teeth = [];
+    for (let k = 0; k < RING_TEETH.n; k++) {
+      const u = ((RING_TEETH.from + ((RING_TEETH.to - RING_TEETH.from) * k) / (RING_TEETH.n - 1)) * Math.PI) / 180;
+      const nz0 = Math.cos(u) / RING.az;
+      const ny0 = Math.sin(u) / RING.ay;
+      const nl = Math.hypot(nz0, ny0);
+      const baseZ = RING.az * Math.cos(u) + (RING.tube * 0.6 * nz0) / nl;
+      const baseY = RING.yc + RING.ay * Math.sin(u) + (RING.tube * 0.6 * ny0) / nl;
+      const len = RING_TEETH.len[k % 2];
+      const th = Math.atan2(nz0, ny0) - (RING_TEETH.swirl * Math.PI) / 180;
+      const tooth = new THREE.ConeGeometry(RING_TEETH.r, len, 4);
+      tooth.translate(0, len / 2, 0);
+      tooth.scale(0.7, 1, 1);
+      tooth.rotateX(th);
+      tooth.translate(RING.x, baseY, baseZ);
+      teeth.push(tooth);
+    }
+    parts.push({ geometry: mergeGeos(teeth), mat: 'ringGold', solid: true, outline: true, name: 'qiankun-flame-teeth' });
 
     // ---- 貼紙 ----
     // 座艙框（金）
@@ -329,9 +389,16 @@ export const nezhaWindfireBody = makePolyBody({
       mat: 'dGold',
       name: 'decal-canopy-frame',
     });
-    // 混天綾：白邊（寬 6.0）＋朱紅帶身（寬 4.4）
-    parts.push({ geometry: kit.decal((x, y, z) => Math.min(3 - sashDist(x, y, z), -kit.underCanopy(x, z) - 0.5)), mat: 'dWhite', name: 'decal-sash-edge' });
+    // 混天綾：金邊（寬 5.6）＋朱紅帶身（寬 4.4）
+    parts.push({ geometry: kit.decal((x, y, z) => Math.min(2.8 - sashDist(x, y, z), -kit.underCanopy(x, z) - 0.5)), mat: 'dGold', name: 'decal-sash-edge' });
     parts.push({ geometry: kit.decal((x, y, z) => Math.min(2.2 - sashDist(x, y, z), -kit.underCanopy(x, z) - 0.5), { offset: 0.1 }), mat: 'dScarlet', name: 'decal-sash' });
+    // 火尖槍：槍刃前段的朱紅火焰＋槍頸的金色槍箍（線寬 1.4）
+    parts.push({ geometry: kit.decal((x, y, z) => Math.min(spearFlame(x, z), y - P.yS(x) + 0.6)), mat: 'dScarlet', name: 'decal-spear-flame' });
+    parts.push({ geometry: kit.decal((x, y, z) => Math.min(0.7 - Math.abs(x - 59.5), 9 - Math.abs(z), y - P.yLow(x) - 0.6)), mat: 'dGold', name: 'decal-spear-collar' });
+    // 紅色中脊與白色側板交界的金色細線（線寬 0.9，只在頂面）
+    parts.push({ geometry: kit.decal((x, y, z) => Math.min(0.45 - Math.abs(Math.abs(z) - spineW(x) - 0.45), 56 - x, x + 69, y - P.yS(x) + 0.3)), mat: 'dGold', name: 'decal-spine-line' });
+    // 深藍下裙上緣的金色細線（線寬 0.8）
+    parts.push({ geometry: kit.decal((x, y, z) => Math.min(0.4 - Math.abs(y - navyTop(x) - 0.4), Math.abs(z) - 14, wheelRing(x, y) < 0 && wheelFlame(x, y) < 0 ? 1 : -1)), mat: 'dGold', name: 'decal-navy-line' });
     // 側面大進氣口（黑）
     parts.push({ geometry: kit.decal((x, y, z) => (Math.abs(z) < 22 ? -1 : sideIntake(x, y))), mat: 'dInk', name: 'decal-side-intake' });
     return parts;
@@ -341,8 +408,8 @@ export const nezhaWindfireBody = makePolyBody({
     wallThickness_mm: '推估：射出 ABS 殼 0.8 mm（同其他車殼）；座艙罩同厚度以殼面積計入質量',
     geometry: '本檔站位產生器 P（推估，造型照 shared/design/body-nezha-windfire/fourview.png 四視圖 29 的比例，尺寸照底盤；四視圖車頂較高，這裡壓低）：殼長 147（車尾 −70 ~ 鼻尖 77）；後甲板 31、鼻尖頂 11.8、座艙頂約 40、前輪拱頂約 31.6；寬方車尾：後輪拱 ±41.5、車尾 ±32；座艙兩側 ±25、前輪上方 ±36、矛尖鼻 ±12 → ±0.6；前擋泥板眉線為前輪拱同心圓 R18.6',
     wheelArches: '前後 R17.5（31 mm 輪胎半徑 15.5 + 2 mm），可裝 26 / 31 mm 輪',
-    ring: '乾坤圈（ABS 實心件，推估）：橢圓環心 x −63、y 38.6，半軸 26 × 8，管半徑 1.25（24×6 段）；兩支短柱 R1.1–1.3（16 段）；環內白翼板弦長 9、厚 1.2',
-    palette: '深紅主色＋金（輪拱火焰、乾坤圈、座艙框）＋白（翼板、綾帶白邊）＋朱紅綾帶；色碼自訂（推估）：深紅 #A3161F、朱紅 #E23A24、金 #D8A83C / #C9A54A、白 #F2EFE8',
+    ring: '乾坤圈（ABS 實心件，推估）：橢圓環心 x −63、y 35.6，半軸 25 × 7，管半徑 1.25（24×6 段），環內不放翼板；兩支短柱 R1.1–1.3（16 段）；上半圈外緣 9 支火焰齒（四角錐，底 1.7 × 2.4、長 4 / 2.8 交替、往順時針捲 24°）',
+    palette: '紅白藍三色照四視圖 29：深紅中脊（含矛頭鼻）與火舌、珍珠白側板、深藍下裙，紅色面積不到一半；金（風火輪輪圈紋、乾坤圈、槍箍、分色細線、座艙框）＋朱紅綾帶與槍刃火焰；色碼自訂（推估）：深紅 #A3161F、朱紅 #E23A24、深藍 #1C2A52、金 #D8A83C / #C9A54A、白 #F3F1EC',
     mounts: '對齊 chassis-midship 的車殼安裝點（SPEC 1.14）',
   },
 });
