@@ -27,9 +27,9 @@ const P = {
   hw: monoCurve(XS, [13, 16, 19.5, 23, 24, 24.5, 26.5, 32, 37, 39.2, 34.5, 15.5, 8.8, 5.4, 3.4, 1.6]),
   // 中線殼頂：前後輪上方 32.6、座艙段 31.6 的低背，x 40 之後一路往前下壓成楔形尖鼻（鼻尖 15.2，V3 鼻尖離地 10–16）
   yTop: monoCurve(XS, [27.5, 30, 31.8, 32.6, 32.3, 31.8, 31.6, 31.8, 32.3, 32.6, 30.6, 27, 23.6, 20.4, 17.6, 15.2]),
-  // 肩線（頂面與側裙交界，銳利稜線）：前後輪上方隆起到 31.8（高過 R17.5 輪拱頂 30.5，輪胎上方有完整的殼面），
-  // 中段往下垂到 26.8（收腰處）
-  yS: monoCurve(XS, [24, 27, 30.4, 31.8, 30.1, 27.6, 26.8, 27.6, 30.1, 31.8, 29.8, 24.6, 20.8, 17.8, 16, 14.6]),
+  // 肩線（頂面與側裙交界，銳利稜線）：後輪上方隆起到 31.8、前輪上方 31.1（都高過 R17.5 輪拱頂 30.5，輪胎上方有完整的殼面），
+  // 中段往下垂到 26.8（收腰處）。前輪上方壓低、往前後圓順接開：前擋泥板外側後角就是這裡，太高時從後方看像一片往上翹的薄邊
+  yS: monoCurve(XS, [24, 27, 30.4, 31.8, 30.1, 27.6, 26.8, 27.6, 29.6, 31.1, 29.8, 24.6, 20.8, 17.8, 16, 14.6]),
   // 側裙下緣
   yLow: monoCurve(XS, [15, 13.5, 11.5, 10.6, 10.5, 10.5, 10.5, 10.5, 10.5, 10.6, 11, 12, 12.6, 13, 13.2, 13.4]),
 };
@@ -73,10 +73,12 @@ const archRingDist = (x, y) => Math.min(...ARCHES.map((a) => Math.hypot(x - a.x,
 
 /** @type {number} 前輪露出切口只切 |z| ≥ 這個值（輪胎內側面 22.75 之外） */
 const CUT_Z = 23.6;
-/** @type {number} 切口前緣的後掠率（俯視每往外 1 mm 往後 0.3 mm）：內側 x 44 → 外緣約 x 39.3，擋泥板後緣停在輪軸正上方附近，不往後懸出薄翼尖 */
+/** @type {number} 切口前緣的後掠率（俯視每往外 1 mm 往後 0.3 mm）：內側 x 44 → 圓角起點約 x 40.4，擋泥板後緣停在輪軸正上方附近，不往後懸出薄翼尖 */
 const CUT_SWEEP = 0.3;
-/** @type {(az: number) => number} 前輪露出切口的前緣 x（俯視往外側後掠） */
-const cutFrontX = (az) => 44 - CUT_SWEEP * (az - CUT_Z);
+/** @type {number} 擋泥板外側後角圓角的起點 |z|：再往外，切口前緣往前彎，後角收成圓角，不留尖的翼尖 */
+const CORNER_Z = 35.5;
+/** @type {(az: number) => number} 前輪露出切口的前緣 x（俯視往外側後掠，最外側約 3.7 mm 往前彎成圓角） */
+const cutFrontX = (az) => 44 - CUT_SWEEP * (az - CUT_Z) + 0.6 * Math.max(0, az - CORNER_Z) ** 1.5;
 /**
  * F3 半罩露輪：前輪罩後半切開（x 22 → cutFrontX），從上方與側面都看得到前輪胎面；切口後緣和輪拱後緣（x 22.5）接在一起，
  * 前緣是一條俯視後掠的斜線。負值 = 開口內
@@ -389,9 +391,6 @@ const buildTailCapScales = (r0, r1, dx) => {
   return g;
 };
 
-/** @type {number} 擋泥板下折後緣的起點 |z|（31 mm 輪外側面 = 輪距 59.5 / 2 + 輪寬 10 / 2 = 34.75，再留 1.15 mm 間隙） */
-const FENDER_LIP_Z = 35.9;
-
 /** @type {number} 前輪室封板的 |z|（和胎內側環形擋板同一平面） */
 const WELL_Z = 22.9;
 /** @type {number} 前輪擋泥板內襯半徑（R17.5 輪拱 + 0.3） */
@@ -401,8 +400,26 @@ const archTopY = (x, r) => {
   const d = r * r - (x - ARCHES[0].x) ** 2;
   return d > 0 ? ARCHES[0].y + Math.sqrt(d) : -Infinity;
 };
-/** @type {(x: number) => number} 前輪罩殘留部分（切口前緣之前）在 x 處的最內側 |z|（x ≥ 44 時整段都在） */
-const fenderZIn = (x) => Math.max(WELL_Z, x >= 44 ? WELL_Z : CUT_Z + (44 - x) / CUT_SWEEP);
+/**
+ * 前輪罩殘留部分（x ≥ 切口前緣）在 x 處、|z| 22.9 ~ 半寬 − 0.4 之間的 |z| 範圍（每 0.1 mm 掃描，取最外側一段；沒有回傳 null）
+ * @type {(x: number) => number[] | null}
+ */
+const fenderZRange = (x) => {
+  const zMax = P.hw(x) - 0.4;
+  /** @type {number[] | null} */
+  let out = null;
+  for (let z = WELL_Z; z <= zMax; z += 0.1) {
+    const keep = z < CUT_Z || x >= cutFrontX(z);
+    if (keep && !out) {
+      out = [z, z];
+    } else if (keep && out) {
+      out[1] = z;
+    } else if (!keep && out && z > CUT_Z) {
+      out = null;
+    }
+  }
+  return out;
+};
 
 /**
  * 前輪室封板（右側；左側鏡射）：前輪罩後半切開後，從切口看進去原本是殼內的空腔（暗洞）與擋泥板下方的空腔（從後方看像一片翹起的薄邊）。
@@ -411,8 +428,7 @@ const fenderZIn = (x) => Math.max(WELL_Z, x >= 44 ? WELL_Z : CUT_Z + (44 - x) / 
  * (1) 胎內側隔板（|z| 22.9）：切口範圍內、R17.6 圓以外、底盤側框之上，到殼頂內面；
  * (2) 切口後壁（x 21.7）：殼內面的斷面，從底盤側框或側裙下緣到殼頂內面；
  * (3) 擋泥板內襯：R17.8 圓柱面，從切口前緣往前到擋泥板收窄處；
- * (4) 擋泥板斷面牆：沿切口前緣，從內襯到殼頂內面，讓擋泥板後緣看起來是實心的端面；輪胎外側（|z| ≥ 35.9，31 mm 輪外側面 34.75 外 1.15 mm）
- *     再往下延伸成 3.5 mm 高的下折後緣：擋泥板在輪胎正上方只有約 1.3 mm 厚，從後方看是一片往上翹的薄邊，下折後緣讓它讀成有厚度的擋泥板
+ * (4) 擋泥板斷面牆：沿切口前緣，從內襯到殼頂內面，讓擋泥板後緣看起來是實心的端面
  * @type {(topY: (x: number, z: number) => number) => THREE.BufferGeometry}
  */
 const buildFrontWell = (topY) => {
@@ -460,25 +476,31 @@ const buildFrontWell = (topY) => {
       }),
     );
   }
-  // (3) 擋泥板內襯：R17.8 圓柱面，角度從切口外緣（x 39.2）往前到 x 56
+  // (3) 擋泥板內襯：R17.8 圓柱面，角度從切口前緣最後面的位置往前到 x 56
+  let zEnd = CUT_Z;
+  while (zEnd + 0.05 <= P.hw(cutFrontX(zEnd + 0.05)) - 0.4) {
+    zEnd += 0.05;
+  }
+  let xMin = 44;
+  for (let z = CUT_Z; z <= zEnd; z += 0.1) {
+    xMin = Math.min(xMin, cutFrontX(z));
+  }
   geos.push(
     buildStrip(20, (t) => {
-      const a = lerp(Math.acos(-0.8 / WELL_R), Math.acos(16 / WELL_R), t);
+      const a = lerp(Math.acos((xMin + 0.1 - ARCHES[0].x) / WELL_R), Math.acos(16 / WELL_R), t);
       const x = ARCHES[0].x + WELL_R * Math.cos(a);
       const y = ARCHES[0].y + WELL_R * Math.sin(a);
-      const z0 = fenderZIn(x);
-      const z1 = P.hw(x) - 0.4;
-      return z1 > z0 + 0.1 ? [v(x, y, z0), v(x, y, z1)] : null;
+      const r = fenderZRange(x);
+      return r && r[1] > r[0] + 0.1 ? [v(x, y, r[0]), v(x, y, r[1])] : null;
     }),
   );
-  // (4) 擋泥板斷面牆：沿切口前緣（往外側後掠的斜線，往殼內退 0.25）
-  const zEnd = P.hw(cutFrontX(39)) - 0.4;
+  // (4) 擋泥板斷面牆：沿切口前緣（往外側後掠、外側後角彎成圓角，往殼內退 0.25）
   geos.push(
-    buildStrip(14, (t) => {
+    buildStrip(16, (t) => {
       const z = lerp(CUT_Z, zEnd, t);
       const x = cutFrontX(z) + 0.25;
       const yt = topY(x, z) - 0.3;
-      const yb = z >= FENDER_LIP_Z ? Math.min(archTopY(x, WELL_R) - 0.1, yt - 3.5) : archTopY(x, WELL_R) - 0.1;
+      const yb = archTopY(x, WELL_R) - 0.1;
       return yt > yb + 0.1 ? [v(x, yb, z), v(x, yt, z)] : null;
     }),
   );
@@ -769,7 +791,7 @@ export const firebirdBody = makePolyBody({
     density_g_cm3: 'SPEC 1.14：ABS 約 1.05 g/cm³（推估）',
     wallThickness_mm: '推估：射出 ABS 殼 0.8 mm（同其他車殼）；座艙罩同厚度以殼面積計入質量',
     geometry: '本檔站位產生器 P（推估）：殼面 x −58 ~ 75（鼻尖），扇形尾翼翼梢約 x −75；殼頂 31.6–32.6、座艙罩頂 38、扇形尾翼頂約 45.5（V7：尾翼比座艙頂高 ≤ 10）；前輪上方半寬 39.2（側裙外張 1.0）',
-    wheelArches: '前後 R17.5（31 mm 輪胎半徑 15.5 + 2 mm），可裝 26 / 31 mm 輪；前輪罩後半切開露出輪胎（x 22 起，前緣俯視後掠：內側 x 44、外緣約 x 39.3，|z| ≥ 23.6）；後輪有輪拱內襯；前輪室以深紅封板圍起（胎內側環形擋板與隔板、切口後壁、擋泥板內襯與斷面牆）',
+    wheelArches: '前後 R17.5（31 mm 輪胎半徑 15.5 + 2 mm），可裝 26 / 31 mm 輪；前輪罩後半切開露出輪胎（x 22 起，前緣俯視後掠：內側 x 44、圓角起點約 x 40.4，外側後角往前彎成圓角，|z| ≥ 23.6）；後輪有輪拱內襯；前輪室以深紅封板圍起（胎內側環形擋板與隔板、切口後壁、擋泥板內襯與斷面牆）',
     fan: '扇形尾翼：7 片 ABS 平板（厚 1.1 mm，推估），偏航 0° / ±11° / ±22° / ±33°、長 50 / 48 / 44 / 38 mm、最大半寬 4.6 → 3.6 mm、外緣下垂 0° / 6° / 12° / 18°，同一翼根（x −27 背脊）放射，翼梢高 44.4 → 41.6；每片分三段上色（深紅、火焰橘、金），上表面中線一條黑漆羽軸凸條（寬 0.9 → 0.3、高 0.15 mm）；翼根座為金色扁橢球；質量 = 封閉體積 × 1.05 g/cm³',
     canopy: '座艙罩（金蘋果）：琥珀金透明半橢球殼 30 × 21 mm、罩下殼面貼金、高 8 mm，16 × 6 段，以殼面積 × 0.8 mm 計入質量（推估）',
     palette: 'Khokhloma 漆器的黑＋朱紅＋金與捲莖、漿果母題（研究來源見 DESIGN.md S3）；金蘋果與發亮的尾羽取自 Afanasyev 故事（S2）；色碼自訂（推估）',
