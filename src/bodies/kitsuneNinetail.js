@@ -3,7 +3,7 @@
 // 座艙後細腰配外擴的後輪臀、車尾往後撇的尖刃尾翼。
 // 九尾 → 九條往後撇的尖尾刃：中央 1 片＋左右各 4 片，扇根沿後甲板兩側斜排（不從同一點放射），白刃身、朱紅尾尖；
 // 稻荷的朱與白 → 珍珠白車身＋朱紅下半部（往後斜升的分色線描金）＋黑漆底緣；
-// 金蒔繪 → 前後輪之間直立側牆上的金色青海波；寶珠 → 鼻面上拖著朱紅火舌的金色寶珠。
+// 金蒔繪 → 前後輪之間青綠直立側牆上的金色青海波；狐火 → 引擎蓋中線三道並排往後拖的朱紅火焰（不放圓點）。
 // 設計：shared/design/body-kitsune-ninetail/DESIGN.md（典故與文物對應 MYTH_RESEARCH 日本節 J1、J3、J12；
 // 黑名單：《火影忍者》九喇嘛、寶可夢九尾〔J14〕、The Fox Jr.、WGP 銀狐隊、旭日放射紋〔J15〕）。剖面為本檔站位產生器（推估）。
 // 不放鳥居與神社建築；塗裝全為自創，不含任何廠商 / 作品名稱、商標、文字或人臉。
@@ -15,10 +15,10 @@ import { buildProfileLiner } from './khepriScarab.js';
 
 /** @typedef {import('./loft.js').BodyPart} BodyPart */
 
-/** @type {number[]} 站位參數表（x 由後到前，前後軸 x = ±40）：車尾 −70、鼻尖 75.5 */
-const XS = [-70, -66, -60, -50, -40, -25, -10, 5, 20, 30, 40, 50, 58, 64, 69, 73, 75.5];
+/** @type {number[]} 站位參數表（x 由後到前，前後軸 x = ±40）：車尾 −70、鼻尖 76.5 */
+const XS = [-70, -66, -60, -50, -40, -25, -10, 5, 20, 30, 40, 50, 58, 64, 69, 73, 76.5];
 /** @type {number[]} 俯視半寬的站位（比其他參數多腰身與前擋泥板前緣的控制點） */
-const XS_HW = [-70, -66, -60, -50, -40, -30, -18, -5, 8, 20, 30, 40, 50, 52, 54.2, 55.6, 58, 61, 64, 69, 73, 75.5];
+const XS_HW = [-70, -66, -60, -50, -40, -30, -18, -5, 8, 20, 30, 40, 50, 52, 54.2, 55.6, 58, 61, 64, 69, 73, 76.5];
 
 /** @type {{ x: number, y: number, r: number }} 前擋泥板眉線：以前輪拱圓心為圓心、半徑 18.5（輪拱 R17.5 外 1 mm）的圓弧 */
 const FRONT_BROW = { x: 40, y: 13, r: 18.5 };
@@ -35,10 +35,10 @@ const browY = (x) => {
   return Math.abs(dx) < FRONT_BROW.r ? FRONT_BROW.y + Math.sqrt(FRONT_BROW.r ** 2 - dx * dx) : 0;
 };
 
-/** @type {(x: number) => number} 肩稜線的基本高度：後輪臀拱起（31.5），座艙兩側 28，往前斜降成扁平鏟鼻的側緣（鼻尖 12.4） */
-const ySBase = monoCurve(XS, [29.4, 30.4, 31.2, 31.5, 31, 29.2, 28, 28, 28.4, 28.2, 27.6, 24.2, 18.6, 15.6, 13.9, 12.9, 12.4]);
-/** @type {(x: number) => number} 中線殼頂的基本高度：後甲板 33.6；引擎蓋墊到和前擋泥板齊平（不鼓包），前軸之前一路斜降成扁平鏟鼻（鼻尖 13） */
-const yTopBase = monoCurve(XS, [31.4, 32.4, 33.2, 33.6, 33.6, 33.2, 32.6, 32.4, 32.2, 32, 31.6, 27, 20.2, 16.6, 14.6, 13.6, 13]);
+/** @type {(x: number) => number} 肩稜線的基本高度：後輪臀拱起（31.5），座艙兩側 28，往前斜降成又長又低的扁平鏟鼻側緣（鼻尖 11.6） */
+const ySBase = monoCurve(XS, [29.4, 30.4, 31.2, 31.5, 31, 29.2, 28, 28, 28.4, 28.2, 27.6, 24.2, 17.6, 14.4, 12.8, 12, 11.6]);
+/** @type {(x: number) => number} 中線殼頂的基本高度：後甲板 33.6；引擎蓋墊到和前擋泥板齊平（不鼓包），前軸之前一路斜降成又長又低的扁平鏟鼻（鼻尖 11.9） */
+const yTopBase = monoCurve(XS, [31.4, 32.4, 33.2, 33.6, 33.6, 33.2, 32.6, 32.4, 32.2, 32, 31.6, 26.4, 19, 15, 13.2, 12.4, 11.9]);
 
 /** @type {(x: number) => number} 前輪拱圓柱（R17.5）在 x 處的頂高；圓柱外回傳 0 */
 const archTopY = (x) => {
@@ -83,7 +83,7 @@ const P = {
   // 中線殼頂：中線始終比肩稜線高 ≥ 0.5（鼻面不會出現橫越兩側的折稜），引擎蓋會被輪拱擦到的地方再墊高（yTopMin）
   yTop: (x) => smoothMax(yTopBase(x), Math.max(yTopMin(x), smoothMax(ySBase(x), browY(x), 1.2) + 0.5), 0.8),
   // 側裙下緣
-  yLow: monoCurve(XS, [14, 12.5, 11, 10.5, 10.5, 10.5, 10.5, 10.5, 10.5, 10.5, 10.5, 10.5, 11, 12, 12.6, 12.8, 12.9]),
+  yLow: monoCurve(XS, [14, 12.5, 11, 10.5, 10.5, 10.5, 10.5, 10.5, 10.5, 10.5, 10.5, 10.5, 10.8, 11, 11, 10.9, 10.8]),
 };
 
 /** @type {number} 前後輪之間側裙下緣的半寬 */
@@ -115,7 +115,7 @@ const profile = (x) => {
 };
 
 /** @type {{ x: number, pts: number[][] }[]} 車尾與車鼻（含前擋泥板前緣）每約 1.3–1.4 mm 一站，中段每 2.4 mm */
-const STATIONS = [...buildStations(-70, -60, 1.4, profile).slice(0, -1), ...buildStations(-60, 54, 2.4, profile).slice(0, -1), ...buildStations(54, 75.5, 1.3, profile)];
+const STATIONS = [...buildStations(-70, -60, 1.4, profile).slice(0, -1), ...buildStations(-60, 54, 2.4, profile).slice(0, -1), ...buildStations(54, 76.5, 1.3, profile)];
 
 /** @type {{ x: number, y: number, radius: number, cutZFrom: number }[]} 前後輪拱（R17.5：31 mm 輪胎半徑 15.5 + 2 mm） */
 const ARCHES = [
@@ -147,6 +147,8 @@ const baseBand = (x) => 2.2 * smoothstep(72, 56, x);
 const materials = () => ({
   // 朱紅：下半部與尾尖（亮面漆）
   vermilion: namedMaterial('paint-vermilion-shu', { color: 0xd43a1c, roughness: 0.28, clearcoat: 0.9, clearcoatRoughness: 0.08 }),
+  // 青綠：前後輪之間的側牆（四視圖 08 的青綠）
+  teal: namedMaterial('paint-teal-seiji', { color: 0x1f8a7e, roughness: 0.3, clearcoat: 0.8, clearcoatRoughness: 0.1 }),
   // 珍珠白：車身主色與尾刃
   white: namedMaterial('paint-pearl-white', { color: 0xf4f2ec, metalness: 0.2, roughness: 0.3, clearcoat: 0.9, clearcoatRoughness: 0.1 }),
   // 黑漆：緞面（漆器感），底緣、座艙框
@@ -158,8 +160,6 @@ const materials = () => ({
   edge: namedMaterial('shell-edge-black', { color: 0x18181b, roughness: 0.6, side: THREE.DoubleSide }),
   mount: namedMaterial('abs-mount-black', { color: 0x222326, roughness: 0.6 }),
   liner: namedMaterial('shell-wheelwell-black', { color: 0x1a1a1e, roughness: 0.7, side: THREE.DoubleSide }),
-  // 寶珠：琥珀金，微弱自發光（強度壓低，Blender 不過曝）
-  jewel: namedMaterial('lamp-jewel-amber', { color: 0xffc860, emissive: 0xffa030, emissiveIntensity: 0.35, roughness: 0.15, clearcoat: 1.0 }),
   dGold: decalMaterial('decal-gold-makie', { color: 0xd4b052, metalness: 0.75, roughness: 0.32 }),
   dUrushi: decalMaterial('decal-urushi-black', { color: 0x141416, roughness: 0.5, clearcoat: 0.2 }),
   dShu: decalMaterial('decal-vermilion-shu', { color: 0xd8401f, roughness: 0.35, clearcoat: 0.6 }),
@@ -396,29 +396,35 @@ const seigaiha = (R, v0) => (u, v) => {
 };
 
 /**
- * 火焰寶珠徽記（俯視，畫在鼻面中線上）：金色寶珠包在白色火團裡，兩側火舌與中央火舌往後拖（中央最長），像被迎面風往後吹
- * @type {{ jewel: (x: number, z: number) => number, flame: (x: number, z: number) => number }} 正值 = 在圖形內
+ * 狐火紋（俯視，畫在引擎蓋中線兩側）：三道並排、平行往後拖的火焰（中央最長），頭端圓、尾端收尖，
+ * 每道火焰的外緣有兩個往後的小火舌；三道都左右對稱、互相平行，不從同一點放射。
+ * 每道：[頭端 x, |z| 中心（中央 0）, 尾端 x, 頭端半徑]
+ * @type {number[][]}
  */
-const JEWEL_EMBLEM = (() => {
-  /** @type {number[][]} 火舌：[起點 x, 起點 |z|, 終點 x, 終點 |z|, 起點半徑] */
-  const tongues = [
-    [52, 0, 31, 0, 5.2],
-    [51, 3, 35, 9.5, 3],
-  ];
-  /** @type {(x: number, z: number) => number} */
-  const flame = (x, z) => {
-    const az = Math.abs(z);
-    let best = -Infinity;
-    for (const [x0, z0, x1, z1, r0] of tongues) {
-      const dx = x1 - x0;
-      const dz = z1 - z0;
-      const t = Math.max(0, Math.min(1, ((x - x0) * dx + (az - z0) * dz) / (dx * dx + dz * dz)));
-      best = Math.max(best, r0 * (1 - t) - Math.hypot(x - (x0 + t * dx), az - (z0 + t * dz)));
+const FOXFIRE = [
+  [56, 0, 36, 3],
+  [53, 9, 40, 2.5],
+];
+
+/**
+ * 狐火紋的範圍
+ * @type {(x: number, z: number) => number} 正值 = 在火焰內
+ */
+const foxfire = (x, z) => {
+  let best = -Infinity;
+  for (const [x0, zc, x1, r0] of FOXFIRE) {
+    for (const sg of zc === 0 ? [0] : [-1, 1]) {
+      const t = (x0 - x) / (x0 - x1);
+      if (t < -0.5 || t > 1) {
+        continue;
+      }
+      // 半寬沿長度收尖，外緣加兩個往後的小火舌（沿長度起伏）
+      const w = t < 0 ? Math.sqrt(Math.max(0, r0 * r0 - (x - x0) ** 2)) : r0 * (1 - t) ** 0.6 * (1 + 0.3 * Math.sin(Math.PI * 3 * t) ** 2);
+      best = Math.max(best, w - Math.abs(z - sg * zc));
     }
-    return best;
-  };
-  return { jewel: (x, z) => 3.2 - Math.hypot(x - 52, z), flame };
-})();
+  }
+  return best;
+};
 
 export const kitsuneNinetailBody = makePolyBody({
   id: 'body-kitsune-ninetail',
@@ -430,7 +436,7 @@ export const kitsuneNinetailBody = makePolyBody({
   form: 'shu-fan-spade',
   roof: 'canopy',
   wing: 'nine-fan-blades',
-  theme: '照四視圖 08 重新建模：扁平鏟形長鼻、一路斜升的楔形背線、壓低拉長的多面切削座艙罩、細腰配外擴後輪臀與封住底盤的側裙；九尾化成車尾九條往後撇的尖尾刃（白刃朱紅尖），珍珠白車身、朱紅下半部、兩輪之間金色青海波，鼻面一枚拖著朱紅火舌的金寶珠',
+  theme: '照四視圖 08 重新建模：扁平鏟形長鼻、一路斜升的楔形背線、壓低拉長的多面切削座艙罩、細腰配外擴後輪臀與封住底盤的側裙；九尾化成車尾九條往後撇的尖尾刃（白刃朱紅尖），珍珠白車身、朱紅下半部、兩輪之間青綠側牆上的金色青海波，引擎蓋三道並排朱紅狐火',
   material: 'ABS',
   density_g_cm3: 1.05,
   wallThickness_mm: 0.8,
@@ -462,6 +468,8 @@ export const kitsuneNinetailBody = makePolyBody({
   zones: () => [
     // 黑漆底緣
     { mat: 'urushi', keep: (x, y) => P.yLow(x) + baseBand(x) - y },
+    // 青綠側牆：前後輪之間直立側牆上的分色線以下（金青海波畫在這面上）
+    { mat: 'teal', keep: (x, y, z) => Math.min(Math.abs(z) - 33.5, 18 - Math.abs(x), ySplit(x) - y) },
     // 朱紅下半部（往後斜升的分色線以下）
     { mat: 'vermilion', keep: (x, y, z) => Math.min(ySplit(x) - y, Math.abs(z) - 12) },
     // 珍珠白車身
@@ -502,17 +510,13 @@ export const kitsuneNinetailBody = makePolyBody({
       mat: 'dUrushi',
       name: 'decal-canopy-frame',
     });
-    // 火焰寶珠徽記（鼻面中線）：朱紅火舌（挖掉寶珠的位置）＋琥珀金寶珠
+    // 狐火紋（朱紅，引擎蓋中線三道並排火焰）
     parts.push({
-      geometry: kit.decal((x, y, z) => (y < 20 ? -1 : Math.min(JEWEL_EMBLEM.flame(x, z), -JEWEL_EMBLEM.jewel(x, z), -kit.underCanopy(x, z) - 0.6))),
+      geometry: kit.decal((x, y, z) => (y < 18 ? -1 : Math.min(foxfire(x, z), -kit.underCanopy(x, z) - 0.6))),
       mat: 'dShu',
-      name: 'decal-jewel-flames',
+      name: 'decal-foxfire',
     });
-    parts.push({
-      geometry: kit.decal((x, y, z) => (y < 20 ? -1 : JEWEL_EMBLEM.jewel(x, z)), { offset: 0.1 }),
-      mat: 'jewel',
-      name: 'lamp-flame-jewel',
-    });
+
     // 分色線上的金蒔繪線（線寬 1.2，從前輪後方往後斜升到車尾）
     parts.push({
       geometry: kit.decal((x, y) => Math.min(0.6 - Math.abs(y - (ySplit(x) + 0.6)), 30 - x, x + 69, y - P.yLow(x) - baseBand(x) - 0.4)),
@@ -533,7 +537,7 @@ export const kitsuneNinetailBody = makePolyBody({
   src: {
     density_g_cm3: 'SPEC 1.14：ABS 約 1.05 g/cm³（推估）',
     wallThickness_mm: '推估：射出 ABS 殼 0.8 mm（同其他車殼）；座艙罩同厚度以殼面積計入質量',
-    geometry: '本檔站位產生器 P（推估，造型照 shared/design/body-kitsune-ninetail/fourview.png 四視圖 08 與 fourview_trace.txt 的比例，尺寸照底盤）：殼長約 146（車尾 −70 ~ 鼻尖約 76）、外框長 149.9（尾刃尖到 −73.6）；後甲板 33.6、鼻尖頂 13、座艙頂約 40、尾刃尖 41.3（全車最高）；後輪臀 ±31.5、細腰 ±24.6、胸 ±29.6、前後輪之間側裙下緣 ±39、前輪上方 ±27.6、鏟鼻 ±20.6 → ±3.6；前擋泥板眉線為前輪拱同心圓 R18.5',
+    geometry: '本檔站位產生器 P（推估，造型照 shared/design/body-kitsune-ninetail/fourview.png 四視圖 08 與 fourview_trace.txt 的比例，尺寸照底盤）：殼長約 147（車尾 −70 ~ 鼻尖約 77）、外框長 149.9（尾刃尖到 −73.6）；後甲板 33.6、鼻尖頂 11.9、座艙頂約 40、尾刃尖 41.3（全車最高）；後輪臀 ±31.5、細腰 ±24.6、胸 ±29.6、前後輪之間側裙下緣 ±39、前輪上方 ±27.6、鏟鼻 ±20.6 → ±3.6；前擋泥板眉線為前輪拱同心圓 R18.5',
     wheelArches: '前後 R17.5（31 mm 輪胎半徑 15.5 + 2 mm），可裝 26 / 31 mm 輪',
     fan: '九條尾刃為 ABS 實心薄刃片（斷面菱形，根部寬 6.8、中脊厚 1.6，沿長 5 段、平面著色，推估）：中央 1 片（根 x −27、長 46、上揚 7°）＋左右各 4 片（根 x −24 / −26 / −28 / −30、|z| 13 / 17 / 21 / 24.5、外張 8 / 16 / 24 / 32°、上揚 5 / 10 / 15 / 20°、長 46 / 42 / 37 / 31）；每片後 45 % 為朱紅尾尖；根部埋進殼面 0.6；質量 = 封閉體積 × 1.05 g/cm³',
     palette: '珍珠白主色與尾刃＋朱紅下半部與尾尖＋黑漆底緣與座艙框＋金（青海波、分色線上的腰線）；朱、白、漆黑、金的色碼參考 MYTH_RESEARCH 6-2（朱 #C8372D、白 #F7F5F0、漆黑 #1B1B1B、金 #C9A54A，推估），實際用 #D43A1C、#F4F2EC、#141416',
