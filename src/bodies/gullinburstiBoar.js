@@ -1,13 +1,13 @@
 // 金鬃（body-gullinbursti-boar，神話組・北歐）：《散文埃達》中侏儒在鍛爐裡為 Freyr 打出的 Gullinbursti——鬃毛是金的、在黑夜裡發光、跑得比任何馬都快。
-// 車上不做動物本體，只取「金鬃放射的光」與「矮人鍛造」兩個元素做成賽車零件與塗裝。
+// 車上不做動物本體，只取「金鬃」與「矮人鍛造」兩個元素做成賽車零件與塗裝。
 // 造型照四視圖 26（shared/design/body-gullinbursti-boar/fourview.png）：多稜角的寬殼——
 // 側視是低平的鏟形鼻 → 一路斜升的引擎蓋 → 車身中段的窄座艙泡 → 平直的後甲板 → 車尾上翹的鴨尾與平板尾翼；
-// 俯視是寬鼻、前輪後收腰（側進氣口）、後輪外擴的稜角平面；正視是中央低谷的引擎蓋夾在兩道尖起的擋泥板稜之間。
-// 金鬃 → 從座艙往外放射的金色光芒：前擋泥板上兩道往前外掃的金刃色帶、後甲板左右各三片往後外放射的立體金鰭、
-// 前擋泥板側面一道往前下掃的金色斜刃，車尾一支金色平板尾翼。
-// 鍛造 → 鍛鐵黑的車身面板上整片鎚痕、側進氣口裡一排金色鍛爐百葉、下緣稜線一道餘燼橘的發光縫。
+// 俯視是寬鼻、前輪後收腰（側進氣口）、後輪外擴的稜角平面，收腰處側壁仍蓋到底盤側框外；正視是中央低谷的引擎蓋夾在兩道尖起的擋泥板稜之間。
+// 金鬃 → 拉絲金的車身主色、背脊中線從座艙後到鴨尾一排低矮的拋光金鋸齒鰭（襯在鍛鐵黑背脊帶上）。
+// 鍛造 → 四組向後的鍛鐵黑大箭頭色塊（前擋泥板、後腰各一組，外圈描餘燼橘線）、引擎蓋金面板上的細鎚痕、
+// 側進氣口裡一排金色鍛爐百葉、下緣稜線一道餘燼橘的發光縫、車尾一支鍛鐵黑平板尾翼。
 // 設計：shared/design/body-gullinbursti-boar/DESIGN.md（典故、借用的古代語彙、和市售車殼 / 現代作品 / 既有車殼的差異）。
-// 塗裝全為自創：鍛鐵黑＋拉絲金＋拋光金＋餘燼橘；不用盧恩字母、不用任何被挪用的符號、不含文字與商標。
+// 塗裝全為自創：拉絲金＋拋光金＋鍛鐵黑＋餘燼橘；不用盧恩字母、不用任何被挪用的符號、不含文字與商標。
 import * as THREE from 'three';
 import { makePolyBody } from './polyBody.js';
 import { namedMaterial, decalMaterial, mergeGeos, lerp } from './loft.js';
@@ -29,12 +29,12 @@ const P = {
   yF: monoCurve(XS, [30.6, 32.4, 33.4, 33.6, 32.2, 30.2, 29.8, 30, 31.2, 32.8, 33, 31.2, 27.4, 24.8, 22]),
   // 座艙泡（點 1）半寬：座艙段 11–12，前後收成窄稜
   cw: monoCurve(XS, [8, 8.5, 8.8, 9, 9.6, 11, 12, 11.6, 9.6, 8, 7.2, 6.6, 6.2, 6, 5.6]),
-  // 半寬：切角的鼻 20 → 前輪拱外擴 46.5 → 兩輪之間猛收腰到 19.5（側進氣口，俯視是 X 形的尖角寬殼）→ 後輪拱外擴 46.5 → 收角車尾 21
-  hw: monoCurve(XS_HW, [21, 29, 41, 46.5, 39, 24, 19.5, 19.5, 21, 34, 45, 46.5, 43, 36, 28, 20]),
+  // 半寬：俯視細長鏟形的鼻 13 → 前輪拱外擴 46.5 → 兩輪之間收腰到 33（側壁一路蓋到底盤側框外，兩輪之間看不到底盤）→ 後輪拱外擴 46.5 → 收角車尾 21
+  hw: monoCurve(XS_HW, [21, 29, 41, 46.5, 41, 35, 33, 33, 34, 38.5, 45, 46.5, 42, 32, 22, 13]),
   // 最寬處（下稜線）高度
   yS: monoCurve(XS, [24, 23.2, 22.5, 22, 21.5, 21, 20.5, 20.5, 21, 21.5, 21.5, 20.5, 19, 18, 17]),
-  // 側壁下緣
-  yLow: monoCurve(XS, [15, 14.2, 13.2, 12.5, 12.5, 12.5, 12.5, 12.5, 12.5, 12.5, 12.8, 13.4, 13.8, 14, 14.2]),
+  // 側壁下緣：兩輪之間壓低到 10.5，把底盤側框整段蓋住
+  yLow: monoCurve(XS, [15, 14.2, 13.2, 12.5, 11.5, 10.5, 10.5, 10.5, 11.5, 12.5, 12.8, 13.4, 13.8, 14, 14.2]),
 };
 
 /** @type {number} 座艙泡前端 x */
@@ -91,11 +91,15 @@ const clamp01 = (t) => Math.max(0, Math.min(1, t));
 
 /** @type {() => Record<string, THREE.Material>} */
 const materials = () => ({
-  // 主體：鍛鐵黑（緞面、帶一點暖色）；paint- 且 roughness > 0.5 → Blender 緞面
+  // 箭頭色塊與背脊帶：鍛鐵黑（緞面、帶一點暖色）；paint- 且 roughness > 0.5 → Blender 緞面
   iron: namedMaterial('paint-forged-iron-black', { color: 0x221f1d, roughness: 0.56, clearcoat: 0.15, clearcoatRoughness: 0.45 }),
-  // 色帶：拉絲金（名稱含 -brass → Blender metallic 1）
+  // 尾翼：同色鍛鐵黑（實體件）
+  ironTrim: namedMaterial('paint-forged-iron-wing', { color: 0x221f1d, roughness: 0.56, clearcoat: 0.15, clearcoatRoughness: 0.45 }),
+  // 箭頭與背脊帶外圈的餘燼橘描線
+  ember: namedMaterial('paint-ember-orange-line', { color: 0xff6a12, roughness: 0.55, emissive: 0x7a2400, emissiveIntensity: 0.4 }),
+  // 主色：拉絲金（名稱含 -brass → Blender metallic 1）
   goldPaint: namedMaterial('trim-gold-body-brass', { color: 0xc8962f, metalness: 0.85, roughness: 0.32, clearcoat: 0.3, clearcoatRoughness: 0.2 }),
-  // 放射鰭與尾翼：更亮的拋光金
+  // 背脊金鬃：更亮的拋光金
   gold: namedMaterial('trim-gold-brass', { color: 0xf0c457, metalness: 0.9, roughness: 0.22, clearcoat: 0.3 }),
   // 座艙泡：深色煙燻 PC（真的是座艙罩）
   canopy: namedMaterial('pc-smoke-tint', { color: 0x15161a, roughness: 0.12, metalness: 0.2, clearcoat: 1, clearcoatRoughness: 0.05 }),
@@ -104,8 +108,8 @@ const materials = () => ({
   liner: namedMaterial('shell-wheelwell-iron', { color: 0x2c2d31, roughness: 0.7, side: THREE.DoubleSide }),
   // 餘燼橘發光縫（低強度自發光，Blender 裡不過曝）
   dEmber: decalMaterial('decal-ember-glow', { color: 0xff7a1a, emissive: 0xff5a00, emissiveIntensity: 0.9, roughness: 0.3 }),
-  // 鎚痕（貼紙）：比車身亮一階的鍛鐵灰小橢圓
-  dHammer: decalMaterial('decal-hammer-mark', { color: 0x37322e, roughness: 0.42, metalness: 0.4 }),
+  // 鎚痕（貼紙）：比車身暗一階的古金小橢圓
+  dHammer: decalMaterial('decal-hammer-mark', { color: 0xa87a26, roughness: 0.4, metalness: 0.8 }),
   // 側進氣口的暗底與金百葉
   dVent: decalMaterial('decal-forge-vent-dark', { color: 0x0b0b0c, roughness: 0.8 }),
   dGold: decalMaterial('decal-gold-louver', { color: 0xf0c457, metalness: 0.9, roughness: 0.22, clearcoat: 0.3 }),
@@ -113,86 +117,86 @@ const materials = () => ({
 });
 
 // ---------------------------------------------------------------------------
-// 放射金光（色帶與立體鰭）
+// 金鬃與鍛爐色塊（箭頭色塊、背脊金鬃）
 // ---------------------------------------------------------------------------
 
 /**
- * 漸寬刀形色帶的距離（俯視 (x, z) 或側視 (x, y) 平面）：從 a 端寬 w0 漸寬到 b 端 w1，回傳正值 = 在色帶內
- * @type {(px: number, py: number, a: number[], b: number[], w0: number, w1: number) => number}
+ * 多邊形的有號距離（2D）：回傳正值 = 在多邊形內，值是到最近邊的距離
+ * @type {(px: number, py: number, poly: number[][]) => number}
  */
-const taperSd = (px, py, a, b, w0, w1) => {
-  const dx = b[0] - a[0];
-  const dy = b[1] - a[1];
-  const l2 = dx * dx + dy * dy;
-  const t = ((px - a[0]) * dx + (py - a[1]) * dy) / l2;
-  if (t < 0 || t > 1) {
-    return -1;
+const polySd = (px, py, poly) => {
+  let dMin = Infinity;
+  let inside = false;
+  for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
+    const [xi, yi] = poly[i];
+    const [xj, yj] = poly[j];
+    const ex = xi - xj;
+    const ey = yi - yj;
+    const t = clamp01(((px - xj) * ex + (py - yj) * ey) / (ex * ex + ey * ey));
+    dMin = Math.min(dMin, Math.hypot(px - xj - t * ex, py - yj - t * ey));
+    if ((yi > py) !== (yj > py) && px < ((xj - xi) * (py - yi)) / (yj - yi) + xi) {
+      inside = !inside;
+    }
   }
-  const perp = Math.abs((px - a[0]) * dy - (py - a[1]) * dx) / Math.sqrt(l2);
-  return lerp(w0, w1, t) / 2 - perp;
+  return inside ? dMin : -dMin;
 };
 
 /**
- * 前擋泥板上的放射色帶（俯視，|z|）：每側兩道從座艙前緣往前外掃的刀形帶，外端寬 3.6 mm
- * @type {{ a: number[], b: number[] }[]}
+ * 四組向後的大箭頭色塊（俯視 (x, |z|)，左右對稱所以每筆是一側一組）：箭尖朝車尾、底邊開一個 V 形缺口；
+ * 前擋泥板一組、後腰一組，同一個方向
+ * @type {number[][][]}
  */
-const FRONT_RAYS = [
-  { a: [26, 9.5], b: [66, 25] },
-  { a: [24, 13], b: [46, 37] },
+const ARROWS = [
+  // 前擋泥板：箭尖 (35, 31) → 底邊 x 59，|z| 19–42
+  [[35, 31], [59, 42], [51, 30.5], [59, 19]],
+  // 後腰：箭尖 (−40, 27) → 底邊 x −12，|z| 16–37
+  [[-40, 27], [-12, 37], [-20, 26.5], [-12, 16]],
 ];
 
-/**
- * 後甲板的立體放射鰭（每側 3 片）：從座艙後方的焦點 (x −12, z 0) 往後外放射，r0 → r1 是鰭根的起訖半徑、ang 是和 −x 軸的夾角（度）、
- * h 是鰭尾的高度（前端 1 mm 升到鰭尾 h，鰭尾往後伸出一段尖刃）
- * @type {{ ang: number, r0: number, r1: number, h: number, tilt: number }[]}
- */
-const FINS = [
-  { ang: 14, r0: 20, r1: 45, h: 6, tilt: 30 },
-  { ang: 30, r0: 19, r1: 41, h: 6, tilt: 45 },
-  { ang: 46, r0: 19, r1: 37, h: 5.5, tilt: 58 },
-];
-/** @type {number} 放射鰭焦點 x */
-const FIN_FOCUS_X = -12;
+/** @type {(x: number, z: number) => number} 箭頭色塊的有號距離（取最近的一組） */
+const arrowSd = (x, z) => Math.max(...ARROWS.map((poly) => polySd(x, Math.abs(z), poly)));
+
+/** @type {number} 背脊黑帶的半寬 */
+const SPINE_HW = 3.4;
+/** @type {number} 背脊黑帶 / 金鬃起點 x（座艙泡後端） */
+const SPINE_X1 = -25;
+/** @type {number} 背脊黑帶終點 x（鴨尾） */
+const SPINE_X0 = -57.5;
+
+/** @type {(x: number, z: number) => number} 背脊黑帶的有號距離（俯視） */
+const spineSd = (x, z) => Math.min(SPINE_HW - Math.abs(z), x - SPINE_X0, SPINE_X1 - x);
 
 /**
- * 一片放射鰭：沿殼面的薄片（厚 1.2 mm），鰭根埋進殼面 1.2 mm，上緣從前端 1 mm 直線升到鰭尾 h、鰭尾後掠成尖刃
- * @type {(fin: { ang: number, r0: number, r1: number, h: number, tilt: number }, sg: number, topY: (x: number, z: number) => number) => THREE.BufferGeometry}
+ * 背脊金鬃：沿中線的一排低矮鋸齒鰭（厚 1.2 mm），從座艙泡後端到鴨尾，每齒後掠；
+ * 齒高從 3.2 mm 漸升到 5 mm，齒尖最高仍低於座艙罩頂
+ * @type {(topY: (x: number, z: number) => number) => THREE.BufferGeometry}
  */
-const buildRayFin = (fin, sg, topY) => {
-  const a = (fin.ang * Math.PI) / 180;
-  const x0 = FIN_FOCUS_X - fin.r0 * Math.cos(a);
-  const z0 = fin.r0 * Math.sin(a);
-  const len = fin.r1 - fin.r0;
-  /** @type {(u: number) => number} 沿鰭往後 u mm 處的殼面高度 */
-  const surfAt = (u) => topY(x0 - u * Math.cos(a), z0 + u * Math.sin(a));
-  const yBase = Math.min(surfAt(0), surfAt(len)) - 1.2;
+const buildManeTeeth = (topY) => {
+  const n = 8;
+  const x1 = SPINE_X1 - 0.5;
+  const x0 = SPINE_X0 + 1;
+  const pitch = (x1 - x0) / n;
+  /** @type {(x: number) => number} */
+  const base = (x) => topY(x, 0);
   const shape = new THREE.Shape();
-  shape.moveTo(0, surfAt(0) - 1.2);
-  shape.lineTo(0, surfAt(0) + 0.6);
-  for (let k = 1; k <= 6; k++) {
-    const u = (len * 0.82 * k) / 6;
-    shape.lineTo(-u, surfAt(u) + lerp(0.6, fin.h, k / 6));
+  shape.moveTo(x1, base(x1) - 1.2);
+  shape.lineTo(x1, base(x1));
+  for (let k = 0; k < n; k++) {
+    const xa = x1 - k * pitch;
+    const h = lerp(3.2, 5, k / (n - 1));
+    // 齒前緣緩升、齒尖往後掠、後緣陡降回殼面
+    shape.lineTo(xa - pitch * 0.85, base(xa - pitch * 0.85) + h);
+    shape.lineTo(xa - pitch * 0.72, base(xa - pitch * 0.72) + 0.3);
   }
-  // 鰭尾：後掠尖刃（尖端在鰭根終點後上方）
-  shape.lineTo(-len, surfAt(len) + fin.h * 0.9);
-  shape.lineTo(-len * 0.9, surfAt(len * 0.9) + 0.4);
-  for (let k = 6; k >= 0; k--) {
-    const u = (len * 0.9 * k) / 6;
-    shape.lineTo(-u, surfAt(u) - 1.2);
+  shape.lineTo(x0, base(x0) + 0.3);
+  for (let k = 12; k >= 0; k--) {
+    const x = lerp(x1, x0, k / 12);
+    shape.lineTo(x, base(x) - 1.2);
   }
   const g = new THREE.ExtrudeGeometry(shape, { depth: 1.2, bevelEnabled: false });
-  g.translate(0, -yBase, -0.6);
-  g.rotateX((sg * fin.tilt * Math.PI) / 180);
-  g.rotateY(sg * a);
-  g.translate(x0, yBase, sg * z0);
+  g.translate(0, 0, -0.6);
   return g;
 };
-
-/**
- * 側面的金色斜刃（側視 (x, y)）：前擋泥板側面從前輪後上方往前下掃到鼻端，後寬前尖
- * @type {(x: number, y: number) => number}
- */
-const sideSwooshSd = (x, y) => taperSd(x, y, [24, 27], [68, 15], 6.5, 1.6);
 
 /**
  * 側進氣口（側視平行四邊形，收腰處、後輪前方）：回傳正值 = 在進氣口內
@@ -208,7 +212,7 @@ const intakeSd = (x, y) => {
 };
 
 /**
- * 鎚痕（貼紙）：交錯排列的小橢圓（長 1.8、寬 1.1 mm，每 4.2 × 2.8 mm 一顆、隔排錯開半格）；回傳正值 = 在鎚痕內
+ * 鎚痕（貼紙）：交錯排列的小橢圓（最大長 1.25、寬 0.85 mm，每 4.2 × 2.8 mm 一顆、隔排錯開半格）；回傳正值 = 在鎚痕內
  * @type {(u: number, v: number) => number}
  */
 const hammerSd = (u, v) => {
@@ -217,20 +221,8 @@ const hammerSd = (u, v) => {
   const cu = (col + 0.5 * (row & 1)) * 4.2;
   // 每顆的大小與位置用格子座標雜湊打散，看起來是手鎚敲的、不是規則圓點
   const h = Math.abs(Math.sin(col * 12.9898 + row * 78.233) * 43758.5453) % 1;
-  const s = 0.55 + 0.6 * h;
+  const s = 0.35 + 0.35 * h;
   return 1 - Math.hypot((u - cu - 1.1 * (h - 0.5)) / (0.9 * s), (v - row * 2.8 - 0.8 * (h - 0.5)) / (0.6 * s));
-};
-
-/**
- * 後擋泥板外稜外側的金色肩帶（從收腰往後到車尾）：回傳正值 = 在帶內
- * @type {(x: number, y: number, z: number) => number}
- */
-const shoulderSd = (x, y, z) => {
-  if (x > -14 || x < -58 || y < P.yS(x) + 1) {
-    return -1;
-  }
-  const zc = 0.86 * P.hw(x) + 1.2;
-  return 1.3 * clamp01((-14 - x) / 10) - Math.abs(Math.abs(z) - zc);
 };
 
 /** @type {(x: number, z: number) => boolean} 側面（擋泥板稜以外） */
@@ -327,7 +319,7 @@ export const gullinburstiBoarBody = makePolyBody({
   form: 'forge-facet-wide',
   roof: 'canopy',
   wing: 'radiant-ray-fins',
-  theme: '金鬃（鍛爐放射稜殼）：多稜角的寬殼——低平鏟形鼻、一路斜升的引擎蓋、中段窄座艙泡、平直後甲板接上翹鴨尾與金色平板尾翼；正視是夾在兩道尖起擋泥板稜之間的低谷引擎蓋，俯視寬鼻、前輪後收腰、後輪外擴。金鬃的光從座艙往外放射：前擋泥板兩道往前外掃的金刃色帶、後甲板左右各三片往後外放射的立體金鰭、前擋泥板側面一道往前下掃的金刃；鍛鐵黑車身整片鎚痕，側進氣口裡一排金色鍛爐百葉，下稜一道餘燼橘發光縫',
+  theme: '金鬃（鍛爐稜殼）：多稜角的寬殼——低平鏟形鼻、一路斜升的引擎蓋、中段窄座艙泡、平直後甲板接上翹鴨尾與鍛鐵黑平板尾翼；正視是夾在兩道尖起擋泥板稜之間的低谷引擎蓋，俯視寬鼻、前輪後收腰、後輪外擴。拉絲金車身，前擋泥板與後腰四組向後的鍛鐵黑大箭頭色塊描餘燼橘線；背脊鍛鐵黑帶上一排低矮的拋光金鋸齒鬃；引擎蓋金面板細鎚痕，側進氣口裡一排金色鍛爐百葉，下稜一道餘燼橘發光縫',
   material: 'ABS',
   density_g_cm3: 1.05,
   wallThickness_mm: 0.8,
@@ -344,35 +336,27 @@ export const gullinburstiBoarBody = makePolyBody({
       mat: 'canopy',
       keep: (x, y, z) => Math.min(P.cw(x) - 0.4 - Math.abs(z), x - CANOPY_X0, CANOPY_X1 - x, y - P.yH(x) - 0.25),
     },
-    // 前擋泥板的放射金刃帶（俯視）
-    {
-      mat: 'goldPaint',
-      keep: (x, y, z) => Math.max(...FRONT_RAYS.map((r) => taperSd(x, Math.abs(z), r.a, r.b, 0.8, 3.6))),
-    },
-    // 側面的金色斜帶
-    { mat: 'goldPaint', keep: (x, y, z) => (onSide(x, z) ? sideSwooshSd(x, y) : -1) },
-    // 後擋泥板稜外側一條金色肩帶（從收腰往後到車尾，接放射鰭的光）
-    { mat: 'goldPaint', keep: shoulderSd },
-    // 鼻端前緣一道金色刃口
-    { mat: 'goldPaint', keep: (x) => Math.min(x - 70.4, 71.7 - x) },
-    { mat: 'iron', keep: () => 1 },
+    // 箭頭色塊與背脊黑帶外圈的餘燼橘描線（寬 0.8 mm）
+    { mat: 'ember', keep: (x, y, z) => 0.4 - Math.abs(arrowSd(x, z)) },
+    { mat: 'ember', keep: (x, y, z) => 0.4 - Math.abs(spineSd(x, z)) },
+    // 四組向後的鍛鐵黑大箭頭色塊
+    { mat: 'iron', keep: (x, y, z) => arrowSd(x, z) },
+    // 背脊鍛鐵黑帶（金鬃的底）
+    { mat: 'iron', keep: (x, y, z) => spineSd(x, z) },
+    // 鼻端前緣一道鍛鐵黑刃口
+    { mat: 'iron', keep: (x) => Math.min(x - 70.4, 72.5 - x) },
+    // 主色：拉絲金
+    { mat: 'goldPaint', keep: () => 1 },
   ],
-  mats: { inner: 'inner', edge: 'edge', cap: 'iron', mount: 'mount' },
+  mats: { inner: 'inner', edge: 'edge', cap: 'goldPaint', mount: 'mount' },
   materials,
   extras: (kit) => {
     /** @type {BodyPart[]} */
     const parts = [];
-    // 後甲板的放射金鰭：左右各 3 片
-    /** @type {THREE.BufferGeometry[]} */
-    const fins = [];
-    for (const sg of [-1, 1]) {
-      for (const fin of FINS) {
-        fins.push(buildRayFin(fin, sg, kit.surf.topY));
-      }
-    }
-    parts.push({ geometry: mergeGeos(fins), mat: 'gold', solid: true, outline: true, name: 'radiant-ray-fins' });
-    // 車尾平板尾翼
-    parts.push({ geometry: buildTailWing(kit.surf.topY), mat: 'gold', solid: true, outline: true, name: 'tail-plank-wing' });
+    // 背脊金鬃：座艙泡後到鴨尾的一排低矮鋸齒鰭
+    parts.push({ geometry: buildManeTeeth(kit.surf.topY), mat: 'gold', solid: true, outline: true, name: 'spine-mane-teeth' });
+    // 車尾平板尾翼（鍛鐵黑，和箭頭色塊同色）
+    parts.push({ geometry: buildTailWing(kit.surf.topY), mat: 'ironTrim', solid: true, outline: true, name: 'tail-plank-wing' });
     // 側進氣口暗底
     parts.push({
       geometry: kit.decal((x, y, z) => (onSide(x, z) ? intakeSd(x, y) : -1), { offset: 0.08 }),
@@ -404,26 +388,18 @@ export const gullinburstiBoarBody = makePolyBody({
       mat: 'dEmber',
       name: 'decal-ember-chine',
     });
-    // 鍛鐵面板的鎚痕：引擎蓋（座艙泡與擋泥板稜之間）與側面，避開金帶、進氣口
+    // 金色面板的鎚痕：只在引擎蓋與後甲板（座艙泡與擋泥板稜之間），避開黑色箭頭、背脊黑帶
     parts.push({
       geometry: kit.decal((x, y, z) => {
         const az = Math.abs(z);
-        if (x > 64 || x < -55 || shoulderSd(x, y, z) > -0.8) {
+        if (x > 64 || x < -55 || arrowSd(x, z) > -0.8 || spineSd(x, z) > -0.8) {
           return -1;
         }
         if (onSide(x, z)) {
-          if (y > P.yF(x) - 2.5 || y < P.yLow(x) + 1.5 || intakeSd(x, y) > -1 || sideSwooshSd(x, y) > -1) {
-            return -1;
-          }
-          return hammerSd(x, y);
+          return -1;
         }
         if (az < P.cw(x) + 1.5 || az > 0.62 * P.hw(x)) {
           return -1;
-        }
-        for (const r of FRONT_RAYS) {
-          if (taperSd(x, az, r.a, r.b, 3.6, 6.4) > 0) {
-            return -1;
-          }
         }
         return hammerSd(x, az);
       }, { offset: 0.06 }),
@@ -442,10 +418,10 @@ export const gullinburstiBoarBody = makePolyBody({
   src: {
     density_g_cm3: 'SPEC 1.14：ABS 約 1.05 g/cm³（推估）',
     wallThickness_mm: '推估：射出 ABS 殼 0.8 mm（同其他款）',
-    geometry: '本檔站位產生器 P（推估，比例取自四視圖 26 的站位表後縮到底盤）：車殼 x −59 ~ 72（短尾）；中線鼻尖 19.8 → 座艙頂 36.4（x −4）→ 後甲板 29.4；擋泥板稜前 32.4 / 後 33.6（31 mm 輪拱頂 30.5 之上）；半寬鼻 20、前輪 46.5、收腰 19.5、後輪 46.5、車尾 21',
-    fins: '放射金鰭為實心 ABS 薄片（厚 1.2 mm），每側 3 片，從 (x −12, z 0) 往後外放射 14° / 30° / 46°，鰭尾高 6 / 6 / 5.5 mm、外傾 30° / 45° / 58°（推估）',
+    geometry: '本檔站位產生器 P（推估，比例取自四視圖 26 的站位表後縮到底盤）：車殼 x −59 ~ 72（短尾）；中線鼻尖 19.8 → 座艙頂 36.4（x −4）→ 後甲板 29.4；擋泥板稜前 32.4 / 後 33.6（31 mm 輪拱頂 30.5 之上）；半寬鼻 13、前輪 46.5、收腰 33、後輪 46.5、車尾 21',
+    mane: '背脊金鬃為實心 ABS 薄片（厚 1.2 mm），x −25.5 ~ −56.5 共 8 齒，齒高 3.2 → 5 mm（推估）',
     tailWing: '平板尾翼 ABS 1.4 mm、翼展 ±45、弦長 5.9，兩支 1.6 mm 立柱（推估）',
-    livery: '金刃帶外端寬 3.6 mm、側斜刃 6.5 → 1.6 mm、餘燼縫 0.7 mm、鎚痕 1.8 × 1.1 mm 每 4.2 × 2.8 mm 一顆；皆為自繪（推估）',
+    livery: '箭頭色塊每組長 24–28 mm、寬 21–23 mm、描線 0.8 mm；背脊帶寬 6.8 mm、餘燼縫 0.7 mm、鎚痕最大 1.25 × 0.85 mm、每 4.2 × 2.8 mm 一顆；皆為自繪（推估）',
     wheelArches: '前後 R17.5（31 mm 輪胎半徑 15.5 + 2 mm），切口從 |z| 23.5 起（前輪胎內側 |z| 24.7）＋3 mm 深內襯',
     mounts: '對齊 chassis-midship 的車殼安裝點（SPEC 1.14）',
   },
