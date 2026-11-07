@@ -192,6 +192,7 @@ export const poseidonTridentBody = makePolyBody({
   density_g_cm3: 1.05,
   wallThickness_mm: 0.8,
   stations: STATIONS,
+  step: 0.7,
   // 肩稜線是銳利稜線
   hard: [4],
   wheelArches: ARCHES,
