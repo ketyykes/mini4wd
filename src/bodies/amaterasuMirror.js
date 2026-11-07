@@ -86,6 +86,9 @@ const P = {
   yLow: monoCurve(XS, [14, 12.5, 11, 10.5, 10.5, 10.5, 10.5, 10.5, 10.5, 10.5, 10.5, 10.5, 11, 12, 12.6, 12.8, 12.9]),
 };
 
+/** @type {number} 前後輪之間側裙下緣的半寬 */
+const SILL_W = 37;
+
 /**
  * 半剖面 7 點：中線 → 頂面 → 肩稜線（銳利）→ 微外張的側裙
  * @type {(x: number) => number[][]}
@@ -97,14 +100,16 @@ const profile = (x) => {
   const h = P.hw(x);
   const d = t - s;
   const flare = smoothstep(1, 8, h);
+  // 前後輪之間的側裙往外張到 ±37、下半段是直立側牆，從上面和側面都看不到底盤側框
+  const sill = Math.max(h + 1.2 * flare, SILL_W * smoothstep(-24, -16, x) * smoothstep(24, 16, x));
   return [
     [0, t],
     [0.34 * h, t - 0.1 * d],
     [0.64 * h, t - 0.36 * d],
     [0.87 * h, t - 0.72 * d],
     [h, s],
-    [h + 0.8 * flare, lerp(s, lo, 0.5)],
-    [h + 1.2 * flare, lo],
+    [Math.max(h + 0.8 * flare, sill - 0.4), lerp(s, lo, 0.42)],
+    [sill, lo],
   ];
 };
 
