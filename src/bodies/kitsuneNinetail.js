@@ -3,7 +3,7 @@
 // 座艙後細腰配外擴的後輪臀、車尾往後撇的尖刃尾翼。
 // 九尾 → 九條往後撇的尖尾刃：中央 1 片＋左右各 4 片，扇根沿後甲板兩側斜排（不從同一點放射），白刃身、朱紅尾尖；
 // 稻荷的朱與白 → 珍珠白車身＋朱紅下半部（往後斜升的分色線描金）＋黑漆底緣；
-// 金蒔繪 → 前後輪之間青綠直立側牆上的金色青海波；狐火 → 引擎蓋中線三道並排往後拖的朱紅火焰（不放圓點）。
+// 金蒔繪 → 前後輪之間青綠直立側牆上的金色青海波；狐火 → 引擎蓋左右兩道順著車身縱向的朱紅長流線（不放圓點）。
 // 設計：shared/design/body-kitsune-ninetail/DESIGN.md（典故與文物對應 MYTH_RESEARCH 日本節 J1、J3、J12；
 // 黑名單：《火影忍者》九喇嘛、寶可夢九尾〔J14〕、The Fox Jr.、WGP 銀狐隊、旭日放射紋〔J15〕）。剖面為本檔站位產生器（推估）。
 // 不放鳥居與神社建築；塗裝全為自創，不含任何廠商 / 作品名稱、商標、文字或人臉。
@@ -35,10 +35,10 @@ const browY = (x) => {
   return Math.abs(dx) < FRONT_BROW.r ? FRONT_BROW.y + Math.sqrt(FRONT_BROW.r ** 2 - dx * dx) : 0;
 };
 
-/** @type {(x: number) => number} 肩稜線的基本高度：後輪臀拱起（31.5），座艙兩側 28，往前斜降成又長又低的扁平鏟鼻側緣（鼻尖 11.6） */
-const ySBase = monoCurve(XS, [29.4, 30.4, 31.2, 31.5, 31, 29.2, 28, 28, 28.4, 28.2, 27.6, 24.2, 17.6, 14.4, 12.8, 12, 11.6]);
-/** @type {(x: number) => number} 中線殼頂的基本高度：後甲板 33.6；引擎蓋墊到和前擋泥板齊平（不鼓包），前軸之前一路斜降成又長又低的扁平鏟鼻（鼻尖 11.9） */
-const yTopBase = monoCurve(XS, [31.4, 32.4, 33.2, 33.6, 33.6, 33.2, 32.6, 32.4, 32.2, 32, 31.6, 26.4, 19, 15, 13.2, 12.4, 11.9]);
+/** @type {(x: number) => number} 肩稜線的基本高度：後輪臀拱起（31.5），座艙兩側 28，往前斜降成又長又低的扁平鏟鼻側緣（鼻尖 11.1） */
+const ySBase = monoCurve(XS, [29.4, 30.4, 31.2, 31.5, 31, 29.2, 28, 28, 28.4, 28.2, 27.6, 24.2, 17.4, 13.9, 12.3, 11.5, 11.1]);
+/** @type {(x: number) => number} 中線殼頂的基本高度：後甲板 33.6；引擎蓋墊到和前擋泥板齊平（不鼓包），前軸之前一路斜降成又長又低的扁平鏟鼻（鼻尖 11.4） */
+const yTopBase = monoCurve(XS, [31.4, 32.4, 33.2, 33.6, 33.6, 33.2, 32.6, 32.4, 32.2, 32, 31.6, 26.4, 18.8, 14.4, 12.6, 11.8, 11.4]);
 
 /** @type {(x: number) => number} 前輪拱圓柱（R17.5）在 x 處的頂高；圓柱外回傳 0 */
 const archTopY = (x) => {
@@ -396,34 +396,20 @@ const seigaiha = (R, v0) => (u, v) => {
 };
 
 /**
- * 狐火紋（俯視，畫在引擎蓋中線兩側）：三道並排、平行往後拖的火焰（中央最長），頭端圓、尾端收尖，
- * 每道火焰的外緣有兩個往後的小火舌；三道都左右對稱、互相平行，不從同一點放射。
- * 每道：[頭端 x, |z| 中心（中央 0）, 尾端 x, 頭端半徑]
- * @type {number[][]}
- */
-const FOXFIRE = [
-  [56, 0, 36, 3],
-  [53, 9, 40, 2.5],
-];
-
-/**
- * 狐火紋的範圍
- * @type {(x: number, z: number) => number} 正值 = 在火焰內
+ * 狐火流線（俯視，畫在引擎蓋上）：左右各一道順著車身縱向的長流線，從鼻端往後拉到座艙前，
+ * 前端粗、往後收細，沿長度微微起伏（像往後飄的狐火尾）；兩道互相平行、左右對稱
+ * @type {(x: number, z: number) => number} 正值 = 在流線內
  */
 const foxfire = (x, z) => {
-  let best = -Infinity;
-  for (const [x0, zc, x1, r0] of FOXFIRE) {
-    for (const sg of zc === 0 ? [0] : [-1, 1]) {
-      const t = (x0 - x) / (x0 - x1);
-      if (t < -0.5 || t > 1) {
-        continue;
-      }
-      // 半寬沿長度收尖，外緣加兩個往後的小火舌（沿長度起伏）
-      const w = t < 0 ? Math.sqrt(Math.max(0, r0 * r0 - (x - x0) ** 2)) : r0 * (1 - t) ** 0.6 * (1 + 0.3 * Math.sin(Math.PI * 3 * t) ** 2);
-      best = Math.max(best, w - Math.abs(z - sg * zc));
-    }
+  const x0 = 68;
+  const x1 = 34;
+  const t = (x0 - x) / (x0 - x1);
+  if (t < 0 || t > 1) {
+    return -1;
   }
-  return best;
+  const zc = 7 + 0.9 * Math.sin(Math.PI * 1.5 * t);
+  const w = lerp(0.95, 0.3, t);
+  return w - Math.abs(Math.abs(z) - zc);
 };
 
 export const kitsuneNinetailBody = makePolyBody({
@@ -436,7 +422,7 @@ export const kitsuneNinetailBody = makePolyBody({
   form: 'shu-fan-spade',
   roof: 'canopy',
   wing: 'nine-fan-blades',
-  theme: '照四視圖 08 重新建模：扁平鏟形長鼻、一路斜升的楔形背線、壓低拉長的多面切削座艙罩、細腰配外擴後輪臀與封住底盤的側裙；九尾化成車尾九條往後撇的尖尾刃（白刃朱紅尖），珍珠白車身、朱紅下半部、兩輪之間青綠側牆上的金色青海波，引擎蓋三道並排朱紅狐火',
+  theme: '照四視圖 08 重新建模：扁平鏟形長鼻、一路斜升的楔形背線、壓低拉長的多面切削座艙罩、細腰配外擴後輪臀與封住底盤的側裙；九尾化成車尾九條往後撇的尖尾刃（白刃朱紅尖），珍珠白車身、朱紅下半部、兩輪之間青綠側牆上的金色青海波，引擎蓋左右兩道朱紅狐火長流線',
   material: 'ABS',
   density_g_cm3: 1.05,
   wallThickness_mm: 0.8,
@@ -470,8 +456,8 @@ export const kitsuneNinetailBody = makePolyBody({
     { mat: 'urushi', keep: (x, y) => P.yLow(x) + baseBand(x) - y },
     // 青綠側牆：前後輪之間直立側牆上的分色線以下（金青海波畫在這面上）
     { mat: 'teal', keep: (x, y, z) => Math.min(Math.abs(z) - 33.5, 18 - Math.abs(x), ySplit(x) - y) },
-    // 朱紅下半部（往後斜升的分色線以下）
-    { mat: 'vermilion', keep: (x, y, z) => Math.min(ySplit(x) - y, Math.abs(z) - 12) },
+    // 朱紅下半部（往後斜升的分色線以下，停在前輪拱前緣，鼻端全白）
+    { mat: 'vermilion', keep: (x, y, z) => Math.min(ySplit(x) - y, Math.abs(z) - 12, 55 - x) },
     // 珍珠白車身
     { mat: 'white', keep: () => 1 },
   ],
@@ -510,9 +496,9 @@ export const kitsuneNinetailBody = makePolyBody({
       mat: 'dUrushi',
       name: 'decal-canopy-frame',
     });
-    // 狐火紋（朱紅，引擎蓋中線三道並排火焰）
+    // 狐火流線（朱紅，引擎蓋左右兩道縱向長流線）
     parts.push({
-      geometry: kit.decal((x, y, z) => (y < 18 ? -1 : Math.min(foxfire(x, z), -kit.underCanopy(x, z) - 0.6))),
+      geometry: kit.decal((x, y, z) => (y < P.yS(x) - 0.5 ? -1 : Math.min(foxfire(x, z), -kit.underCanopy(x, z) - 0.6))),
       mat: 'dShu',
       name: 'decal-foxfire',
     });
