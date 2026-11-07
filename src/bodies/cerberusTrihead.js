@@ -1,5 +1,5 @@
 // 三頭犬（body-cerberus-trihead，神話組・希臘；LG1 F2 擋泥板肌肉型）：不做犬頭，用「三」的重複、冥府之門、鎖鏈與蛇尾的曲線表現。
-// 「三」：三道等長、平行、同高、並排往前刺的陶土色鼻脊刃——左右前擋泥板拱頂各一道、中央門縫上一道，後端位置與刃頂高度相同、周邊白色加彩描邊，
+// 「三」：三道等長、平行、同高、並排往前刺的陶土色鼻脊刃——左右前擋泥板拱頂各一道、中央門縫上一道，後端位置與刃頂高度相同、刃頂前緣白色加彩描邊，
 // 從車頭看是一排三支一樣的刃；左右刃根部各一條餘燼色橫縫頭燈，鼻樑上另一條；
 // 左右刃往後接著擋泥板頂面的陶土色塊一路到車尾，和中線（中央刃、門縫、蛇尾翼）合成三道貫穿全車的縱線。
 // 冥府之門：引擎蓋中央谷地是兩片陶土色門扉（黑框線、白色門釘），中央刃立在兩片門扉之間的門縫上，刃根兩側透出餘燼色火光。
@@ -152,7 +152,7 @@ const materials = () => ({
   deck: namedMaterial('shell-deck-dark-matte', { color: 0x141110, roughness: 0.85 }),
   clay: namedMaterial('paint-terracotta-clay', { color: 0xc0623a, roughness: 0.72, clearcoat: 0.0 }),
   clay2: namedMaterial('paint-terracotta-clay', { color: 0xc0623a, roughness: 0.72, clearcoat: 0.0, side: THREE.DoubleSide }),
-  // 鼻脊刃周邊描邊：陶繪的白色加彩（霧面）
+  // 鼻脊刃前緣描邊：陶繪的白色加彩（霧面）
   white2: namedMaterial('paint-added-white', { color: 0xeee6d6, roughness: 0.6, clearcoat: 0.0, side: THREE.DoubleSide }),
   inner: namedMaterial('shell-inner-dark', { color: 0x1a1412, roughness: 0.85, side: THREE.BackSide }),
   edge: namedMaterial('shell-edge-black', { color: 0x141110, roughness: 0.7, side: THREE.DoubleSide }),
@@ -172,25 +172,36 @@ const materials = () => ({
 });
 
 /**
- * 取出 ExtrudeGeometry 某個材質群組的三角形（含法線），讓同一塊實體件的兩面與周邊窄面用不同材質；三角形總數不變
- * @type {(g: THREE.BufferGeometry, materialIndex: number) => THREE.BufferGeometry}
+ * 把 ExtrudeGeometry 實體件拆成兩組三角形：刃頂前緣的窄面（周邊群組 1 裡面朝上、不偏向兩側的三角形，倒角除外）一組，其餘一組；
+ * 讓同一塊刃的前緣用白色描邊、其他面維持陶土色。三角形總數不變
+ * @type {(g: THREE.BufferGeometry, wantEdge: boolean) => THREE.BufferGeometry}
  */
-const extrudeGroup = (g, materialIndex) => {
+const bladeFaces = (g, wantEdge) => {
   const pos = g.attributes.position;
   const nrm = g.attributes.normal;
   const idx = g.index;
+  const a = new THREE.Vector3();
+  const b = new THREE.Vector3();
+  const c = new THREE.Vector3();
   /** @type {number[]} */
   const p = [];
   /** @type {number[]} */
   const n = [];
   for (const grp of g.groups) {
-    if (grp.materialIndex !== materialIndex) {
-      continue;
-    }
-    for (let i = grp.start; i < grp.start + grp.count; i++) {
-      const v = idx ? idx.getX(i) : i;
-      p.push(pos.getX(v), pos.getY(v), pos.getZ(v));
-      n.push(nrm.getX(v), nrm.getY(v), nrm.getZ(v));
+    for (let i = grp.start; i < grp.start + grp.count; i += 3) {
+      const v = [0, 1, 2].map((k) => (idx ? idx.getX(i + k) : i + k));
+      a.fromBufferAttribute(pos, v[0]);
+      b.fromBufferAttribute(pos, v[1]);
+      c.fromBufferAttribute(pos, v[2]);
+      const fn = b.clone().sub(a).cross(c.clone().sub(a)).normalize();
+      const isEdge = grp.materialIndex === 1 && fn.y > 0.2 && Math.abs(fn.z) < 0.5;
+      if (isEdge !== wantEdge) {
+        continue;
+      }
+      for (const k of v) {
+        p.push(pos.getX(k), pos.getY(k), pos.getZ(k));
+        n.push(nrm.getX(k), nrm.getY(k), nrm.getZ(k));
+      }
     }
   }
   const out = new THREE.BufferGeometry();
@@ -320,12 +331,12 @@ const CONFIG = {
   extras: (kit) => {
     /** @type {BodyPart[]} */
     const parts = [];
-    // ── 三道鼻脊刃（實體件，厚 1.8）：三道並排、後端同在 x 28.4、刃頂同一條斜線（y 37.2 往前斜降），根部各自埋進下方殼面 1 mm ──
+    // ── 三道鼻脊刃（實體件，厚 1.4）：三道並排、後端同在 x 28.4、刃頂同一條斜線（y 37.2 往前斜降），根部各自埋進下方殼面 1 mm ──
     // 左右刃的刃尖懸在擋泥板前緣外（x 51）；中央刃下方的鼻樑一路往前延伸，刃的前段只高出殼面約 1.5 mm，
     // 所以中央刃尖往前多伸 1.5 mm（x 52.5）、刃尖抬高 0.6 mm，從 front34 看三道露出的長度相同
     {
       /**
-       * 一道刃的側視輪廓：後端從殼面垂直立起，上緣是刃頂斜線，刃尖下緣 1.2 mm，下緣沿殼面往回
+       * 一道刃的側視輪廓：後端從殼面垂直立起，上緣是刃頂斜線，刃尖是尖角（下緣從刃尖往後 3.2 mm 斜回 1.3 mm），下緣沿殼面往回
        * @type {(z: number, x1: number, tipY: number, underX: number) => number[][]}
        */
       const blade = (z, x1, tipY, underX) => {
@@ -337,19 +348,19 @@ const CONFIG = {
           [BLADE_X0 - 1.4, s(BLADE_X0 - 1.4) - 1],
           [BLADE_X0, top(BLADE_X0)],
           [x1, tipY],
-          [x1 - 0.6, tipY - 1.2],
+          [x1 - 3.2, tipY - 1.3],
           [underX, Math.min(s(underX), top(underX) - 1.6) - 1.6],
           [36, s(36) - 1],
         ];
       };
       const plates = [
-        finPlate(blade(0, BLADE_X1 + 1.5, 30, 49.5), 0, 1.8),
-        finPlate(blade(BLADE_Z, BLADE_X1, 29.4, 44), BLADE_Z, 1.8),
-        finPlate(blade(-BLADE_Z, BLADE_X1, 29.4, 44), -BLADE_Z, 1.8),
+        finPlate(blade(0, BLADE_X1 + 1.5, 30, 47.5), 0, 1.4),
+        finPlate(blade(BLADE_Z, BLADE_X1, 29.4, 44), BLADE_Z, 1.4),
+        finPlate(blade(-BLADE_Z, BLADE_X1, 29.4, 44), -BLADE_Z, 1.4),
       ];
-      // 刃的兩面是陶土色；周邊的窄面（刃頂前緣、刃尖、後緣）是白色加彩描邊，和車身的白線呼應（ExtrudeGeometry：群組 0 = 兩面、群組 1 = 周邊）
-      parts.push({ geometry: mergeGeos(plates.map((g) => extrudeGroup(g, 0))), mat: 'clay2', solid: true, outline: true, name: 'tri-ridge-blades' });
-      parts.push({ geometry: mergeGeos(plates.map((g) => extrudeGroup(g, 1))), mat: 'white2', solid: true, outline: true, name: 'tri-ridge-blade-edges' });
+      // 只有刃頂前緣的窄面（寬 1 mm）是白色加彩描邊，和車身的白線呼應；兩面、倒角、刃尖下緣與後緣都是陶土色
+      parts.push({ geometry: mergeGeos(plates.map((g) => bladeFaces(g, false))), mat: 'clay2', solid: true, outline: true, name: 'tri-ridge-blades' });
+      parts.push({ geometry: mergeGeos(plates.map((g) => bladeFaces(g, true))), mat: 'white2', solid: true, outline: true, name: 'tri-ridge-blade-edges' });
     }
 
     // ── 蛇尾翼（大件）：扁橢圓斷面沿 S 形中心線掃掠，翼柱和鏟形翼面是同一件 ──
@@ -461,7 +472,7 @@ const CONFIG = {
     wallThickness_mm: '推估：射出 ABS 殼 0.8 mm（同其他車殼）',
     geometry: '本檔站位產生器 P（推估）：殼長 137（−65 ~ 鼻尖 72），含蛇尾翼後緣（−67）的外框長約 139；擋泥板拱頂後 33 / 前 32.4、中央直脊 30.8、座艙罩頂約 34.5、蛇尾翼頂約 40.3；寬：車尾 ±30、臀 ±43.8、肩 ±44、收腰 ±27.5',
     wheelArches: '前後 R15.2（26 mm 輪胎半徑 13 + 2.2 mm）',
-    blades: '三道鼻脊刃：ABS 實心立板（厚 1.8 mm，推估），三道並排在 z 0 / ±33、後端同在 x 28.4（平行），刃頂 y 37.2 往前斜降：左右刃尖 x 51 / y 29.4，中央刃尖 x 52.5 / y 30（下方鼻樑往前延伸，多伸 1.5 mm 讓露出長度相同）；刃的周邊窄面白色描邊',
+    blades: '三道鼻脊刃：ABS 實心立板（厚 1.4 mm，推估），三道並排在 z 0 / ±33、後端同在 x 28.4（平行），刃頂 y 37.2 往前斜降：左右刃尖 x 51 / y 29.4，中央刃尖 x 52.5 / y 30（下方鼻樑往前延伸，多伸 1.5 mm 讓露出長度相同）；刃尖是尖角；只有刃頂前緣的窄面白色描邊',
     tail: '蛇尾翼：ABS 扁橢圓斷面實體件（翼柱 5.2 × 1.8 → 7.2 × 1.3，鏟形翼面翼展 46、厚 1.2，推估），中心線側視 S 形：貼背脊 y 30.4–31.4 → 升到 39.6',
     mounts: '對齊 chassis-midship 的車殼安裝點（SPEC 1.14）',
   },
