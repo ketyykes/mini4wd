@@ -1,6 +1,6 @@
 // 舞王火環（body-shiva-ring，神話組・印度）：只用舞王（Nataraja）銅像上的「物」——火焰光環（prabhamandala）、髮間新月、手中的沙漏形達瑪如鼓。
 // 不做神像、人形、臉、手、第三隻眼，也不做三叉戟。照四視圖 24 建模：
-// (1) 火焰環 → 車尾一圈平放的環形尾翼：車身紫的厚實環（倒 U 斷面、頂內緣金邊），外緣一圈往外竄的橘焰舌；車尾兩側車身往上長出兩片側鰭，和環一體托在車尾上方；
+// (1) 火焰環 → 車尾一圈平放的環形尾翼：車身紫的細斷面環（頂內緣金邊）往後上方傾斜 4°，外緣是一圈不等長、往車尾掠的橘焰舌（車尾那側長）；車尾兩側車身往上長出兩支細長側鰭，和環一體托在車尾上方；
 // (2) 新月 → 鼻部弧線：前擋泥板是左右兩團隆起、中間夾一道低谷，正視是一道往上彎的新月；鼻段中央低谷再立一枚角尖往上翹的金色新月鰭；
 // (3) 達瑪如鼓 → 側艙收腰：俯視是前後兩端寬、中段收細的沙漏形，側面進氣口畫成兩個尖對尖的三角形（鼓身的剪影）；
 // (4) 配色：鼻段橘焰，往車尾經洋紅漸層到紫金屬漆（主色），一排往後竄的番紅火舌細線；金（環內緣、新月、肩線）。
@@ -77,8 +77,8 @@ const ARCHES = [
   { x: -40, y: 13, radius: 17.5, cutZFrom: 23 },
 ];
 
-/** @type {{ xc: number, y: number, a: number, b: number, ai: number, bi: number }} 火焰環：中心 x −48.8、頂板底 43.8；外橢圓半軸 24 × 27、內孔 15 × 18（全車的主角，俯視是車尾一個大圓） */
-const RING = { xc: -48.8, y: 43.8, a: 24, b: 27, ai: 15, bi: 18 };
+/** @type {{ xc: number, y: number, a: number, b: number, ai: number, bi: number }} 火焰環：中心 x −48.8、環底（環心處）42；外橢圓半軸 24 × 25.5、內孔 16.5 × 19（全車的主角，俯視是車尾一個大圓） */
+const RING = { xc: -48.8, y: 42, a: 24, b: 25.5, ai: 16.5, bi: 19 };
 /** @type {number} 焰舌數（奇數：車尾正中是一支焰舌） */
 const FLAME_N = 17;
 /** @type {number} 焰舌伸出環帶外緣的長度 */
@@ -98,15 +98,49 @@ const ellPt = (t, a, b, d) => {
 };
 
 /**
- * 焰舌外形：每支焰舌在一個週期內由兩側內凹的弧線收成尖端，尖端往車尾偏（火往後竄）
- * @type {(t: number) => number}
+ * 可重現的雜湊（0–1）
+ * @type {(k: number) => number}
  */
-const flameOffset = (t) => {
-  const u = (((t / (2 * Math.PI)) * FLAME_N) % 1 + 1) % 1;
-  // 尖端偏在週期 0.62 處：前緣較長、後緣較陡
-  const tip = 0.62;
-  const q = u < tip ? u / tip : (1 - u) / (1 - tip);
-  return FLAME_H * q ** 2.2;
+const hash1 = (k) => {
+  const v = Math.sin(k * 12.9898 + 4.1) * 43758.5453;
+  return v - Math.floor(v);
+};
+
+/**
+ * 焰舌長度：第 k 支焰舌、在環上參數角 t——車尾那側長、車頭那側短，每支再乘 0.55–1 的不等長倍率
+ * @type {(k: number, t: number) => number}
+ */
+const flameLen = (k, t) => FLAME_H * (0.15 + 0.85 * ((1 - Math.cos(t)) / 2) ** 1.5) * (0.55 + 0.45 * hash1(k));
+
+/**
+ * 焰舌外緣一圈 (x, z)：每支焰舌由兩側內凹的弧線收成尖端，尖端往車尾偏、伸出方向再往車尾掠（火往後竄）
+ * @type {() => number[][]}
+ */
+const flameLoop = () => {
+  const { a, b } = RING;
+  /** @type {number[][]} */
+  const out = [];
+  for (let i = 0; i < RING_SEG; i++) {
+    const t = (2 * Math.PI * i) / RING_SEG;
+    const f = (t / (2 * Math.PI)) * FLAME_N;
+    const k = Math.floor(f);
+    const u = f - k;
+    // 尖端偏在週期 0.62 處：前緣較長、後緣較陡
+    const tip = 0.62;
+    const q = u < tip ? u / tip : (1 - u) / (1 - tip);
+    const d = flameLen(k, t) * q ** 2.2;
+    const c = Math.cos(t);
+    const sn = Math.sin(t);
+    // 外法線，再往 −x（車尾）偏 0.7 後歸一
+    let nx = b * c;
+    let nz = a * sn;
+    const nl = Math.hypot(nx, nz);
+    nx = nx / nl - 0.7;
+    nz = nz / nl;
+    const ml = Math.hypot(nx, nz);
+    out.push([RING.xc + a * c + (d * nx) / ml, b * sn + (d * nz) / ml]);
+  }
+  return out;
 };
 
 /**
@@ -138,54 +172,56 @@ const loop = (a, b, d, reverse = false) => {
   return reverse ? out.reverse() : out;
 };
 
-/** @type {number} 環頂板厚 */
-const RING_TOP_T = 1.4;
-/** @type {number} 環內外圍裙往下的深度（頂板＋圍裙＝側看厚 3.4 mm 的實心環） */
-const RING_SKIRT_H = 2;
-/** @type {number} 圍裙厚 */
-const RING_SKIRT_T = 0.9;
+/** @type {number} 環板厚（細斷面） */
+const RING_T = 1.6;
+/** @type {number} 環往後上方傾斜的角度（以環心為軸，車尾端抬高、車頭端壓低） */
+const RING_TILT = (4 * Math.PI) / 180;
+/** @type {(x: number) => number} 傾斜後環底在 x 處的高度 */
+const ringUnderY = (x) => RING.y + (RING.xc - x) * Math.tan(RING_TILT);
 
 /**
- * 厚實環：頂板（RING.y → +RING_TOP_T）＋外圍裙＋內圍裙（往下 RING_SKIRT_H），斷面是倒 U 形，側看厚 3.4 mm
- * @type {() => THREE.BufferGeometry}
+ * 把水平建好的環件繞環心轉成往後上方傾斜
+ * @type {(g: THREE.BufferGeometry) => THREE.BufferGeometry}
  */
-const buildRingBand = () => {
-  const { a, b, ai, bi, y } = RING;
-  const zero = () => 0;
-  return mergeGeos([
-    slabWithHole(loop(a, b, zero), loop(ai, bi, zero, true), y, RING_TOP_T, 0.35),
-    slabWithHole(loop(a, b, zero), loop(a - RING_SKIRT_T, b - RING_SKIRT_T, zero, true), y - RING_SKIRT_H, RING_SKIRT_H + 0.1, 0.2),
-    slabWithHole(loop(ai + RING_SKIRT_T, bi + RING_SKIRT_T, zero), loop(ai, bi, zero, true), y - RING_SKIRT_H, RING_SKIRT_H + 0.1, 0.2),
-  ]);
+const tiltRing = (g) => {
+  g.translate(-RING.xc, -RING.y, 0);
+  g.rotateZ(-RING_TILT);
+  g.translate(RING.xc, RING.y, 0);
+  return g;
 };
-/** @type {() => THREE.BufferGeometry} 環頂內緣的金色細邊（寬 1.6、厚 0.35） */
-const buildRingInlay = () => slabWithHole(loop(RING.ai + 1.6, RING.bi + 1.6, () => 0), loop(RING.ai, RING.bi, () => 0, true), RING.y + RING_TOP_T, 0.35, 0.1);
-/** @type {() => THREE.BufferGeometry} 橘焰圈：外圍裙半高處往外伸出一圈焰舌（厚 0.9），內緣埋進外圍裙 */
-const buildFlameRing = () => slabWithHole(loop(RING.a, RING.b, flameOffset), loop(RING.a - 0.6, RING.b - 0.6, () => 0, true), RING.y - RING_SKIRT_H / 2 - 0.45, 0.9, 0.25);
+
+/** @type {() => THREE.BufferGeometry} 細斷面環帶（寬約 7、厚 1.6），往後上方傾斜 */
+const buildRingBand = () => tiltRing(slabWithHole(loop(RING.a, RING.b, () => 0), loop(RING.ai, RING.bi, () => 0, true), RING.y, RING_T, 0.4));
+/** @type {() => THREE.BufferGeometry} 環頂內緣的金色細邊（寬 1.4、厚 0.3） */
+const buildRingInlay = () => tiltRing(slabWithHole(loop(RING.ai + 1.4, RING.bi + 1.4, () => 0), loop(RING.ai, RING.bi, () => 0, true), RING.y + RING_T, 0.3, 0.08));
+/** @type {() => THREE.BufferGeometry} 焰舌圈：環帶外緣往外、往車尾掠出的不等長焰舌（厚 0.9），內緣埋進環帶 */
+const buildFlameRing = () => tiltRing(slabWithHole(flameLoop(), loop(RING.a - 0.8, RING.b - 0.8, () => 0, true), RING.y + RING_T / 2 - 0.45, 0.9, 0.25));
 
 /** @type {number} 環座側鰭的 |z|（中心；外側面和車尾側壁齊平） */
-const FIN_Z = 23.4;
+const FIN_Z = 22.6;
 /** @type {number} 環座側鰭厚 */
-const FIN_T = 2.1;
+const FIN_T = 1.8;
 /**
- * 環座側鰭側視外形 (x, y)：車尾兩側車身往上長出的一體側鰭——前緣從後輪前方的肩部以內凹弧線往後上方升起，頂邊貼住環底，後緣再以內凹弧線落回車尾甲板；底邊埋進殼面
+ * 環座側鰭側視外形 (x, y)：車尾兩側車身往上長出的細長臂——前緣從後輪前方的肩部以長的內凹弧線往後上方升起，頂邊只貼環底一小段，後緣陡落後順著甲板往後收；底邊埋進殼面
  * @type {number[][]}
  */
 const RING_FIN = (() => {
-  const yTop = RING.y + 0.2;
   /** @type {number[][]} */
   const pts = [];
-  // 前緣：x −22 → −40 的內凹弧（先貼著殼面、後段陡升）
-  for (let i = 0; i <= 8; i++) {
-    const t = i / 8;
-    pts.push([lerp(-22, -40, t), lerp(29.5, yTop, t ** 2.2)]);
+  // 前緣：x −20 → −42 的內凹弧（先貼著殼面、後段陡升到環底）
+  for (let i = 0; i <= 10; i++) {
+    const t = i / 10;
+    const x = lerp(-20, -42, t);
+    pts.push([x, lerp(29.8, ringUnderY(x) + 0.3, t ** 2.4)]);
   }
-  // 頂邊貼環底到 x −57，後緣內凹弧落到 x −62
-  for (let i = 0; i <= 5; i++) {
-    const t = i / 5;
-    pts.push([lerp(-57, -62, t), lerp(yTop, 29.5, t ** 0.6)]);
+  // 頂邊貼環底到 x −49
+  pts.push([-45.5, ringUnderY(-45.5) + 0.3], [-49, ringUnderY(-49) + 0.3]);
+  // 後緣：先陡落、再順著甲板往後收到 x −58
+  for (let i = 1; i <= 6; i++) {
+    const t = i / 6;
+    pts.push([lerp(-49, -58, t ** 1.6), lerp(ringUnderY(-49) + 0.3, 29.8, t ** 0.45)]);
   }
-  pts.push([-62, 27], [-22, 27]);
+  pts.push([-58, 27], [-20, 27]);
   return pts;
 })();
 
@@ -347,7 +383,7 @@ export const shivaRingBody = makePolyBody({
   form: 'damaru-waist',
   roof: 'canopy',
   wing: 'flame-ring',
-  theme: '舞王銅像的火焰光環、新月與達瑪如鼓，不做神像：車尾一圈平放的車身紫厚實火焰環（外緣 17 支橘焰舌、頂內緣金邊），由車尾兩側車身長出的兩片側鰭一體托起，是全車最高點；前擋泥板兩團隆起夾一道低谷，正視是往上彎的新月，鼻段中央低谷立一枚金色新月鰭；俯視是沙漏形的鼓腰（兩輪之間腰線以下外伸側箱封住底盤），側面進氣口是兩個尖對尖的三角形；橘焰鼻段往車尾經洋紅漸層到紫金屬漆，配番紅火舌細線與金',
+  theme: '舞王銅像的火焰光環、新月與達瑪如鼓，不做神像：車尾一圈往後上方傾斜的車身紫細斷面火焰環（外緣 17 支不等長、往後掠的橘焰舌，頂內緣金邊），由車尾兩側車身長出的兩支細長側鰭一體托起，是全車最高點；前擋泥板兩團隆起夾一道低谷，正視是往上彎的新月，鼻段中央低谷立一枚金色新月鰭；俯視是沙漏形的鼓腰（兩輪之間腰線以下外伸側箱封住底盤），側面進氣口是兩個尖對尖的三角形；橘焰鼻段往車尾經洋紅漸層到紫金屬漆，配番紅火舌細線與金',
   material: 'ABS',
   density_g_cm3: 1.05,
   wallThickness_mm: 0.8,
@@ -492,8 +528,8 @@ export const shivaRingBody = makePolyBody({
   src: {
     density_g_cm3: 'SPEC 1.14：ABS 約 1.05 g/cm³（推估）',
     wallThickness_mm: '推估：射出 ABS 殼 0.8 mm（同其他款）',
-    geometry: '本檔站位產生器 P（推估），比例取自四視圖 24（shared/design/body-shiva-ring/fourview_trace.txt）縮到底盤：鼻尖 x 77.5（離地 13）、車尾 −70；沙漏平面半寬 後輪 28.5 / 鼓腰 22.5 / 前輪 40（鼓面）；肩線 32 高過 R17.5 輪拱；座艙罩頂約 40.5；火焰環頂 45.5（全車最高）',
-    wing: '厚實火焰環（外 24 × 27、內孔 15 × 18 的橢圓環；頂板厚 1.4＋內外圍裙往下 2、厚 0.9）、金色內緣（寬 1.6、厚 0.35）、焰舌圈（17 支、伸出 3.2，厚 0.9）、環座側鰭（|z| 23.4、厚 2.1，左右各一）、鼻段新月鰭（厚 1.2）：ABS 實心件（推估），質量 = 封閉體積 × 1.05 g/cm³；側鰭與新月鰭下緣埋進殼面',
+    geometry: '本檔站位產生器 P（推估），比例取自四視圖 24（shared/design/body-shiva-ring/fourview_trace.txt）縮到底盤：鼻尖 x 77.5（離地 13）、車尾 −70；沙漏平面半寬 後輪 28.5 / 鼓腰 22.5 / 前輪 40（鼓面）；肩線 32 高過 R17.5 輪拱；座艙罩頂約 40.5；火焰環車尾端頂 45.2（全車最高）',
+    wing: '細斷面火焰環（外 24 × 25.5、內孔 16.5 × 19 的橢圓環，厚 1.6，以環心為軸往後上方傾斜 4°）、金色內緣（寬 1.4、厚 0.3）、焰舌圈（17 支、最長伸出 3.2、車頭側短車尾側長，厚 0.9）、環座側鰭（|z| 22.6、厚 1.8，左右各一）、鼻段新月鰭（厚 1.2）：ABS 實心件（推估），質量 = 封閉體積 × 1.05 g/cm³；側鰭與新月鰭下緣埋進殼面',
     myth: '舞王銅像的火焰光環（prabhamandala）、髮間新月、達瑪如鼓：見 shared/design/body-shiva-ring/DESIGN.md 列出的博物館頁面；只用持物與象徵，不做神像',
     mounts: '對齊 chassis-midship 的車殼安裝點（SPEC 1.14）',
   },
