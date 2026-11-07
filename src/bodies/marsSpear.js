@@ -1,15 +1,16 @@
-// 瑪爾斯長矛（body-mars-spear，神話組・羅馬）——照四視圖 03 建模的刀鋒楔形車：細長的矛尖鼻 → 長而低的座艙 → 一路升高的後甲板 → 車尾整片上翹的尖鉤鴨尾。
+// 瑪爾斯長矛（body-mars-spear，神話組・羅馬）——照四視圖 03 建模的刀鋒楔形車：細長的矛尖鼻 → 長而低的座艙 → 一路升高的後甲板 → 車尾兩角往上勾的鴨尾。
 // 只用瑪爾斯的持物，不做人像：
-// 長矛 → 整台車就是一支矛：鼻部是有中脊的葉形矛頭（俯視收成尖），中線一條黑色矛桿從矛頭貫穿到車尾，車尾上翹的鴨尾是矛桿末端的尖鐏。
-// 圓盾 → 前後輪之間兩側各一面紅銅圓盾面板（盾心凸起、黑色盾緣、一圈鉚釘）。
-// 羅馬軍團 → 紅銅斜切側板、沿板緣與矛桿兩側的紅銅鉚釘列。
-// 配色：戰紅為主、黑為圖形色、紅銅為點綴（金屬）。剖面是折線（多稜面），和同為羅馬、圓潤柔和的 venus-scallop 明顯不同。
+// 長矛 → 整台車就是一支矛：座艙罩前端起一條凸起的黑色矛桿縱脊，接上鼻部的鋼銀葉形矛尖（中脊凸起、銎口套環），中線黑色矛桿貫穿到車尾的菱形尖鐏。
+// 圓盾 → 前後輪之間兩側各一面鋼銀圓盾（盾心凸起、黑色盾緣、一圈古銅鉚釘）。
+// 羅馬軍團 → 鋼銀斜切側板與肩甲（白色描線）、沿板緣與矛桿兩側的古銅鉚釘列。
+// 配色：深紅為主、鋼銀為圖形色（切面、矛尖、盾、尾鉤）、黑為矛桿，古銅只當鉚釘點綴。剖面是折線（多稜面），和同為羅馬、圓潤柔和的 venus-scallop 明顯不同。
 // 四個 R17.5 輪拱：31 mm 大輪不切輪拱也能裝。
 // 設計：shared/design/body-mars-spear/DESIGN.md。剖面為本檔站位產生器（推估）。塗裝全為自創，不含任何廠商 / 作品名稱、商標或文字。
 import * as THREE from 'three';
-import { makePolyBody } from './polyBody.js';
+import { makePolyBody, finPlate, flatPlate } from './polyBody.js';
 import { namedMaterial, decalMaterial, mergeGeos, lerp } from './loft.js';
 import { monoCurve, buildStations, buildArchLiner } from './gazelleLeap.js';
+import { buildBellySkirt } from './trojanHorse.js';
 
 /** @typedef {import('./loft.js').BodyPart} BodyPart */
 
@@ -18,9 +19,9 @@ const XS = [-70, -66, -60, -52, -44, -36, -26, -14, 0, 12, 24, 34, 42, 50, 57, 6
 /** @type {Record<string, (x: number) => number>} */
 const P = {
   // 中線（矛桿）頂：車尾尖鐏脊 38.8（矛桿末端在中線翹起）→ 後甲板一路降 → 引擎蓋 → 矛尖 16
-  yHood: monoCurve(XS, [38.8, 37.2, 35.6, 34, 33.6, 33, 32.4, 31.8, 31.2, 30.8, 30.2, 29.6, 28.6, 26.4, 23.2, 20.6, 18.6, 17.2, 16]),
+  yHood: monoCurve(XS, [38, 36.8, 35.6, 34, 33.6, 33, 32.4, 31.8, 31.2, 30.8, 30.2, 29.6, 28.6, 26.4, 23.2, 20.6, 18.6, 17.2, 16]),
   // 擋泥板稜：車尾 34.8（比中線尖鐏脊低，車尾斷面是中央翹起的屋脊形）、後輪 34.4、側艙 27.6、前輪 33.6
-  yD: monoCurve(XS, [34.8, 34.8, 34.6, 34.6, 34.4, 33, 30.2, 28.4, 27.6, 27.8, 29.6, 32.6, 33.6, 32.4, 28, 23.6, 20.4, 17.8, 16]),
+  yD: monoCurve(XS, [34.6, 34.2, 33.8, 33.6, 33.4, 32.6, 30.2, 28.4, 27.6, 27.8, 29.6, 32.6, 33.6, 32.4, 28, 23.6, 20.4, 17.8, 16]),
   // 半寬：車尾 34、後輪 36.6（剛好包住輪胎），前輪後方外擴成放圓盾的側艙（x 12–24 半寬 45.2，往前延伸到 x 34 仍 41.4）、前輪 36.4，從 x 46 起收成細長的葉形矛頭（x 57 半寬 20、x 68 半寬 7.5、鼻尖 1.2）
   hw: monoCurve(XS, [34, 35, 36, 36.6, 36.6, 36, 36.6, 38.4, 43, 45.2, 45.2, 41.4, 36.4, 31.6, 20, 12, 7.5, 4.2, 1.2]),
   yLow: monoCurve(XS, [26, 22.6, 17, 13.6, 13, 13.4, 14.6, 15.6, 15.8, 15.8, 15, 13, 13, 13.6, 14, 14.4, 14.6, 14.8, 15]),
@@ -96,7 +97,7 @@ const shaftHw = (x) => {
   return lerp(6.5, 1, (-61 - x) / 9);
 };
 
-/** @type {number[][]} 紅銅斜切側板（側視 x–y 多邊形，前高後低再翹起，沿腰線稜下方） */
+/** @type {number[][]} 鋼銀斜切側板（側視 x–y 多邊形，前高後低再翹起，沿腰線稜下方） */
 const PANEL = [
   [54, 25.6],
   [30, 27.4],
@@ -107,7 +108,7 @@ const PANEL = [
   [22, 12.6],
   [48, 17],
 ];
-/** @type {number[][]} 前擋泥板頂的紅銅肩甲（俯視 x–|z| 多邊形） */
+/** @type {number[][]} 前擋泥板頂的鋼銀肩甲（俯視 x–|z| 多邊形） */
 const FRONT_POD = [
   [46, 23],
   [57, 17.5],
@@ -116,7 +117,7 @@ const FRONT_POD = [
   [54, 33],
   [46, 35],
 ];
-/** @type {number[][]} 後擋泥板頂的紅銅肩甲（俯視 x–|z| 多邊形） */
+/** @type {number[][]} 後擋泥板頂的鋼銀肩甲（俯視 x–|z| 多邊形） */
 const REAR_POD = [
   [-28, 34],
   [-40, 27],
@@ -143,9 +144,9 @@ const polySd = (poly, x, y) => {
   }
   return inside ? d : -d;
 };
-/** @type {(x: number, y: number) => number} 到紅銅斜切側板邊界的有號距離 */
+/** @type {(x: number, y: number) => number} 到鋼銀斜切側板邊界的有號距離 */
 const panelSd = (x, y) => polySd(PANEL, x, y);
-/** @type {(x: number, z: number) => number} 到前後紅銅肩甲的有號距離 */
+/** @type {(x: number, z: number) => number} 到前後鋼銀肩甲的有號距離 */
 const podSd = (x, z) => Math.max(polySd(FRONT_POD, x, Math.abs(z)), polySd(REAR_POD, x, Math.abs(z)));
 
 /** @type {{ x: number, y: number, r: number }} 側艙圓盾（側視中心與半徑） */
@@ -153,17 +154,21 @@ const SHIELD = { x: 10, y: 21, r: 6.2 };
 
 /** @type {() => Record<string, THREE.Material>} */
 const materials = () => ({
-  red: namedMaterial('paint-war-red', { color: 0xa3141c, roughness: 0.28, clearcoat: 1, clearcoatRoughness: 0.1 }),
+  red: namedMaterial('paint-deep-red', { color: 0x860e16, roughness: 0.28, clearcoat: 1, clearcoatRoughness: 0.1 }),
   black: namedMaterial('paint-black-satin', { color: 0x141416, roughness: 0.42, clearcoat: 0.5 }),
   black2: namedMaterial('paint-black-satin', { color: 0x141416, roughness: 0.42, clearcoat: 0.5, side: THREE.DoubleSide }),
-  // 紅銅（真金屬：名稱以 -copper 結尾）
-  copper: namedMaterial('trim-red-copper', { color: 0xc06a3c, metalness: 0.85, roughness: 0.3, clearcoat: 0.3 }),
+  // 鋼銀（真金屬）與古銅鉚釘
+  steel: namedMaterial('trim-steel-silver', { color: 0xb7bcc4, metalness: 0.85, roughness: 0.28, clearcoat: 0.3 }),
+  steel2: namedMaterial('trim-steel-silver', { color: 0xb7bcc4, metalness: 0.85, roughness: 0.28, clearcoat: 0.3, side: THREE.DoubleSide }),
+  red2: namedMaterial('paint-deep-red', { color: 0x860e16, roughness: 0.28, clearcoat: 1, clearcoatRoughness: 0.1, side: THREE.DoubleSide }),
+  bronze: namedMaterial('trim-bronze-rivet', { color: 0xa8703a, metalness: 0.85, roughness: 0.32 }),
   canopy: namedMaterial('pc-smoke-tint', { color: 0x1c1416, roughness: 0.08, clearcoat: 1, clearcoatRoughness: 0.04 }),
   inner: namedMaterial('shell-inner-dark', { color: 0x1e1a1a, roughness: 0.85, side: THREE.BackSide }),
   edge: namedMaterial('shell-edge-red', { color: 0x8a1218, roughness: 0.5, side: THREE.DoubleSide }),
   liner: namedMaterial('shell-wheelwell-dark', { color: 0x1a1616, roughness: 0.8, side: THREE.DoubleSide }),
   dBlack: decalMaterial('decal-black', { color: 0x121214, roughness: 0.45 }),
-  dCopper: decalMaterial('decal-copper', { color: 0xc8743f, roughness: 0.3, metalness: 0.8 }),
+  dSteel: decalMaterial('decal-steel-silver', { color: 0xc4c9d0, roughness: 0.28, metalness: 0.8 }),
+  dWhite: decalMaterial('decal-white-line', { color: 0xf2f2f0, roughness: 0.4 }),
   dRivet: decalMaterial('decal-copper-rivet', { color: 0x6e3a1e, roughness: 0.38, metalness: 0.7 }),
   // 矛頭兩側的斜縫頭燈：暖白低強度自發光
   dLamp: decalMaterial('decal-lamp-slit', { color: 0xfff0dc, emissive: 0xffe2b8, emissiveIntensity: 0.5, roughness: 0.25 }),
@@ -181,7 +186,7 @@ const CONFIG = {
   form: 'spear-wedge',
   roof: 'canopy',
   wing: 'spike-ducktail',
-  theme: '照四視圖 03 的刀鋒楔形車：有中脊的葉形矛頭鼻、長而低的煙燻座艙、一路升高到車尾整片上翹的尖鐏鴨尾；中線黑色矛桿從矛頭貫穿到車尾；紅銅斜切側板上一面凸起盾心、黑盾緣、一圈鉚釘的圓盾；板緣與矛桿兩側的紅銅鉚釘列；折線多稜面剖面；戰紅＋黑＋紅銅',
+  theme: '照四視圖 03 的刀鋒楔形車：座艙罩前端起凸起的黑色矛桿縱脊，接上鼻部有中脊的鋼銀葉形矛尖；長而低的煙燻座艙；一路升高的後甲板、車尾兩角往上勾的鋼銀尖鉤鴨尾與深紅尾唇；鋼銀斜切側板（白色描線）上一面盾心凸起、黑盾緣、古銅鉚釘的鋼銀圓盾；矛桿兩側與板緣的古銅鉚釘列；兩輪之間黑色下緣內襯；折線多稜面剖面；深紅＋鋼銀，黑與古銅點綴',
   material: 'ABS',
   density_g_cm3: 1.05,
   wallThickness_mm: 0.8,
@@ -194,8 +199,8 @@ const CONFIG = {
     { mat: 'canopy', keep: (x, y, z) => (onCanopy(x, z) ? 1 : -1) },
     // 黑色下緣（腰線以下 3 mm 以下的裙板）
     { mat: 'black', keep: (x, y, z) => (onSide(x, z) && y < P.yLow(x) + 2.2 ? 1 : -1) },
-    // 紅銅斜切側板與前後擋泥板頂的紅銅肩甲
-    { mat: 'copper', keep: (x, y, z) => (onSide(x, z) ? panelSd(x, y) : podSd(x, z)) },
+    // 鋼銀斜切側板與前後擋泥板頂的鋼銀肩甲
+    { mat: 'steel', keep: (x, y, z) => (onSide(x, z) ? panelSd(x, y) : podSd(x, z)) },
     { mat: 'red', keep: () => 1 },
   ],
   mats: { inner: 'inner', edge: 'edge', cap: 'black', mount: 'mount' },
@@ -204,7 +209,7 @@ const CONFIG = {
     /** @type {BodyPart[]} */
     const parts = [];
 
-    // ── 圓盾：紅銅盾面（16 段圓板，厚 1.6，半埋進側壁）＋黑色盾緣環＋盾心凸起＋一圈 8 顆鉚釘 ──
+    // ── 圓盾：鋼銀盾面（16 段圓板，厚 1.6，半埋進側壁）＋黑色盾緣環＋盾心凸起＋一圈 8 顆鉚釘 ──
     {
       /** @type {THREE.BufferGeometry[]} */
       const face = [];
@@ -232,10 +237,65 @@ const CONFIG = {
           studs.push(s);
         }
       }
-      parts.push({ geometry: mergeGeos(face), mat: 'copper', solid: true, outline: true, name: 'shield-face' });
+      parts.push({ geometry: mergeGeos(face), mat: 'steel', solid: true, outline: true, name: 'shield-face' });
       parts.push({ geometry: mergeGeos(rim), mat: 'black', solid: true, name: 'shield-rim' });
-      parts.push({ geometry: mergeGeos(studs), mat: 'copper', solid: true, name: 'shield-boss-studs' });
+      parts.push({ geometry: mergeGeos(studs), mat: 'bronze', solid: true, name: 'shield-boss-studs' });
     }
+
+    /** @type {(x: number, z: number) => number} 殼面高度 */
+    const top = (x, z) => kit.surf.topY(x, z);
+
+    // ── 長矛：座艙罩前端到鼻部的黑色矛桿縱脊（厚 2.4、高出殼面 1.6）＋鋼銀葉形矛尖（中脊高 1.4，尖端到鼻尖） ──
+    {
+      /** @type {number[][]} */
+      const ridge = [];
+      for (let x = 38; x <= 54; x += 2) {
+        ridge.push([x, top(x, 0) + 1.6]);
+      }
+      for (let x = 54; x >= 38; x -= 2) {
+        ridge.push([x, top(x, 0) - 1]);
+      }
+      parts.push({ geometry: finPlate(ridge, 0, 2.4), mat: 'black2', solid: true, name: 'spear-shaft-ridge' });
+      /** @type {number[][]} */
+      const rib = [];
+      for (let x = 53; x <= 75; x += 2) {
+        rib.push([x, top(x, 0) + 1.4 * Math.min(1, (76.6 - x) / 6)]);
+      }
+      rib.push([76.6, top(76.6, 0)]);
+      for (let x = 75; x >= 53; x -= 2) {
+        rib.push([x, top(x, 0) - 0.8]);
+      }
+      // 矛頭銎口：矛桿接矛尖的套環
+      const socket = new THREE.BoxGeometry(2.2, 2.6, 4.2);
+      socket.translate(54, top(54, 0) + 0.6, 0);
+      parts.push({ geometry: mergeGeos([finPlate(rib, 0, 1.4), socket]), mat: 'steel2', solid: true, name: 'spearhead-midrib' });
+    }
+
+    // ── 上翹鴨尾：車尾兩角往上勾的鋼銀尖鉤立板＋兩鉤之間的深紅尾唇 ──
+    {
+      /** @type {THREE.BufferGeometry[]} */
+      const hooks = [];
+      for (const sg of [-1, 1]) {
+        const z = sg * 29.5;
+        hooks.push(finPlate([[-58, top(-58, z) - 0.6], [-66, 38.6], [-71.4, 41], [-71.6, 38], [-70, top(-70, z) - 0.6]], z, 1.2));
+      }
+      parts.push({ geometry: mergeGeos(hooks), mat: 'steel2', solid: true, outline: true, name: 'ducktail-hooks' });
+      parts.push({
+        geometry: flatPlate([[-64, -29], [-64, 29], [-71.4, 29], [-71.4, -29]], 37.2, 0.6),
+        mat: 'red2',
+        solid: true,
+        outline: true,
+        name: 'ducktail-lip',
+      });
+    }
+
+    // ── 下緣內襯：兩輪之間、側艙下方的黑色封板，擋住底盤側框與電池艙 ──
+    parts.push({
+      geometry: buildBellySkirt({ x0: -21, x1: 21, zIn: (x) => P.hw(x) - 1.2, zOut: 38, yTop: Math.min(P.yLow(-21), P.yLow(21)) - 0.4, t: 0.5 }),
+      mat: 'black2',
+      solid: true,
+      name: 'belly-liner',
+    });
 
     // 輪拱內襯（前後）
     parts.push({
@@ -252,24 +312,24 @@ const CONFIG = {
       mat: 'dBlack',
       name: 'decal-spear-shaft',
     });
-    // 矛頭：中脊兩側往鼻尖收的紅銅葉形鑲邊（矛頭刃線）＋矛桿兩側的紅銅細線
+    // 矛頭：x 44 → 76 整片鋼銀葉形矛尖（最寬在 x 56，半寬 9）＋矛桿兩側的鋼銀細線
     parts.push({
       geometry: kit.decal((x, y, z) => {
         if (onCanopy(x, z) || onSide(x, z) || x > 76.5) {
           return -1;
         }
         const az = Math.abs(z);
-        // 矛頭刃線：x 44 → 76 的葉形曲線（最寬在 x 56，半寬 9）
+        // 矛尖葉形：x 44 → 76（最寬在 x 56，半寬 9）
         const t = (x - 44) / 32;
         const leaf = t > 0 && t < 1 ? 9 * Math.sin(Math.PI * Math.pow(1 - t, 0.75)) : -9;
-        const blade = t > 0 && t < 1 ? 0.45 - Math.abs(az - leaf) : -1;
+        const blade = t > 0 && t < 1 ? leaf - az : -1;
         const edge = x < 44 ? 0.3 - Math.abs(az - shaftHw(x) - 0.5) : -1;
         return Math.max(blade, edge);
       }, { offset: 0.1 }),
-      mat: 'dCopper',
+      mat: 'dSteel',
       name: 'decal-spearhead-lines',
     });
-    // 紅銅鉚釘列：側板上緣每 4 mm 一顆、矛桿兩側每 5 mm 一對
+    // 古銅鉚釘列：側板上緣每 4 mm 一顆、矛桿兩側每 5 mm 一對
     parts.push({
       geometry: kit.decal((x, y, z) => {
         if (onCanopy(x, z)) {
@@ -292,16 +352,16 @@ const CONFIG = {
       mat: 'dRivet',
       name: 'decal-legion-rivets',
     });
-    // 側板與肩甲邊緣的黑色細線
+    // 鋼銀側板與肩甲邊緣的白色描線（四視圖的切面描線）
     parts.push({
       geometry: kit.decal((x, y, z) => {
         const panelEdge = onSide(x, z) ? Math.min(0.35 - Math.abs(panelSd(x, y)), archRingDist(x, y) - 0.5) : 0.35 - Math.abs(podSd(x, z));
         return panelEdge;
       }, { offset: 0.1 }),
-      mat: 'dBlack',
+      mat: 'dWhite',
       name: 'decal-panel-edge',
     });
-    // 側艙頂面的分片甲帶（羅馬軍團板甲的分片）：x −14 → 22 每 6 mm 一道紅銅帶（寬 2.6），帶上兩端各一顆鉚釘
+    // 側艙頂面的分片甲帶（羅馬軍團板甲的分片）：x −14 → 22 每 6 mm 一道鋼銀帶（寬 2.6），帶上兩端各一顆鉚釘
     /** @type {(x: number, z: number) => boolean} 在側艙頂面（座艙罩與矛桿之外、側面以上） */
     const onPodTop = (x, z) => x > -14 && x < 22 && !onSide(x, z) && Math.abs(z) > Math.max(0.3, Math.min(canW(x), P.hw(x) - 7, 0.5 * P.hw(x))) + 3;
     parts.push({
@@ -312,7 +372,7 @@ const CONFIG = {
         const ph = (((x + 14) % 6) + 6) % 6;
         return Math.min(1.3 - Math.abs(ph - 3), Math.abs(z) - 13, P.hw(x) - 3.6 - Math.abs(z));
       }, { offset: 0.1 }),
-      mat: 'dCopper',
+      mat: 'dSteel',
       name: 'decal-segment-bands',
     });
     parts.push({
@@ -327,7 +387,7 @@ const CONFIG = {
       mat: 'dRivet',
       name: 'decal-segment-rivets',
     });
-    // 側板後段的斜切進氣口（黑色，三道紅銅百葉線）
+    // 側板後段的斜切進氣口（黑色，三道鋼銀百葉線）
     parts.push({
       geometry: kit.decal((x, y, z) => {
         if (!onSide(x, z)) {
@@ -360,7 +420,7 @@ const CONFIG = {
     wallThickness_mm: '推估：射出 ABS 殼 0.8 mm（同其他車殼）',
     geometry: '本檔站位產生器 P（推估，比例照四視圖 03）：殼 x −70 → 77.5；中線 車尾尖鐏脊 38.8 → 後甲板 → 矛尖 16；座艙罩高出甲板 6（頂 ≈ 37）；擋泥板稜 車尾 37、後輪 34.4、側艙 27.6、前輪 33.6；半寬 車尾 34、後輪 36.6、側艙 45.2、前輪 36.4、x 57 收到 20、x 68 收到 7.5、矛尖 1.2；折線剖面（每點都是稜線）',
     wheelArches: '前後 R17.5（31 mm 輪胎半徑 15.5 + 2 mm，同 zeppelin / griffin），cutZFrom 21；輪拱內襯用 gazelle 的 buildArchLiner',
-    shield: '圓盾：紅銅圓板（R6.2、厚 1.6、16 段）、黑色盾緣環（Torus 24 × 6）、盾心凸起（16 × 10）、8 顆鉚釘（8 × 6），皆為實心 ABS 件，質量 = 封閉體積 × 1.05 g/cm³（推估）',
+    shield: '圓盾：鋼銀圓板（R6.2、厚 1.6、16 段）、黑色盾緣環（Torus 24 × 6）、盾心凸起（16 × 10）、8 顆鉚釘（8 × 6），皆為實心 ABS 件，質量 = 封閉體積 × 1.05 g/cm³（推估）',
     symbols: '長矛與盾：Wikipedia〈Mars (mythology)〉——矛是瑪爾斯的持物（Regia 收藏的「瑪爾斯之矛」）、Mars Ultor 右手倚長矛左手持盾；Salii 祭司持 12 面聖盾 ancilia 遊行（Wikipedia〈Ancile〉）。本款依 GOAL 用圓盾，造型皆為抽象化的車身零件與貼紙，不出人像',
     mounts: '對齊 chassis-midship 的車殼安裝點（SPEC 1.14）',
   },
