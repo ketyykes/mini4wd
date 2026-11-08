@@ -18,10 +18,27 @@ import { monoCurve, buildStations } from './gazelleLeap.js';
 
 /** @type {number[]} 站位參數表（x 由後到前，前後軸 x = ±40）：鞘翅尾端 −65、鼻尖 76 */
 const XS = [-65, -60, -53, -46, -40, -32, -22, -12, -2, 8, 18, 28, 36, 42, 50, 56, 62, 68, 72, 76];
-/** @type {Record<string, (x: number) => number>} */
-const P = {
-  // 俯視半寬：後擋泥板（鞘翅）±44.4、收腰 ±20.5（x 8；x 18 是 ±21）、前擋泥板 ±41.6；鼻錐往前收成扁鏟（鼻尖 ±8）
-  hw: monoCurve(XS, [18, 30, 40.5, 44, 44.4, 44.2, 41.5, 33.5, 24.5, 20.5, 21, 33.5, 41.4, 41.6, 35, 26.5, 19.5, 14, 11, 8]),
+/**
+ * 鞘翅肩：把站位表「鞘翅 → 收腰」的漸變段（表上 x −23 → 6）壓到 x −23 → −18.5，鞘翅前緣變成一道橫切的肩，
+ * 後面接長收腰（x −18.5 → 8 都是收腰寬度）；俯視看得出前胸板、細腰、鞘翅三段分開
+ * @type {(x: number) => number}
+ */
+const shoulderX = (x) => {
+  if (x >= 18 && x < 28) {
+    return x < 22 ? lerp(18, 19, (x - 18) / 4) : lerp(19, 28, (x - 22) / 6);
+  }
+  if (x <= -23 || x >= 8) {
+    return x;
+  }
+  if (x <= -18.5) {
+    return lerp(-23, 6, (x + 23) / 4.5);
+  }
+  return lerp(6, 8, (x + 18.5) / 26.5);
+};
+/** @type {Record<string, (x: number) => number>} 站位表原值（未套鞘翅肩） */
+const P0 = {
+  // 俯視半寬：後擋泥板（鞘翅）±44.4、收腰 ±20.5（x 8；x 18 是 ±21）、前擋泥板 ±41.6；鼻錐往前收尖（鼻尖 ±5.5）
+  hw: monoCurve(XS, [18, 30, 40.5, 44, 44.4, 44.2, 41.5, 33.5, 24.5, 20.5, 21, 33.5, 41.4, 41.6, 35, 25.5, 17, 11.5, 8.5, 5.5]),
   // 中央脊線頂（鞘翅縫裡的金脊）：後段 33.8、收腰 32.6、前擋泥板 33，往前降到鼻尖 18
   ySpine: monoCurve(XS, [27, 30.2, 32.8, 33.6, 33.8, 33.6, 33.2, 32.8, 32.6, 32.6, 32.8, 33, 33, 32.4, 30.2, 27.4, 24, 21, 19.4, 18]),
   // 擋泥板量體頂（每片鞘翅 / 前擋泥板的拱頂）：後 39、收腰 33.4、前 36.2；鼻尖 18.2
@@ -31,6 +48,8 @@ const P = {
   // 側裙下緣
   yLow: monoCurve(XS, [21.5, 18, 14, 12.6, 12.4, 12.4, 12.6, 13.2, 13.8, 14, 14, 13.2, 12.4, 12.4, 12.8, 13.8, 14.8, 15.4, 15.8, 16]),
 };
+/** @type {Record<string, (x: number) => number>} 實際使用的剖面參數（套上鞘翅肩） */
+const P = Object.fromEntries(Object.entries(P0).map(([k, f]) => [k, (x) => f(shoulderX(x))]));
 
 /** @type {number} 鞘翅縫半寬（脊線外側縫底的 z） */
 const SEAM_Z = 3.4;
@@ -65,8 +84,14 @@ const profile = (x) => {
   ];
 };
 
-/** @type {{ x: number, pts: number[][] }[]} 尾端、鼻錐段每 2 mm 一站，中段每 2.5 mm */
-const STATIONS = [...buildStations(-65, -57, 2, profile).slice(0, -1), ...buildStations(-57, 62, 2.5, profile).slice(0, -1), ...buildStations(62, 76, 2, profile)];
+/** @type {{ x: number, pts: number[][] }[]} 尾端、鼻錐段每 2 mm 一站，鞘翅肩每 1.5 mm，其餘每 2.5 mm */
+const STATIONS = [
+  ...buildStations(-65, -57, 2, profile).slice(0, -1),
+  ...buildStations(-57, -24.5, 2.5, profile).slice(0, -1),
+  ...buildStations(-24.5, -15.5, 1.5, profile).slice(0, -1),
+  ...buildStations(-15.5, 62, 2.5, profile).slice(0, -1),
+  ...buildStations(62, 76, 2, profile),
+];
 
 /** @type {{ x: number, y: number, radius: number, cutZFrom: number }[]} 前後輪拱（R17.5：31 mm 輪胎半徑 15.5 + 2 mm） */
 const ARCHES = [
@@ -376,7 +401,7 @@ export const khepriScarabBody = makePolyBody({
     const STRIAE = [0.36, 0.6, 0.8];
     parts.push({
       geometry: kit.decal((x, y, z) => {
-        if (x > -4 || x < -62) {
+        if (x > -20 || x < -62) {
           return -1;
         }
         const h = P.hw(x);
@@ -385,7 +410,7 @@ export const khepriScarabBody = makePolyBody({
         for (const f of STRIAE) {
           d = Math.min(d, Math.abs(az - f * h));
         }
-        return Math.min(0.35 - d, y - P.yA(x) - 1.2, -4 - x, x + 62);
+        return Math.min(0.35 - d, y - P.yA(x) - 1.2, -20 - x, x + 62);
       }),
       mat: 'dGold',
       name: 'decal-elytra-striae',
@@ -394,12 +419,12 @@ export const khepriScarabBody = makePolyBody({
     // 肩線金邊（擋泥板量體外緣，收腰段斷開；前段一路到鼻尖）＋ 縫邊綠松石細線。
     // 金邊只畫在外側半邊（|z| > 半寬的一半）：鞘翅縫的谷底和肩線差不多高，不限制的話谷底也會畫出一圈金線
     parts.push({
-      geometry: kit.decal((x, y, z) => Math.min(0.42 - Math.abs(y - (P.yA(x) + 0.5)), 75 - x, x + 63, Math.max(-1 - x, x - 23), Math.abs(z) - 0.5 * P.hw(x))),
+      geometry: kit.decal((x, y, z) => Math.min(0.42 - Math.abs(y - (P.yA(x) + 0.5)), 75 - x, x + 63, Math.max(-19.5 - x, x - 23), Math.abs(z) - 0.5 * P.hw(x))),
       mat: 'dGold',
       name: 'decal-fender-borders',
     });
     parts.push({
-      geometry: kit.decal((x, y, z) => Math.min(0.36 - Math.abs(Math.abs(z) - (SEAM_Z + 0.9)), -1 - x, x + 46), { offset: 0.1 }),
+      geometry: kit.decal((x, y, z) => Math.min(0.36 - Math.abs(Math.abs(z) - (SEAM_Z + 0.9)), -19.5 - x, x + 46), { offset: 0.1 }),
       mat: 'dTurquoise',
       name: 'decal-seam-pinstripes',
     });
@@ -444,7 +469,7 @@ export const khepriScarabBody = makePolyBody({
   src: {
     density_g_cm3: 'SPEC 1.14：ABS 約 1.05 g/cm³（推估）',
     wallThickness_mm: '推估：射出 ABS 殼 0.8 mm（同其他車殼）',
-    geometry: '本檔站位產生器 P（推估）：殼長 141（鞘翅尾端 −65 ~ 鼻尖 76），含日盤外框 x −66.3 ~ 76.1（142.4）；鞘翅量體頂 39、前擋泥板量體頂 36.2、收腰頂 33.4（頂面填平）、翼面後緣頂約 41.1（全車最高）；寬：鞘翅 ±44.4、前擋泥板 ±41.6、收腰 ±20.5、鼻尖 ±8',
+    geometry: '本檔站位產生器 P（推估）：殼長 141（鞘翅尾端 −65 ~ 鼻尖 76），含日盤外框 x −66.3 ~ 76.1（142.4）；鞘翅量體頂 39、前擋泥板量體頂 36.2、收腰頂 33.4（頂面填平）、翼面後緣頂約 41.1（全車最高）；寬：鞘翅 ±44.4、前擋泥板 ±41.6、收腰 ±20.5（鞘翅肩 x −23 → −18.5 橫切進收腰，收腰延伸到 x 22）、鼻尖 ±5.5',
     wheelArches: '前後 R17.5（31 mm 輪胎半徑 15.5 + 2 mm，同 zeppelin / griffin），可裝 26 / 31 mm 輪',
     disc: '有翼日盤尾翼：日盤是金色實心 ABS 電鍍盤 R9.6 × 1.6 mm（20 段）、往後躺 0.12 弧度（約 6.9°），中心 x −56、y 35.8，盤前緣埋進鞘翅縫；盤面紅玉髓盤心 R6.4；盤緣金色圓環（管半徑 0.7）。兩片翼：翼根 |z| 9 接日盤、翼尖 |z| 43，前緣在 x −50，到鞘翅拱頂為止沿殼面起伏（高出殼面 0.5 mm）、拱頂以外每 1 mm 降 0.5 mm（翼尖離開殼面微微上翹），弦長 14 → 10 mm、每片羽尖再多 2.6 mm（每側 6 片羽），和日盤同一個斜度往後上翹；金色底板厚 0.9 mm，上面每片羽 2 格鑲嵌（綠松石、青金石，厚 0.45 mm）。座艙罩：金色實心橢球 21 × 10.4 × 13.6 mm（下半埋進殼內）。質量 = 封閉體積 × 1.05 g/cm³（推估）',
     palette: '色碼取 MYTH_RESEARCH 3-2（推估，E2 Met 16.1.3 胸飾材質）：金 #C9A227、青金石 #26619C（鞘翅珍珠漆用較深的 #1F4F96）、紅玉髓 #B1342A、綠松石 #3FB8AF（前段彩陶釉用 #2F9E98）',
