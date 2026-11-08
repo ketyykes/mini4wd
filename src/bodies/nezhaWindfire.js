@@ -88,7 +88,7 @@ const P = {
 };
 
 /** @type {number} 前後輪之間側裙下緣的半寬 */
-const SILL_W = 38;
+const SILL_W = 46;
 
 /**
  * 半剖面 7 點：中線 → 頂面 → 肩稜線（銳利）→ 微外張的側裙
@@ -101,7 +101,7 @@ const profile = (x) => {
   const h = P.hw(x);
   const d = t - s;
   const flare = smoothstep(1, 8, h);
-  // 前後輪之間的側裙往外張到 ±38、下半段是直立側牆，從上面和側面都看不到底盤側框
+  // 前後輪之間的側裙下緣往外張到 ±46（側裙下半段是往外斜出的裙邊，上緣停在 ±39），從上面和側面都看不到底盤側框
   const sill = Math.max(h + 1.3 * flare, SILL_W * smoothstep(-24, -16, x) * smoothstep(24, 16, x));
   return [
     [0, t],
@@ -109,7 +109,7 @@ const profile = (x) => {
     [0.64 * h, t - 0.36 * d],
     [0.87 * h, t - 0.72 * d],
     [h, s],
-    [Math.max(h + 0.9 * flare, sill - 0.4), lerp(s, lo, 0.42)],
+    [Math.max(h + 0.9 * flare, Math.min(sill - 0.4, 39)), lerp(s, lo, 0.42)],
     [sill, lo],
   ];
 };
@@ -138,7 +138,7 @@ const RING = { x: -68.8, yc: 37.5, az: 6, ay: 5.4, tube: 1.1 };
  * （側視中間空），後視是一個「口」字。x0 / x1 = 上框前後緣；y = 上框底面高度；halfW = 側立框的 |z|；thick = 框條厚；bar = 框條寬
  * @type {{ x0: number, x1: number, y: number, halfW: number, thick: number }}
  */
-const FRAME = { x0: -55, x1: -70, y: 44, halfW: 25, thick: 1.4, bar: 2.4 };
+const FRAME = { x0: -55, x1: -70, y: 44, halfW: 25, thick: 1.2, bar: 2.4 };
 
 /**
  * 橢圓環管（24 段 × 管斷面 6 段，封閉的環面）
@@ -223,10 +223,10 @@ const wheelRing = (x, y) => {
 const spineW = monoCurve([-70, -50, -30, 0, 20, 36, 56, 61, 77], [23, 22, 17, 16.5, 13, 7, 6.2, 7, 9]);
 
 /**
- * 深藍下裙的上緣：前後輪之間在裙邊上 8.5 mm，往鼻尖與車尾收到 4.5 mm
+ * 深藍下裙的上緣：前後輪之間在裙邊上 11 mm，往鼻尖與車尾收到 6 mm
  * @type {(x: number) => number}
  */
-const navyTop = (x) => P.yLow(x) + 4.5 + 4 * smoothstep(-58, -30, x) * smoothstep(64, 46, x);
+const navyTop = (x) => P.yLow(x) + 6 + 5 * smoothstep(-58, -30, x) * smoothstep(64, 46, x);
 
 /**
  * 火尖槍的槍刃火焰（朱紅，畫在長尖鼻上）：鼻尖到 x 66 是整片火焰，後緣是往後伸的 V 形火舌（中線最長，伸到 x 62）
@@ -273,7 +273,7 @@ const materials = () => ({
   edge: namedMaterial('shell-edge-black', { color: 0x18181b, roughness: 0.6, side: THREE.DoubleSide }),
   mount: namedMaterial('abs-mount-black', { color: 0x222326, roughness: 0.6 }),
   liner: namedMaterial('shell-wheelwell-black', { color: 0x1a1a1e, roughness: 0.7, side: THREE.DoubleSide }),
-  dScarlet: decalMaterial('decal-sash-scarlet', { color: 0xe23a24, roughness: 0.35, clearcoat: 0.6 }),
+  dScarlet: decalMaterial('decal-sash-scarlet', { color: 0xc8102e, roughness: 0.35, clearcoat: 0.6 }),
   dGold: decalMaterial('decal-gold-line', { color: 0xd4b052, metalness: 0.75, roughness: 0.3 }),
   dInk: decalMaterial('decal-ink-black', { color: 0x15151a, roughness: 0.5, clearcoat: 0.2 }),
 });
@@ -429,7 +429,7 @@ export const nezhaWindfireBody = makePolyBody({
             [FRAME.x0 - 1.6, FRAME.y - 2],
           ],
           side * FRAME.halfW,
-          1.6,
+          1.3,
         ),
       );
     }
@@ -466,7 +466,7 @@ export const nezhaWindfireBody = makePolyBody({
     geometry: '本檔站位產生器 P（推估，造型照 shared/design/body-nezha-windfire/fourview.png 四視圖 29 的比例，尺寸照底盤；四視圖車頂較高，這裡壓低）：殼長 150.6（車尾 −74 ~ 鼻尖 76.6）；後甲板 31、鼻尖頂 11.8、座艙頂約 40、前輪拱頂約 31.6；寬方車尾：後輪臀後方 ±44.5、車尾 ±38；座艙兩側 ±25（側裙下緣 ±38）、前輪上方 ±36、長尖鼻 x 58 ±15 → x 69 ±6.2 → 鼻尖 ±0.4；前擋泥板眉線為前輪拱同心圓 R18.6',
     wheelArches: '前後 R17.5（31 mm 輪胎半徑 15.5 + 2 mm），可裝 26 / 31 mm 輪',
     ring: '口字框尾翼與乾坤圈（ABS 實心件，推估）：上板 x −55 ~ −70、寬 ±26、底面高 44、厚 1.2（下面墊一片外大 0.8、厚 0.3 的金色描邊板）；兩片側立板在 |z| 25、厚 1.6，從後甲板往後掠到上板；乾坤圈環心 x −63、y 37.4，半軸 6 × 5.4，管半徑 1.1（24×6 段），上下頂住上板與後甲板',
-    palette: '紅白藍三色照四視圖 29：深紅中脊（到鼻尖）、框翼與火舌、珍珠白側板、深藍下裙，紅色面積不到一半；金（風火輪輪圈紋、乾坤圈、框翼描邊、分色細線、座艙框）＋朱紅綾帶與鼻尖火焰；框翼深紅；色碼自訂（推估）：深紅 #A3161F、朱紅 #E23A24、深藍 #1C2A52、金 #D8A83C / #C9A54A、白 #F3F1EC',
+    palette: '紅白藍三色照四視圖 29：深紅中脊（到鼻尖）、框翼與火舌、珍珠白側板、深藍下裙，紅色面積不到一半；金（風火輪輪圈紋、乾坤圈、框翼描邊、分色細線、座艙框）＋朱紅綾帶與鼻尖火焰；框翼深紅；色碼自訂（推估）：深紅 #A3161F、綾紅 #C8102E（偏洋紅的深紅，和九尾狐的橘朱紅分開）、深藍 #1C2A52、金 #D8A83C / #C9A54A、白 #F3F1EC',
     mounts: '對齊 chassis-midship 的車殼安裝點（SPEC 1.14）',
   },
 });
