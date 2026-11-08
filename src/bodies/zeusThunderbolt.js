@@ -54,8 +54,8 @@ const P = {
   crestW: monoCurve(XS, [2.5, 4, 6, 8.5, 10.5, 11, 11, 10, 9, 9, 9, 9, 9, 8, 6, 4.5, 3, 2]),
   // 肩稜線基本高度（前後輪上方再沿眉線拱起）
   yS: monoCurve(XS, [28.5, 28.5, 29, 29.5, 30, 30, 29.5, 29, 29, 29, 29.2, 29.5, 27.5, 23.5, 19, 16.2, 14.2, 13]),
-  // 俯視半寬：兩輪之間的側箱 28.5（把底盤側框蓋住），前後輪上方 31，殼尾收成 14 的鈍尾（把尾端齒輪箱蓋住），飛鏢尾從殼尾上緣伸出；中央鼻在兩支叉刃之間收窄到 9.5（x 63）
-  hw: monoCurve(XS_HW, [14, 17, 21, 25, 28.5, 31, 30, 29, 28.5, 28.5, 28.5, 29.5, 31, 31, 29, 24.5, 16, 9.5, 6, 4.5]),
+  // 俯視半寬：兩輪之間的側箱 27（把底盤側框蓋住），前後輪上方 31，殼尾收成 14 的鈍尾（把尾端齒輪箱蓋住），飛鏢尾從殼尾上緣伸出；中央鼻在兩支叉刃之間收窄到 9.5（x 63）
+  hw: monoCurve(XS_HW, [14, 17, 21, 25, 28.5, 31, 29.5, 27.5, 27, 27, 27, 28.5, 31, 31, 29, 24.5, 16, 9.5, 6, 4.5]),
   // 側裙下緣：兩輪之間壓到 11.5，把底盤側框封起來；殼尾下緣 15.5，尾端封住
   yLow: monoCurve(XS, [15.5, 14, 13, 12.5, 12, 11.5, 11.5, 11.5, 11.5, 11.5, 11.5, 12, 12.5, 13, 13, 13, 13, 13]),
 };
@@ -166,7 +166,7 @@ const HOOD_BOLT = [
 ];
 
 /** @type {number} 飛鏢尾末端十字小鰭水平片半翼展 */
-const CROSS_Z = 17;
+const CROSS_Z = 32;
 
 /** @type {{ x0: number, x1: number, y: number, r: number }} 飛鏢尾（薄殼長錐）：x0 錐底（埋在後中脊裡）、x1 錐尖、軸心高 y、錐底半徑 r；殼尾 −62 之後伸出 14.5 mm */
 const TAIL_CONE = { x0: -44, x1: -76.5, y: 30, r: 11 };
@@ -175,15 +175,15 @@ const TAIL_CONE = { x0: -44, x1: -76.5, y: 30, r: 11 };
 const PRONG_Y = 18.5;
 
 /** @type {number} 叉刃平板與立刃的厚度 */
-const PRONG_T = 3.2;
+const PRONG_T = 3;
 
-/** @type {number[][]} 叉刃平板（+z 側）俯視外形 (x, z)：前輪前方往前伸、在中央鼻外側越過鼻端，尖端 (77.5, 17) */
+/** @type {number[][]} 叉刃平板（+z 側）俯視外形 (x, z)：前輪前方往前伸、在中央鼻外側越過鼻端，外緣在 x 62 寬到 31，尖端 (77.2, 21) */
 const PRONG = [
   [50, 10],
   [50, 20.5],
-  [56, 21.5],
-  [64, 22.5],
-  [77.2, 17],
+  [56, 22],
+  [62, 31],
+  [77.2, 21],
   [66, 10.5],
   [57, 9],
 ];
@@ -233,7 +233,7 @@ export const zeusThunderboltBody = makePolyBody({
   form: 'thunder-fork',
   roof: 'canopy',
   wing: 'oakleaf-cross',
-  theme: '雷霆杖與神殿柱：寶藍細長低楔車頭前端分岔成兩支厚 3.2、左右分開的亮黃叉刃（平板＋從引擎蓋長出的立刃，尖端越過鼻端），車身肩線與引擎蓋外緣切出兩道稜線，側面寶藍／亮黃之間一道白邊鋸齒閃電折線，引擎蓋一道亮黃閃電；座艙後的中脊刻著柱身溝槽，車尾伸出一支亮黃長飛鏢尾，末端是寶藍十字小鰭（雷霆杖柄頭）',
+  theme: '雷霆杖與神殿柱：寶藍細長低楔車頭前端分岔成兩支厚 3、左右分開的亮黃叉刃（平板＋從引擎蓋長出的立刃，尖端越過鼻端），車身肩線與引擎蓋外緣切出兩道稜線，側面寶藍／亮黃之間一道白邊鋸齒閃電折線，引擎蓋一道亮黃閃電；座艙後的中脊刻著柱身溝槽，車尾伸出一支亮黃長飛鏢尾，末端是寶藍十字尾鰭（水平片翼展 ±32；雷霆杖柄頭）',
   material: 'ABS',
   density_g_cm3: 1.05,
   wallThickness_mm: 0.8,
@@ -275,7 +275,7 @@ export const zeusThunderboltBody = makePolyBody({
     parts.push({ geometry: mergeGeos(ARCHES.map((a) => buildProfileLiner(a, 22.9, profile))), mat: 'liner', shell: true, name: 'arch-liners' });
     parts.push({ geometry: mergeGeos(ARCHES.map((a) => buildArchWell(a, 22.9, 12.3, 17.8, chassisBlockedNearArch))), mat: 'liner', shell: true, name: 'arch-wells' });
 
-    // ── 兩支叉刃（實體，亮黃）：厚 3.2 的平板＋從引擎蓋長出的立刃（斷面倒 T），左右分開、尖端越過中央鼻端 13.5 mm ──
+    // ── 兩支叉刃（實體，亮黃）：厚 3 的平板＋從引擎蓋長出的立刃（斷面倒 T），左右分開、尖端越過中央鼻端 13.5 mm ──
     const plates = [1, -1].map((sg) => flatPlate(PRONG.map(([x, z]) => [x, sg * z]), PRONG_Y, PRONG_T));
     const keels = [1, -1].map((sg) => finPlate(PRONG_KEEL, sg * PRONG_KEEL_Z, PRONG_T));
     parts.push({ geometry: mergeGeos([...plates, ...keels]), mat: 'yellow', solid: true, outline: true, name: 'thunderbolt-prongs' });
@@ -296,16 +296,18 @@ export const zeusThunderboltBody = makePolyBody({
         [-71.5, 20.5],
         [-68.5, 20.5],
       ];
-      parts.push({ geometry: finPlate(fin, 0, 1.4), mat: 'blue', solid: true, outline: true, name: 'cross-fin-vertical' });
+      parts.push({ geometry: finPlate(fin, 0, 1.2), mat: 'blue', solid: true, outline: true, name: 'cross-fin-vertical' });
       const wing = [
-        [-63.5, -1],
-        [-68.5, -CROSS_Z],
-        [-71.5, -CROSS_Z],
-        [-71.5, CROSS_Z],
-        [-68.5, CROSS_Z],
-        [-63.5, 1],
+        [-62.5, -1],
+        [-69.5, -CROSS_Z],
+        [-75, -CROSS_Z],
+        [-73, -6],
+        [-73, 6],
+        [-75, CROSS_Z],
+        [-69.5, CROSS_Z],
+        [-62.5, 1],
       ];
-      parts.push({ geometry: flatPlate(wing, TAIL_CONE.y - 0.6, 1.2), mat: 'blue', solid: true, outline: true, name: 'cross-fin-horizontal' });
+      parts.push({ geometry: flatPlate(wing, TAIL_CONE.y - 0.6, 1), mat: 'blue', solid: true, outline: true, name: 'cross-fin-horizontal' });
     }
 
     // ---- 貼紙 ----
