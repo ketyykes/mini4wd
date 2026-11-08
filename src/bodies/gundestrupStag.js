@@ -2,9 +2,9 @@
 // 車上不做鹿：主題用「銀釜」「torc 頸環」「鹿角的分叉線」三種元素表現。
 // 造型（F3 半罩露輪）：鼻端一路下壓的銀色楔形尖鼻，前輪罩切開一個圓弧開口（釜口的弧）露出前輪，開口外圍一圈鍍金邊與鉚釘；
 // 中段深藍玻璃座艙罩外面套一圈扭絞金 torc（開口朝前、兩端圓球頭，C8）；
-// 車尾一片拋光銀大翼，兩端是鍍金的四叉翼端板（鹿角的分叉抽象成端板後緣的四道叉，C2）。
-// 塗裝：錘起銀板＋腹側氧化暗銀；鼻尖往後掃、接到 torc 圓球頭的兩道鍍金條紋、頂面兩道鉚接板縫；側面一條氧化暗底的浮雕帶，
-// 上面是 La Tène 單向波卷紋與圓泡釘（C7）。
+// 車尾一片拋光銀大翼，兩端是青銅的四叉翼端板（鹿角的分叉抽象成端板後緣的四道叉，C2）。
+// 塗裝：錘起銀板＋腹側氧化暗銀＋青銅翼端板；鼻尖往後掃、接到 torc 圓球頭的兩道鍍金條紋、頂面兩道鉚接板縫；側面一條浮雕帶，
+// 深紅琺瑯底上是 La Tène 單向波卷紋與圓泡釘（C7）。
 // 設計：shared/design/body-gundestrup-stag/DESIGN.md（典故與文物對應 MYTH_RESEARCH 第 5 節 C1、C2、C7、C8；黑名單 5-3、第 10 節）。剖面為本檔站位產生器（推估）。
 // 不畫神的人臉、不做盤腿坐像、不畫動物、不用三臂 triskele、不做圓內十字、不重現 Battersea 盾的琺瑯格；不含任何文字。
 import * as THREE from 'three';
@@ -211,8 +211,10 @@ const materials = () => ({
   // 腹側暗銀（氧化的舊銀，霧面）
   patina: namedMaterial('paint-oxidized-silver-matte', { color: 0x4a4d52, roughness: 0.62, clearcoat: 0.05 }),
   patina2: namedMaterial('paint-oxidized-silver-matte', { color: 0x4a4d52, roughness: 0.62, clearcoat: 0.05, side: THREE.DoubleSide }),
-  // 鍍金（真金屬：-brass 結尾）：torc、四叉翼端板、翼面前後緣
+  // 鍍金（真金屬：-brass 結尾）：torc
   gilt: namedMaterial('trim-gilt-brass', { color: 0xc9a43b, roughness: 0.3, metalness: 0.8, clearcoat: 0.3, side: THREE.DoubleSide }),
+  // 青銅（真金屬：-brass 結尾）：四叉翼端板、翼面前後緣
+  bronze: namedMaterial('trim-bronze-brass', { color: 0xa36b35, roughness: 0.32, metalness: 0.8, clearcoat: 0.25, side: THREE.DoubleSide }),
   // 尾翼翼面：不透明拋光銀
   wingSilver: namedMaterial('trim-silver-wing-alu', { color: 0xbcc0c5, roughness: 0.28, metalness: 0.85, clearcoat: 0.2, side: THREE.DoubleSide }),
   // 殼內面：銀釜內側的暗銀灰（前輪開口裡看到的是銀色殼的內側，不是黑塊）
@@ -222,8 +224,9 @@ const materials = () => ({
   // 座艙罩：深藍玻璃（銀釜人物眼睛嵌的玻璃，C1；只取材質與顏色）
   glass: namedMaterial('pc-smoke-tint', { color: 0x1d2a44, roughness: 0.05, specularIntensity: 0.6, transparent: true, opacity: 0.6, envMapIntensity: 0.5, depthWrite: false, side: THREE.DoubleSide }),
   dGold: decalMaterial('decal-gilt', { color: 0xc9a43b, roughness: 0.32, metalness: 0.7 }),
-  // 浮雕帶凹處的氧化暗部（霧面，近黑）、凸起泡釘的亮銀、烏銀板縫與速度線（藍黑，不用棕黑）
-  dRecess: decalMaterial('decal-oxidized-recess', { color: 0x14161a, roughness: 0.75 }),
+  // 凸起泡釘的亮銀、烏銀板縫與速度線（藍黑，不用棕黑）
+  // 浮雕帶底：深紅琺瑯（仿銀釜嵌的有色玻璃，亮面）
+  dEnamel: decalMaterial('decal-red-enamel', { color: 0x8c1814, roughness: 0.18, clearcoat: 0.9 }),
   dSilver: decalMaterial('decal-relief-silver', { color: 0xd2d3d2, roughness: 0.3, metalness: 0.85 }),
   dGroove: decalMaterial('decal-niello-groove', { color: 0x1a1f29, roughness: 0.55 }),
   mount: namedMaterial('abs-mount-black', { color: 0x222326, roughness: 0.6 }),
@@ -283,7 +286,7 @@ export const gundestrupStagBody = makePolyBody({
   form: 'stag-arch',
   roof: 'canopy',
   wing: 'fork-endplate',
-  theme: 'Gundestrup 銀釜的元素（不做鹿）：錘起銀板的楔形尖鼻車身、前輪罩圓弧開口露出前輪（鍍金邊＋鉚釘圈）、深藍玻璃座艙罩外套一圈扭絞金 torc、車尾拋光銀大翼配鍍金四叉翼端板（鹿角的分叉線）；鼻尖接到 torc 的兩道鍍金條紋、鉚接板縫、側面 La Tène 波卷紋與圓泡釘浮雕帶',
+  theme: 'Gundestrup 銀釜的元素（不做鹿）：錘起銀板的楔形尖鼻車身、前輪罩圓弧開口露出前輪（鍍金邊＋鉚釘圈）、深藍玻璃座艙罩外套一圈扭絞金 torc、車尾拋光銀大翼配青銅四叉翼端板（鹿角的分叉線）；鼻尖接到 torc 的兩道鍍金條紋、鉚接板縫、側面深紅琺瑯底的 La Tène 波卷紋與圓泡釘浮雕帶',
   material: 'ABS',
   density_g_cm3: 1.05,
   wallThickness_mm: 0.8,
@@ -336,7 +339,7 @@ export const gundestrupStagBody = makePolyBody({
       name: 'arch-wells',
     });
 
-    // 尾翼翼面（實體件）：翼斷面沿 z 拉出整個翼展；中段拋光銀，前後緣各 8% 弦長鍍金
+    // 尾翼翼面（實體件）：翼斷面沿 z 拉出整個翼展；中段拋光銀，前後緣各 8% 弦長青銅
     {
       /** @type {(q0: number, q1: number) => number[][]} 弦長 q0 → q1 段的翼斷面多邊形 */
       const section = (q0, q1) => {
@@ -357,16 +360,16 @@ export const gundestrupStagBody = makePolyBody({
       parts.push({ geometry: finPlate(section(0.08, 0.92), 0, 2 * WING.span), mat: 'wingSilver', solid: true, outline: true, name: 'rear-wing' });
       parts.push({
         geometry: mergeGeos([finPlate(section(0, 0.08), 0, 2 * WING.span), finPlate(section(0.92, 1), 0, 2 * WING.span)]),
-        mat: 'gilt',
+        mat: 'bronze',
         solid: true,
         outline: true,
-        name: 'rear-wing-gilt-edges',
+        name: 'rear-wing-bronze-edges',
       });
     }
-    // 四叉翼端板（實體件，鍍金）：左右各一片，上緣往外傾
+    // 四叉翼端板（實體件，青銅）：左右各一片，上緣往外傾
     parts.push({
       geometry: mergeGeos([-1, 1].map((sg) => finPlate(ENDPLATE_PTS, sg * ENDPLATE.z, ENDPLATE.thick, -sg * ENDPLATE.tilt))),
-      mat: 'gilt',
+      mat: 'bronze',
       solid: true,
       outline: true,
       name: 'fork-endplates',
@@ -440,15 +443,15 @@ export const gundestrupStagBody = makePolyBody({
       name: 'decal-seam-rivets',
     });
 
-    // 側面浮雕帶（全貼紙）——近黑的氧化暗底＋鍍金波卷紋＋亮銀泡釘＋上下鍍金珠點與細邊（深底配金銀，對比要夠）
+    // 側面浮雕帶（全貼紙）——深紅琺瑯底＋鍍金波卷紋＋亮銀泡釘＋上下鍍金珠點與細邊（深紅底配金銀，對比要夠）
     /** @type {(x: number, y: number, z: number) => boolean} */
     const inFrieze = (x, y, z) => Math.abs(z) >= 24 && x >= FRIEZE.x0 && x <= FRIEZE.x1;
     /** @type {(x: number, y: number, z: number) => boolean} */
     const inFriezeBand = (x, y, z) => inFrieze(x, y, z) && Math.abs(y - FRIEZE.y) < FRIEZE.h - 0.4;
     parts.push({
       geometry: kit.decal((x, y, z) => (inFrieze(x, y, z) ? FRIEZE.h - Math.abs(y - FRIEZE.y) : -1)),
-      mat: 'dRecess',
-      name: 'decal-frieze-recess',
+      mat: 'dEnamel',
+      name: 'decal-frieze-enamel',
     });
     parts.push({
       geometry: kit.decal((x, y, z) => (inFriezeBand(x, y, z) ? -scrollSd(x, y - FRIEZE.y)[0] : -1), { offset: 0.4 }),
