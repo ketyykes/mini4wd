@@ -1,9 +1,9 @@
 // 維納斯扇貝（body-venus-scallop，神話組・羅馬）——照四視圖 31 建模的低趴楔形車：整片扇貝面的鼻 → 長斜引擎蓋 → 圓潤的珍珠座艙 → 後甲板橫條紋 → 往後上方斜切的 3 階尾翼（頂階是寬展扇貝翼）。
 // 只用維納斯的象徵物，不做人像：
-// 扇貝殼 → 整個鼻部頂面是一片海水綠扇貝（鉸邊在鼻尖、往座艙一側是凸起的金色波浪唇邊、凸起的珍珠白平行波浪肋）；頂階尾翼是一片往兩側後掠的寬展扇貝翼（波浪後緣）。不做從單點放射的紋樣。
+// 扇貝殼 → 整個鼻部頂面是一片珍珠白扇貝（鉸邊在鼻尖、往座艙一側是凸起的金色波浪唇邊、凸起的玫瑰粉平行波浪肋）；頂階尾翼是一片往兩側後掠的寬展扇貝翼（波浪後緣）。不做從單點放射的紋樣。
 // 珍珠 → 鼻部扇貝中心置中一顆珍珠（金框）、渾圓的座艙罩。
-// 玫瑰 → 前後輪之間的側面三片玫瑰粉花瓣（金邊），粉紅只當點綴。
-// 配色：珍珠白為主、海水綠為圖形色（下半車身、側裙、扇貝鼻），玫瑰粉（尾翼翼板、花瓣）與金點綴。造型柔和，和同為羅馬的 mars-spear（尖銳、紅銀黑）明顯不同。
+// 玫瑰 → 前後輪之間的側面三片珍珠白花瓣（金邊），畫在深玫瑰下半車身上。
+// 配色：玫瑰粉珍珠為主色（腰線以下漸深成深玫瑰），珍珠白為圖形色（扇貝鼻、尾翼翼板、花瓣、甲板條紋）、金點綴。造型柔和，和同為羅馬的 mars-spear（尖銳、紅銅黑）明顯不同。
 // 四個 R17.5 輪拱：31 mm 大輪不切輪拱也能裝。
 // 設計：shared/design/body-venus-scallop/DESIGN.md。剖面為本檔站位產生器（推估）。塗裝全為自創，不含任何廠商 / 作品名稱、商標或文字。
 import * as THREE from 'three';
@@ -114,25 +114,25 @@ const noseSd = (x, y, z) => {
 };
 
 const materials = () => ({
-  // 珍珠白：亮面＋高清漆
-  pearl: namedMaterial('paint-pearl-white', { color: 0xf4eee8, roughness: 0.26, clearcoat: 1, clearcoatRoughness: 0.08 }),
-  pearl2: namedMaterial('paint-pearl-white', { color: 0xf4eee8, roughness: 0.26, clearcoat: 1, clearcoatRoughness: 0.08, side: THREE.DoubleSide }),
-  sea: namedMaterial('paint-sea-green', { color: 0x3aa597, roughness: 0.3, clearcoat: 0.8, clearcoatRoughness: 0.12 }),
-  rose2: namedMaterial('paint-rose-pink', { color: 0xd8607f, roughness: 0.3, clearcoat: 0.8, clearcoatRoughness: 0.12, side: THREE.DoubleSide }),
-  sea2: namedMaterial('paint-sea-green', { color: 0x3aa597, roughness: 0.3, clearcoat: 0.8, clearcoatRoughness: 0.12, side: THREE.DoubleSide }),
+  // 玫瑰粉珍珠：車身主色（亮面＋高清漆）
+  rose: namedMaterial('paint-rose-pearl', { color: 0xe892aa, roughness: 0.24, clearcoat: 1, clearcoatRoughness: 0.08 }),
+  rose2: namedMaterial('paint-rose-pearl', { color: 0xe892aa, roughness: 0.24, clearcoat: 1, clearcoatRoughness: 0.08, side: THREE.DoubleSide }),
+  // 深玫瑰珍珠：腰線以下、側裙
+  deep: namedMaterial('paint-deep-rose-pearl', { color: 0xc4587c, roughness: 0.26, clearcoat: 1, clearcoatRoughness: 0.1 }),
+  deep2: namedMaterial('paint-deep-rose-pearl', { color: 0xc4587c, roughness: 0.26, clearcoat: 1, clearcoatRoughness: 0.1, side: THREE.DoubleSide }),
+  // 珍珠白：扇貝鼻、尾翼翼板
+  white: namedMaterial('paint-pearl-white', { color: 0xf6f0ea, roughness: 0.24, clearcoat: 1, clearcoatRoughness: 0.08 }),
+  white2: namedMaterial('paint-pearl-white', { color: 0xf6f0ea, roughness: 0.24, clearcoat: 1, clearcoatRoughness: 0.08, side: THREE.DoubleSide }),
   // 金（真金屬：名稱以 -brass 結尾）
   gold: namedMaterial('trim-gold-brass', { color: 0xd8b25a, metalness: 0.85, roughness: 0.26, clearcoat: 0.4, side: THREE.DoubleSide }),
-  // 座艙罩：海水色煙燻透明殼
-  canopy: namedMaterial('pc-smoke-aqua', { color: 0x1c3a3c, roughness: 0.08, clearcoat: 1, clearcoatRoughness: 0.04 }),
+  // 座艙罩：玫瑰色煙燻透明殼
+  canopy: namedMaterial('pc-smoke-rose', { color: 0x3a1e2a, roughness: 0.08, clearcoat: 1, clearcoatRoughness: 0.04 }),
   inner: namedMaterial('shell-inner-dark', { color: 0x2a2226, roughness: 0.85, side: THREE.BackSide }),
-  edge: namedMaterial('shell-edge-pearl', { color: 0xe8e0d8, roughness: 0.5, side: THREE.DoubleSide }),
+  edge: namedMaterial('shell-edge-pearl', { color: 0xe8d8dc, roughness: 0.5, side: THREE.DoubleSide }),
   liner: namedMaterial('shell-wheelwell-dark', { color: 0x2a2024, roughness: 0.8, side: THREE.DoubleSide }),
   // 珍珠頭燈：帶淡淡自發光的珍珠色
   lamp: namedMaterial('lamp-pearl', { color: 0xfff6ee, emissive: 0xfff0e6, emissiveIntensity: 0.35, roughness: 0.12, clearcoat: 1 }),
-  dSea: decalMaterial('decal-sea-green', { color: 0x3aa597, roughness: 0.3 }),
-  dRib: decalMaterial('decal-pearl-rib', { color: 0xf4eee8, roughness: 0.3 }),
-  dSeaDeep: decalMaterial('decal-sea-deep', { color: 0x1f6e64, roughness: 0.32 }),
-  dDeep: decalMaterial('decal-rose-pink', { color: 0xd8577f, roughness: 0.32 }),
+  dWhite: decalMaterial('decal-pearl-white', { color: 0xf6f0ea, roughness: 0.3 }),
   dGold: decalMaterial('decal-gold', { color: 0xd8b25a, roughness: 0.28, metalness: 0.8 }),
   mount: namedMaterial('abs-mount-black', { color: 0x222326, roughness: 0.6 }),
 });
@@ -148,7 +148,7 @@ const CONFIG = {
   form: 'scallop-wedge',
   roof: 'canopy',
   wing: 'scallop-step',
-  theme: '照四視圖 31 的低趴楔形車：整個鼻部頂面是一片海水綠扇貝（凸起的金色波浪唇邊、凸起且互相平行的珍珠白波浪肋），扇貝中央一顆金框珍珠；長斜引擎蓋、渾圓的座艙、後甲板兩道橫條紋；車尾是往後上方斜切的 3 階尾翼（玫瑰粉後掠翼板，頂階是往兩側後掠到車身外的寬展扇貝翼、珍珠白斜切階梯端板）；前後輪之間三片玫瑰粉花瓣、海水綠側裙；珍珠白＋海水綠，金與玫瑰粉點綴',
+  theme: '照四視圖 31 的低趴楔形車：整個鼻部頂面是一片珍珠白扇貝（凸起的金色波浪唇邊、凸起且互相平行的玫瑰粉波浪肋），扇貝中央一顆金框珍珠；長斜引擎蓋、渾圓的座艙、後甲板兩道橫條紋；車尾是往後上方斜切的 3 階尾翼（珍珠白後掠翼板，頂階是往兩側後掠到車身外的寬展扇貝翼、玫瑰粉斜切階梯端板）；前後輪之間三片珍珠白花瓣、深玫瑰側裙；玫瑰粉珍珠為主色、腰線以下深玫瑰，珍珠白與金為圖形色',
   material: 'ABS',
   density_g_cm3: 1.05,
   wallThickness_mm: 0.8,
@@ -160,13 +160,13 @@ const CONFIG = {
   sideZMin: 22,
   zones: () => [
     { mat: 'canopy', keep: (x, y, z) => (onCanopy(x, z) ? 1 : -1) },
-    // 鼻部扇貝：整片海水綠（殼面分色，外緣由金線貼紙收邊）
-    { mat: 'sea', keep: (x, y, z) => noseSd(x, y, z) },
-    // 海水綠下半車身：腰線稜以下，往鼻尖跟著腰線收低
-    { mat: 'sea', keep: (x, y, z) => (belowBelt(x, y) && Math.abs(z) > P.hw(x) - 10 ? 1 : -1) },
-    { mat: 'pearl', keep: () => 1 },
+    // 鼻部扇貝：整片珍珠白（殼面分色，外緣由金線貼紙收邊）
+    { mat: 'white', keep: (x, y, z) => noseSd(x, y, z) },
+    // 深玫瑰下半車身：腰線稜以下，往鼻尖跟著腰線收低
+    { mat: 'deep', keep: (x, y, z) => (belowBelt(x, y) && Math.abs(z) > P.hw(x) - 10 ? 1 : -1) },
+    { mat: 'rose', keep: () => 1 },
   ],
-  mats: { inner: 'inner', edge: 'edge', cap: 'sea', mount: 'mount' },
+  mats: { inner: 'inner', edge: 'edge', cap: 'deep', mount: 'mount' },
   materials,
   extras: (kit) => {
     /** @type {BodyPart[]} */
@@ -174,7 +174,7 @@ const CONFIG = {
     /** @type {(x: number, z: number) => number} 殼面高度 */
     const top = (x, z) => kit.surf.topY(x, z);
 
-    // ── 往後上方斜切的 3 階尾翼：3 片玫瑰粉後掠翼板一階比一階高、往後退，左右兩片珍珠白端板（側影是往後上方斜切的階梯） ──
+    // ── 往後上方斜切的 3 階尾翼：3 片珍珠白後掠翼板一階比一階高、往後退，左右兩片玫瑰粉端板（側影是往後上方斜切的階梯） ──
     {
       /** @type {THREE.BufferGeometry[]} */
       const blades = [];
@@ -200,7 +200,7 @@ const CONFIG = {
         wingPts.push([te(z), z]);
       }
       blades.push(flatPlate(wingPts, st3.y, TAIL_T));
-      parts.push({ geometry: mergeGeos(blades), mat: 'rose2', solid: true, outline: true, name: 'tail-step-blades' });
+      parts.push({ geometry: mergeGeos(blades), mat: 'white2', solid: true, outline: true, name: 'tail-step-blades' });
       /** @type {THREE.BufferGeometry[]} */
       const plates = [];
       for (const sg of [-1, 1]) {
@@ -213,13 +213,13 @@ const CONFIG = {
         pts.push([-73.4, 44], [-71.2, top(-70, z) - 1]);
         plates.push(finPlate(pts, z, 1.0));
       }
-      parts.push({ geometry: mergeGeos(plates), mat: 'pearl2', solid: true, outline: true, name: 'tail-endplates' });
+      parts.push({ geometry: mergeGeos(plates), mat: 'rose2', solid: true, outline: true, name: 'tail-endplates' });
     }
 
-    // ── 側裙：兩輪之間把底盤側框與電池艙側面封起來（海水綠） ──
+    // ── 側裙：兩輪之間把底盤側框與電池艙側面封起來（深玫瑰） ──
     parts.push({
       geometry: buildBellySkirt({ x0: -21, x1: 21, zIn: (x) => P.hw(x) - 1.2, zOut: 37.0, yTop: 14.2, t: 0.5 }),
-      mat: 'sea2',
+      mat: 'deep2',
       solid: true,
       outline: true,
       name: 'side-skirts',
@@ -245,8 +245,8 @@ const CONFIG = {
     });
 
     // ── 貼紙 ──
-    // 鼻部扇貝：整個鼻部頂面是一片海水綠扇貝（車頭的主角），鉸邊在鼻尖，往座艙那一側是波浪外緣（每 6.5 mm 一個波峰）；
-    //   肋是互相平行的珍珠白波浪肋（沿 x，每 6.5 mm 一條，對齊波峰），不收到任何一點
+    // 鼻部扇貝：整個鼻部頂面是一片珍珠白扇貝（車頭的主角），鉸邊在鼻尖，往座艙那一側是波浪外緣（每 6.5 mm 一個波峰）；
+    //   肋是互相平行的玫瑰粉波浪肋（沿 x，每 6.5 mm 一條，對齊波峰），不收到任何一點
     /**
      * 沿殼面的一條凸肋（梯形截面：底寬 2w、頂寬 1.2w、高 h，兩端封口）
      * @type {(pts: number[][], w: number, h: number) => THREE.BufferGeometry}
@@ -289,7 +289,7 @@ const CONFIG = {
       g.computeVertexNormals();
       return g;
     };
-    // 扇貝的平行波浪肋：沿 x、每 6.5 mm 一條，凸起 0.8（珍珠白），只在扇貝面內
+    // 扇貝的平行波浪肋：沿 x、每 6.5 mm 一條，凸起 0.8（玫瑰粉），只在扇貝面內
     {
       /** @type {THREE.BufferGeometry[]} */
       const ribs = [];
@@ -311,7 +311,7 @@ const CONFIG = {
           ribs.push(bead(run, 0.55, 0.8));
         }
       }
-      parts.push({ geometry: mergeGeos(ribs), mat: 'pearl2', solid: true, outline: true, name: 'nose-scallop-ribs' });
+      parts.push({ geometry: mergeGeos(ribs), mat: 'rose2', solid: true, outline: true, name: 'nose-scallop-ribs' });
       // 扇貝的波浪後緣：凸起 1.2 的金色唇邊（扇貝殼的厚邊）
       /** @type {number[][]} */
       const rim = [];
@@ -346,7 +346,7 @@ const CONFIG = {
       mat: 'dGold',
       name: 'decal-lamp-bezels',
     });
-    // 後甲板兩道橫向海水綠條紋
+    // 後甲板兩道橫向珍珠白條紋
     parts.push({
       geometry: kit.decal((x, y, z) => {
         if (belowBelt(x, y) || Math.abs(z) > P.hw(x) - 4.5 || onCanopy(x, z)) {
@@ -354,10 +354,10 @@ const CONFIG = {
         }
         return Math.max(Math.min(x + 33.4, -31 - x), Math.min(x + 38.4, -36 - x));
       }),
-      mat: 'dSea',
+      mat: 'dWhite',
       name: 'decal-deck-stripes',
     });
-    // 側面玫瑰花瓣切割：前後輪之間三片從前下方往後上展開的花瓣（深玫瑰、金邊）
+    // 側面玫瑰花瓣切割：前後輪之間三片從前下方往後上展開的花瓣（珍珠白、金邊）
     /** @type {number[][]} 每片花瓣 [起點 x, 起點 y, 角度（度，0 = 往後）, 長, 半寬] */
     const PETALS = [
       [17, 17.2, 4, 27, 3.6],
@@ -382,7 +382,7 @@ const CONFIG = {
     const petalEdge = (x, y) => Math.min(...PETALS.map((pt) => Math.abs(petalOne(pt, x, y))));
     parts.push({
       geometry: kit.decal((x, y, z) => (Math.abs(z) < P.hw(x) - 4 ? -1 : Math.min(petalSd(x, y) - 0.4, archRingDist(x, y) - 0.8, y - 11.2))),
-      mat: 'dDeep',
+      mat: 'dWhite',
       name: 'decal-rose-petals',
     });
     parts.push({
