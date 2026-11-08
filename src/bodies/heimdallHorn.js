@@ -1,12 +1,12 @@
 // 海姆達爾的號角（body-heimdall-horn，神話組・北歐）：守護彩虹橋 Bifröst、在諸神黃昏吹響加拉爾號角的海姆達爾。
 // 造型照四視圖 04：低平的 T 形鼻翼、從引擎罩一路爬升進尾翼的背線、兩側低平的側箱與高起的後輪拱，
-// 招牌是跨過後輪的平板橋翼——這裡就是彩虹橋：冰藍色平板、兩緣各五道彩虹細線，下方兩片拱形支柱讓側視看得到一道橋拱。
-// 號角融進車身：兩側珍珠白側箱外殼上各一支亮金錐形號角（象牙白箍環），喇叭口朝後；車尾在後輪後方收窄，中央伸出一支金色大喇叭口（拋光鉻唇、裡面五色彩虹環）。
+// 招牌是跨過後輪的平板橋翼——這裡就是彩虹橋：整片翼面塗成五色彩虹帶（每側由外往內紅、橘、金、綠、藍），到尾翼段跟著往兩側展開，下方兩片拱形支柱讓側視看得到一道橋拱。
+// 加拉爾號角長在車身上：引擎蓋中線躺著一支亮金大號角，吹嘴頂著座艙罩、往前張開成朝前的大喇叭口（象牙白箍環、鉻唇）；車尾中央另有一支金色喇叭口從尾翼後緣的凹口露出（裡面五色彩虹環）。
 // 橋翼尾段往兩側展開成寬尾翼，兩端是由上往下紅、橘、金、綠、藍的彩虹端板。
 // 設計：shared/design/body-heimdall-horn/DESIGN.md（典故：《散文埃達》Gylfaginning；彩虹橋三色見 MYTH_RESEARCH 北歐節 N12）。
 // 塗裝全為自創；不用盧恩字母、不含文字與商標。
 import * as THREE from 'three';
-import { makePolyBody, finPlate, flatPlate, sweepEllipse } from './polyBody.js';
+import { makePolyBody, finPlate, flatPlate } from './polyBody.js';
 import { namedMaterial, decalMaterial, mergeGeos, lerp } from './loft.js';
 import { monoCurve, buildStations, fenderFloor, smoothMax } from './gazelleLeap.js';
 import { buildProfileLiner } from './khepriScarab.js';
@@ -33,8 +33,8 @@ const P = {
 const XS_HW = [-66, -64, -58, -50, -40, -28, -18, -8, 2, 12, 22, 30, 40, 50, 56, 61, 66, 70, 73, 76];
 /** @type {Record<string, (x: number) => number>} */
 const Q = {
-  // 俯視半寬：寬 T 形鼻翼 40 → 兩前輪之間的窄鼻 22.5（前輪露在外面，像四視圖俯視）→ 後段漸寬 → 後輪拱 40.5 → 後輪後方往內收成 25 的車尾，車尾收向號角口
-  hw: monoCurve(XS_HW, [25, 28, 35, 38, 38.5, 38.5, 36.5, 31, 27, 24.5, 22.5, 22.5, 22.5, 22.5, 22.5, 22.5, 37, 40, 40, 38]),
+  // 俯視半寬：寬 T 形鼻翼 35 → 兩前輪之間的窄鼻 22.5（前輪露在外面，像四視圖俯視）→ 後段漸寬 → 後輪拱 40.5 → 後輪後方往內收成 25 的車尾，車尾收向號角口
+  hw: monoCurve(XS_HW, [25, 28, 35, 38, 38.5, 38.5, 36.5, 31, 27, 24.5, 22.5, 22.5, 22.5, 22.5, 22.5, 22.5, 32, 35, 35, 32]),
   // 下緣
   lo: monoCurve(XS_HW, [18, 17.5, 16.5, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16.2, 16.4, 16.6, 16.6, 16.6, 16.6]),
 };
@@ -102,7 +102,11 @@ const ARCHES = [
 /** @type {{ x0: number, x1: number, hw0: number, hw1: number, y: number, t: number }} 彩虹橋翼：前緣 x −4（座艙後背線長進去）→ 後緣 −70，半寬由 12 往後展開到 19 */
 const BRIDGE = { x0: -4, x1: -74, hw0: 12, hw1: 19, y: 43.2, t: 0.6 };
 /** @type {{ xRoot: number, xTip: number, hw: number, drop: number }} 寬尾翼：橋翼從 xRoot 起後掠外展到 xTip 的翼端半寬 hw，翼端板往下伸 drop */
-const TAIL_WING = { xRoot: -50, xTip: -59, hw: 46, drop: 6 };
+const TAIL_WING = { xRoot: -50, xTip: -59, hw: 47.4, drop: 6 };
+/** @type {{ x: number, zIn: number, zOut: number }} 尾翼後緣中央的凹口：車尾號角口從這裡露出來；凹口底 x、底部半寬 zIn、開口半寬 zOut（在後緣 BRIDGE.x1） */
+const TAIL_NOTCH = { x: -66.5, zIn: 13, zOut: 21 };
+/** @type {(x: number) => number} 尾翼凹口在 x 處的半寬（凹口底之前為 0） */
+const notchHalfW = (x) => (x >= TAIL_NOTCH.x ? 0 : lerp(TAIL_NOTCH.zIn, TAIL_NOTCH.zOut, (TAIL_NOTCH.x - x) / (TAIL_NOTCH.x - BRIDGE.x1)));
 /** @type {(x: number) => number} 橋翼在 x 處的半寬 */
 const bridgeHalfW = (x) => lerp(BRIDGE.hw0, BRIDGE.hw1, (BRIDGE.x0 - x) / (BRIDGE.x0 - BRIDGE.x1));
 
@@ -115,34 +119,36 @@ const RAINBOW = ['rbRed', 'rbOrange', 'rbGold', 'rbGreen', 'rbBlue'];
 /** @type {{ x0: number, x1: number, zOut: number, yTop: number, yBot: number, t: number }} 側箱外殼：前後輪之間每側一片直立板（|z| zOut，在底盤側框外），下緣到底盤上緣、上緣 yTop 用頂板接回殼側壁，兩輪之間整片封起來 */
 const SKIRT = { x0: -22.5, x1: 22.5, zOut: 37.4, yTop: 23.6, yBot: 10.5, t: 0.4 };
 
-/** @type {{ x0: number, x1: number, xBell: number, y0: number, y1: number, r0: number, r1: number, rBell: number, rz: number }} 加拉爾號角：貼在側裙外表面，前輪後方 x0 → 後輪前 x1 一路張開，x1 之後外張成喇叭口（口朝後）；rz 是往外凸出的厚度上限 */
-const HORN = { x0: 22, x1: -15, xBell: -21.8, y0: 16, y1: 17, r0: 1.6, r1: 4.6, rBell: 6.4, rz: 3.4 };
+/** @type {{ x0: number, x1: number, xBell: number, r0: number, r1: number, rBell: number, lift: number }} 引擎蓋上的加拉爾大號角：吹嘴在座艙罩前 x0，沿引擎蓋中線往前一路張開到 x1，之後外張成朝前的喇叭口（口緣 xBell）；lift = 軸心高出殼面的比例（乘半徑） */
+const HOOD_HORN = { x0: 27, x1: 56, xBell: 69, r0: 1.5, r1: 4.2, rBell: 7.6, lift: 0.85 };
 
-/** @type {(x: number) => { y: number, r: number }} 號角在 x 處的中心高度與半徑（錐形，最後一段外張成喇叭口） */
-const hornAt = (x) => {
-  if (x >= HORN.x1) {
-    const t = (HORN.x0 - x) / (HORN.x0 - HORN.x1);
-    return { y: lerp(HORN.y0, HORN.y1, t), r: lerp(HORN.r0, HORN.r1, t ** 1.3) };
+/** @type {(x: number) => { y: number, r: number }} 引擎蓋大號角在 x 處的軸心高度與半徑（貼著引擎蓋背線彎，前段外張成喇叭口） */
+const hoodHornAt = (x) => {
+  /** @type {number} */
+  let r;
+  if (x <= HOOD_HORN.x1) {
+    r = lerp(HOOD_HORN.r0, HOOD_HORN.r1, ((x - HOOD_HORN.x0) / (HOOD_HORN.x1 - HOOD_HORN.x0)) ** 1.2);
+  } else {
+    r = lerp(HOOD_HORN.r1, HOOD_HORN.rBell, ((x - HOOD_HORN.x1) / (HOOD_HORN.xBell - HOOD_HORN.x1)) ** 2.2);
   }
-  const u = (HORN.x1 - x) / (HORN.x1 - HORN.xBell);
-  return { y: HORN.y1, r: lerp(HORN.r1, HORN.rBell, u ** 2) };
+  return { y: P.yc(x) + HOOD_HORN.lift * r, r };
 };
 
 /**
- * 號角（半管薄殼）：貼在側裙外表面，只做外面那半圈；斷面是往外扁的半橢圓（高 = 半徑、凸出 ≤ rz），口端開放朝後
- * @type {(sgn: number) => THREE.BufferGeometry}
+ * 引擎蓋大號角（圓管薄殼，口端開放朝前）：沿 x 逐段畫圓環、接成錐管
+ * @type {() => THREE.BufferGeometry}
  */
-const buildHornDuct = (sgn) => {
-  const nx = 44;
-  const na = 12;
+const buildHoodHorn = () => {
+  const nx = 36;
+  const na = 18;
   /** @type {number[]} */
   const pos = [];
   /** @type {(i: number, k: number) => number[]} */
   const at = (i, k) => {
-    const x = lerp(HORN.x0, HORN.xBell, i / nx);
-    const { y, r } = hornAt(x);
-    const a = -Math.PI / 2 + (Math.PI * k) / na;
-    return [x, y + r * Math.sin(a), sgn * (SKIRT.zOut - 0.1 + Math.min(r, HORN.rz) * Math.cos(a))];
+    const x = lerp(HOOD_HORN.x0, HOOD_HORN.xBell, i / nx);
+    const { y, r } = hoodHornAt(x);
+    const a = (2 * Math.PI * k) / na;
+    return [x, y + r * Math.sin(a), r * Math.cos(a)];
   };
   for (let i = 0; i < nx; i++) {
     for (let k = 0; k < na; k++) {
@@ -150,11 +156,7 @@ const buildHornDuct = (sgn) => {
       const b = at(i + 1, k);
       const c = at(i + 1, k + 1);
       const d = at(i, k + 1);
-      if (sgn > 0) {
-        pos.push(...a, ...b, ...c, ...a, ...c, ...d);
-      } else {
-        pos.push(...a, ...c, ...b, ...a, ...d, ...c);
-      }
+      pos.push(...a, ...b, ...c, ...a, ...c, ...d);
     }
   }
   const g = new THREE.BufferGeometry();
@@ -177,7 +179,7 @@ const materials = () => ({
   ivory: namedMaterial('paint-horn-ivory', { color: 0xf1e8d2, roughness: 0.4, clearcoat: 0.5 }),
   // 真金屬（名稱含 -brass → Blender metallic）：號角箍環與喇叭口
   gold: namedMaterial('trim-gold-brass', { color: 0xd8b04a, metalness: 0.85, roughness: 0.28, clearcoat: 0.3 }),
-  // 號角：亮金（偏淺、低粗糙度，在側裙上也要亮）
+  // 號角：亮金（偏淺、低粗糙度）
   hornGold: namedMaterial('trim-horn-gold-brass', { color: 0xf0c85a, metalness: 0.9, roughness: 0.18, clearcoat: 0.5, emissive: 0x5a4010, emissiveIntensity: 0.35, side: THREE.DoubleSide }),
   // 橋翼支柱：拋光銀
   silver: namedMaterial('trim-silver-brass', { color: 0xc9d2da, metalness: 0.8, roughness: 0.3 }),
@@ -252,7 +254,7 @@ export const heimdallHornBody = makePolyBody({
   form: 'bifrost-deck',
   roof: 'canopy',
   wing: 'bridge-plank',
-  theme: '彩虹橋與加拉爾號角：低平 T 形鼻翼、背線從引擎罩爬升直接長進跨過後輪的冰藍平板橋翼（兩緣五色彩虹細線、下方兩片拱形銀支柱撐出一道橋拱），橋翼尾段展開成寬尾翼、兩端彩虹漸層端板；兩側珍珠白側箱外殼上的亮金號角、車尾收窄伸出金色大喇叭口（鉻唇、彩虹環）；珍珠白配冰藍、鈷藍金屬漆下半部',
+  theme: '彩虹橋與加拉爾號角：低平 T 形鼻翼、背線從引擎罩爬升直接長進跨過後輪的冰藍平板橋翼（下方兩片拱形銀支柱撐出一道橋拱），整片橋翼塗成五色彩虹帶、到尾翼段往兩側展開，兩端彩虹漸層端板；引擎蓋中線一支亮金加拉爾大號角、喇叭口朝前，車尾從尾翼凹口露出金色喇叭口（鉻唇、彩虹環）；珍珠白配冰藍、鈷藍金屬漆下半部',
   material: 'ABS',
   density_g_cm3: 1.05,
   wallThickness_mm: 0.8,
@@ -300,7 +302,7 @@ export const heimdallHornBody = makePolyBody({
       shell: true,
       name: 'arch-liners',
     });
-    // ── 彩虹橋翼：冰藍平板（梯形，四角倒角）＋上面兩緣白邊與五色細線 ──
+    // ── 彩虹橋翼：冰藍平板（梯形，四角倒角）＋整片五色彩虹帶 ──
     {
       const c = 2.5;
       // 橋翼尾段往兩側展開成寬尾翼（後掠前緣），兩端立彩虹端板
@@ -311,6 +313,10 @@ export const heimdallHornBody = makePolyBody({
         [TAIL_WING.xTip, TAIL_WING.hw],
         [BRIDGE.x1 + c, TAIL_WING.hw],
         [BRIDGE.x1, TAIL_WING.hw - c],
+        [BRIDGE.x1, TAIL_NOTCH.zOut],
+        [TAIL_NOTCH.x, TAIL_NOTCH.zIn],
+        [TAIL_NOTCH.x, -TAIL_NOTCH.zIn],
+        [BRIDGE.x1, -TAIL_NOTCH.zOut],
         [BRIDGE.x1, -TAIL_WING.hw + c],
         [BRIDGE.x1 + c, -TAIL_WING.hw],
         [TAIL_WING.xTip, -TAIL_WING.hw],
@@ -320,27 +326,8 @@ export const heimdallHornBody = makePolyBody({
       ];
       parts.push({ geometry: flatPlate(outline, BRIDGE.y, BRIDGE.t), mat: 'iceSolid', solid: true, outline: true, name: 'bifrost-bridge-wing' });
       const yTop = BRIDGE.y + BRIDGE.t + 0.03;
-      /** @type {(off0: number, off1: number, xa: number, xb: number) => THREE.BufferGeometry} 橋翼上沿兩緣的一道細帶（off = 離外緣的距離） */
-      const strip = (off0, off1, xa, xb) => {
-        /** @type {THREE.BufferGeometry[]} */
-        const gs = [];
-        for (const s of [-1, 1]) {
-          const pts = [
-            [xa, s * (bridgeHalfW(xa) - off0)],
-            [xb, s * (bridgeHalfW(xb) - off0)],
-            [xb, s * (bridgeHalfW(xb) - off1)],
-            [xa, s * (bridgeHalfW(xa) - off1)],
-          ];
-          if (s < 0) {
-            pts.reverse();
-          }
-          gs.push(flatPlate(pts, yTop, 0.02));
-        }
-        return mergeGeos(gs);
-      };
       const xa = BRIDGE.x0 - 4;
       const xb = BRIDGE.x1 + 3;
-      parts.push({ geometry: strip(0.5, 1.3, xa, xb), mat: 'dWhite', name: 'decal-bridge-edge' });
       // 寬尾翼兩端的端板：五段橫向疊起的立板，由上往下紅、橘、金、綠、藍（彩虹橋漸層）
       const yTopPlate = BRIDGE.y + BRIDGE.t + 1.2;
       const band = (yTopPlate - (BRIDGE.y - TAIL_WING.drop)) / RAINBOW.length;
@@ -356,10 +343,43 @@ export const heimdallHornBody = makePolyBody({
         }
         parts.push({ geometry: mergeGeos(plates), mat, solid: true, outline: true, name: `tail-wing-endplate-${i}` });
       });
+      // 整片橋翼塗成五色彩虹帶：每側由外緣往中線紅、橘、金、綠、藍，順著翼面外形走，到尾翼段跟著往兩側展開（中線留一道白線）
+      /** @type {(x: number) => number} 翼面在 x 處的可塗半寬（尾翼段外展到翼端） */
+      const deckHalfW = (x) => {
+        if (x >= TAIL_WING.xRoot) {
+          return bridgeHalfW(x) - 0.5;
+        }
+        if (x >= TAIL_WING.xTip) {
+          return lerp(bridgeHalfW(TAIL_WING.xRoot), TAIL_WING.hw, (TAIL_WING.xRoot - x) / (TAIL_WING.xRoot - TAIL_WING.xTip)) - 0.5;
+        }
+        return TAIL_WING.hw - 0.5;
+      };
+      /** @type {number} 中線白線半寬 */
+      const zMid = 0.7;
+      /** @type {(i: number, j: number, x: number) => number} 第 i 道色帶在 x 處、內（j=1）外（j=0）緣的 |z| */
+      const bandZ = (i, j, x) => Math.max(lerp(deckHalfW(x), zMid, (i + j) / RAINBOW.length), notchHalfW(x) + 0.4);
+      /** @type {number} 色帶沿 x 的分段數 */
+      const nSeg = 40;
       RAINBOW.forEach((mat, i) => {
-        const o = 1.6 + i * 1.1;
-        parts.push({ geometry: strip(o, o + 0.95, xa, xb), mat, name: `decal-bifrost-line-${i}` });
+        /** @type {THREE.BufferGeometry[]} */
+        const gs = [];
+        for (const s of [-1, 1]) {
+          /** @type {number[][]} */
+          const outer = [];
+          /** @type {number[][]} */
+          const inner = [];
+          for (let k = 0; k <= nSeg; k++) {
+            const x = lerp(xa, xb, k / nSeg);
+            outer.push([x, s * bandZ(i, 0, x)]);
+            inner.push([x, s * bandZ(i, 1, x)]);
+          }
+          const pts = [...outer, ...inner.reverse()];
+          gs.push(flatPlate(s < 0 ? pts.reverse() : pts, yTop, 0.02));
+        }
+        parts.push({ geometry: mergeGeos(gs), mat, name: `decal-bifrost-band-${i}` });
       });
+      const xc = TAIL_NOTCH.x - 0.4;
+      parts.push({ geometry: flatPlate([[xa, zMid], [xc, zMid], [xc, -zMid], [xa, -zMid]], yTop, 0.02), mat: 'dWhite', name: 'decal-bridge-centerline' });
     }
     // ── 橋翼支撐：左右兩片冰藍薄腹板把橋翼和橋下引擎蓋整片接起來（側視不再透空，厚 0.4），外側貼一道銀色拱肋，側視是一座拱橋 ──
     {
@@ -486,42 +506,58 @@ export const heimdallHornBody = makePolyBody({
       }
       parts.push({ geometry: mergeGeos(trims), mat: 'chrome', solid: true, outline: true, name: 'side-skirt-chrome-trim' });
     }
-    // ── 加拉爾號角：貼在側裙外表面的亮金色長號角，從前輪後方一路張開到後輪前，喇叭口朝後；兩道象牙白箍環＋喇叭口金色唇邊 ──
+    // ── 側箱外殼上的彩虹橋拱：每側一道橫跨整片側箱的五色扁拱（由外往內紅、橘、金、綠、藍），拱腳落在側箱前後兩端的下緣，像一座橋 ──
     {
-      parts.push({ geometry: mergeGeos([buildHornDuct(1), buildHornDuct(-1)]), mat: 'hornGold', shell: true, outline: true, name: 'gjallarhorn-ducts' });
-      /**
-       * 貼著號角外表面的半圈細管（箍環、喇叭口唇邊）：沿號角斷面的半橢圓掃一條圓管
-       * @type {(x: number, s: number, grow: number, tube: number) => THREE.BufferGeometry}
-       */
-      const halfRing = (x, s, grow, tube) => {
-        const { y, r } = hornAt(x);
+      /** @type {{ xc: number, yFoot: number, rx: number, ry: number, dx: number, dy: number }} 拱心 x、拱腳高度、最外圈半長 / 半高、每色往內縮的量 */
+      const ARC = { xc: 0, yFoot: 11.6, rx: 20.6, ry: 11.2, dx: 1.5, dy: 1.15 };
+      RAINBOW.forEach((mat, i) => {
+        /** @type {(k: number, j: number) => number[]} 第 i 道色帶第 j 圈（0 外、1 內）的第 k 個點 */
+        const at = (k, j) => {
+          const a = (Math.PI * k) / 24;
+          return [ARC.xc + (ARC.rx - (i + j) * ARC.dx) * Math.cos(a), ARC.yFoot + (ARC.ry - (i + j) * ARC.dy) * Math.sin(a)];
+        };
         /** @type {number[][]} */
         const pts = [];
-        for (let k = 0; k <= 12; k++) {
-          const a = -Math.PI / 2 + (Math.PI * k) / 12;
-          pts.push([x, y + (r + grow) * Math.sin(a), s * (SKIRT.zOut - 0.1 + (Math.min(r, HORN.rz) + grow) * Math.cos(a))]);
+        for (let k = 0; k <= 24; k++) {
+          pts.push(at(k, 0));
         }
-        return sweepEllipse(pts, 24, () => [tube, tube], 6);
+        for (let k = 24; k >= 0; k--) {
+          pts.push(at(k, 1));
+        }
+        parts.push({
+          geometry: mergeGeos([finPlate(pts, SKIRT.zOut + 0.25, 0.1), finPlate(pts, -SKIRT.zOut - 0.25, 0.1)]),
+          mat,
+          name: `decal-skirt-bifrost-arc-${i}`,
+        });
+      });
+    }
+    // ── 加拉爾大號角：躺在引擎蓋中線上的亮金號角，吹嘴頂著座艙罩、往前張開成朝前的大喇叭口；三道象牙白箍環、口緣拋光鉻唇、喉部深色 ──
+    {
+      parts.push({ geometry: buildHoodHorn(), mat: 'hornGold', shell: true, outline: true, name: 'gjallarhorn-hood' });
+      /** @type {(x: number, grow: number, tube: number) => THREE.BufferGeometry} 套在大號角外的整圈箍環 */
+      const hoop = (x, grow, tube) => {
+        const { y, r } = hoodHornAt(x);
+        const g = new THREE.TorusGeometry(r + grow, tube, 6, 24);
+        g.rotateY(Math.PI / 2);
+        g.translate(x, y, 0);
+        return g;
       };
-      /** @type {THREE.BufferGeometry[]} */
-      const rings = [];
-      /** @type {THREE.BufferGeometry[]} */
-      const lips = [];
-      for (const s of [-1, 1]) {
-        rings.push(halfRing(12, s, 0.15, 0.35), halfRing(-2, s, 0.15, 0.35));
-        lips.push(halfRing(HORN.xBell + 0.3, s, 0, 0.45));
-      }
-      parts.push({ geometry: mergeGeos(rings), mat: 'ivory', solid: true, outline: true, name: 'gjallarhorn-rings' });
-      parts.push({ geometry: mergeGeos(lips), mat: 'hornGold', solid: true, outline: true, name: 'gjallarhorn-bell-lips' });
+      parts.push({ geometry: mergeGeos([hoop(33, 0.2, 0.45), hoop(42, 0.2, 0.45), hoop(51, 0.2, 0.45)]), mat: 'ivory', solid: true, outline: true, name: 'gjallarhorn-hood-rings' });
+      parts.push({ geometry: hoop(HOOD_HORN.xBell, 0.1, 0.6), mat: 'chrome', solid: true, outline: true, name: 'gjallarhorn-hood-rim' });
+      const { y, r } = hoodHornAt(HOOD_HORN.x1 + 4);
+      const throat = new THREE.CircleGeometry(r * 0.98, 24);
+      throat.rotateY(Math.PI / 2);
+      throat.translate(HOOD_HORN.x1 + 4, y, 0);
+      parts.push({ geometry: throat, mat: 'throat', name: 'gjallarhorn-hood-throat' });
     }
     return parts;
   },
   src: {
     density_g_cm3: 'SPEC 1.14：ABS 約 1.05 g/cm³（推估）',
     wallThickness_mm: '推估：射出 ABS 殼 0.8 mm（同其他車殼）',
-    geometry: '本檔站位產生器（推估，比例取自四視圖 04）：殼 x −66 ~ 76、橋翼後緣 −74；T 形鼻翼半寬 40、頂 20、厚約 3.4；兩前輪之間窄鼻半寬 22.5（前輪外露）、後輪拱 38.5、車尾收到 25；兩輪之間側裙 |z| 37.4；中脊從鼻翼 17.5 爬升到橋翼前緣 43、橋下降到 31，橋翼頂 44.2 為全車最高',
-    bridge: '彩虹橋翼：ABS 平板厚 0.6，x −4 → −74、半寬 12 → 19，x −50 起後掠外展到翼端半寬 46（x −59 ~ −74），兩端彩虹端板厚 0.4、往下伸 6；左右各一道拱肋（肋寬 1.8）＋兩根立柱，立板厚 1.2、位於 |z| 11；兩緣白邊＋五色細線各寬 0.95 mm（推估）',
-    horn: '側號角：ABS 半管薄殼（壁厚同殼 0.8），貼在側箱外殼表面，從 x 22 到 −15 半徑 1.6 → 4.6、之後外張成半徑 6.4 的喇叭口（口朝後，x −21.8）；斷面往外扁（凸出 ≤ 3.4 mm）；兩道象牙白半圈箍環、喇叭口金色唇邊。車尾喇叭口：薄殼，從車尾直牆半徑 5 往後 4.6 mm 外張到半徑 8.2，口緣拋光鉻唇（推估）',
+    geometry: '本檔站位產生器（推估，比例取自四視圖 04）：殼 x −66 ~ 76、橋翼後緣 −74；T 形鼻翼半寬 35、頂 20、厚約 3.4；兩前輪之間窄鼻半寬 22.5（前輪外露）、後輪拱 38.5、車尾收到 25；兩輪之間側裙 |z| 37.4；中脊從鼻翼 17.5 爬升到橋翼前緣 43、橋下降到 31，橋翼頂 44.2 為全車最高',
+    bridge: '彩虹橋翼：ABS 平板厚 0.6，x −4 → −74、半寬 12 → 19，x −50 起後掠外展到翼端半寬 47.4（x −59 ~ −74），兩端彩虹端板厚 0.4、往下伸 6；後緣中央凹口 x −66.5、半寬 13 → 21；左右各一道拱肋（肋寬 1.8）＋兩根立柱，立板厚 1.2、位於 |z| 11；翼面五色彩虹帶每側均分、中線白線寬 1.4 mm（推估）',
+    horn: '引擎蓋大號角：ABS 圓管薄殼（壁厚同殼 0.8），軸心沿引擎蓋背線，吹嘴 x 27 半徑 1.5 → x 56 半徑 4.2 → 外張到 x 69 半徑 7.6 的朝前喇叭口，下半埋進引擎蓋；三道象牙白箍環、口緣鉻唇。車尾喇叭口：薄殼，從車尾直牆半徑 5 往後 4.6 mm 外張到半徑 8.2，口緣拋光鉻唇（推估）',
     skirt: '側箱外殼：ABS 直立板＋頂板，厚 0.5，|z| 37.4、x −22.5 ~ 22.5、y 10.5 ~ 23.6（下緣離底盤側框頂約 1 mm，推估）',
     wheelArches: '後 R17.5（31 mm 輪胎半徑 15.5 + 2 mm）；前輪在窄鼻外側外露（車身半寬 22.5 < 輪胎內側 24.75），可裝 26 / 31 mm 輪',
     mounts: '對齊 chassis-midship 的車殼安裝點（SPEC 1.14）',
