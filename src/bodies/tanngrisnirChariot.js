@@ -1,12 +1,13 @@
 // 索爾的山羊戰車（body-tanngrisnir-chariot，神話組・北歐）：《散文埃達》中索爾乘坐、由兩頭公山羊 Tanngrisnir 與 Tanngnjóstr 拉的戰車。
 // 車上不做山羊本體，只取「戰車」「羊角螺旋」「雷」三個元素做成賽車零件與塗裝：
 // 車身是低平的刀形車身（F1 刀鋒滑翔型）——前輪上方是隆起的擋泥板（輪上 32.3）、兩輪之間收腰（27.6）、後段收成窄車斗讓後輪整顆外露，
-// 前擋泥板之間伸出一支細長的轅桿鼻（鼻尖 x 72、頂高 18.4、半寬 13.5），引擎蓋從鼻尖一路升到座艙後 34.6；
+// 前擋泥板之間伸出一支細長的轅桿鼻（鼻尖 x 72、頂高 18.4、半寬 13.2），引擎蓋從鼻尖一路升到座艙後 34.6；
 // 戰車 → 雙轅：兩根鍛銀轅桿從車斗座艙兩側沿引擎蓋往前收攏到鼻面上的軛，兩桿之間是鍛鐵黑的凹槽與一道雷光藍細線；
 //          （座艙後方接兩道鍛銀條到車尾，雙轅貫穿整台車）
 //          軛：鼻面上一片貼平的青銅硬邊前翼（一根直橫木，兩端前角斜切），轅桿前端接在它的後緣；車斗：只留 24 × 18 mm 小開口的橡木低座艙；
-//          輪：窄車斗兩側外露的後輪就是戰車的大輪，側面兩輪之間再放一面 10 輻戰車輪徽記（號碼牌位置）。
-// 羊角螺旋 → 尾翼端板：車尾一片後緣鋸齒的貼身暗紅平板翼（翼面一道鍛銀鋸齒條紋），兩端各一面帶節環的青銅螺旋端板（直徑 18 mm、捲 1.5 圈，horn-volute 尾翼）。
+//          輪：窄車斗兩側外露的後輪就是戰車的大輪，側面兩輪之間再放一面 10 輻戰車輪徽記（號碼牌位置），徽記上凸出立體青銅輪輞、輻條與輪轂。
+// 羊角螺旋 → 尾翼翼端的立體羊角：車尾一片後緣鋸齒的貼身暗紅平板翼（翼面一道鍛銀鋸齒條紋），兩端各長出一支帶年輪稜、由粗到細的青銅公羊角，
+//          往後、往下、往外捲 1.3 圈（horn-volute 尾翼）。
 // 雷 → 鋸齒切割塗裝：側面上半暗紅、下半鍛鐵黑，分界是一排往後倒的鋸齒，沿鋸齒一道鍛銀邊；尾翼翼面是同一套紅底銀鋸齒；輪拱內緣一道雷光藍發光縫。
 // 設計：shared/design/body-tanngrisnir-chariot/DESIGN.md（典故 MYTH_RESEARCH N12、N16；車斗語彙 N3 Oseberg 四輪木車；黑名單 H6 不放雷神之鎚、不用盧恩）。
 // 塗裝全為自創：暗紅亮面漆＋鍛鐵黑灰（緞面）＋鍛銀與青銅（金屬）＋橡木座艙（霧面）＋少量雷光藍；
@@ -32,9 +33,9 @@ const P = {
   // 中央高度：從鼻尖 18.4 一路往後升的連續斜面引擎蓋（車頭到座艙沒有垂直面，V3），座艙後方最高 34.6，
   // 車尾最後 4 mm 從 31.2 微微上翹到 31.8（鴨尾）
   yA: monoCurve(XS, [31.8, 31.2, 31.2, 32, 33, 34.4, 34.6, 33.6, 31.6, 30.4, 29, 27.6, 25.6, 23.8, 22.4, 21.4, 20.8, 20.2, 19.4, 18.4]),
-  // 俯視半寬：前擋泥板最寬 38，兩輪之間 33.5，後段收成半寬 23 的窄車斗（後輪整顆露在車斗兩側，像戰車的外露大輪）；
-  // 前擋泥板從 x 44 起往前斜收（前輪胎前外角露在殼外），剩中央一支半寬 18 → 13.5 的轅桿鼻
-  hw: monoCurve(XS_HW, [22, 22.6, 23, 23, 23, 23, 26, 31, 33.5, 34, 36.5, 38, 38, 35, 28.5, 23, 20, 18, 15.5, 13.5]),
+  // 俯視半寬：前擋泥板最寬 38，兩輪之間 31，後段收成半寬 23 的窄車斗（後輪整顆露在車斗兩側，像戰車的外露大輪）；
+  // 前擋泥板從 x 44 起往前斜收（前輪胎前外角露在殼外），剩中央一支半寬 17.2 → 13.2 的轅桿鼻
+  hw: monoCurve(XS_HW, [22, 22.6, 23, 23, 23, 23, 25, 29, 31, 33, 36.5, 38, 38, 35, 28, 22, 19, 17.2, 15, 13.2]),
   // 側壁下緣
   yLow: monoCurve(XS, [18, 17, 16, 15.2, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15.2, 15.4, 15.5, 15.6, 15.6, 15.6]),
 };
@@ -164,30 +165,46 @@ const YOKE_X = 65;
 // 螺旋端板（羊角螺旋）
 // ---------------------------------------------------------------------------
 
-/** @type {{ x: number, y: number, r: number, pitch: number, turns: number, z: number }} 螺旋中心、外半徑、每圈內縮量、圈數、端板中心 |z| */
-const VOLUTE = { x: -59.5, y: 31.6, r: 9, pitch: 4.4, turns: 1.5, z: 29.8 };
+/**
+ * 羊角：從尾翼翼端長出的立體螺旋角（右側；左側鏡射）。角在一個往外傾的平面上捲：
+ * e1 = 往前（+x）、e2 = 往上且往內（傾角 tilt）。角根接在翼端，先往上、往前拱過外露的後輪上方，
+ * 再往下、往後捲回輪側，越捲越細、越往外漂，像公羊角繞到頭側
+ * @type {{ x: number, y: number, z: number, r0: number, r1: number, phi0: number, turns: number, tilt: number, drift: number }}
+ * 螺旋中心、起點 / 終點半徑、起始角（0 = 正前、90° = 正上，往負方向捲）、圈數、傾角（度）、捲動時往外漂移量
+ */
+const HORN = { x: -62, y: 30.2, z: 34, r0: 11.9, r1: 4.2, phi0: 74, turns: 1.3, tilt: 37, drift: 2.4 };
 
 /**
- * 螺旋端板的側視輪廓：一條由粗到細的帶子（寬 3.0 → 1.4 mm）從上前方的翼端起、往後往下捲 1.5 圈收到中心，
- * 外緣前 0.7 段有 11 道節環起伏（羊角的橫稜，振幅 0.35 mm 往內遞減）
- * @type {() => number[][]}
+ * 羊角中心線（右側，z > 0）：由翼端（粗）到角尖（細）
+ * @type {(n: number) => number[][]}
  */
-const voluteOutline = () => {
-  const n = 48;
+const hornPath = (n) => {
+  const t = (HORN.tilt * Math.PI) / 180;
+  const c = Math.cos(t);
+  const s = Math.sin(t);
   /** @type {number[][]} */
-  const outer = [];
-  /** @type {number[][]} */
-  const inner = [];
+  const pts = [];
   for (let i = 0; i <= n; i++) {
-    const s = i / n;
-    const a = (70 * Math.PI) / 180 + 2 * Math.PI * VOLUTE.turns * s;
-    const ridge = 0.35 * Math.max(0, 1 - s / 0.7) * Math.cos(2 * Math.PI * 11 * (s / 0.7));
-    const ro = VOLUTE.r - VOLUTE.pitch * VOLUTE.turns * s;
-    const ri = ro - lerp(3.0, 1.4, s);
-    outer.push([VOLUTE.x + (ro + ridge) * Math.cos(a), VOLUTE.y + (ro + ridge) * Math.sin(a)]);
-    inner.push([VOLUTE.x + ri * Math.cos(a), VOLUTE.y + ri * Math.sin(a)]);
+    const u = i / n;
+    const phi = ((HORN.phi0 + 360 * HORN.turns * u) * Math.PI) / 180;
+    const r = lerp(HORN.r0, HORN.r1, u ** 0.85);
+    const a = r * Math.cos(phi);
+    const b = r * Math.sin(phi);
+    // 法向 e1 × e2 = (0, s, c)：往上外；漂移取負值 → 捲動時往下外張開
+    const d = HORN.drift * u;
+    pts.push([HORN.x + a, HORN.y + b * c - d * s * 0.3, HORN.z - b * s + d * c]);
   }
-  return [...outer, ...inner.reverse()];
+  return pts;
+};
+
+/**
+ * 羊角斷面半徑：根部 2.9 mm 漸細到角尖 0.8 mm，疊 13 道橫稜（公羊角的年輪稜，振幅 9%）
+ * @type {(u: number) => number[]}
+ */
+const hornRadius = (u) => {
+  const base = lerp(4.2, 1.2, u ** 0.8);
+  const ridge = 1 + 0.09 * Math.cos(2 * Math.PI * 13 * u) * (1 - u);
+  return [base * ridge, base * ridge * 0.88];
 };
 
 // ---------------------------------------------------------------------------
@@ -248,7 +265,7 @@ export const tanngrisnirChariotBody = makePolyBody({
   form: 'twin-pole',
   roof: 'open-cockpit',
   wing: 'horn-volute',
-  theme: '索爾的山羊戰車（雙轅刀形）：暗紅低平刀形車身，前擋泥板隆起、中段收腰、後段是後輪外露的窄車斗，前擋泥板之間伸出細長轅桿鼻；兩根鍛銀轅桿從橡木車斗座艙兩側沿引擎蓋收攏到鼻面上一片貼平的青銅硬邊軛形前翼，車尾後緣鋸齒的貼身暗紅平板翼（翼面一道鍛銀鋸齒條紋）兩端是帶節環的青銅羊角螺旋端板；側面暗紅 / 鍛鐵黑以一排後倒鋸齒加鍛銀邊切開，中央一面 10 輻戰車輪徽記，輪拱與轅間凹槽有雷光藍發光縫',
+  theme: '索爾的山羊戰車（雙轅刀形）：暗紅低平刀形車身，前擋泥板隆起、中段收腰、後段是後輪外露的窄車斗，前擋泥板之間伸出細長轅桿鼻；兩根鍛銀轅桿從橡木車斗座艙兩側沿引擎蓋收攏到鼻面上一片貼平的青銅硬邊軛形前翼，車尾後緣鋸齒的貼身暗紅平板翼（翼面一道鍛銀鋸齒條紋）兩端長出往後下外捲的立體青銅公羊角；側面暗紅 / 鍛鐵黑以一排後倒鋸齒加鍛銀邊切開，中央一面凸出殼面的 10 輻立體戰車輪轂，輪拱與轅間凹槽有雷光藍發光縫',
   material: 'ABS',
   density_g_cm3: 1.05,
   wallThickness_mm: 0.8,
@@ -307,8 +324,8 @@ export const tanngrisnirChariotBody = makePolyBody({
     yoke.translate(YOKE_X, lerp(yokeRear, yokeFront, (YOKE_X - 62) / 6.5) - 0.7, 0);
     parts.push({ geometry: yoke, mat: 'bronze', solid: true, outline: true, name: 'yoke-front-wing' });
     // 尾翼：貼身暗紅平板翼（厚 1.2 mm，翼面 y 37.6–38.8；前緣後掠、後緣左右各三支往後倒的鋸齒），翼面上一道鍛銀鋸齒條紋
-    // ＋兩端的青銅羊角螺旋端板（厚 1.6 mm，掛在翼端，在外露後輪的後上方）
-    const zTip = VOLUTE.z - 0.8;
+    // ＋兩端的青銅立體羊角（角根接在翼端，在外露後輪的後上方）
+    const zTip = 29;
     /** @type {number[][]} 後緣鋸齒（右半，由翼端往中線）：(x, |z| / 翼端 |z|) */
     const teeth = [
       [-67, 1],
@@ -373,13 +390,14 @@ export const tanngrisnirChariotBody = makePolyBody({
       outline: true,
       name: 'rear-wing-struts',
     });
-    const volute = voluteOutline();
+    // 羊角：兩支立體螺旋角（青銅），從翼端往後、往下、往外捲 1.3 圈
+    const hornPts = hornPath(40);
     parts.push({
-      geometry: mergeGeos([-1, 1].map((sg) => finPlate(volute, sg * VOLUTE.z, 1.6))),
+      geometry: mergeGeos([1, -1].map((sg) => sweepEllipse(hornPts.map(([x, y, z]) => [x, y, sg * z]), 56, hornRadius, 10))),
       mat: 'bronze',
       solid: true,
       outline: true,
-      name: 'horn-volute-endplates',
+      name: 'ram-horns',
     });
     // 鋸齒分界上的鍛銀邊（0.9 mm，貼著鋸齒走，徽記範圍內斷開）
     parts.push({
@@ -427,6 +445,30 @@ export const tanngrisnirChariotBody = makePolyBody({
       mat: 'dBronze',
       name: 'decal-wheel-emblem-spokes',
     });
+    // 立體戰車輪轂：徽記上凸出殼面的青銅輪輞（環）、10 根輻條與輪轂，讓戰車輪在縮圖也看得出來
+    /** @type {THREE.BufferGeometry[]} */
+    const wheelGeos = [];
+    const wheelZ = P.hw(EMBLEM.x) + 0.2;
+    const rimR = EMBLEM.r - 1.0;
+    for (const sg of [-1, 1]) {
+      const rim = new THREE.TorusGeometry(rimR, 0.75, 6, 20);
+      rim.translate(EMBLEM.x, EMBLEM.y, sg * wheelZ);
+      wheelGeos.push(rim);
+      const hub = new THREE.CylinderGeometry(1.4, 1.8, 2.6, 12);
+      hub.rotateX(Math.PI / 2);
+      hub.translate(EMBLEM.x, EMBLEM.y, sg * wheelZ);
+      wheelGeos.push(hub);
+      for (let k = 0; k < EMBLEM.spokes; k++) {
+        const a = ((k + 0.5) / EMBLEM.spokes) * 2 * Math.PI;
+        const len = rimR - 1.2;
+        const spoke = new THREE.BoxGeometry(len, 0.6, 1.0);
+        spoke.translate(1.2 + len / 2, 0, 0);
+        spoke.rotateZ(a);
+        spoke.translate(EMBLEM.x, EMBLEM.y, sg * (wheelZ + 0.1));
+        wheelGeos.push(spoke);
+      }
+    }
+    parts.push({ geometry: mergeGeos(wheelGeos), mat: 'bronze', solid: true, outline: true, name: 'chariot-wheel-hubs' });
     // 雷光藍發光縫：前後輪拱切口外緣一道 0.9 mm 的發光線，加上雙轅之間凹槽中線一道 0.8 mm 細線（座艙前緣到軛）
     parts.push({
       geometry: kit.decal((x, y, z) => {
@@ -450,11 +492,11 @@ export const tanngrisnirChariotBody = makePolyBody({
   src: {
     density_g_cm3: 'SPEC 1.14：ABS 約 1.05 g/cm³（推估）',
     wallThickness_mm: '推估：射出 ABS 殼 0.8 mm（同其他車殼）',
-    geometry: '本檔站位產生器 P（推估）：車殼 x −63.5 ~ 72；引擎蓋中線從鼻尖 18.4 升到座艙後 34.6、車尾 31.8；擋泥板邊沿輪上 32.3（31 mm 輪拱頂 30.5 之上）、兩輪之間 27.6；半寬前擋泥板 38（蓋住 31 mm 輪胎外側面 34.75）、兩輪之間 33.5、後段窄車斗 23（後輪外露）、車尾 22、轅桿鼻 18 → 13.5',
+    geometry: '本檔站位產生器 P（推估）：車殼 x −63.5 ~ 72；引擎蓋中線從鼻尖 18.4 升到座艙後 34.6、車尾 31.8；擋泥板邊沿輪上 32.3（31 mm 輪拱頂 30.5 之上）、兩輪之間 27.6；半寬前擋泥板 38（蓋住 31 mm 輪胎外側面 34.75）、兩輪之間 31、後段窄車斗 23（後輪外露）、車尾 22、轅桿鼻 17.2 → 13.2',
     cockpit: '座艙開口 x −30 ~ −6、|z| ≤ 9（深 4 mm，推估）；車頭是沒有開口的連續斜面引擎蓋',
     poles: '雙轅為實心 ABS 扁桿（斷面 2.6 × 1.6 mm，24 × 6 段），x −31 ~ 62.4（前端接在軛的後緣），|z| 從座艙兩側 11.6 收攏到 4.4，中心線在殼面上 0.3 mm（半埋），座艙後緣到車尾接兩道 2 mm 鍛銀貼紙條；質量 = 封閉體積 × 1.05 g/cm³（推估）',
     yoke: '軛形前翼為實心 ABS 硬邊薄板（厚 1.6 mm、埋進鼻面 0.7 mm，x 62.2 ~ 66.6、|z| ≤ 14.5，直橫木輪廓、兩端前角斜切），貼著鼻面坡度；不超出鼻面與鼻尖、不在鼻子下方（推估）',
-    wing: '尾翼平板為實心 ABS（厚 1.2 mm，x −67 ~ −53、翼展 ±29、翼面 y 37.6–38.8，後緣左右各三支鋸齒），暗紅色，翼面上一道 0.3 mm 厚的鍛銀鋸齒條紋（寬 2.2 mm、齒距約 7 mm，單一道）；螺旋端板為實心 ABS 片（厚 1.6 mm，中心 x −59.5 / y 31.6、外半徑 9、每圈內縮 4.4、捲 1.5 圈、帶寬 3.0 → 1.4 mm、11 道節環），|z| 29–30.6，離 31 mm 後輪胎面約 2.4 mm；支柱 2 片厚 1.4 mm、|z| 12（推估）',
+    wing: '尾翼平板為實心 ABS（厚 1.2 mm，x −67 ~ −53、翼展 ±29、翼面 y 37.6–38.8，後緣左右各三支鋸齒），暗紅色，翼面上一道 0.3 mm 厚的鍛銀鋸齒條紋（寬 2.2 mm、齒距約 7 mm，單一道）；羊角為實心 ABS 掃掠體（斷面半徑 4.2 → 1.2 mm、13 道年輪稜，螺旋中心 x −62 / y 30.2 / |z| 34、半徑 11.9 → 4.2、捲 1.3 圈、捲面外傾 37°、往外漂 2.4 mm，56 × 10 段），|z| ≤ 42.2，導輪間隙 1.1 mm；側面立體戰車輪轂為實心 ABS（輪輞環半徑 4.2、管徑 0.75，10 根 0.6 × 1.0 mm 輻條，輪轂直徑 3.6、長 2.6）；支柱 2 片厚 1.4 mm、|z| 12（推估）',
     livery: '側面紅 / 鐵分界 y 17（車頭）→ 23（車尾），鋸齒間距 11 mm、齒高 2.4 mm，鍛銀邊 0.9 mm；單一道鋸齒邊，不是雙折線閃電（MYTH_RESEARCH H9）；戰車輪徽記半徑 5.2、10 輻；雷光藍發光縫 0.8–0.9 mm；皆為自繪（推估）',
     wheelArches: '前後 R17.5（31 mm 輪胎半徑 15.5 + 2 mm），可裝 26 / 31 mm 輪；內襯從 |z| 33 到殼內面，輪胎內側另有 buildArchWell 環形擋板（|z| 22.9）',
     mounts: '對齊 chassis-midship 的車殼安裝點（SPEC 1.14）',
