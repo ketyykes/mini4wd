@@ -100,9 +100,9 @@ const ARCHES = [
 ];
 
 /** @type {{ x0: number, x1: number, hw0: number, hw1: number, y: number, t: number }} 彩虹橋翼：前緣 x −4（座艙後背線長進去）→ 後緣 −70，半寬由 12 往後展開到 19 */
-const BRIDGE = { x0: -4, x1: -74, hw0: 12, hw1: 19, y: 43.2, t: 0.6 };
-/** @type {{ xRoot: number, xTip: number, hw: number, drop: number }} 寬尾翼：橋翼從 xRoot 起後掠外展到 xTip 的翼端半寬 hw，翼端板往下伸 drop */
-const TAIL_WING = { xRoot: -50, xTip: -59, hw: 46, drop: 6 };
+const BRIDGE = { x0: -4, x1: -74, hw0: 12, hw1: 19, y: 43.2, t: 0.5 };
+/** @type {{ xRoot: number, xTip: number, xTrail: number, hwRear: number, hw: number, drop: number }} 寬尾翼：橋翼從 xRoot 起後掠外展到翼端（前緣 xTip、後緣 xTrail、半寬 hw），翼端後緣再往內斜收到橋翼後緣的半寬 hwRear；翼端板往下伸 drop */
+const TAIL_WING = { xRoot: -40, xTip: -47, xTrail: -62, hwRear: 19, hw: 47.4, drop: 6 };
 /** @type {(x: number) => number} 橋翼在 x 處的半寬 */
 const bridgeHalfW = (x) => lerp(BRIDGE.hw0, BRIDGE.hw1, (BRIDGE.x0 - x) / (BRIDGE.x0 - BRIDGE.x1));
 
@@ -303,16 +303,16 @@ export const heimdallHornBody = makePolyBody({
     // ── 彩虹橋翼：冰藍平板（梯形，四角倒角）＋上面兩緣白邊與五色細線 ──
     {
       const c = 2.5;
-      // 橋翼尾段往兩側展開成寬尾翼（後掠前緣），兩端立彩虹端板
+      // 橋翼尾段往兩側展開成寬尾翼（後掠前緣、翼端後緣再往內斜收），兩端立彩虹端板
       const outline = [
         [BRIDGE.x0, BRIDGE.hw0 - c],
         [BRIDGE.x0 - c, BRIDGE.hw0],
         [TAIL_WING.xRoot, bridgeHalfW(TAIL_WING.xRoot)],
         [TAIL_WING.xTip, TAIL_WING.hw],
-        [BRIDGE.x1 + c, TAIL_WING.hw],
-        [BRIDGE.x1, TAIL_WING.hw - c],
-        [BRIDGE.x1, -TAIL_WING.hw + c],
-        [BRIDGE.x1 + c, -TAIL_WING.hw],
+        [TAIL_WING.xTrail, TAIL_WING.hw],
+        [BRIDGE.x1, TAIL_WING.hwRear],
+        [BRIDGE.x1, -TAIL_WING.hwRear],
+        [TAIL_WING.xTrail, -TAIL_WING.hw],
         [TAIL_WING.xTip, -TAIL_WING.hw],
         [TAIL_WING.xRoot, -bridgeHalfW(TAIL_WING.xRoot)],
         [BRIDGE.x0 - c, -BRIDGE.hw0],
@@ -352,7 +352,7 @@ export const heimdallHornBody = makePolyBody({
         /** @type {THREE.BufferGeometry[]} */
         const plates = [];
         for (const sg of [-1, 1]) {
-          plates.push(finPlate([[xFront(y1), y1], [BRIDGE.x1 - 0.5, y1], [BRIDGE.x1 - 0.5, y0], [xFront(y0), y0]], sg * (TAIL_WING.hw + 0.3), 0.4));
+          plates.push(finPlate([[xFront(y1), y1], [TAIL_WING.xTrail - 0.5, y1], [TAIL_WING.xTrail - 0.5, y0], [xFront(y0), y0]], sg * (TAIL_WING.hw + 0.3), 0.4));
         }
         parts.push({ geometry: mergeGeos(plates), mat, solid: true, outline: true, name: `tail-wing-endplate-${i}` });
       });
@@ -520,7 +520,7 @@ export const heimdallHornBody = makePolyBody({
     density_g_cm3: 'SPEC 1.14：ABS 約 1.05 g/cm³（推估）',
     wallThickness_mm: '推估：射出 ABS 殼 0.8 mm（同其他車殼）',
     geometry: '本檔站位產生器（推估，比例取自四視圖 04）：殼 x −66 ~ 76、橋翼後緣 −74；T 形鼻翼半寬 40、頂 20、厚約 3.4；兩前輪之間窄鼻半寬 22.5（前輪外露）、後輪拱 38.5、車尾收到 25；兩輪之間側裙 |z| 37.4；中脊從鼻翼 17.5 爬升到橋翼前緣 43、橋下降到 31，橋翼頂 44.2 為全車最高',
-    bridge: '彩虹橋翼：ABS 平板厚 0.6，x −4 → −74、半寬 12 → 19，x −50 起後掠外展到翼端半寬 46（x −59 ~ −74），兩端彩虹端板厚 0.4、往下伸 6；左右各一道拱肋（肋寬 1.8）＋兩根立柱，立板厚 1.2、位於 |z| 11；兩緣白邊＋五色細線各寬 0.95 mm（推估）',
+    bridge: '彩虹橋翼：ABS 平板厚 0.5，x −4 → −74、半寬 12 → 19，x −40 起後掠外展到翼端半寬 47.4（x −47 ~ −62），翼端後緣往內斜收到 x −74 的半寬 19；兩端彩虹端板厚 0.4、往下伸 6；左右各一道拱肋（肋寬 1.8）＋兩根立柱，立板厚 1.2、位於 |z| 11；兩緣白邊＋五色細線各寬 0.95 mm（推估）',
     horn: '側號角：ABS 半管薄殼（壁厚同殼 0.8），貼在側箱外殼表面，從 x 22 到 −15 半徑 1.6 → 4.6、之後外張成半徑 6.4 的喇叭口（口朝後，x −21.8）；斷面往外扁（凸出 ≤ 3.4 mm）；兩道象牙白半圈箍環、喇叭口金色唇邊。車尾喇叭口：薄殼，從車尾直牆半徑 5 往後 4.6 mm 外張到半徑 8.2，口緣拋光鉻唇（推估）',
     skirt: '側箱外殼：ABS 直立板＋頂板，厚 0.5，|z| 37.4、x −22.5 ~ 22.5、y 10.5 ~ 23.6（下緣離底盤側框頂約 1 mm，推估）',
     wheelArches: '後 R17.5（31 mm 輪胎半徑 15.5 + 2 mm）；前輪在窄鼻外側外露（車身半寬 22.5 < 輪胎內側 24.75），可裝 26 / 31 mm 輪',
