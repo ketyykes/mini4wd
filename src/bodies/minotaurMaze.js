@@ -175,7 +175,8 @@ const materials = () => ({
   gold: namedMaterial('trim-horn-brass', { color: 0xd2a23c, metalness: 0.85, roughness: 0.3, side: THREE.DoubleSide }),
   // 尾翼頂面的陶土色新月條
   clay2: namedMaterial('paint-terracotta-clay', { color: 0xc8662e, roughness: 0.42, clearcoat: 0.45, clearcoatRoughness: 0.3, side: THREE.DoubleSide }),
-  cockpit: namedMaterial('cockpit-dark', { color: 0x14100e, roughness: 0.9, side: THREE.DoubleSide }),
+  // 座艙罩底下的座艙內襯：接近黑的深茶色霧面（座艙補光下才不會反白）
+  cockpit: namedMaterial('cockpit-dark', { color: 0x080605, roughness: 0.95, side: THREE.DoubleSide }),
   // 大型多面座艙罩：深茶色煙燻 PC
   glass: namedMaterial('pc-tint-umber-smoke', { color: 0x2a1c14, roughness: 0.06, specularIntensity: 0.6, transparent: true, opacity: 0.84, envMapIntensity: 0.5, depthWrite: false, side: THREE.DoubleSide }),
   inner: namedMaterial('shell-inner-dark', { color: 0x1a1716, roughness: 0.85, side: THREE.BackSide }),
