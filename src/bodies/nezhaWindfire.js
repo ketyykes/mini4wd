@@ -101,8 +101,8 @@ const profile = (x) => {
   const h = P.hw(x);
   const d = t - s;
   const flare = smoothstep(1, 8, h);
-  // 前後輪之間偏後半段（x −20～2）的側裙下緣往外張到 ±46（側裙下半段是往外斜出的裙邊，上緣停在 ±39），從上面和側面都看不到底盤側框
-  const sill = Math.max(h + 1.3 * flare, SILL_W * smoothstep(-24, -16, x) * smoothstep(6, -2, x));
+  // 前後輪之間的側裙下緣往外張到 ±46（側裙下半段是往外斜出的裙邊，上緣停在 ±39），從上面和側面都看不到底盤側框
+  const sill = Math.max(h + 1.3 * flare, SILL_W * smoothstep(-24, -16, x) * smoothstep(24, 16, x));
   return [
     [0, t],
     [0.34 * h, t - 0.1 * d],
