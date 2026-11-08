@@ -1,6 +1,6 @@
-// 維納斯扇貝（body-venus-scallop，神話組・羅馬）——照四視圖 31 建模的低趴楔形車：整片扇貝面的鼻 → 長斜引擎蓋 → 圓潤的珍珠座艙 → 後甲板橫條紋 → 往後上方斜切的 3 階尾翼。
+// 維納斯扇貝（body-venus-scallop，神話組・羅馬）——照四視圖 31 建模的低趴楔形車：整片扇貝面的鼻 → 長斜引擎蓋 → 圓潤的珍珠座艙 → 後甲板橫條紋 → 往後上方斜切的 3 階尾翼（頂階是寬展扇貝翼）。
 // 只用維納斯的象徵物，不做人像：
-// 扇貝殼 → 整個鼻部頂面是一片海水綠扇貝（鉸邊在鼻尖、往座艙一側是金色波浪外緣、肋是互相平行的珍珠白波浪肋）。不做從單點放射的紋樣。
+// 扇貝殼 → 整個鼻部頂面是一片海水綠扇貝（鉸邊在鼻尖、往座艙一側是凸起的金色波浪唇邊、凸起的珍珠白平行波浪肋）；頂階尾翼是一片往兩側後掠的寬展扇貝翼（波浪後緣）。不做從單點放射的紋樣。
 // 珍珠 → 鼻部扇貝中心置中一顆珍珠（金框）、渾圓的座艙罩。
 // 玫瑰 → 前後輪之間的側面三片玫瑰粉花瓣（金邊），粉紅只當點綴。
 // 配色：珍珠白為主、海水綠為圖形色（下半車身、側裙、扇貝鼻），玫瑰粉（尾翼翼板、花瓣）與金點綴。造型柔和，和同為羅馬的 mars-spear（尖銳、紅銀黑）明顯不同。
@@ -94,6 +94,8 @@ const TAIL_STEPS = [
 ];
 /** @type {number} 尾翼端板 |z| */
 const TAIL_Z = 20;
+/** @type {number} 頂階扇貝翼的半展長 */
+const WING_Z = 46.5;
 /** @type {number} 翼板厚 */
 const TAIL_T = 0.6;
 
@@ -101,7 +103,7 @@ const TAIL_T = 0.6;
 /** @type {(x: number, z: number) => number} 到扇貝波浪外緣的距離（正值 = 在扇貝內） */
 const noseEdge = (x, z) => {
   const c = Math.cos((Math.PI * z) / 6.5);
-  return x - (46 - 2.2 * c * c);
+  return x - (46 - 1.4 * c * c);
 };
 /** @type {(x: number, y: number, z: number) => number} 扇貝範圍（頂面、腰線以上、珍珠以外）的有號距離 */
 const noseSd = (x, y, z) => {
@@ -146,7 +148,7 @@ const CONFIG = {
   form: 'scallop-wedge',
   roof: 'canopy',
   wing: 'scallop-step',
-  theme: '照四視圖 31 的低趴楔形車：整個鼻部頂面是一片海水綠扇貝（金色波浪外緣、互相平行的珍珠白波浪肋），扇貝中央一顆金框珍珠；長斜引擎蓋、渾圓的座艙、後甲板兩道橫條紋；車尾是往後上方斜切的 3 階尾翼（3 片玫瑰粉後掠翼板、珍珠白斜切階梯端板）；前後輪之間三片玫瑰粉花瓣、海水綠側裙；珍珠白＋海水綠，金與玫瑰粉點綴',
+  theme: '照四視圖 31 的低趴楔形車：整個鼻部頂面是一片海水綠扇貝（凸起的金色波浪唇邊、凸起且互相平行的珍珠白波浪肋），扇貝中央一顆金框珍珠；長斜引擎蓋、渾圓的座艙、後甲板兩道橫條紋；車尾是往後上方斜切的 3 階尾翼（玫瑰粉後掠翼板，頂階是往兩側後掠到車身外的寬展扇貝翼、珍珠白斜切階梯端板）；前後輪之間三片玫瑰粉花瓣、海水綠側裙；珍珠白＋海水綠，金與玫瑰粉點綴',
   material: 'ABS',
   density_g_cm3: 1.05,
   wallThickness_mm: 0.8,
@@ -176,10 +178,28 @@ const CONFIG = {
     {
       /** @type {THREE.BufferGeometry[]} */
       const blades = [];
-      for (const st of TAIL_STEPS) {
+      for (const st of TAIL_STEPS.slice(0, 2)) {
         // 後掠翼板：中央前緣往前凸 2.4（俯視是淺 V 形前緣）
         blades.push(flatPlate([[st.x0 + 2.4, 0], [st.x0, TAIL_Z], [st.x1, TAIL_Z], [st.x1 + 1.6, 0], [st.x1, -TAIL_Z], [st.x0, -TAIL_Z]], st.y, TAIL_T));
       }
+      // 頂階是一片寬展的扇貝翼：往兩側後掠到 |z| 46.5，後緣是扇貝的波浪邊（每 6.5 mm 一個波峰）
+      const st3 = TAIL_STEPS[2];
+      /** @type {(az: number) => number} 扇貝翼前緣 x */
+      const le = (az) => st3.x0 + 2.4 - 2.4 * Math.min(1, az / TAIL_Z) - 0.16 * Math.max(0, az - TAIL_Z);
+      /** @type {(z: number) => number} 扇貝翼後緣 x（波浪邊） */
+      const te = (z) => {
+        const c = Math.cos((Math.PI * z) / 6.5);
+        return st3.x1 + 1.2 - 0.04 * Math.abs(z) - 1.2 * c * c;
+      };
+      /** @type {number[][]} */
+      const wingPts = [];
+      for (let z = -WING_Z; z <= WING_Z + 1e-6; z += 0.5) {
+        wingPts.push([le(Math.abs(z)), z]);
+      }
+      for (let z = WING_Z; z >= -WING_Z - 1e-6; z -= 0.5) {
+        wingPts.push([te(z), z]);
+      }
+      blades.push(flatPlate(wingPts, st3.y, TAIL_T));
       parts.push({ geometry: mergeGeos(blades), mat: 'rose2', solid: true, outline: true, name: 'tail-step-blades' });
       /** @type {THREE.BufferGeometry[]} */
       const plates = [];
@@ -198,7 +218,7 @@ const CONFIG = {
 
     // ── 側裙：兩輪之間把底盤側框與電池艙側面封起來（海水綠） ──
     parts.push({
-      geometry: buildBellySkirt({ x0: -21, x1: 21, zIn: (x) => P.hw(x) - 1.2, zOut: 37.4, yTop: 14.2, t: 0.5 }),
+      geometry: buildBellySkirt({ x0: -21, x1: 21, zIn: (x) => P.hw(x) - 1.2, zOut: 37.0, yTop: 14.2, t: 0.5 }),
       mat: 'sea2',
       solid: true,
       outline: true,
@@ -227,14 +247,83 @@ const CONFIG = {
     // ── 貼紙 ──
     // 鼻部扇貝：整個鼻部頂面是一片海水綠扇貝（車頭的主角），鉸邊在鼻尖，往座艙那一側是波浪外緣（每 6.5 mm 一個波峰）；
     //   肋是互相平行的珍珠白波浪肋（沿 x，每 6.5 mm 一條，對齊波峰），不收到任何一點
-    parts.push({
-      geometry: kit.decal((x, y, z) => {
-        const q = (z - 0.6 * Math.sin(0.5 * x)) / 6.5;
-        return Math.min(0.45 - Math.abs(q - Math.round(q)) * 6.5, noseSd(x, y, z) - 1.2);
-      }, { offset: 0.1 }),
-      mat: 'dRib',
-      name: 'decal-nose-scallop-ribs',
-    });
+    /**
+     * 沿殼面的一條凸肋（梯形截面：底寬 2w、頂寬 1.2w、高 h，兩端封口）
+     * @type {(pts: number[][], w: number, h: number) => THREE.BufferGeometry}
+     */
+    const bead = (pts, w, h) => {
+      /** @type {number[][][]} 每個取樣點的 4 個截面頂點 */
+      const secs = pts.map(([x, z], k) => {
+        const [xa, za] = pts[Math.max(0, k - 1)];
+        const [xb, zb] = pts[Math.min(pts.length - 1, k + 1)];
+        const len = Math.hypot(xb - xa, zb - za) || 1;
+        // 截面方向：在 x–z 平面上垂直於肋的走向
+        const nx = -(zb - za) / len;
+        const nz = (xb - xa) / len;
+        const y = top(x, z);
+        return [
+          [x - nx * w, top(x - nx * w, z - nz * w) - 0.3, z - nz * w],
+          [x - nx * w * 0.6, y + h, z - nz * w * 0.6],
+          [x + nx * w * 0.6, y + h, z + nz * w * 0.6],
+          [x + nx * w, top(x + nx * w, z + nz * w) - 0.3, z + nz * w],
+        ];
+      });
+      /** @type {number[]} */
+      const pos = [];
+      /** @type {(a: number[], b: number[], c: number[]) => void} */
+      const tri = (a, b, c) => pos.push(...a, ...b, ...c);
+      for (let k = 0; k + 1 < secs.length; k++) {
+        const [p, q] = [secs[k], secs[k + 1]];
+        for (let e = 0; e < 4; e++) {
+          const f = (e + 1) % 4;
+          tri(p[e], q[e], q[f]);
+          tri(p[e], q[f], p[f]);
+        }
+      }
+      for (const c of [secs[0], secs[secs.length - 1]]) {
+        tri(c[0], c[1], c[2]);
+        tri(c[0], c[2], c[3]);
+      }
+      const g = new THREE.BufferGeometry();
+      g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+      g.computeVertexNormals();
+      return g;
+    };
+    // 扇貝的平行波浪肋：沿 x、每 6.5 mm 一條，凸起 0.8（珍珠白），只在扇貝面內
+    {
+      /** @type {THREE.BufferGeometry[]} */
+      const ribs = [];
+      for (let k = -6; k <= 6; k++) {
+        /** @type {number[][]} */
+        let run = [];
+        for (let x = 44; x <= 76.6; x += 1.6) {
+          const z = 6.5 * k + 0.6 * Math.sin(0.5 * x);
+          if (noseSd(x, top(x, z), z) > 1.4) {
+            run.push([x, z]);
+          } else if (run.length > 0) {
+            if (run.length > 2) {
+              ribs.push(bead(run, 0.55, 0.8));
+            }
+            run = [];
+          }
+        }
+        if (run.length > 2) {
+          ribs.push(bead(run, 0.55, 0.8));
+        }
+      }
+      parts.push({ geometry: mergeGeos(ribs), mat: 'pearl2', solid: true, outline: true, name: 'nose-scallop-ribs' });
+      // 扇貝的波浪後緣：凸起 1.2 的金色唇邊（扇貝殼的厚邊）
+      /** @type {number[][]} */
+      const rim = [];
+      for (let z = -40; z <= 40; z += 0.65) {
+        const c = Math.cos((Math.PI * z) / 6.5);
+        const x = 46 - 1.4 * c * c + 0.6;
+        if (Math.abs(z) < P.hw(x) - 3.6) {
+          rim.push([x, z]);
+        }
+      }
+      parts.push({ geometry: bead(rim, 0.7, 1.2), mat: 'gold', solid: true, outline: true, name: 'nose-scallop-rim' });
+    }
     // 扇貝外緣金線（波浪後緣＋左右兩側）
     parts.push({
       geometry: kit.decal((x, y, z) => {
@@ -322,7 +411,7 @@ const CONFIG = {
     wallThickness_mm: '推估：射出 ABS 殼 0.8 mm（同其他車殼）',
     geometry: '本檔站位產生器 P（推估，比例照四視圖 31）：殼 x −70 → 77；中線甲板 後甲板 32.6 → 鼻尖 16.5；座艙罩高出甲板 9.8（頂 ≈ 39.8，x −2）；擋泥板頂 前輪 33.6、後輪 34.6、腰 28.6；半寬 車尾 33.6、後輪 40、腰 30.4、前輪 37.2、鼻部 x 64–74 外擴到 46–47、鼻尖 42',
     wheelArches: '前後 R17.5（31 mm 輪胎半徑 15.5 + 2 mm，同 zeppelin / griffin），cutZFrom 21；輪拱內襯用 gazelle 的 buildArchLiner',
-    wing: '往後上方斜切的 3 階尾翼：3 片後掠翼板（厚 0.6、半寬 20、高 36.4 / 39.4 / 42.4，一階往後退 7）、左右端板（厚 1.0，側影是斜切階梯）；側裙（厚 0.5，|z| 37.4，x −21 → 21）。皆為實心 ABS 件，質量 = 封閉體積 × 1.05 g/cm³（推估）',
+    wing: '往後上方斜切的 3 階尾翼：前 2 片後掠翼板（厚 0.6、半寬 20、高 36.4 / 39.4，一階往後退 7）＋頂階寬展扇貝翼（厚 0.6、高 42.4、往兩側後掠到 |z| 46.5、波浪後緣）、左右端板（厚 1.0，側影是斜切階梯）；鼻部凸肋（高 0.8）與金唇邊（高 1.2）；側裙（厚 0.5，|z| 37.0，x −21 → 21）。皆為實心 ABS 件，質量 = 封閉體積 × 1.05 g/cm³（推估）',
     symbols: '扇貝殼：Pompeii「Casa della Venere in conchiglia」花園壁畫（Wikipedia〈Venus (mythology)〉）；玫瑰：Porta Collina 的維納斯祭儀獻玫瑰（同條目）；珍珠：凱撒在 Venus Genetrix 神廟獻上鑲不列顛珍珠的胸甲（Wikipedia〈Temple of Venus Genetrix〉）。造型皆為抽象化的車身零件與貼紙，不出人像',
     mounts: '對齊 chassis-midship 的車殼安裝點（SPEC 1.14）',
   },
