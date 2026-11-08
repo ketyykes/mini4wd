@@ -1,5 +1,5 @@
 // 波賽頓三叉戟（body-poseidon-trident，神話組・希臘）：只用波賽頓的持物與象徵，車上沒有人像、臉、手或神像。
-// 照四視圖 11 建模：鈍而高的珍珠白船首、寬方的車身、長座艙、平的後甲板、車尾單柱撐起的尾翼；平面改成前三叉、後魚尾，和其他款拉開。
+// 照四視圖 11 建模：鈍而高的珍珠白船首、寬方的車身、長座艙、平的後甲板、車尾尾鰭與端板撐起的實心尾翼；平面改成前三叉、後魚尾，和其他款拉開。
 // 元素：
 // (1) 三叉戟 → 鼻頭三支同高的珍珠白尖（中尖從船首下方伸出、兩支外尖往外再往前彎，俯視是往前的 Ψ）；車尾一支三叉戟立柱穿過尾翼（後視 Ψ）；
 // (2) 浪花／海 → 魚尾形尾翼（後緣中央 V 形凹口）；側裙下緣一條希臘波浪捲紋（running wave）；
@@ -50,9 +50,9 @@ const P = {
   yTop: monoCurve(XS, [31.5, 32, 32, 31.8, 32, 32.6, 33, 33, 32.8, 32.8, 32.8, 32.4, 28.4, 25.8, 25.8, 25.2, 23.8]),
   // 肩稜線基本高度（前後輪上方再沿眉線拱起）
   yS: monoCurve(XS, [27, 27, 27, 26.8, 26, 25.5, 25.5, 25.5, 26, 27.5, 29.5, 28.5, 25.5, 22.5, 21, 20, 19]),
-  // 俯視半寬：前輪上方寬浮筒（37.5），往前收成船首（x 61 有 14、鼻端 6），船首下方伸出三叉戟的中尖，兩側另有兩支外尖；兩輪之間的側箱 27.5（把底盤側框蓋住）、後輪上方 30.5，
+  // 俯視半寬：前輪上方寬浮筒（37.5），往前收成船首（x 61 有 12.5、鼻端 6），船首下方伸出三叉戟的中尖，兩側另有兩支外尖；兩輪之間的側箱 27.5（把底盤側框蓋住）、後輪上方 30.5，
   // 車尾收窄到 13，兩側由魚尾形尾翼的兩片尾鰭往後伸出
-  hw: monoCurve(XS_HW, [13, 18, 26.5, 30.5, 29, 27.5, 27.5, 27.5, 30.5, 37.5, 24, 14, 9, 6]),
+  hw: monoCurve(XS_HW, [13, 18, 26.5, 30.5, 29, 27.5, 27.5, 27.5, 30.5, 37.5, 22, 12.5, 8.5, 6]),
   // 側裙下緣：兩輪之間壓到 11.5，把底盤側框封起來
   yLow: monoCurve(XS, [13, 12.5, 12, 11.5, 11.5, 11.5, 11.5, 11.5, 11.5, 11.5, 11.5, 11.5, 11.8, 12.2, 12.4, 12.6, 12.8]),
   // 珍珠白中脊半寬（鼻端整支中尖都是白色 → 座艙兩側 → 後甲板收窄）
@@ -101,7 +101,7 @@ const canopyHalfW = (x) => {
   return CANOPY.b * (1 - q ** CANOPY.n) ** (1 / CANOPY.n);
 };
 
-/** @type {(x: number) => number} 側面浪形分色線（深海藍下半與海藍上半）：兩道往後推的浪，越往後越高 */
+/** @type {(x: number) => number} 側面浪形分色線（深淵藍綠下半與深海藍綠上半）：兩道往後推的浪，越往後越高 */
 const waveY = (x) => {
   const base = lerp(17, 23.5, smoothstep(72, -68, x));
   return base + 2.6 * Math.sin(((x + 8) / 38) * Math.PI * 2);
@@ -121,17 +121,26 @@ const SPEAR = [
   [60, 4],
 ];
 
-/** @type {number[][]} 鼻頭外尖（+z 側）俯視外形 (x, z)：從前輪前方往外再往前彎，外側一個倒鉤（|z| 42），尖端 (74.5, 35)；和中尖合成往前的 Ψ */
+/** @type {number[][]} 鼻頭外尖（+z 側）俯視外形 (x, z)：從前輪前方往外再往前彎，外側一個大倒鉤（|z| 46.5），尖端 (74.5, 35)；和中尖合成往前的 Ψ */
 const TINE = [
   [56, 13],
   [56, 23],
-  [60, 32],
-  [63.5, 42],
-  [65.5, 38],
+  [60, 33],
+  [63, 46.5],
+  [66, 40],
   [74.5, 35],
   [66, 30],
   [60.5, 21],
   [58.5, 13],
+];
+
+/** @type {number[][]} 鼻頭三叉的橫樑俯視外形 (x, z)：前緣微微往前拱，兩端接到外尖根部 */
+const CROSSBAR = [
+  [59, -26],
+  [61.5, -26],
+  [62.5, 0],
+  [61.5, 26],
+  [59, 26],
 ];
 
 /** @type {number[][]} 魚尾形尾翼（+z 半邊）俯視外形 (x, z)：前緣往後掠到翼尖，後緣往前收成中央的 V 形凹口 */
@@ -196,15 +205,16 @@ const runningWave = (u, v, v0, period) => {
 
 /** @type {() => Record<string, THREE.Material>} */
 const materials = () => ({
-  // 愛琴海藍：主色（亮面）
-  sea: namedMaterial('paint-aegean-blue', { color: 0x1670c2, roughness: 0.28, clearcoat: 0.85, clearcoatRoughness: 0.1 }),
-  // 深海藍：浪形分色線以下（亮面）
-  deep: namedMaterial('paint-deep-sea-blue', { color: 0x163f86, roughness: 0.3, clearcoat: 0.8, clearcoatRoughness: 0.12 }),
-  deepSolid: namedMaterial('paint-deep-sea-blue', { color: 0x163f86, roughness: 0.3, clearcoat: 0.8, clearcoatRoughness: 0.12, side: THREE.DoubleSide }),
+  // 深海藍綠：主色（亮面，微金屬感）
+  sea: namedMaterial('paint-deep-teal', { color: 0x0d6670, metalness: 0.15, roughness: 0.26, clearcoat: 0.9, clearcoatRoughness: 0.08 }),
+  // 深淵藍綠：浪形分色線以下（亮面）
+  deep: namedMaterial('paint-abyss-teal', { color: 0x083b48, metalness: 0.1, roughness: 0.3, clearcoat: 0.8, clearcoatRoughness: 0.12 }),
+  // 尾翼：深海藍綠緞面（水平大面不反射天空，看得出實心的顏色）
+  deepSolid: namedMaterial('paint-teal-satin', { color: 0x0b5a63, metalness: 0.1, roughness: 0.55, clearcoat: 0.2, side: THREE.DoubleSide }),
   // 珍珠白：中脊、鼻頭三叉、三叉戟
   pearl: namedMaterial('paint-pearl-white', { color: 0xf3f0e8, metalness: 0.2, roughness: 0.3, clearcoat: 0.9, clearcoatRoughness: 0.1 }),
-  // 深海軍藍：側裙底緣（緞面）
-  navy: namedMaterial('paint-deep-navy', { color: 0x0f2140, roughness: 0.55, clearcoat: 0.25 }),
+  // 深海墨綠：側裙底緣（緞面）
+  navy: namedMaterial('paint-deep-navy', { color: 0x072229, roughness: 0.55, clearcoat: 0.25 }),
   glass: namedMaterial('pc-smoke-tint', { color: 0x1c2a36, roughness: 0.05, specularIntensity: 0.6, transparent: true, opacity: 0.5, envMapIntensity: 0.5, depthWrite: false, side: THREE.DoubleSide }),
   cockpit: namedMaterial('cockpit-dark', { color: 0x141c24, roughness: 0.7, side: THREE.DoubleSide }),
   inner: namedMaterial('shell-inner-dark', { color: 0x141a22, roughness: 0.85, side: THREE.BackSide }),
@@ -226,7 +236,7 @@ export const poseidonTridentBody = makePolyBody({
   form: 'wave-ring',
   roof: 'canopy',
   wing: 'trident-disc',
-  theme: '三叉戟與浪：鈍而高的珍珠白船首，下方與兩側伸出三支同高的珍珠白尖（俯視是往前的 Ψ）；珍珠白中脊從船首一路到車尾；海藍車身、側面起伏的浪形分色線下是深海藍，側裙底緣一條希臘波浪捲紋；車尾收窄，單柱撐起白邊深海藍魚尾形尾翼（後緣中央 V 形凹口），一支大三叉戟立柱從尾翼中央穿出',
+  theme: '三叉戟與浪：鈍而高的珍珠白船首，下方伸出一整個珍珠白三叉戟頭（橫樑穿過船首、三支同高的尖，俯視是往前的 Ψ）；珍珠白中脊從船首一路到車尾；深海藍綠車身、側面起伏的浪形分色線下是深淵藍綠，側裙底緣一條希臘波浪捲紋；車尾收窄，中央尾鰭與兩片粗端板撐起白邊深海藍綠實心魚尾形尾翼（後緣中央 V 形凹口），一支大三叉戟立柱從尾翼中央穿出',
   material: 'ABS',
   density_g_cm3: 1.05,
   wallThickness_mm: 0.8,
@@ -255,9 +265,9 @@ export const poseidonTridentBody = makePolyBody({
     { mat: 'navy', keep: (x, y) => P.yLow(x) + 4.6 - y },
     // 珍珠白中脊
     { mat: 'pearl', keep: (x, y, z) => P.spine(x) - Math.abs(z) },
-    // 浪形分色線以下：深海藍
+    // 浪形分色線以下：深淵藍綠
     { mat: 'deep', keep: (x, y) => waveY(x) - y },
-    // 海藍
+    // 深海藍綠
     { mat: 'sea', keep: () => 1 },
   ],
   capFrontBands: [{ mat: 'pearl' }],
@@ -272,18 +282,34 @@ export const poseidonTridentBody = makePolyBody({
 
     // ── 鼻頭三叉（珍珠白，厚 3.2）：中尖從船首下方往前伸到 76.3，兩支外尖往外再往前彎，三支同高，俯視與正視都是往前的 Ψ ──
     const tines = [1, -1].map((sg) => flatPlate(TINE.map(([x, z]) => [x, sg * z]), TINE_Y, 3.2));
-    parts.push({ geometry: mergeGeos([...tines, flatPlate(SPEAR, TINE_Y, 3.2)]), mat: 'pearl', solid: true, outline: true, name: 'trident-nose-tines' });
+    // 三叉的橫樑（厚 2）：x 59 → 61.5 橫穿船首兩側，把三支尖接成一整個 Ψ 頭，外尖根部不再和車身之間留縫
+    const crossbar = flatPlate(CROSSBAR, TINE_Y + 0.6, 2);
+    parts.push({ geometry: mergeGeos([...tines, crossbar, flatPlate(SPEAR, TINE_Y, 3.2)]), mat: 'pearl', solid: true, outline: true, name: 'trident-nose-tines' });
 
-    // ── 車尾：單柱（珍珠白）撐起深海藍魚尾形尾翼，三叉戟立柱從尾翼中央穿出（珍珠白，後視 Ψ）──
+    // ── 車尾：中央尾鰭與兩片端板（珍珠白）撐起深淵藍綠魚尾形尾翼，三叉戟立柱從尾翼中央穿出（珍珠白，後視 Ψ）──
     {
       const yDeck = P.yTop(-53) - 1;
+      // 中央尾鰭（厚 3.5）從後甲板長出、往後掠到尾翼下面，前端埋進後甲板
       const pylon = [
         [-53, yDeck],
         [-57, DISC.y + 0.2],
         [-66.5, DISC.y + 0.2],
         [-65.5, P.yTop(-65.5) - 1],
       ];
-      parts.push({ geometry: finPlate(pylon, 0, 1.8), mat: 'pearl', solid: true, outline: true, name: 'disc-pylon' });
+      // 兩片粗端板（厚 2.5）：從後輪後方的甲板立起、撐住尾翼兩側
+      const strut = [
+        [-54, 28.5],
+        [-57, DISC.y + 0.2],
+        [-63, DISC.y + 0.2],
+        [-62, 28.5],
+      ];
+      parts.push({
+        geometry: mergeGeos([finPlate(pylon, 0, 3.5), finPlate(strut, 14, 2.5), finPlate(strut, -14, 2.5)]),
+        mat: 'pearl',
+        solid: true,
+        outline: true,
+        name: 'disc-pylon',
+      });
       /** @type {number[][]} 魚尾形尾翼整圈外形（+z 半邊往後繞到 −z 半邊） */
       const fluke = [...FLUKE, ...FLUKE.slice(1, -1).reverse().map(([x, z]) => [x, -z])];
       parts.push({ geometry: flatPlate(fluke, DISC.y, DISC.t), mat: 'deepSolid', solid: true, outline: true, name: 'fluke-wing' });
@@ -338,8 +364,8 @@ export const poseidonTridentBody = makePolyBody({
     wallThickness_mm: '推估：射出 ABS 殼 0.8 mm（同其他車殼）',
     fourview: 'shared/design/fourview-ref/fourview_11_v1.png（AI 參考圖，只取造型：鈍而高的鼻、寬方車身、長座艙、車尾單柱尾翼；鼻頭圓筒被評審讀成眼睛，已改成三叉；尺寸以底盤為準）',
     geometry: '本檔站位產生器 P（推估）：殼 x −70 ~ 69、鼻頭中尖到 76.3；中線船首 23.8、座艙段 33、後甲板 32、三叉戟頂 48.9（全車最高）；半寬前輪上方 37.5、兩輪之間 27.5（側箱蓋住底盤側框）、後輪上方 30.5、車尾 13；兩輪之間下緣 11.5',
-    tines: '鼻頭三叉：ABS 實心平板厚 3.2、底面高 15.5；中尖 x 60 → 76.3、倒鉤 ±7.5；外尖從 x 56 往外再往前彎，倒鉤到 |z| 42、尖端 (74.5, ±35)（推估）',
-    tail: '單柱厚 1.8；魚尾形尾翼厚 0.5、高 35.2，翼尖 x −75、|z| 46.4，後緣中央凹口 x −68.5，外緣珍珠白圓管直徑 2；三叉戟立柱 4.6 × 3.4 從後甲板穿過尾翼到 38.8，三叉頭厚 1.8、寬 ±21（含倒鉤 ±22.3）、中尖頂 48.6（推估）',
+    tines: '鼻頭三叉：ABS 實心平板厚 3.2、底面高 15.5；中尖 x 60 → 76.3、倒鉤 ±7.5；外尖從 x 56 往外再往前彎，倒鉤到 |z| 46.5、尖端 (74.5, ±35)（推估）',
+    tail: '中央尾鰭厚 3.5、兩片端板厚 2.5（|z| 14）；魚尾形尾翼厚 0.5、高 35.2，翼尖 x −75、|z| 46.4，後緣中央凹口 x −68.5，外緣珍珠白圓管直徑 2；三叉戟立柱 4.6 × 3.4 從後甲板穿過尾翼到 38.8，三叉頭厚 1.8、寬 ±21（含倒鉤 ±22.3）、中尖頂 48.6（推估）',
     wheelArches: '前後 R17.5（31 mm 輪胎半徑 15.5 + 2 mm），可裝 26 / 31 mm 輪',
     mounts: '對齊 chassis-midship 的車殼安裝點（SPEC 1.14）',
   },
