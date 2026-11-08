@@ -16,6 +16,10 @@ import { buildBellySkirt } from './trojanHorse.js';
 const X_FRONT = 77;
 /** @type {number} 殼後端 x */
 const X_REAR = -67;
+/** @type {number} 鴨尾尾刃半寬 */
+const BLADE_HW = 47;
+/** @type {number} 側裙外板 |z| */
+const SKIRT_Z = 37.4;
 
 /** @type {number[]} 中線參數的站位 */
 const XS = [-67, -62, -54, -46, -38, -28, -18, -8, 2, 12, 20, 30, 40, 50, 60, 68, 73, 77];
@@ -30,7 +34,7 @@ const XS_HW = [-67, -64, -56, -46, -38, -28, -18, -8, 2, 12, 22, 32, 42, 52, 56,
 /** @type {Record<string, (x: number) => number>} */
 const Q = {
   // 俯視半寬：修長的窄車尾 20–21（後輪外露，車尾另有寬尾刃）→ 往前漸寬 → 前輪拱 41 → 盾形尖鼻（直邊收到鼻尖 2）
-  hw: monoCurve(XS_HW, [20, 20.5, 21, 21, 21, 21, 22, 24, 26.5, 30, 36, 40.5, 41, 40.5, 38, 33.5, 22.5, 11.5, 2]),
+  hw: monoCurve(XS_HW, [17.5, 17.5, 17, 17, 18.5, 21, 22, 24, 26.5, 30, 36, 40.5, 41, 40.5, 38, 33.5, 22.5, 11.5, 2]),
   // 下緣
   lo: monoCurve(XS_HW, [17, 16.5, 15.5, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15.2, 15.5, 15.8, 16, 15.6, 15]),
 };
@@ -271,7 +275,7 @@ export const sleipnirStrideBody = makePolyBody({
     });
     // ── 側裙：前後輪之間每側一片深靛藍直立板（|z| 37.4，在底盤側框外），把兩輪之間的底盤側框蓋住 ──
     parts.push({
-      geometry: buildBellySkirt({ x0: -22.5, x1: 9, zIn: (x) => Q.hw(x) - 1, zOut: 37.4, yTop: 16.2, t: 0.8 }),
+      geometry: buildBellySkirt({ x0: -22.5, x1: 9, zIn: (x) => Q.hw(x) - 1, zOut: SKIRT_Z, yTop: 16.2, t: 0.8 }),
       mat: 'navyDark',
       solid: true,
       outline: true,
@@ -338,10 +342,10 @@ export const sleipnirStrideBody = makePolyBody({
       /** @type {number[][]} */
       const pts = [];
       for (let i = 0; i <= 10; i++) {
-        const z = lerp(-36.5, 36.5, i / 10);
-        pts.push([X_REAR - 1.6 - 1.6 * (z / 36.5) ** 2, z]);
+        const z = lerp(-BLADE_HW, BLADE_HW, i / 10);
+        pts.push([X_REAR - 1.6 - 1.6 * (z / BLADE_HW) ** 2, z]);
       }
-      pts.push([X_REAR + 3.5, 36.5], [X_REAR + 3.5, -36.5]);
+      pts.push([X_REAR + 3.5, BLADE_HW], [X_REAR + 3.5, -BLADE_HW]);
       parts.push({ geometry: flatPlate(pts, y, 1.2), mat: 'goldSolid', solid: true, outline: true, name: 'gilt-ducktail-blade' });
     }
     return parts;
@@ -349,9 +353,9 @@ export const sleipnirStrideBody = makePolyBody({
   src: {
     density_g_cm3: 'SPEC 1.14：ABS 約 1.05 g/cm³（推估）',
     wallThickness_mm: '推估：射出 ABS 殼 0.8 mm（同其他車殼）',
-    geometry: '本檔站位產生器（推估，比例取自四視圖 30）：殼 x −67 ~ 77、盾形鼻尖頂 15；中央稜線 → 座艙段 32、座艙罩頂約 38.5；車尾鴨尾翹到 38.5；俯視盾形鼻、前輪拱半寬 41、往後收成修長車尾 22.5（後輪外露）、尾刃半寬 36.5',
+    geometry: '本檔站位產生器（推估，比例取自四視圖 30）：殼 x −67 ~ 77、盾形鼻尖頂 15；中央稜線 → 座艙段 32、座艙罩頂約 38.5；車尾鴨尾翹到 38.5；俯視盾形鼻、前輪拱半寬 41、往後收成修長車尾 17 ~ 18.5（後輪外露）、尾刃半寬 47',
     blades: '八道腿線：每側 8 道金色貼紙飾條（下寬 1.8、上寬 1.2、高 5.6–6.7 mm、後傾約 39°，貼在深色側板上），下端 x 22 ~ −5.2、前後兩組各 4 道（推估）',
-    ducktail: '鴨尾尾刃：ABS 平板厚 1.2、半寬 36.5，往後伸 1.6–3.2 mm（推估）',
+    ducktail: '鴨尾尾刃：ABS 平板厚 1.2、半寬 47，往後伸 1.6–3.2 mm（推估）',
     tailFins: '車尾八道水平細鰭：ABS 平板厚 0.7，左右各 4 片，|z| 3.5–17.5、朝後伸 3.4 mm（推估）',
     chevron: '鼻頭 V 形金邊：直徑 1.5 mm 的 ABS 圓條，沿盾形鼻外緣內 2.2 mm 從 x 50 到鼻尖（推估）',
     wheelArches: '前 R17.5（31 mm 輪胎半徑 15.5 + 2 mm）；後輪在修長車尾外側外露（車身半寬 22.5 < 輪胎內側 24.75），可裝 26 / 31 mm 輪',
