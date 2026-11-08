@@ -2,7 +2,7 @@
 // 車上不做動物本體，只取「金鬃」與「鍛造」兩個元素做成賽車零件與塗裝：
 // 車身側視是一把刀（F1 刀鋒滑翔型）：鼻尖 17.4 升到前輪上方的刀背最高點 34.2，再一路直降到車尾 22 的刀尖，後段比後輪頂還低；
 // 俯視前寬後窄的水滴形，後輪露在殼外。
-// 金鬃 → 背上左右各兩排立體的鋸齒金鬃背鰭（每排一片連續的拋光金薄片，齒高 4.2 → 2.4 mm、齒前緣後掠 40°），
+// 金鬃 → 背上左右各兩排立體的金鬃（每排是一片片分開、往後掃的拋光金刀片形鬃片，片高 5.2 → 3.0 mm，前後片左右錯開、一層疊一層），
 // 從車頂中段順著刀背排到車尾，各接一片貼身的後掃金刃鰭；車尾左右各三片刃鰭由內而外愈倒愈平，後視是六片放射的扇（radiant-blades 尾翼）。
 // 背鰭立在一塊從鼻尖往後張開的鍛鐵黑矛形脊甲上，脊甲外緣一圈餘燼橘的發光縫（黑夜裡發光的鬃）。
 // 鍛造 → 腰線（刀刃稜線）以上整片拉絲金、側壁下緣一條鍛鐵黑裙板（側視是金色刀身墊一條黑色刀根），
@@ -150,45 +150,55 @@ const MANE_ROWS = [
   { x0: 24, z0: 2.6, x1: BLADES[0].xf, z1: BLADES[0].z, tilt: 6 },
   { x0: 16, z0: 6.6, x1: BLADES[1].xf, z1: BLADES[1].z, tilt: 24 },
 ];
-/** @type {number} 鋸齒間距（mm） */
-const TOOTH_PITCH = 6.5;
-/** @type {number} 齒前緣後掠角的正切（40°） */
-const TOOTH_TAN = Math.tan((40 * Math.PI) / 180);
+/** @type {number} 鬃片間距（mm，沿排往後） */
+const MANE_PITCH = 8.5;
+/** @type {number} 單片鬃片的長度（鰭根前端到片尖，mm） */
+const MANE_LEN = 12.5;
 
 /**
- * 一排金鬃背鰭：一片連續的鋸齒薄片（厚 1.2 mm，不倒角）。每 6.5 mm 一齒，齒前緣後掠 40° 升到齒尖、齒尖後緣往前收 0.7 mm（倒鉤），
- * 齒高由前往後 4.2 → 2.4 mm（刀背最高處的鬃最高，往車尾跟著刀形收低）；齒谷在殼面上 0.5 mm、底邊沿殼面埋進 1.5 mm
+ * 一排金鬃：一片片分開、往後掃的刀片形鬃片（厚 1.2 mm，不倒角）。每片前緣是往後倒的凸弧、後緣是內凹弧，
+ * 片尖在鰭根後方 12.5 mm、懸在下一片的根部上方；相鄰兩片左右錯開 1.4 mm，側視是一層疊一層往後梳的鬃毛。
+ * 片高由前往後 5.2 → 3.0 mm（刀背最高處的鬃最高，往車尾跟著刀形收低）；鰭根長 6.2 mm，沿殼面埋進 1.5 mm
  * @type {(row: { x0: number, z0: number, x1: number, z1: number, tilt: number }, sg: number, topY: (x: number, z: number) => number) => THREE.BufferGeometry}
  */
 const buildManeFin = (row, sg, topY) => {
   const dx = row.x0 - row.x1;
   const dz = row.z1 - row.z0;
   const len = Math.hypot(dx, dz);
-  const n = Math.floor(len / TOOTH_PITCH);
+  const n = Math.floor((len - 0.5 * MANE_LEN) / MANE_PITCH) + 1;
   /** @type {(u: number) => number} 沿排往後 u mm 處的殼面高度 */
   const surfAt = (u) => topY(lerp(row.x0, row.x1, u / len), lerp(row.z0, row.z1, u / len));
   const yBase = Math.min(surfAt(0), surfAt(len)) - 1.5;
-  const shape = new THREE.Shape();
-  shape.moveTo(0, surfAt(0) - 1.5);
+  /** @type {THREE.BufferGeometry[]} */
+  const geos = [];
   for (let k = 0; k < n; k++) {
-    const u = k * TOOTH_PITCH + 0.4;
-    const h = lerp(4.2, 2.4, k / (n - 1));
-    const uTip = u + (h - 0.5) / TOOTH_TAN;
-    shape.lineTo(-u, surfAt(u) + 0.5);
-    shape.lineTo(-uTip, surfAt(uTip) + h);
-    shape.lineTo(-(uTip - 0.7), surfAt(uTip) + 0.5);
+    const u0 = k * MANE_PITCH + 0.4;
+    const h = lerp(5.2, 3.0, n > 1 ? k / (n - 1) : 0);
+    const uRoot = u0 + 0.5 * MANE_LEN;
+    const sRoot = surfAt(u0 + 0.25 * MANE_LEN);
+    const shape = new THREE.Shape();
+    shape.moveTo(-u0, surfAt(u0) - 1.5);
+    // 前緣：往後倒的凸弧，從鰭根前端升到片尖
+    for (let i = 0; i <= 8; i++) {
+      const t = i / 8;
+      const u = u0 + MANE_LEN * t ** 1.5;
+      shape.lineTo(-u, Math.max(surfAt(u0) + 0.3, sRoot + 0.3 + (h - 0.3) * Math.sin((t * Math.PI) / 2)));
+    }
+    // 後緣：內凹弧，從片尖往前下收回鰭根後端
+    for (let i = 1; i <= 6; i++) {
+      const t = i / 6;
+      const u = u0 + MANE_LEN - (u0 + MANE_LEN - uRoot) * t;
+      shape.lineTo(-u, lerp(sRoot + h * (1 - t) ** 1.7, surfAt(uRoot), t * t) + 0.3 * t);
+    }
+    shape.lineTo(-uRoot, surfAt(uRoot) - 1.5);
+    const g = new THREE.ExtrudeGeometry(shape, { depth: 1.2, bevelEnabled: false, curveSegments: 1 });
+    g.translate(0, -yBase, -0.6 + (k % 2 ? 0.7 : -0.7));
+    g.rotateX((-sg * row.tilt * Math.PI) / 180);
+    g.rotateY(sg * Math.atan2(dz, dx));
+    g.translate(row.x0, yBase, sg * row.z0);
+    geos.push(g);
   }
-  shape.lineTo(-len, surfAt(len) + 0.5);
-  // 底邊沿殼面往回走（埋進殼面 1.5 mm），殼面往後降時鰭片不會在殼內長出一大塊
-  for (let k = 8; k >= 0; k--) {
-    shape.lineTo(-(len * k) / 8, surfAt((len * k) / 8) - 1.5);
-  }
-  const g = new THREE.ExtrudeGeometry(shape, { depth: 1.2, bevelEnabled: false });
-  g.translate(0, -yBase, -0.6);
-  g.rotateX((-sg * row.tilt * Math.PI) / 180);
-  g.rotateY(sg * Math.atan2(dz, dx));
-  g.translate(row.x0, yBase, sg * row.z0);
-  return g;
+  return mergeGeos(geos);
 };
 
 // ---------------------------------------------------------------------------
@@ -301,7 +311,7 @@ export const gullinburstiBoarBody = makePolyBody({
   form: 'forge-wedge',
   roof: 'closed',
   wing: 'radiant-blades',
-  theme: '金鬃（鍛爐刀楔）：側視是一把刀的低趴全罩——鼻尖升到前輪上方的刀背最高點，再一路直降到比後輪頂還低的車尾刀尖；腰線以上整片拉絲金，側壁下緣一條鍛鐵黑裙板（鎚痕、金鉚釘、三道鍛爐風口）；背上一塊從鼻尖往後張開的鍛鐵黑矛形脊甲，上面左右各兩排立體的鋸齒金鬃背鰭順著刀背排到車尾（前高後低），接上六片貼身放射的後掃金刃鰭（radiant-blades 尾翼）；脊甲外緣與裙板分件線是餘燼橘發光縫',
+  theme: '金鬃（鍛爐刀楔）：側視是一把刀的低趴全罩——鼻尖升到前輪上方的刀背最高點，再一路直降到比後輪頂還低的車尾刀尖；腰線以上整片拉絲金，側壁下緣一條鍛鐵黑裙板（鎚痕、金鉚釘、三道鍛爐風口）；背上一塊從鼻尖往後張開的鍛鐵黑矛形脊甲，上面左右各兩排一層疊一層、往後掃的刀片形金鬃順著刀背排到車尾（前高後低），接上六片貼身放射的後掃金刃鰭（radiant-blades 尾翼）；脊甲外緣與裙板分件線是餘燼橘發光縫',
   material: 'ABS',
   density_g_cm3: 1.05,
   wallThickness_mm: 0.8,
@@ -333,7 +343,7 @@ export const gullinburstiBoarBody = makePolyBody({
       }
     }
     parts.push({ geometry: mergeGeos(blades), mat: 'gold', solid: true, outline: true, name: 'radiant-blades' });
-    // 金鬃背鰭：左右各 2 排連續的鋸齒薄片，從車頂中段排到內側兩片刃鰭的鰭根
+    // 金鬃：左右各 2 排往後掃的刀片形鬃片，從車頂中段排到內側兩片刃鰭的鰭根
     /** @type {THREE.BufferGeometry[]} */
     const mane = [];
     for (const sg of [-1, 1]) {
@@ -416,7 +426,7 @@ export const gullinburstiBoarBody = makePolyBody({
     density_g_cm3: 'SPEC 1.14：ABS 約 1.05 g/cm³（推估）',
     wallThickness_mm: '推估：射出 ABS 殼 0.8 mm（同其他款）',
     geometry: '本檔站位產生器 P（推估）：車殼 x −62 ~ 72、背線最高 34.2（x 36）→ x −40 26（後齒輪箱頂 21.4 之上）→ 車尾 22、最寬 ±40（座艙到前輪上方）、鼻尖半寬 4.5；前輪上方殼頂約 33.6（31 mm 輪拱頂 30.5 之上）',
-    mane: '金鬃背鰭為實心 ABS 鋸齒薄片（厚 1.2 mm，≥ 1.2 mm 射出薄件，不倒角），左右各 2 排：內排 x 24 → −33、|z| 2.6 → 4.2、外傾 6°；外排 x 16 → −25、|z| 6.6 → 8.2、外傾 24°；齒距 6.5 mm、齒高 4.2 → 2.4 mm、齒前緣後掠 40°（推估）',
+    mane: '金鬃為實心 ABS 刀片形鬃片（厚 1.2 mm，≥ 1.2 mm 射出薄件，不倒角），左右各 2 排：內排 x 24 → −33、|z| 2.6 → 4.2、外傾 6°；外排 x 16 → −25、|z| 6.6 → 8.2、外傾 24°；片距 8.5 mm、片長 12.5 mm（鰭根 6.25 mm）、片高 5.2 → 3.0 mm、相鄰片左右錯開 1.4 mm（推估）',
     blades: '金刃鰭為實心 ABS 片（厚 1.6 mm），左右各 3 片：鰭根 |z| 4.2 / 8.2 / 12、外傾 10° / 34° / 56°、鰭面高 5.5 / 6.5 / 7 mm、鰭尖 x −63.5 / −59 / −54；質量 = 封閉體積 × 1.05 g/cm³（推估）',
     livery: '脊甲半寬鼻尖 0 → 往後張開、最多殼半寬的 0.45 倍；餘燼發光縫 0.7 mm；裙板分件線 = 腰線往下 35% 的側壁高度；鎚痕是 1.8 × 1.1 mm 的貼紙橢圓、每 4.2 × 2.6 mm 一顆；金鉚釘是直徑 1.7 mm 的貼紙圓點、每 9 mm 一顆；皆為自繪（推估）',
     wheelArches: '前後 R17.5（31 mm 輪胎半徑 15.5 + 2 mm），切口從 |z| 21 起＋3 mm 深內襯',
