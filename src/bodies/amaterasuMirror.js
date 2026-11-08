@@ -1,9 +1,9 @@
-// 天照鏡（body-amaterasu-mirror，神話組・日本）：照四視圖 22 建模，天照大神只用器物與象徵表現（八咫鏡、日光），
-// 不做神像、人形、臉。四視圖 22 留下的造型：圓鏟形低鼻兩側各三片往後掠的薄片、高高包住前輪的圓擋泥板、中段圓頂座艙、
-// 側艙往後上斜的切面進氣口、座艙後收腰、車尾伸出兩側的扁翼板。
-// 八咫鏡 → 車尾扁翼板上並排立著的兩面銅鏡（鏡面朝後、上緣微微前傾，金色鏡緣）；
+// 天照鏡（body-amaterasu-mirror，神話組・日本）：照四視圖 22 建模，天照大神只用器物與象徵表現（八咫鏡、勾玉、日光），
+// 不做神像、人形、臉。四視圖 22 留下的造型：圓鏟形低鼻、高高包住前輪的圓擋泥板、中段圓頂座艙、座艙後收腰、車尾伸出兩側的扁翼板。
+// 八咫鏡 → 車尾翼主板就是一面橫跨車寬、平放的八花形大銅鏡（暗銅鏡背、金色鏡框與連珠紋、墊高的拋光鏡心）；
+// 八尺瓊勾玉 → 鏡翼左右兩端的翡翠勾玉形端板；日光 → 側面三道互相平行的金色斜光條（不從任何一點放射）；
 // 注連繩 → 鼻面金色板上兩道橫跨車寬的白色水平帶（互相平行，不從任何一點放射，避開旭日旗紋）。
-// 配色只用白、金、銅（珍珠白車身、金色鼻面板、薄片與描邊、銅鏡）＋漆黑底緣，不用朱紅（和九尾狐的白＋朱紅分開）。
+// 配色只用白、金、銅（珍珠白車身、金色鼻面板與描邊、銅鏡）＋翡翠勾玉＋漆黑底緣，不用朱紅（和九尾狐的白＋朱紅分開）。
 // 設計：shared/design/body-amaterasu-mirror/DESIGN.md（來源見該檔；MYTH_RESEARCH 日本節 6-3 的信仰注意事項）。剖面為本檔站位產生器（推估）。
 // 塗裝全為自創，不含任何廠商 / 作品名稱、商標、文字或人臉。
 import * as THREE from 'three';
@@ -74,10 +74,10 @@ const yTopMin = (x) => {
 
 /** @type {Record<string, (x: number) => number>} */
 const P = {
-  // 俯視半寬（肩稜線）：四視圖 22 的俯視——側艙最寬（±36.5–38，窗形進氣口在這裡）、座艙後收成細腰 ±25.5、
-  // 後段收窄（後輪臀 ±31.5、車尾 ±21，後輪胎面露在外側，車尾扁翼板從上方往外伸出車身）、前輪上方 ±35.5；
-  // 前擋泥板一路往前延伸、往鼻尖收成圓鏟形短鼻（x 58 ±30、x 64 ±24.5、x 69 ±20.5，鼻尖 ±6）；輪拱開口前緣在擋泥板側壁上（肩稜線比輪拱高 3 mm 以上）
-  hw: monoCurve(XS_HW, [21, 25, 29, 31, 31.5, 28, 25.5, 30, 36.5, 38, 36.5, 35.5, 33.4, 33, 32.4, 31.8, 30, 27.5, 24.5, 20.5, 15, 6]),
+  // 俯視半寬（肩稜線）：四視圖 22 的俯視——側艙最寬（±37.5–39.5）、座艙後收成細腰 ±23.5、
+  // 後段收窄（後輪臀 ±31.5、車尾 ±21，後輪胎面露在外側，車尾鏡翼從上方往外伸出車身）、前輪上方 ±37；
+  // 前擋泥板一路往前延伸、往鼻尖收成寬而鈍的圓鏟形短鼻（x 58 ±31.4、x 64 ±29、x 69 ±27.4，鼻尖 ±19）；輪拱開口前緣在擋泥板側壁上（肩稜線比輪拱高 3 mm 以上）
+  hw: monoCurve(XS_HW, [21, 25, 29, 31, 31.5, 25, 23.5, 29, 37.5, 39.5, 38.5, 37, 34.4, 33.6, 33, 32.4, 31.4, 30.2, 29, 27.4, 25, 19]),
   // 肩稜線高度：前輪上方沿眉線圓弧高高拱起
   yS: (x) => smoothMax(ySBase(x), browY(x), 1.6),
   // 中線殼頂：前擋泥板之間的引擎蓋比擋泥板低（中線最多比肩稜線低 2.2，形成兩道擋泥板夾著的淺槽），引擎蓋會被輪拱擦到的地方再墊高
@@ -87,7 +87,7 @@ const P = {
 };
 
 /** @type {number} 前後輪之間側裙下緣的半寬 */
-const SILL_W = 35;
+const SILL_W = 30;
 
 /**
  * 半剖面 7 點：中線 → 頂面 → 肩稜線（銳利）→ 微外張的側裙
@@ -100,7 +100,7 @@ const profile = (x) => {
   const h = P.hw(x);
   const d = t - s;
   const flare = smoothstep(1, 8, h);
-  // 前後輪之間的側裙往外張到 ±35、下半段是直立側牆，從上面和側面都看不到底盤側框
+  // 前後輪之間的側裙往外張到 ±30、下半段是直立側牆，從側面看不到底盤側框
   const sill = Math.max(h + 1.2 * flare, SILL_W * smoothstep(-24, -16, x) * smoothstep(24, 16, x));
   return [
     [0, t],
@@ -126,33 +126,78 @@ const ARCHES = [
 const CANOPY = { x0: 32, x1: -16, peakX: 10, rise: 10.5, halfW: 13.5 };
 
 /**
- * 車尾鏡翼（四視圖 22）：兩片相連、平躺的橢圓鏡面盤（俯視 8 字形，拋光銅鏡），外緣一圈金色鏡緣，兩支寬扁翼柱撐在兩片盤的中心下方。
- * x / y = 盤心 x 與盤底面高度；a / b = 每片橢圓沿 x / z 的半軸；c = 兩片盤中心的 |z|；thick = 盤厚；pitch = 往後上仰角（度）；
- * n = 超橢圓指數（2 = 正橢圓，略大於 2 讓盤尾比較飽滿）
- * @type {{ x: number, y: number, a: number, b: number, c: number, thick: number, pitch: number, n: number }}
+ * 車尾鏡翼（八咫鏡）：一面橫跨車尾、平放的八花形大銅鏡就是尾翼主板——俯視為橫向拉長的八角形，八條邊各微微外鼓成一瓣；
+ * 暗銅鏡背底板外緣一圈金色鏡框，往內一圈金色連珠紋，中間墊高一塊拋光鏡心並圍一圈金色內框；
+ * 兩支白色寬扁翼柱撐在鏡下，兩端各立一片翡翠勾玉形端板。
+ * x / y = 鏡心 x 與鏡底面高度；a / b = 八角形沿 x / z 的半徑；cx / cz = 斜切角在 x / z 方向保留的比例；
+ * lobe = 每瓣往外鼓的深度；thick = 鏡背底板厚
+ * @type {{ x: number, y: number, a: number, b: number, cx: number, cz: number, lobe: number, thick: number }}
  */
-const MIRROR_WING = { x: -53, y: 41, a: 14.5, b: 23.5, c: 22.5, thick: 0.8, pitch: 0, n: 2.6 };
+const MIRROR_WING = { x: -58.5, y: 43.5, a: 15.5, b: 44.5, cx: 0.45, cz: 0.5, lobe: 1.0, thick: 0.6 };
+
+/** @type {number} 拋光鏡心比鏡緣往內縮的量（中間是暗銅鏡背帶與連珠紋） */
+const MIRROR_FACE_INSET = 5.6;
 
 /**
- * 兩片相連超橢圓盤的外框（局部座標 u = 沿 x、w = 沿 z；俯視 8 字形）：右盤取 w ≥ 0 的弧、左盤鏡射，
- * 兩盤在 w = 0 相交處形成前後兩個內凹的腰
- * @type {(a: number, b: number, c: number, n: number, seg: number, grow: number) => number[][]} grow = 外框往外放大的量
+ * 八花形鏡的外框（局部座標 u = 沿 x、w = 沿 z）：八角形的每條邊換成往外鼓的圓弧瓣，grow = 外框往外放大的量
+ * @type {(grow: number, segPerLobe: number) => number[][]}
  */
-const figureEightOutline = (a, b, c, n, seg, grow) => {
+const lobedOctagonOutline = (grow, segPerLobe) => {
+  const { a, b, cx, cz, lobe } = MIRROR_WING;
   const A = a + grow;
   const B = b + grow;
-  const e = 2 / n;
-  /** @type {(v: number) => number} 保留正負號的次方 */
-  const sp = (v) => Math.sign(v) * Math.abs(v) ** e;
-  const phi0 = Math.asin(Math.min(1, (c / B) ** (n / 2)));
+  /** @type {number[][]} 八角形頂點（逆時針，從前緣右端開始） */
+  const verts = [
+    [A, cz * B], [cx * A, B], [-cx * A, B], [-A, cz * B],
+    [-A, -cz * B], [-cx * A, -B], [cx * A, -B], [A, -cz * B],
+  ];
   /** @type {number[][]} */
-  const right = [];
-  for (let i = 0; i <= seg; i++) {
-    const phi = -phi0 + ((Math.PI + 2 * phi0) * i) / seg;
-    right.push([A * sp(Math.cos(phi)), c + B * sp(Math.sin(phi))]);
+  const out = [];
+  for (let i = 0; i < verts.length; i++) {
+    const [u0, w0] = verts[i];
+    const [u1, w1] = verts[(i + 1) % verts.length];
+    const len = Math.hypot(u1 - u0, w1 - w0);
+    // 往外的法向（八角形中心在原點）
+    let nu = w1 - w0;
+    let nw = -(u1 - u0);
+    if (nu * (u0 + u1) + nw * (w0 + w1) < 0) {
+      nu = -nu;
+      nw = -nw;
+    }
+    const depth = Math.min(lobe, 0.2 * len);
+    for (let k = 0; k < segPerLobe; k++) {
+      const t = k / segPerLobe;
+      const bulge = depth * Math.sin(Math.PI * t);
+      out.push([u0 + (u1 - u0) * t + (nu / len) * bulge, w0 + (w1 - w0) * t + (nw / len) * bulge]);
+    }
   }
-  const left = right.map(([u, w]) => [-u, -w]);
-  return [...right, ...left];
+  return out;
+};
+
+/**
+ * 勾玉形端板的側視外框（x, y）：太極魚形構圖——半徑 2R 的大半圓為背、半徑 R 的上圓為頭、下圓切出往後下方收尖的尾巴；
+ * 整體轉 rot 度，讓圓頭朝前上方、尾尖朝後下方。cx / cy = 大圓中心
+ * @type {(cx: number, cy: number, r: number, rot: number) => number[][]}
+ */
+const magatamaOutline = (cx, cy, r, rot) => {
+  /** @type {number[][]} 局部座標（p, q），頭在 +q */
+  const local = [];
+  const n = 12;
+  for (let i = 0; i < n; i++) {
+    const th = Math.PI / 2 + (Math.PI * i) / n;
+    local.push([2 * r * Math.cos(th), 2 * r * Math.sin(th)]);
+  }
+  for (let i = 0; i < n / 2; i++) {
+    const th = -Math.PI / 2 - (Math.PI * i) / (n / 2);
+    local.push([r * Math.cos(th), -r + r * Math.sin(th)]);
+  }
+  for (let i = 0; i < n / 2; i++) {
+    const th = -Math.PI / 2 + (Math.PI * i) / (n / 2);
+    local.push([r * Math.cos(th), r + r * Math.sin(th)]);
+  }
+  const c = Math.cos((rot * Math.PI) / 180);
+  const s = Math.sin((rot * Math.PI) / 180);
+  return local.map(([p, q]) => [cx + p * c - q * s, cy + p * s + q * c]);
 };
 
 /**
@@ -169,21 +214,25 @@ const holedFlatPlate = (outer, inner, y, thick) => {
 };
 
 /**
- * 鼻頭兩側的立體鬚刃（四視圖 22 前輪前方那三片刀片）：左右各 3 片壓扁的四角錐刀刃，根部埋在鼻側、往後外掠並微微上翹，
- * 三片上下錯開、互相平行（不從同一點放射）。rx / ry = 根部位置；len = 刃長；yaw = 往外掠角；rise = 上翹角（度）
- * @type {{ rx: number, ry: number, len: number, yaw: number, rise: number }[]}
+ * 側面日光條紋（金，貼紙）：前後輪之間三道往前上方斜的平行光條（互相平行，不從任何一點放射），
+ * 前兩道較長、最後一道較短；u = 沿斜向的座標中心
+ * @type {{ u: number, yTop: number }[]}
  */
-const NOSE_BLADES = [
-  { rx: 63, ry: 24, len: 11, yaw: 24, rise: 10 },
-  { rx: 65.5, ry: 20, len: 10, yaw: 24, rise: 10 },
-  { rx: 68, ry: 16, len: 9, yaw: 24, rise: 10 },
+const SIDE_RAYS = [
+  { u: 10, yTop: 23.6 },
+  { u: 1, yTop: 23.6 },
+  { u: -8, yTop: 21 },
 ];
 
-/**
- * 側艙切面進氣口（四視圖 22 側面）：往後上斜的平行四邊形凹口，深 2.6，凹口底塗漆黑、側壁金色
- * @type {{ id: string, view: string, shape: string, pts: number[][], depth: number }}
- */
-const SIDE_INTAKE = { id: '側進氣口', view: 'side', shape: 'poly', pts: [[-17, 14.6], [13, 14.6], [21, 22.6], [-7, 22.6]], depth: 2.6 };
+/** @type {(x: number, y: number) => number} 側面日光條紋：正值 = 在條紋上（條寬 3.2、斜率 1） */
+const sideRays = (x, y) => {
+  let v = -1;
+  for (const r of SIDE_RAYS) {
+    const u = x - (y - 14) - r.u;
+    v = Math.max(v, Math.min(1.6 - Math.abs(u), r.yTop - y, y - 13.2));
+  }
+  return v;
+};
 
 /**
  * 白色下裙板以上的分區界線：鼻面金色板（前軸前方、兩道擋泥板之間，往鼻尖變寬）
@@ -208,6 +257,10 @@ const materials = () => ({
   sunGold: namedMaterial('paint-sun-gold', { color: 0xd6b157, metalness: 0.6, roughness: 0.3, clearcoat: 0.6, clearcoatRoughness: 0.15 }),
   // 銅鏡（真金屬；名稱含 -brass → Blender metallic）
   mirror: namedMaterial('trim-bronze-mirror-brass', { color: 0xf0c470, metalness: 0.8, roughness: 0.14, clearcoat: 0.6 }),
+  // 鏡背底板：暗銅（名稱含 -brass → Blender metallic）
+  bronzeBack: namedMaterial('trim-bronze-patina-brass', { color: 0x6e4f2a, metalness: 0.75, roughness: 0.4 }),
+  // 勾玉端板：翡翠綠
+  jade: namedMaterial('paint-magatama-jade', { color: 0x1f7a55, metalness: 0.2, roughness: 0.22, clearcoat: 1.0, clearcoatRoughness: 0.05 }),
   // 白色尾翼支柱（緞面射出件）
   pylon: namedMaterial('paint-pylon-white-abs', { color: 0xeeebe3, roughness: 0.55 }),
   // 鼻側薄片、翼板描邊、鏡緣：金色金屬漆
@@ -233,7 +286,7 @@ export const amaterasuMirrorBody = makePolyBody({
   form: 'sun-mirror-dome',
   roof: 'canopy',
   wing: 'magatama-mirror',
-  theme: '照四視圖 22 建模：圓鏟形低鼻兩側各三片往後掠的金色薄片、高圓前擋泥板、圓頂座艙、側艙切面進氣口；車尾伸出兩側的白色扁翼板上並排立著兩面銅鏡（八咫鏡，鏡面朝後）；鼻面金色板上兩道白色注連繩水平帶，珍珠白＋金＋銅',
+  theme: '照四視圖 22 建模：寬鈍的圓鏟形低鼻、高圓前擋泥板、圓頂座艙、座艙後收腰；車尾翼主板是一面橫跨車寬、平放的八花形大銅鏡（八咫鏡：暗銅鏡背、金色鏡框與連珠紋、拋光鏡心），兩端翡翠勾玉端板；側面三道平行金色光條；鼻面金色板上兩道白色注連繩水平帶，珍珠白＋金＋銅',
   material: 'ABS',
   density_g_cm3: 1.05,
   wallThickness_mm: 0.8,
@@ -260,8 +313,6 @@ export const amaterasuMirrorBody = makePolyBody({
       return out;
     })(),
   },
-  recesses: [SIDE_INTAKE],
-  innerSkipRecess: true,
   sideZMin: 28,
   zones: () => [
     // 漆黑底緣
@@ -280,18 +331,33 @@ export const amaterasuMirrorBody = makePolyBody({
     parts.push({ geometry: mergeGeos(ARCHES.map((a) => buildProfileLiner(a, 22.9, profile))), mat: 'liner', shell: true, name: 'arch-liners' });
     parts.push({ geometry: mergeGeos(ARCHES.map((a) => buildArchWell(a, 22.9, 12.3, 17.8, chassisBlockedNearArch))), mat: 'liner', shell: true, name: 'arch-wells' });
 
-    // 車尾鏡翼：兩片相連的平躺橢圓鏡面盤＋金色鏡緣（中空環，包住盤緣）＋兩支寬扁翼柱
-    const tilt = (MIRROR_WING.pitch * Math.PI) / 180;
-    /** @type {(g: THREE.BufferGeometry) => THREE.BufferGeometry} 繞盤心往後上仰（尾端比前端高） */
-    const pitchUp = (g) => g.translate(-MIRROR_WING.x, -MIRROR_WING.y, 0).rotateZ(-tilt).translate(MIRROR_WING.x, MIRROR_WING.y, 0);
-    const toWorld = (/** @type {number[][]} */ pts) => pts.map(([u, w]) => [MIRROR_WING.x + u, w]);
-    const { a, b, c, n } = MIRROR_WING;
-    const disc = pitchUp(flatPlate(toWorld(figureEightOutline(a, b, c, n, 28, 0)), MIRROR_WING.y, MIRROR_WING.thick));
-    parts.push({ geometry: disc, mat: 'mirror', solid: true, outline: true, name: 'mirror-wing-discs' });
-    const rim = pitchUp(
-      holedFlatPlate(toWorld(figureEightOutline(a, b, c, n, 28, 0.9)), toWorld(figureEightOutline(a, b, c, n, 28, -0.1)).reverse(), MIRROR_WING.y - 0.3, MIRROR_WING.thick + 0.6),
+    // 車尾鏡翼（平放）：暗銅鏡背底板＋外緣金色鏡框（中空環，包住鏡緣）＋一圈金色連珠紋＋墊高的拋光鏡心＋鏡心外圍的金色內框
+    /** @type {(pts: number[][]) => number[][]} */
+    const toWorld = (pts) => pts.map(([u, w]) => [MIRROR_WING.x + u, w]);
+    /** @type {number} 每瓣的分段數 */
+    const seg = 5;
+    const { y: wy, thick: wt } = MIRROR_WING;
+    // 鏡背底板只做外圈（中間由鏡心板蓋住，挖空減重）
+    const disc = holedFlatPlate(toWorld(lobedOctagonOutline(0, seg)), toWorld(lobedOctagonOutline(-MIRROR_FACE_INSET - 0.6, seg)).reverse(), wy, wt);
+    parts.push({ geometry: disc, mat: 'bronzeBack', solid: true, outline: true, name: 'mirror-wing-disc' });
+    const face = flatPlate(toWorld(lobedOctagonOutline(-MIRROR_FACE_INSET, seg)), wy + wt - 0.1, 0.45);
+    parts.push({ geometry: face, mat: 'mirror', solid: true, outline: true, name: 'mirror-wing-face' });
+    const rim = holedFlatPlate(toWorld(lobedOctagonOutline(1.0, seg)), toWorld(lobedOctagonOutline(-0.6, seg)).reverse(), wy - 0.25, wt + 0.5);
+    const innerRim = holedFlatPlate(
+      toWorld(lobedOctagonOutline(-MIRROR_FACE_INSET + 0.9, seg)),
+      toWorld(lobedOctagonOutline(-MIRROR_FACE_INSET - 0.3, seg)).reverse(),
+      wy + wt,
+      0.6,
     );
-    parts.push({ geometry: rim, mat: 'clawGold', solid: true, outline: true, name: 'mirror-wing-rim' });
+    // 連珠紋：沿鏡框與內框中間的八花形路徑等距排列的小珠（球心在鏡背面上、下半埋進板裡；互相等距，不從鏡心放射）
+    const beadPath = toWorld(lobedOctagonOutline(-(MIRROR_FACE_INSET + 0.6) / 2, 24));
+    /** @type {THREE.BufferGeometry[]} */
+    const beads = [];
+    for (let i = 0; i < beadPath.length; i += 4) {
+      const [bx, bz] = beadPath[i];
+      beads.push(new THREE.SphereGeometry(1.0, 8, 5).translate(bx, wy + wt, bz));
+    }
+    parts.push({ geometry: mergeGeos([rim, innerRim, ...beads]), mat: 'clawGold', solid: true, outline: true, name: 'mirror-wing-rim' });
     /** @type {THREE.BufferGeometry[]} */
     const pylons = [];
     for (const side of [-1, 1]) {
@@ -300,33 +366,23 @@ export const amaterasuMirrorBody = makePolyBody({
         finPlate(
           [
             [MIRROR_WING.x + 10, yDeck],
-            [MIRROR_WING.x + 4, MIRROR_WING.y + 0.2],
-            [MIRROR_WING.x - 3, MIRROR_WING.y + 0.2],
-            [MIRROR_WING.x + 2, yDeck],
+            [MIRROR_WING.x + 5, wy + 0.4],
+            [MIRROR_WING.x - 4, wy + 0.4],
+            [MIRROR_WING.x + 1, yDeck],
           ],
-          side * MIRROR_WING.c * 0.62,
-          2.6,
+          side * 15,
+          2.0,
         ),
       );
     }
     parts.push({ geometry: mergeGeos(pylons), mat: 'pylon', solid: true, outline: true, name: 'mirror-wing-pylons' });
-    // 鼻頭兩側立體鬚刃（金）：四角錐（4 段）壓扁成刀刃，根部埋進鼻側 1 mm
+    // 勾玉端板（翡翠）：立在鏡的左右兩端，圓頭朝前上方、尾尖往後下方
     /** @type {THREE.BufferGeometry[]} */
-    const blades = [];
-    for (const f of NOSE_BLADES) {
-      for (const side of [-1, 1]) {
-        const g = new THREE.ConeGeometry(2.4, f.len, 4);
-        g.translate(0, f.len / 2, 0);
-        // 尖端朝 −x（往後）
-        g.rotateZ(Math.PI / 2);
-        g.scale(1, 0.32, 1);
-        g.rotateZ((-f.rise * Math.PI) / 180);
-        g.rotateY((side * f.yaw * Math.PI) / 180);
-        g.translate(f.rx, f.ry, side * (P.hw(f.rx) - 1));
-        blades.push(g);
-      }
+    const magatama = [];
+    for (const side of [-1, 1]) {
+      magatama.push(finPlate(magatamaOutline(MIRROR_WING.x, MIRROR_WING.y - 3.5, 3.8, -30), side * (MIRROR_WING.b + 1.6), 1.1));
     }
-    parts.push({ geometry: mergeGeos(blades), mat: 'clawGold', solid: true, outline: true, name: 'nose-whisker-blades' });
+    parts.push({ geometry: mergeGeos(magatama), mat: 'jade', solid: true, outline: true, name: 'magatama-endplates' });
 
     // ---- 貼紙 ----
     // 座艙框（金，座艙罩外圍 1.2 mm）
@@ -342,15 +398,16 @@ export const amaterasuMirrorBody = makePolyBody({
     parts.push({ geometry: kit.decal((x, y, z) => Math.min(ropeBands(x, z), sunPanel(x, z) - 0.6)), mat: 'dWhite', name: 'decal-rope-bands' });
     // 肩稜線下方的金色腰線（前擋泥板 → 後輪臀，線寬 1.4）
     parts.push({ geometry: kit.decal((x, y) => Math.min(0.7 - Math.abs(y - (P.yS(x) - 2.6)), 50 - x, x + 64)), mat: 'dGold', name: 'decal-gold-beltline' });
+    // 側面日光條紋（金）
+    parts.push({ geometry: kit.decal((x, y) => sideRays(x, y)), mat: 'dGold', name: 'decal-side-rays' });
     return parts;
   },
   src: {
     density_g_cm3: 'SPEC 1.14：ABS 約 1.05 g/cm³（推估）',
     wallThickness_mm: '推估：射出 ABS 殼 0.8 mm（同其他車殼）；座艙罩同厚度以殼面積計入質量',
-    geometry: '本檔站位產生器 P（推估，造型照 shared/design/body-amaterasu-mirror/fourview.png 四視圖 22 的比例，尺寸照底盤）：殼長 144（車尾 −68 ~ 鼻尖 76）、外框長 144（扁翼板在殼內）；後甲板 31.5、鼻尖 16、前擋泥板頂約 32、座艙頂約 41.5、銅鏡頂 48.2；後輪臀 ±38、細腰 ±26（側裙下緣 ±35）、前輪上方 ±35；前擋泥板眉線為前輪拱同心圓 R19.2',
+    geometry: '本檔站位產生器 P（推估，造型照 shared/design/body-amaterasu-mirror/fourview.png 四視圖 22 的比例，尺寸照底盤）：殼長 144（車尾 −68 ~ 鼻尖 76）、外框長 152（鏡翼伸到 x −76）；後甲板約 30、鼻尖 17.8、前擋泥板頂約 33、座艙頂約 41、鏡翼頂約 45.4、勾玉頂 47.8；後輪臀 ±31.5、細腰 ±23.5（側裙下緣 ±30）、側艙 ±39.5、鼻尖 ±19；前擋泥板眉線為前輪拱同心圓 R20',
     wheelArches: '前後 R17.5（31 mm 輪胎半徑 15.5 + 2 mm），可裝 26 / 31 mm 輪',
-    wing: '車尾雙鏡（ABS 實心件，推估）：扁翼板 x −50 ~ −64、半寬 46（伸出車尾兩側）、底面高 32.6、厚 1.0＋外大 0.7、厚 0.3 的金色描邊板；兩支扁支柱在 |z| 21、厚 2.4；兩面銅鏡 R6.2、厚 1.2（16 段）、中心 |z| 13、鏡面朝後上方、上緣前傾 36°，金色鏡緣環（24×6），鏡前三角托架厚 1.6',
-    claws: '鼻頭往後掠薄片（ABS 實心水平板，厚 0.8，推估）：左右各 3 片，高 24 / 20 / 16，根部貼鼻側 x 64–58 / 66–60 / 68–62，尖端往後外伸到 x 56.5 / 58 / 59.5、|z| 34 / 33 / 31.5（在前輪拱前方）',
+    wing: '八花形鏡翼（ABS 實心件，推估）：鏡心 x −58.5、俯視為拉長的八角形（沿 x 半徑 15.5、沿 z 半徑 44.5，斜切角保留 0.45 / 0.5，每邊外鼓 1.0），底面高 43.5；暗銅鏡背外圈厚 0.6、金色鏡框外大 1.0 厚 1.1、內縮 5.6 的拋光鏡心厚 0.45＋金色內框、48 顆 R1.0 連珠；兩支白色扁翼柱在 |z| 15、厚 2.0；兩端翡翠勾玉端板厚 1.1（勾玉大圓 R7.6）',
     palette: '珍珠白主色＋金色鼻面板、薄片、翼板描邊、鏡緣與進氣口側壁＋銅鏡＋漆黑底緣；不用朱紅（和九尾狐的白＋朱紅分開）；色碼參考 MYTH_RESEARCH 6-2（白 #F7F5F0、金 #C9A54A，推估），實際用 #F6F4EE、#D6B157、#C9A54A',
     mounts: '對齊 chassis-midship 的車殼安裝點（SPEC 1.14）',
   },
