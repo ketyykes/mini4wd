@@ -155,6 +155,7 @@
 - 64 samples 5 視角重出這段時間改過的 14 款：apollo、heimdall、gullinbursti、venus、kitsune、yaga（15:21–15:43）；minotaur、quetzal、firebird、mushussu、trojan、tanngrisnir（16:12–16:31）；shiva（16:38）；其餘 10 款沿用 11:00 的 64 samples 圖（amaterasu 用 `pre144` 的圖）。`lineup_myth*.png`、`before_after_myth_p13.png`、`fourview_vs_model_p13.png` 重出成 24 款。
 - **最終計分 20/20**（17:00–17:15，app `976edf0`，空檔時跑）：P16_collision_patches 65.3 s（1.52 s／款，基準 1.70）、P18_pairwise 284.6 s（6.62 s／款，基準 7.69）、P20_body_variety 43.2 s（1.00 s／款，基準 1.11）、P17_phase7_laps 144.5 s。外觀 7.47 → 總分 87.33。body-tris：正面面積平均 2826.0、三角面最多 289,476、碰撞格單獨量 ≤ 698 ms。
 - 最終陣容盲評（`shared/reviews/final-p13d/`，兩位評審各自同時看舊 16 款與最終 24 款）：最終 7.29 / 7.64、舊 7.36 / 7.57，**平均 7.47 vs 7.47 打平**（11:00 時 7.21 vs 7.43）。炫砲度 7 / 7.5、多樣性 7.5 / 8。長得像的配對：最終 7 / 8 組、舊 7 / 7 組。兩位都建議把 heimdall、firebird、minotaur、kunpeng（＋cerberus）換回第十二階段舊版造型（與 PROGRESS 待決第 3 項相同，等使用者決定）。
+- 參考用陣容評審（`shared/reviews/lineup-old4/`，程式不動）：最終 vs「heimdall、firebird、minotaur、kunpeng 換回舊版」，兩位 7.36 / 7.71 vs 7.43 / 7.64，平均打平；只有 kunpeng 兩位一致判舊版較好。對照圖 `render/out/lineup_myth_alt_old4.png`、`lineup_myth_alt_kunpeng.png`。另把 `README.md` 車殼數更新為 43 款。
 
 # 第十階段：神話車殼依 LG1 家族從頭重塑（2026-11-05 12:0x 起，截止 15:30）
 
