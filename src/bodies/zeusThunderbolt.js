@@ -1,8 +1,8 @@
 // 宙斯雷霆（body-zeus-thunderbolt，神話組・希臘）：只用宙斯的持物與象徵，車上沒有人像、臉、手或神像。
 // 照四視圖 10 建模：細長低楔車頭、前端分岔成兩支往前伸的水平叉刃（中央鼻較短，俯視是一道叉口）、
-// 座艙後隆起一道中脊，車尾伸出一支錐形尖尾，尖尾末端十字交叉的尾鰭（雷霆杖的柄頭）。
+// 座艙後一道低中脊，上面斜躺一支大型閃電折線（雷霆杖），車尾兩側也分岔出兩支鋸齒叉刃（雷霆杖兩端都分叉）。
 // 元素：
-// (1) 雷霆杖 keraunos → 前端兩支鋸齒形水平叉刃（亮黃）、車尾伸出的長飛鏢尾＋十字小鰭、側面寶藍／亮黃的鋸齒閃電折線（白色邊線）、引擎蓋中線一道亮黃閃電；
+// (1) 雷霆杖 keraunos → 前端兩支鋸齒形水平叉刃（亮黃）、中脊上斜躺的大型閃電（亮黃厚板，尖端越過殼尾）、車尾兩支鋸齒叉刃、側面寶藍／亮黃的鋸齒閃電折線（白色邊線）、引擎蓋中線一道亮黃閃電；
 // (2) 神殿柱 → 後中脊上的縱向柱身溝槽（淺色細線）。
 // 設計：shared/design/body-zeus-thunderbolt/DESIGN.md（典故來源與文物對應寫在 DESIGN.md）。剖面為本檔站位產生器（推估）。
 // 塗裝全為自創，不含任何廠商 / 作品名稱、商標或文字。
@@ -15,7 +15,7 @@ import { buildArchWell, chassisBlockedNearArch } from './kitsuneNinetail.js';
 
 /** @typedef {import('./loft.js').BodyPart} BodyPart */
 
-/** @type {number[]} 站位參數表（x 由後到前，前後軸 x = ±40）：殼尾 −62（飛鏢尾再往後伸到 −75.2）、參數表到 72（殼只做到中央鼻端 NOSE_X，兩支叉刃再往前到 77.5） */
+/** @type {number[]} 站位參數表（x 由後到前，前後軸 x = ±40）：殼尾 −62（雷霆杖尖端再往後伸到 −74.6）、參數表到 72（殼只做到中央鼻端 NOSE_X，兩支叉刃再往前到 77.5） */
 const XS = [-62, -59, -55, -50, -40, -28, -16, -5, 5, 15, 25, 35, 45, 52, 58, 63, 68, 72];
 /** @type {number[]} 俯視半寬的站位 */
 const XS_HW = [-62, -59, -55, -50, -46, -40, -30, -20, -10, 0, 10, 20, 30, 40, 48, 54, 58, 63, 68, 72];
@@ -46,16 +46,16 @@ const browY = (x) => {
 
 /** @type {Record<string, (x: number) => number>} */
 const P = {
-  // 中線殼頂：鼻端 14.6 → 前軸 33 的長楔；座艙段 34；座艙後隆起一道中脊（x −28 最高 44.5），往後急降成殼尾 31，殼尾收進飛鏢尾
-  yTop: monoCurve(XS, [31, 33.5, 37, 40.5, 43.5, 44.5, 43, 37.5, 34.6, 34, 33.6, 33, 32.3, 29.2, 25.2, 21.4, 17.6, 14.6]),
+  // 中線殼頂：鼻端 14.6 → 前軸 33 的長楔；座艙段 34；座艙後一道低中脊（x −28 最高 37），往後降成殼尾 30；雷霆杖斜躺在中脊上
+  yTop: monoCurve(XS, [30, 31.5, 33, 34.5, 36.2, 37, 36.6, 35.4, 34.6, 34, 33.6, 33, 32.3, 29.2, 25.2, 21.4, 17.6, 14.6]),
   // 中脊高（中線殼頂 − 中脊兩側甲板）：只在座艙後；座艙前是整片微拱的引擎蓋
-  crest: monoCurve(XS, [1.5, 2.5, 4, 6.5, 9, 10, 9, 3, 0.02, 0.02, 0.02, 0.02, 0.02, 0.02, 0.02, 0.02, 0.02, 0.02]),
+  crest: monoCurve(XS, [1, 1.5, 2, 2.6, 3.2, 3.4, 3, 1.2, 0.02, 0.02, 0.02, 0.02, 0.02, 0.02, 0.02, 0.02, 0.02, 0.02]),
   // 中脊半寬：車尾尖錐 4 → 後軸 10.5
   crestW: monoCurve(XS, [2.5, 4, 6, 8.5, 10.5, 11, 11, 10, 9, 9, 9, 9, 9, 8, 6, 4.5, 3, 2]),
   // 肩稜線基本高度（前後輪上方再沿眉線拱起）
   yS: monoCurve(XS, [28.5, 28.5, 29, 29.5, 30, 30, 29.5, 29, 29, 29, 29.2, 29.5, 27.5, 23.5, 19, 16.2, 14.2, 13]),
-  // 俯視半寬：兩輪之間的側箱 27（把底盤側框蓋住），前後輪上方 31，殼尾收成 14 的鈍尾（把尾端齒輪箱蓋住），飛鏢尾從殼尾上緣伸出；中央鼻在兩支叉刃之間收窄到 9.5（x 63）
-  hw: monoCurve(XS_HW, [14, 17, 21, 25, 28.5, 31, 29.5, 27.5, 27, 27, 27, 28.5, 31, 31, 29, 24.5, 16, 9.5, 6, 4.5]),
+  // 俯視半寬：兩輪之間的側箱 27（把底盤側框蓋住），前後輪上方 31，兩輪之間收成 26.4 的腰；殼尾收成 14 的鈍尾（把尾端齒輪箱蓋住）；中央鼻在兩支叉刃之間收窄到 9.5（x 63）
+  hw: monoCurve(XS_HW, [14, 17, 21, 25, 28.5, 31, 29, 26.8, 26.4, 26.4, 26.6, 28.2, 31, 31, 29, 24.5, 16, 9.5, 6, 4.5]),
   // 側裙下緣：兩輪之間壓到 11.5，把底盤側框封起來；殼尾下緣 15.5，尾端封住
   yLow: monoCurve(XS, [15.5, 14, 13, 12.5, 12, 11.5, 11.5, 11.5, 11.5, 11.5, 11.5, 12, 12.5, 13, 13, 13, 13, 13]),
 };
@@ -165,24 +165,67 @@ const HOOD_BOLT = [
   [70, 0],
 ];
 
-/** @type {number} 飛鏢尾末端十字小鰭水平片半翼展 */
-const CROSS_Z = 32;
+/**
+ * 雷霆杖（側視的大型閃電折線 ⚡）：標準閃電字形 (h, v)，v 由根部 0 到尖端 1、h 為橫向 0–1
+ * @type {number[][]}
+ */
+const BOLT_GLYPH = [
+  [0.3, 0],
+  [0.78, 0],
+  [0.54, 0.4],
+  [0.82, 0.4],
+  [0.22, 1],
+  [0.4, 0.56],
+  [0.12, 0.56],
+];
 
-/** @type {{ x0: number, x1: number, y: number, r: number }} 飛鏢尾（薄殼長錐）：x0 錐底（埋在後中脊裡）、x1 錐尖、軸心高 y、錐底半徑 r；殼尾 −62 之後伸出 14.5 mm */
-const TAIL_CONE = { x0: -44, x1: -76.5, y: 30, r: 11 };
+/** @type {{ root: number[], tip: number[], w: number, t: number }} 雷霆杖斜躺在中脊上：根部 (x, y)、尖端 (x, y)、字形寬、板厚 */
+const BOLT_FIN = { root: [-18, 42.5], tip: [-75, 34.5], w: 20, t: 2.4 };
+
+/** @type {number[][]} 雷霆杖側視外形 (x, y)：字形沿根部 → 尖端的斜軸展開，橫向往上為正 */
+const BOLT_FIN_PTS = (() => {
+  const [ax, ay] = BOLT_FIN.root;
+  const [bx, by] = BOLT_FIN.tip;
+  const len = Math.hypot(bx - ax, by - ay);
+  const dx = (bx - ax) / len;
+  const dy = (by - ay) / len;
+  // 往上的法向量
+  const nx = dy;
+  const ny = -dx;
+  const sgn = ny > 0 ? 1 : -1;
+  return BOLT_GLYPH.map(([h, v]) => {
+    const off = (h - 0.47) * BOLT_FIN.w * sgn;
+    return [ax + v * (bx - ax) + off * nx, ay + v * (by - ay) + off * ny];
+  });
+})();
+
+/** @type {number} 車尾叉刃平板的底面高度（在後導輪架上方） */
+const REAR_PRONG_Y = 23;
+
+/** @type {number[][]} 車尾叉刃（+z 側）俯視外形 (x, z)：從殼尾兩側往後、往外伸出的鋸齒折線，和車頭叉刃一起成為兩端分叉的雷霆杖 */
+const REAR_PRONG = [
+  [-54, 12],
+  [-54, 21.5],
+  [-62.5, 25.5],
+  [-61, 29.5],
+  [-74.5, 31],
+  [-66.5, 22.5],
+  [-68, 18.5],
+  [-62, 10],
+];
 
 /** @type {number} 叉刃平板的底面高度 */
 const PRONG_Y = 18.5;
 
 /** @type {number} 叉刃平板與立刃的厚度 */
-const PRONG_T = 3;
+const PRONG_T = 2.6;
 
-/** @type {number[][]} 叉刃平板（+z 側）俯視外形 (x, z)：前輪前方往前伸、在中央鼻外側越過鼻端，外緣在 x 62 寬到 31，尖端 (77.2, 21) */
+/** @type {number[][]} 叉刃平板（+z 側）俯視外形 (x, z)：前輪前方往前伸、在中央鼻外側越過鼻端，外緣在 x 61 寬到 38.5，尖端 (77.2, 21) */
 const PRONG = [
   [50, 10],
   [50, 20.5],
-  [56, 22],
-  [62, 31],
+  [56.2, 24.5],
+  [61, 38.5],
   [77.2, 21],
   [66, 10.5],
   [57, 9],
@@ -203,7 +246,7 @@ const PRONG_KEEL = [
 
 /** @type {() => Record<string, THREE.Material>} */
 const materials = () => ({
-  // 雷光亮黃：閃電折線以下的側箱、叉刃、十字小鰭（亮面）
+  // 雷光亮黃：閃電折線以下的側箱、叉刃、中脊上的大閃電（亮面）
   yellow: namedMaterial('paint-thunder-yellow', { color: 0xffc914, roughness: 0.28, clearcoat: 0.85, clearcoatRoughness: 0.1 }),
   // 寶藍：亮面漆（主色）
   blue: namedMaterial('paint-royal-blue', { color: 0x1d3fbf, roughness: 0.26, clearcoat: 0.9, clearcoatRoughness: 0.08 }),
@@ -233,7 +276,7 @@ export const zeusThunderboltBody = makePolyBody({
   form: 'thunder-fork',
   roof: 'canopy',
   wing: 'oakleaf-cross',
-  theme: '雷霆杖與神殿柱：寶藍細長低楔車頭前端分岔成兩支厚 3、左右分開的亮黃叉刃（平板＋從引擎蓋長出的立刃，尖端越過鼻端），車身肩線與引擎蓋外緣切出兩道稜線，側面寶藍／亮黃之間一道白邊鋸齒閃電折線，引擎蓋一道亮黃閃電；座艙後的中脊刻著柱身溝槽，車尾伸出一支亮黃長飛鏢尾，末端是寶藍十字尾鰭（水平片翼展 ±32；雷霆杖柄頭）',
+  theme: '雷霆杖與神殿柱：寶藍細長低楔車頭前端分岔成兩支厚 2.6、左右分開的亮黃叉刃（平板＋從引擎蓋長出的立刃，尖端越過鼻端），車身肩線與引擎蓋外緣切出兩道稜線，側面寶藍／亮黃之間一道白邊鋸齒閃電折線，引擎蓋一道亮黃閃電；座艙後的低中脊刻著柱身溝槽，上面斜躺一支厚 2.4 的亮黃大閃電（側視 ⚡ 折線，頂 48.9、尖端越過殼尾），殼尾兩側再分岔出兩支亮黃鋸齒叉刃，和車頭叉刃一起成為兩端分叉的雷霆杖',
   material: 'ABS',
   density_g_cm3: 1.05,
   wallThickness_mm: 0.8,
@@ -280,35 +323,11 @@ export const zeusThunderboltBody = makePolyBody({
     const keels = [1, -1].map((sg) => finPlate(PRONG_KEEL, sg * PRONG_KEEL_Z, PRONG_T));
     parts.push({ geometry: mergeGeos([...plates, ...keels]), mat: 'yellow', solid: true, outline: true, name: 'thunderbolt-prongs' });
 
-    // ── 車尾：長飛鏢尾（亮黃薄殼錐，錐底埋在後中脊、殼尾之後伸出 14.5 mm）＋末端寶藍十字小鰭（雷霆杖柄頭） ──
-    {
-      const len = TAIL_CONE.x0 - TAIL_CONE.x1;
-      const cone = new THREE.CylinderGeometry(0.3, TAIL_CONE.r, len, 20, 1, true);
-      // 圓柱軸 +y 轉到 −x（錐尖朝後）
-      cone.rotateZ(Math.PI / 2);
-      cone.translate((TAIL_CONE.x0 + TAIL_CONE.x1) / 2, TAIL_CONE.y, 0);
-      parts.push({ geometry: cone, mat: 'yellow', shell: true, outline: true, name: 'dart-tail' });
-      // 十字小鰭：殼尾後方的飛鏢尾上，錐尖再往後伸出 5；直立片上下各伸出（上 42、下 20.5），水平片翼展 ±CROSS_Z，前緣都往後掠
-      const fin = [
-        [-63.5, TAIL_CONE.y],
-        [-68.5, 42],
-        [-71.5, 42],
-        [-71.5, 20.5],
-        [-68.5, 20.5],
-      ];
-      parts.push({ geometry: finPlate(fin, 0, 1.2), mat: 'blue', solid: true, outline: true, name: 'cross-fin-vertical' });
-      const wing = [
-        [-62.5, -1],
-        [-69.5, -CROSS_Z],
-        [-75, -CROSS_Z],
-        [-73, -6],
-        [-73, 6],
-        [-75, CROSS_Z],
-        [-69.5, CROSS_Z],
-        [-62.5, 1],
-      ];
-      parts.push({ geometry: flatPlate(wing, TAIL_CONE.y - 0.6, 1), mat: 'blue', solid: true, outline: true, name: 'cross-fin-horizontal' });
-    }
+    // ── 雷霆杖：亮黃大閃電（厚 2.4）斜躺在座艙後的中脊上，根部埋進中脊，尖端越過殼尾往後刺出 ──
+    parts.push({ geometry: finPlate(BOLT_FIN_PTS, 0, BOLT_FIN.t), mat: 'yellow', solid: true, outline: true, name: 'thunderbolt-fin' });
+    // 車尾兩支鋸齒叉刃（亮黃，厚 1.6）：從殼尾兩側伸出，和車頭叉刃前後呼應（雷霆杖兩端都分叉）
+    const rearProngs = [1, -1].map((sg) => flatPlate(REAR_PRONG.map(([x, z]) => [x, sg * z]), REAR_PRONG_Y, 1.6));
+    parts.push({ geometry: mergeGeos(rearProngs), mat: 'yellow', solid: true, outline: true, name: 'thunderbolt-rear-prongs' });
 
     // ---- 貼紙 ----
     // 鋸齒閃電折線的白色邊線（線寬 2.2，從鼻端貫穿到殼尾）
@@ -360,10 +379,10 @@ export const zeusThunderboltBody = makePolyBody({
   src: {
     density_g_cm3: 'SPEC 1.14：ABS 約 1.05 g/cm³（推估）',
     wallThickness_mm: '推估：射出 ABS 殼 0.8 mm（同其他車殼）',
-    fourview: 'shared/design/fourview-ref/fourview_10_v1.png（AI 參考圖，只取造型：分岔尖鼻、座艙後中脊收成尾錐、十字尾鰭；尺寸以底盤為準）',
-    geometry: '本檔站位產生器 P（推估）：殼 x −62 ~ 64（中央鼻端，兩刃之間是叉口）、水平叉刃尖 77.5、飛鏢尾尖 −75.2；中線鼻端 14.6 → 前軸 33、座艙頂約 39.5、後中脊頂 44.5（x −28）；半寬前後輪上方 31、兩輪之間 28.5（側箱蓋住底盤側框）、殼尾 14（下緣 15.5）；兩輪之間下緣 11.5',
-    prongs: '水平叉刃：ABS 實心平板厚 2 mm、底面高 18.5，x 56 → 77.5、|z| 11–37.5，外緣與內緣各折一次（推估）',
-    tail: '飛鏢尾：實心長錐 x −44 → −75.2、錐底半徑 9、軸心高 29.5（Cylinder 16 段）；十字小鰭直立片厚 1.4（上 40、下 21.5）、水平片厚 1.2（翼展 ±15），皆 ABS 實心件（推估）',
+    fourview: 'shared/design/fourview-ref/fourview_10_v1.png（AI 參考圖，只取造型：分岔尖鼻、座艙後中脊；車尾的尾錐與十字尾鰭改成斜躺在中脊上的大閃電與兩支車尾叉刃；尺寸以底盤為準）',
+    geometry: '本檔站位產生器 P（推估）：殼 x −62 ~ 64（中央鼻端，兩刃之間是叉口）、水平叉刃尖 77.5、雷霆杖尖 −74.6；中線鼻端 14.6 → 前軸 33、座艙頂約 39.5、後中脊頂 37（x −28）；半寬前後輪上方 31、兩輪之間 26.4（側箱蓋住底盤側框）、殼尾 14（下緣 15.5）；兩輪之間下緣 11.5',
+    prongs: '車頭叉刃：ABS 實心平板厚 2.6、底面高 18.5，x 50 → 77.2、|z| 9–38.5，加立刃；車尾叉刃：厚 1.6、底面高 23，x −54 → −74.5、|z| 10–31（推估）',
+    tail: '雷霆杖：ABS 實心板厚 2.4，標準閃電字形沿 (−18, 42.5) → (−75, 34.5) 斜軸展開、字形寬 20，根部埋進中脊（推估）',
     wheelArches: '前後 R17.5（31 mm 輪胎半徑 15.5 + 2 mm），可裝 26 / 31 mm 輪',
     mounts: '對齊 chassis-midship 的車殼安裝點（SPEC 1.14）',
   },
