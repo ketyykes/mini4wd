@@ -1,7 +1,7 @@
 // 三頭犬（body-cerberus-trihead，神話組・希臘）：照四視圖 07 的「從前輪往前伸成細長尖刺的匕首鼻、多面切削的側面、低座艙、高車尾、兩端 Z 字閃電折線的尾翼、俯視 W 形尾」建模，不做犬頭。
-// 「三」：匕首鼻兩側三條等長平行的青銅金速度線；尾翼後緣三個等長尖齒（俯視 W 形尾）。
+// 「三」：尾翼後緣三個等長尖齒（俯視 W 形尾）。匕首鼻只有中線一道青銅金脊稜，不放成排的斜線。
 // 黑繪陶 livery：黑釉為主色，陶土色做擋泥板頂面色塊、刃狀稜、尾翼與描線（切面折線上的對比色描線），白色加彩細線鑲邊；
-// 側面上層是陶土色鎖鏈（冥府的鎖鏈），下層收腰段是陶土飾帶上的黑色回紋（羅浮宮 E 701 卡厄瑞水罐的黑繪陶語彙）。
+// 側面腰折線下的黑色裙板上一條放大的陶土色鎖鏈（冥府的鎖鏈），不用回紋。
 // 側面多面切削：肩稜下的上層側壁往下內收到一道腰折線，折線下是往外的裙板，兩輪之間的裙板一路蓋到底盤側框上緣。
 // 設計：shared/design/body-cerberus-trihead/DESIGN.md（MYTH_RESEARCH G3–G5、G12）。全為自創，不含任何文字或商標。
 import * as THREE from 'three';
@@ -75,49 +75,10 @@ const onSide = (x, z) => Math.abs(z) > P.hw(x) - 2.6;
  */
 const podBandInset = (x, z) => Math.min(Math.abs(z) - 0.5 * P.hw(x), 0.8 * P.hw(x) - Math.abs(z), x + 60, 46 - x);
 
-/** 回紋飾帶（收腰段裙板上的陶土飾帶）：前後端 */
-const FRIEZE = { x0: -23, x1: 23 };
-
-/**
- * 線段距離（膠囊）
- * @type {(px: number, py: number, ax: number, ay: number, bx: number, by: number) => number}
- */
-const segDist = (px, py, ax, ay, bx, by) => {
-  const dx = bx - ax;
-  const dy = by - ay;
-  const t = Math.max(0, Math.min(1, ((px - ax) * dx + (py - ay) * dy) / (dx * dx + dy * dy)));
-  return Math.hypot(px - ax - t * dx, py - ay - t * dy);
-};
-
-/**
- * 回紋（鉤形連續回紋，週期 4 單位、高 3 單位，線寬 0.6 單位）：u 沿帶、v 由帶下緣往上
- * @type {(u: number, v: number, unit: number) => number} 回傳距離（負值 = 線內）
- */
-const meanderSd = (u, v, unit) => {
-  const uu = u / unit;
-  const vv = v / unit;
-  const p = Math.floor(uu / 4) * 4;
-  const lu = uu - p;
-  /** @type {number[][]} 單一週期的折線（含相鄰週期的端點避免接縫斷線） */
-  const segs = [
-    [-4, 0, 8, 0],
-    [3, 0, 3, 3],
-    [3, 3, 1, 3],
-    [1, 3, 1, 1],
-    [1, 1, 2, 1],
-    [-1, 0, -1, 3],
-    [-1, 3, -3, 3],
-    [7, 0, 7, 3],
-    [7, 3, 5, 3],
-    [5, 3, 5, 1],
-    [5, 1, 6, 1],
-  ];
-  let d = Infinity;
-  for (const [ax, ay, bx, by] of segs) {
-    d = Math.min(d, segDist(lu, vv, ax, ay, bx, by));
-  }
-  return (d - 0.3) * unit;
-};
+/** @type {number} 裙板鎖鏈的前後端 |x|（兩輪拱之間） */
+const CHAIN_X1 = 23;
+/** @type {number} 裙板鎖鏈的放大倍率（基本鏈節週期 6.4 mm → 10.2 mm） */
+const CHAIN_K = 1.6;
 
 /**
  * 鎖鏈（週期 6.4 mm）：正面環（長圓形環、線寬 0.6）與側立環（橫桿）交錯
@@ -148,10 +109,8 @@ const materials = () => ({
   liner: namedMaterial('shell-wheelwell-dark', { color: 0x1a1412, roughness: 0.8, side: THREE.DoubleSide }),
   // 刻線、鎖鏈、描線：陶土色
   dClay: decalMaterial('decal-incised-clay', { color: 0xa8502c, roughness: 0.7 }),
-  // 第三色青銅金：匕首鼻脊稜、速度線、尾翼、翼端閃電（名稱含 -brass → 金屬）
+  // 第三色青銅金：匕首鼻脊稜、尾翼、翼端閃電（名稱含 -brass → 金屬）
   bronze: namedMaterial('trim-bronze-brass', { color: 0xb08d4a, metalness: 0.85, roughness: 0.32, side: THREE.DoubleSide }),
-  dBronze: decalMaterial('decal-bronze-leaf', { color: 0xb8954f, metalness: 0.75, roughness: 0.34 }),
-  dBlack: decalMaterial('decal-figure-black', { color: 0x141110, roughness: 0.4 }),
   // 白色加彩細線（霧面礦物顏料）
   dWhite: decalMaterial('decal-added-white', { color: 0xeee6d6, roughness: 0.6 }),
   tail: namedMaterial('lamp-red', { color: 0xd0142a, emissive: 0x900010, emissiveIntensity: 0.6, roughness: 0.1, clearcoat: 1.0 }),
@@ -225,8 +184,6 @@ const CANOPY = {
   })(),
 };
 
-/** @type {number[]} 匕首鼻兩側三條平行速度線的 z（等長、等寬，x 32 → 54） */
-const SPEED_ZS = [4, 6.8, 9.6];
 /** @type {number[]} 匕首鼻脊稜的起點與尖端 x */
 const DAGGER_X = [40, 76.6];
 
@@ -271,7 +228,7 @@ const CONFIG = {
   form: 'trispike-shovel',
   roof: 'canopy',
   wing: 'trifang-zigzag-plate',
-  theme: '黑釉多面切削四驅車：從前輪往前伸成細長尖刺的匕首鼻（中線青銅金脊稜收尖到鼻尖），兩側三條等長平行的青銅金速度線；擋泥板頂面陶土色塊、白色加彩鑲邊，肩稜與腰折線上的陶土色描線；側面上層陶土色鎖鏈、收腰裙板上陶土飾帶的黑色回紋；壓低拉長的深色煙燻座艙罩；高車尾單柱撐起後緣三尖齒（俯視 W 形）的青銅金尾翼，兩端往上折成青銅金 Z 字閃電',
+  theme: '黑釉多面切削四驅車：從前輪往前伸成細長尖刺的匕首鼻（中線青銅金脊稜收尖到鼻尖）；擋泥板頂面陶土色塊、白色加彩鑲邊，肩稜與腰折線上的陶土色描線；收腰黑色裙板上一條放大的陶土色鎖鏈；壓低拉長的深色煙燻座艙罩；高車尾單柱撐起後緣三尖齒（俯視 W 形）的青銅金尾翼，兩端往上折成青銅金 Z 字閃電',
   material: 'ABS',
   density_g_cm3: 1.05,
   wallThickness_mm: 0.8,
@@ -287,8 +244,6 @@ const CONFIG = {
   canopy: CANOPY,
   sideZMin: 26,
   zones: () => [
-    // 收腰段裙板（腰折線以下）的陶土飾帶：回紋的底色，前後離輪拱 2 mm
-    { mat: 'clay', keep: (x, y, z) => (onSide(x, z) ? Math.min(creaseY(x) - 0.4 - y, y - P.yLow(x) - 0.6, FRIEZE.x1 - x, x - FRIEZE.x0, archRingDist(x, y) - 2) : -1) },
     // 擋泥板頂面陶土色塊
     { mat: 'clay', keep: (x, y, z) => (onSide(x, z) ? -1 : podBandInset(x, z)) },
     // 左右色塊之間的頂面（背脊）霧面黑
@@ -360,41 +315,15 @@ const CONFIG = {
     });
     for (const side of [-1, 1]) {
       const opt = { x0: 0, y0: 0, zMin: 26, side };
-      // 回紋：收腰裙板陶土飾帶上的黑色鉤形回紋
-      /** @type {(u: number, v: number) => number} */
-      const frieze = (u, v) => {
-        const x = side * u;
-        if (x < FRIEZE.x0 + 0.6 || x > FRIEZE.x1 - 0.6 || archRingDist(x, v) < 2.6) {
-          return 1;
-        }
-        const y0 = P.yLow(x) + 1.6;
-        return meanderSd(u + 64, v - y0, 1.5);
-      };
-      parts.push({ geometry: kit.decal(sideDecal(frieze, opt), { offset: 0.1 }), mat: 'dBlack', name: `decal-meander-frieze-${side}` });
-      // 鎖鏈：上層側壁（肩稜與腰折線之間）的陶土色鎖鏈，兩輪拱之間
+      // 鎖鏈（冥府的鎖鏈）：腰折線下的裙板上一條粗鎖鏈，兩輪拱之間
       /** @type {(u: number, v: number) => number} */
       const chain = (u, v) => {
         const x = side * u;
-        const yc = (P.yE(x) + creaseY(x)) / 2;
-        return Math.max(chainSd(u, v - yc), Math.abs(x) - 22.4, 2.2 - archRingDist(x, v));
+        const yc = (creaseY(x) + P.yLow(x)) / 2 + 0.3;
+        return Math.max(chainSd(u / CHAIN_K, (v - yc) / CHAIN_K) * CHAIN_K, Math.abs(x) - CHAIN_X1, 2.2 - archRingDist(x, v));
       };
       parts.push({ geometry: kit.decal(sideDecal(chain, opt), { offset: 0.12 }), mat: 'dClay', name: `decal-chain-${side}` });
     }
-    // 匕首鼻兩側三條平行速度線（陶土色，等長、寬 1.2）
-    parts.push({
-      geometry: kit.decal((x, y, z) => {
-        if (onSide(x, z) || x < 32 || x > 54) {
-          return -1;
-        }
-        let d = -1;
-        for (const zz of SPEED_ZS) {
-          d = Math.max(d, 0.6 - Math.abs(Math.abs(z) - zz));
-        }
-        return d;
-      }, { offset: 0.1 }),
-      mat: 'dBronze',
-      name: 'decal-speed-lines',
-    });
     // 尾燈：車尾一整條橫貫的細長紅燈條（不做成左右一對燈點）
     parts.push({ geometry: new THREE.BoxGeometry(0.8, 1.2, 36).translate(-64.2, 25.6, 0), mat: 'tail', solid: true, outline: true, name: 'lamp-tail' });
     return parts;
