@@ -131,7 +131,7 @@ const CANOPY = { x0: 32, x1: -16, peakX: 10, rise: 10.5, halfW: 13.5 };
  * n = 超橢圓指數（2 = 正橢圓，略大於 2 讓盤尾比較飽滿）
  * @type {{ x: number, y: number, a: number, b: number, c: number, thick: number, pitch: number, n: number }}
  */
-const MIRROR_WING = { x: -53, y: 41, a: 11, b: 23.5, c: 22.5, thick: 0.9, pitch: 0, n: 2.6 };
+const MIRROR_WING = { x: -53, y: 41, a: 14.5, b: 23.5, c: 22.5, thick: 0.8, pitch: 0, n: 2.6 };
 
 /**
  * 兩片相連超橢圓盤的外框（局部座標 u = 沿 x、w = 沿 z；俯視 8 字形）：右盤取 w ≥ 0 的弧、左盤鏡射，
