@@ -198,13 +198,15 @@ const hornPath = (n) => {
 };
 
 /**
- * 羊角斷面半徑：根部 2.9 mm 漸細到角尖 0.8 mm，疊 13 道橫稜（公羊角的年輪稜，振幅 9%）
+ * 羊角斷面半徑：根部 4.2 mm 漸細到 1.2 mm、最後收成尖角，疊 13 道橫稜（公羊角的年輪稜，振幅 9%）
  * @type {(u: number) => number[]}
  */
 const hornRadius = (u) => {
   const base = lerp(4.2, 1.2, u ** 0.8);
   const ridge = 1 + 0.09 * Math.cos(2 * Math.PI * 13 * u) * (1 - u);
-  return [base * ridge, base * ridge * 0.88];
+  // 最後 12% 收成尖角（端點只剩 0.15 mm，不留開口）
+  const tip = u > 0.88 ? lerp(1, 0.12, (u - 0.88) / 0.12) : 1;
+  return [base * ridge * tip, base * ridge * tip * 0.88];
 };
 
 // ---------------------------------------------------------------------------
