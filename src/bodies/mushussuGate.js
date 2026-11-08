@@ -215,7 +215,7 @@ const materials = () => ({
   gold2: namedMaterial('trim-gold-brass', { color: 0xc8a24a, roughness: 0.3, metalness: 0.8, clearcoat: 0.3, side: THREE.DoubleSide }),
   inner: namedMaterial('shell-inner-dark', { color: 0x131a26, roughness: 0.85, side: THREE.BackSide }),
   edge: namedMaterial('shell-edge-lapis', { color: 0x173b78, roughness: 0.5, side: THREE.DoubleSide }),
-  liner: namedMaterial('shell-wheelwell-navy', { color: 0x14284a, roughness: 0.75, side: THREE.DoubleSide }),
+  liner: namedMaterial('shell-wheelwell-lapis', { color: 0x1a3c82, roughness: 0.55, side: THREE.DoubleSide }),
   dJoint: decalMaterial('decal-brick-joint-navy', { color: 0x102a60, roughness: 0.5 }),
   dYellow: decalMaterial('decal-yellow-glaze', { color: 0xd9a441, roughness: 0.36 }),
   dBlack: decalMaterial('decal-black-glaze', { color: 0x1a1a1a, roughness: 0.4 }),
@@ -234,15 +234,15 @@ const FIN_Z = 24;
 /** @type {number} 鰭刀板厚 */
 const FIN_T = 1.4;
 /** @type {number[][]} 鰭刀上緣（刀背，側視 (x, y)）：從後翼子板頂面往後上挑到刀尖 */
-const FIN_TOP = [[-40, 32.2], [-46, 34.3], [-52, 36.4], [-58, 38.4], [-64, 40.3], [-70, 42.1], [-76, 43.8]];
+const FIN_TOP = [[-40, 32.2], [-46, 33.6], [-52, 35], [-58, 36.4], [-64, 37.8], [-70, 39.2], [-76, 40.6]];
 /**
- * 鰭刀其餘輪廓（接在刀尖之後）：後緣三階城垛缺口（每階深 2.4、高 4.4）→ 埋進車尾殼面的根部 →
+ * 鰭刀其餘輪廓（接在刀尖之後）：後緣三階城垛缺口（每階深 2.4、高約 3.8）→ 埋進車尾殼面的根部 →
  * 沿後輪拱上方斜回前端（離 31 mm 輪胎 ≥ 1 mm）
  * @type {number[][]}
  */
-const FIN_REST = [[-76, 39.6], [-73.6, 39.6], [-73.6, 35.2], [-71.2, 35.2], [-71.2, 30.8], [-68.8, 30.8], [-68.8, 25.5], [-60, 25.5], [-56, 27.5], [-52, 29.6], [-46, 31.5]];
+const FIN_REST = [[-76, 37], [-73.6, 37], [-73.6, 33.4], [-71.2, 33.4], [-71.2, 29.6], [-68.8, 29.6], [-68.8, 25.5], [-60, 25.5], [-56, 27.5], [-52, 29.6], [-46, 31.5]];
 /** @type {{ y: number, thick: number, half: number }} 主翼（門楣）：底面 y、板厚、半翼展（伸進兩片鰭刀） */
-const WING = { y: 38.2, thick: 1.4, half: FIN_Z + FIN_T / 2 };
+const WING = { y: 35.2, thick: 1.4, half: FIN_Z + FIN_T / 2 };
 
 /**
  * 主翼俯視輪廓 (x, z)：後掠的彎刃形，前緣中線 x −60 → 翼端 −65.5；後緣中線 −70.5 → 翼端 −74.5，
@@ -570,9 +570,9 @@ export const mushussuGateBody = makePolyBody({
     density_g_cm3: 'SPEC 1.14：ABS 約 1.05 g/cm³（推估）',
     wallThickness_mm: '推估：射出 ABS 殼 0.8 mm（同其他款）',
     geometry:
-      '本檔站位產生器 P（推估，前低後高的楔形車殼）：殼 x −72 → 74（細長低尖鼻），鰭刀後緣 −76；肩線半寬 後翼子板 47、前翼子板 44、腰 37.2（＋牆腳外張 0.6，外框半寬 ≤ 48.0）、鼻 16.2（x 60）→ 鼻端 4.0、車尾 24；甲板最高 33.9（x −28）、座艙罩頂約 37.5、鼻端 15.3、車尾 28.5，鰭刀刀尖 43.8（全車最高）；肩線 27.2–30.4；側裙下緣 10.5（包住電池管）、鼻端 12.8、車尾 16',
+      '本檔站位產生器 P（推估，前低後高的楔形車殼）：殼 x −72 → 74（細長低尖鼻），鰭刀後緣 −76；肩線半寬 後翼子板 47、前翼子板 44、腰 37.2（＋牆腳外張 0.6，外框半寬 ≤ 48.0）、鼻 16.2（x 60）→ 鼻端 4.0、車尾 24；甲板最高 33.9（x −28）、座艙罩頂約 37.5、鼻端 15.3、車尾 28.5，鰭刀刀尖 40.6；肩線 27.2–30.4；側裙下緣 10.5（包住電池管）、鼻端 12.8、車尾 16',
     wheelArches: '前後 R17.5（31 mm 輪胎半徑 15.5 + 2 mm），不切輪拱可裝；輪拱內襯＋輪胎內側環形擋板（buildArchWell）',
-    crenels: '車尾城門：兩片城垛鰭刀（|z| 24、厚 1.4；上緣 x −40 → −76 從後翼子板頂面上挑到 y 43.8，後緣三階城垛缺口每階深 2.4、高 4.4；刀背金邊寬 2；外側 8 瓣玫瑰花飾直徑約 6.7）＋主翼（底面 y 38.2、厚 1.4、翼展 49.4、弦 9–10.5，後掠 4–5.5 mm，後緣 15 段城垛齒深 1.5）；ABS 實心件（推估），質量 = 封閉體積 × 1.05 g/cm³',
+    crenels: '車尾城門：兩片城垛鰭刀（|z| 24、厚 1.4；上緣 x −40 → −76 從後翼子板頂面上挑到 y 40.6，後緣三階城垛缺口每階深 2.4、高約 3.8；刀背金邊寬 2；外側 8 瓣玫瑰花飾直徑約 6.7）＋主翼（底面 y 35.2、厚 1.4、翼展 49.4、弦 9–10.5，後掠 4–5.5 mm，後緣 15 段城垛齒深 1.5）；ABS 實心件（推估），質量 = 封閉體積 × 1.05 g/cm³',
     livery: '側牆圓徽：半徑 4.9，花飾為車頂花飾的 1.95 倍；鱗紋色帶 x −22 → 10、半高 3.3 → 1.6、往後每 mm 上升 0.13；鱗紋為半徑 1.5 的半圓弧、列距 2.0；座艙拱門 x −24 → 7.5、半寬 7.5（透明罩高 4.2 mm，14 × 8 段，以殼面積 × 0.8 mm 計入質量；罩下花飾為車頂花飾的 2.6 倍）；頭燈條 x 50 → 68、寬 1.5（皆為貼紙，推估）',
     myth: '伊什塔爾城門的青金石藍釉磚、黃框、黑白金邊框與玫瑰花飾、拱門、城垛（MYTH_RESEARCH M2、M3）；穆修胡修只取鱗身的鱗紋（M1），不做頭、角、腳、尾',
     mounts: '對齊 chassis-midship 的車殼安裝點（SPEC 1.14）',
