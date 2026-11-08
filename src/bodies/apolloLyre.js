@@ -1,14 +1,14 @@
 // 阿波羅七弦琴（body-apollo-lyre，神話組・希臘）：只用阿波羅的持物與象徵，車上沒有人像、臉、手或神像。
-// 照四視圖 06 建模：楔形切面車身（鼻頭壓低、兩道稜線）、鼻頭一片薄下擾流刃、寬後擋泥板、多面的煙燻金座艙罩，
-// 車尾一座七弦琴尾翼：兩支從後擋泥板長出、往外彎的琴臂就是端板，頂上的琴軛就是翼板，七道琴弦在兩臂之間。
+// 照四視圖 06 建模：楔形切面車身（中央凸起脊板、頂面外緣與肩線共三層稜線）、鼻頭一片薄下擾流刃、寬後擋泥板、多面的煙燻金座艙罩，
+// 車尾一座往後仰的七弦琴尾翼：兩支從後擋泥板長出、往外捲的金色大角就是琴臂兼端板，頂上的琴軛就是翼板，七道琴弦從琴軛斜下到後甲板。
 // 元素：
-// (1) 七弦琴 → 金色琴臂端板（後視往外彎的 U）、象牙白琴軛翼板、兩臂之間七道金弦立在後甲板的琴橋上；
+// (1) 七弦琴 → 金色角形琴臂（橢圓斷面、有角紋，先往外鼓、過琴軛後往外捲成渦卷角尖）、象牙白琴軛翼板、七道金弦從琴軛往前斜下收到後甲板的琴橋；
 // (2) 太陽戰車 → 四個輪拱外圍兩道金色輪圈弧線；
 // (3) 月桂 → 月桂綠主色、兩側車門一枝金色月桂枝、象牙白中央條紋兩側各一條金色月桂葉帶。
 // 設計：shared/design/body-apollo-lyre/DESIGN.md（典故來源與文物對應寫在 DESIGN.md）。剖面為本檔站位產生器（推估）。
 // 塗裝全為自創，不含任何廠商 / 作品名稱、商標或文字。
 import * as THREE from 'three';
-import { makePolyBody, flatPlate, finPlate } from './polyBody.js';
+import { makePolyBody, flatPlate } from './polyBody.js';
 import { namedMaterial, decalMaterial, sideDecal, mergeGeos, lerp, smoothstep } from './loft.js';
 import { monoCurve, buildStations } from './gazelleLeap.js';
 import { buildProfileLiner } from './khepriScarab.js';
@@ -62,8 +62,14 @@ const P = {
 /** @type {(x: number) => number} 肩稜線（含眉線） */
 const shoulderY = (x) => smoothMax(P.yS(x), browY(x), 1.2);
 
+/** @type {number} 中央凸起脊板比兩側頂面高出的量 */
+const SPINE_RISE = 0.9;
+
+/** @type {(x: number) => number} 中央凸起脊板（象牙白條紋）半寬：鼻端跟著車鼻收窄 */
+const spineHalfW = (x) => Math.min(P.stripe(x), 0.4 * P.hw(x));
+
 /**
- * 半剖面 6 點：中線 → 平的頂面 → 頂面外緣稜線（銳利）→ 斜切的上側面 → 肩稜線（銳利）→ 微外張的側裙
+ * 半剖面 7 點：中線 → 凸起的中央脊板（兩邊是銳利的階） → 平的頂面 → 頂面外緣稜線（銳利）→ 斜切的上側面 → 肩稜線（銳利）→ 微外張的側裙
  * @type {(x: number) => number[][]}
  */
 const profile = (x) => {
@@ -72,9 +78,11 @@ const profile = (x) => {
   const s = Math.min(shoulderY(x), t - 0.5);
   const lo = P.yLow(x);
   const d = t - s;
+  const w = spineHalfW(x);
   return [
-    [0, t],
-    [0.45 * h, t - 0.1 * d],
+    [0, t + SPINE_RISE],
+    [w, t + SPINE_RISE - 0.08],
+    [w + 0.35, t - 0.06 * d],
     [0.76 * h, t - 0.45 * d],
     [h, s],
     [h + 0.7, lerp(s, lo, 0.5)],
@@ -104,54 +112,109 @@ const canopyHalfW = (x) => {
 };
 
 /**
- * 琴臂端板側視外形 (x, y)：底部寬、從後擋泥板長出，往上收窄並往後彎成角形，頂端往後翹（像七弦琴的兩支彎臂）
+ * 琴臂中心線控制點（右側，z > 0；左側鏡射）：從後擋泥板頂面長出，往上往後、先往外鼓再微收，
+ * 過了琴軛之後往外捲成一個角尖（像七弦琴用山羊角做的兩支彎臂）
  * @type {number[][]}
  */
-const LYRE_ARM = [
-  [-47, 29],
-  [-48.5, 35],
-  [-51, 41],
-  [-54, 45.5],
-  [-58, 47.6],
-  [-61.5, 48],
-  [-61, 45.6],
-  [-59, 44.2],
-  [-58, 40],
-  [-57.5, 34],
-  [-58.5, 29],
+const HORN_PATH = [
+  [-50, 29.4, 32.2],
+  [-51.6, 34.4, 36.4],
+  [-54, 38.8, 39.4],
+  [-57, 42.6, 38.4],
+  [-59.6, 45.8, 39.4],
+  [-61, 47.4, 42.4],
+  [-61.4, 46.4, 45.2],
+  [-61, 44.3, 45],
 ];
 
-/** @type {number} 琴臂端板中心 |z|（板底） */
-const ARM_Z = 33;
+/** @type {number} 琴角上的環節數（角的橫紋） */
+const HORN_RIDGES = 6;
 
-/** @type {number} 琴臂端板往外張的角度（度）：後視兩臂往上張開成 U */
-const ARM_SPLAY = 10;
+/**
+ * 琴角斷面半軸：前後向半軸 a、內外向半軸 b，從角根往角尖收細，中段有一圈圈凸起的角紋（s ∈ [0, 1]）
+ * @type {(s: number) => { a: number, b: number }}
+ */
+const hornSection = (s) => {
+  const taper = 1 - 0.72 * s ** 1.15;
+  const ridge = s > 0.1 && s < 0.82 ? 0.14 * Math.max(0, Math.cos(2 * Math.PI * s * HORN_RIDGES)) ** 6 : 0;
+  return { a: 5.2 * taper * (1 + ridge), b: 2.0 * taper * (1 + ridge) + 0.3 };
+};
+
+/**
+ * 沿曲線掃出的漸細橢圓斷面管（兩端封口）：前後向半軸盡量對齊世界 x，讓側視寬、正視薄
+ * @type {(curve: THREE.Curve<THREE.Vector3>, section: (s: number) => { a: number, b: number }, nSeg: number, nRad: number) => THREE.BufferGeometry}
+ */
+const sweptHorn = (curve, section, nSeg, nRad) => {
+  /** @type {number[]} */
+  const pos = [];
+  /** @type {number[]} */
+  const idx = [];
+  const ex = new THREE.Vector3(1, 0, 0);
+  for (let i = 0; i <= nSeg; i++) {
+    const s = i / nSeg;
+    const p = curve.getPointAt(s);
+    const t = curve.getTangentAt(s);
+    const axA = ex.clone().addScaledVector(t, -ex.dot(t)).normalize();
+    const axB = new THREE.Vector3().crossVectors(t, axA);
+    const { a, b } = section(s);
+    for (let j = 0; j < nRad; j++) {
+      const th = (2 * Math.PI * j) / nRad;
+      const v = p.clone().addScaledVector(axA, a * Math.cos(th)).addScaledVector(axB, b * Math.sin(th));
+      pos.push(v.x, v.y, v.z);
+    }
+  }
+  for (let i = 0; i < nSeg; i++) {
+    for (let j = 0; j < nRad; j++) {
+      const k0 = i * nRad + j;
+      const k1 = i * nRad + ((j + 1) % nRad);
+      idx.push(k0, k1, k0 + nRad, k1, k1 + nRad, k0 + nRad);
+    }
+  }
+  // 兩端封口
+  const p0 = curve.getPointAt(0);
+  const p1 = curve.getPointAt(1);
+  const c0 = pos.length / 3;
+  pos.push(p0.x, p0.y, p0.z, p1.x, p1.y, p1.z);
+  const last = nSeg * nRad;
+  for (let j = 0; j < nRad; j++) {
+    const jn = (j + 1) % nRad;
+    idx.push(c0, jn, j, c0 + 1, last + j, last + jn);
+  }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  g.setIndex(idx);
+  g.computeVertexNormals();
+  return g;
+};
 
 /** @type {number} 琴軛翼板的底面高度 */
 const YOKE_Y = 42.6;
 
 /** @type {number[][]} 琴軛翼板俯視外形 (x, z)：前緣微拱、後緣中央內凹，兩端接進琴臂 */
 const YOKE = [
-  [-53, 0],
-  [-53.8, 20],
-  [-55, 35.5],
-  [-60.5, 35.5],
-  [-61, 20],
-  [-59.5, 0],
-  [-61, -20],
-  [-60.5, -35.5],
-  [-55, -35.5],
-  [-53.8, -20],
+  [-55, 0],
+  [-55.4, 20],
+  [-56, 38.2],
+  [-60.4, 38.2],
+  [-60.6, 20],
+  [-59.6, 0],
+  [-60.6, -20],
+  [-60.4, -38.2],
+  [-56, -38.2],
+  [-55.4, -20],
 ];
 
-/** @type {number} 琴弦所在的 x（琴軛翼板中段） */
-const STRING_X = -57;
+/** @type {number} 琴弦上端的 x（琴軛翼板中段） */
+const STRING_X = -57.8;
+
+/** @type {number} 琴弦下端琴橋的 x：琴弦從琴軛往前斜下到後甲板，整座琴往後仰 */
+const BRIDGE_X = -47.5;
 
 /** @type {number[]} 七道琴弦的 z 位置 */
 const STRING_Z = [-18, -12, -6, 0, 6, 12, 18];
 
 /** @type {number} 琴弦在琴橋上收攏的比例（上寬下窄，像真的七弦琴弦收到音箱上的弦座） */
-const STRING_PINCH = 0.55;
+const STRING_PINCH = 0.5;
 
 /**
  * 月桂枝：一條往後上升的細莖，兩側交錯排列尖橢圓葉（u = 從該側看過去的水平座標、v = 高度；回傳 { leaf, stem } 距離）
@@ -213,15 +276,14 @@ export const apolloLyreBody = makePolyBody({
   form: 'sun-shovel',
   roof: 'canopy',
   wing: 'lyre-hoop',
-  theme: '七弦琴、太陽戰車與月桂：月桂綠的楔形切面車身（鼻頭壓低、頂面外緣與肩線兩道稜線）、鼻頭一片薄金色下擾流刃、象牙白中央條紋兩側各一條金色月桂葉帶、多面的煙燻金座艙罩；車尾一座七弦琴尾翼：兩支從後擋泥板長出、往外彎的金色琴臂端板，頂上象牙白琴軛翼板，兩臂之間七道金弦立在後甲板琴橋上；四個輪拱外圍兩道金色輪圈弧線，兩側車門一枝金色月桂枝',
+  theme: '七弦琴、太陽戰車與月桂：月桂綠的楔形切面車身（鼻頭壓低、象牙白中央脊板凸起，頂面外緣與肩線兩道稜線）、鼻頭一片薄金色下擾流刃、象牙白中央條紋兩側各一條金色月桂葉帶、多面的煙燻金座艙罩；車尾一座往後仰的七弦琴尾翼：兩支從後擋泥板長出、往外捲成渦卷角尖的金色角形琴臂兼端板，頂上象牙白琴軛翼板，七道金弦從琴軛往前斜下收到後甲板琴橋；四個輪拱外圍兩道金色輪圈弧線，兩側車門一枝金色月桂枝',
   material: 'ABS',
   density_g_cm3: 1.05,
   wallThickness_mm: 0.8,
   stations: STATIONS,
   step: 0.7,
-  // 肩稜線是銳利稜線
-  // 頂面外緣與肩線兩道銳利稜線（切面楔形車身）
-  hard: [2, 3],
+  // 中央脊板兩邊的階、頂面外緣與肩線都是銳利稜線（切面楔形車身）
+  hard: [1, 2, 3, 4],
   wheelArches: ARCHES,
   canopy: {
     section: 'trapezoid',
@@ -242,7 +304,7 @@ export const apolloLyreBody = makePolyBody({
     // 深墨綠底緣
     { mat: 'onyx', keep: (x, y) => P.yLow(x) + 1.8 - y },
     // 象牙白中央條紋
-    { mat: 'white', keep: (x, y, z) => P.stripe(x) - Math.abs(z) },
+    { mat: 'white', keep: (x, y, z) => spineHalfW(x) + 0.15 - Math.abs(z) },
     // 月桂綠
     { mat: 'sun', keep: () => 1 },
   ],
@@ -258,24 +320,28 @@ export const apolloLyreBody = makePolyBody({
 
     // ── 七弦琴尾翼：兩支金色琴臂端板從後擋泥板長出，頂上象牙白琴軛翼板（厚 2.2），兩臂之間七道金弦從琴軛斜收到後甲板的琴橋 ──
     {
-      // 琴臂：厚 3 的彎角形端板，從後擋泥板長出，往外張 ARM_SPLAY 度
-      const arms = [1, -1].map((sg) => finPlate(LYRE_ARM, sg * ARM_Z, 3, -sg * ARM_SPLAY));
-      parts.push({ geometry: mergeGeos(arms), mat: 'gold', solid: true, outline: true, name: 'lyre-arms' });
-      parts.push({ geometry: flatPlate(YOKE, YOKE_Y, 2.2), mat: 'white', solid: true, outline: true, name: 'lyre-yoke-wing' });
-      const yDeck = P.yTop(STRING_X);
-      const bridgeTop = yDeck + 1.4;
-      // 琴弦：上端在琴軛、下端收攏到琴橋（上寬下窄的斜弦）
+      // 琴臂：從後擋泥板長出、往外捲的金色大角（橢圓斷面、有角紋），兼做琴軛翼板的端板
+      const arms = [1, -1].map((sg) => {
+        const curve = new THREE.CatmullRomCurve3(HORN_PATH.map(([x, y, z]) => new THREE.Vector3(x, y, sg * z)), false, 'centripetal');
+        return sweptHorn(curve, hornSection, 56, 12);
+      });
+      parts.push({ geometry: mergeGeos(arms), mat: 'gold', solid: true, outline: true, name: 'lyre-horn-arms' });
+      parts.push({ geometry: flatPlate(YOKE, YOKE_Y, 1.6), mat: 'white', solid: true, outline: true, name: 'lyre-yoke-wing' });
+      const yDeck = P.yTop(BRIDGE_X);
+      const bridgeTop = yDeck + 1.0;
+      const up = new THREE.Vector3(0, 1, 0);
+      // 琴弦：上端在琴軛、下端往前斜下並收攏到琴橋（上寬下窄的斜弦）
       const strings = STRING_Z.map((z) => {
         const top = new THREE.Vector3(STRING_X, YOKE_Y + 0.3, z);
-        const bottom = new THREE.Vector3(STRING_X, bridgeTop - 0.3, z * STRING_PINCH);
-        const len = top.distanceTo(bottom);
-        const g = new THREE.CylinderGeometry(0.5, 0.5, len, 8);
-        g.rotateX(Math.atan2(bottom.z - top.z, top.y - bottom.y));
-        g.translate(STRING_X, (top.y + bottom.y) / 2, (top.z + bottom.z) / 2);
+        const bottom = new THREE.Vector3(BRIDGE_X, bridgeTop - 0.3, z * STRING_PINCH);
+        const dir = top.clone().sub(bottom);
+        const g = new THREE.CylinderGeometry(0.5, 0.5, dir.length(), 8);
+        g.applyQuaternion(new THREE.Quaternion().setFromUnitVectors(up, dir.normalize()));
+        g.translate((top.x + bottom.x) / 2, (top.y + bottom.y) / 2, (top.z + bottom.z) / 2);
         return g;
       });
-      const bridge = new THREE.BoxGeometry(3.6, 2.4, 24);
-      bridge.translate(STRING_X, yDeck + 0.2, 0);
+      const bridge = new THREE.BoxGeometry(3.6, 2.4, 20);
+      bridge.translate(BRIDGE_X, yDeck - 0.2, 0);
       parts.push({ geometry: mergeGeos([...strings, bridge]), mat: 'gold', solid: true, outline: true, name: 'lyre-strings' });
     }
     // ── 鼻頭一片薄金色下擾流刃：和壓低的鼻端之間留一道細長橫縫 ──
@@ -327,7 +393,7 @@ export const apolloLyreBody = makePolyBody({
         const pitch = 4.4;
         const k = Math.round(x / pitch);
         const lu = x - k * pitch;
-        const lv = Math.abs(z) - P.stripe(x) - 2.3;
+        const lv = Math.abs(z) - spineHalfW(x) - 2.3;
         const ang = (k % 2 === 0 ? 1 : -1) * 0.6;
         const a = lu * Math.cos(ang) + lv * Math.sin(ang);
         const b = -lu * Math.sin(ang) + lv * Math.cos(ang);
@@ -339,7 +405,7 @@ export const apolloLyreBody = makePolyBody({
     });
     // 白色條紋兩側的金色細邊
     parts.push({
-      geometry: kit.decal((x, y, z) => Math.min(0.35 - Math.abs(Math.abs(z) - P.stripe(x) - 0.45), 76.5 - x, x + 69.5, -kit.underCanopy(x, z) - 0.5)),
+      geometry: kit.decal((x, y, z) => Math.min(0.35 - Math.abs(Math.abs(z) - spineHalfW(x) - 0.45), 76.5 - x, x + 69.5, -kit.underCanopy(x, z) - 0.5)),
       mat: 'dGold',
       name: 'decal-stripe-edge',
     });
@@ -364,8 +430,8 @@ export const apolloLyreBody = makePolyBody({
     density_g_cm3: 'SPEC 1.14：ABS 約 1.05 g/cm³（推估）',
     wallThickness_mm: '推估：射出 ABS 殼 0.8 mm（同其他車殼）',
     fourview: 'shared/design/fourview-ref/fourview_06_v1.png（AI 參考圖，只取造型：寬平低鼻、鼓起的擋泥板、短座艙、車尾 C 形環翼；四視圖偏超跑，已壓低車身、加寬輪拱；尺寸以底盤為準）',
-    geometry: '本檔站位產生器 P（推估）：殼 x −70 ~ 77；楔形中線：後甲板 31、座艙段 33.2、前軸 31.6、鼻端 13；頂面外緣與肩線兩道稜線；座艙罩頂約 38.4、琴臂頂 48（全車最高）；半寬前段 16（前輪外露）、兩輪之間 29（側箱蓋住底盤側框）、後輪上方 38.5、鼻端 9.5、車尾收到 26；兩輪之間下緣 11.5',
-    lyre: '琴臂端板：ABS 實心板厚 3，側視彎角形（底 x −47 → −58.5、高 29 起，頂 48），板底 |z| 33、往外張 10°；琴軛翼板 ABS 厚 2.2、底面高 42.6、x −53 → −61、|z| 35.5；七道金弦 r 0.5（8 段），上端間距 6、下端收到 0.55 倍，立在 3.6 × 2.4 × 24 的琴橋上（推估）',
+    geometry: '本檔站位產生器 P（推估）：殼 x −70 ~ 77；楔形中線：後甲板 31、座艙段 33.2、前軸 31.6、鼻端 13；中央脊板（半寬同條紋，鼻端收到 0.4 倍半寬）凸起 0.9；頂面外緣與肩線兩道稜線；座艙罩頂約 38.4、琴臂角尖頂約 48.6（全車最高）；半寬前段 16（前輪外露）、兩輪之間 29（側箱蓋住底盤側框）、後輪上方 38.5、鼻端 9.5、車尾收到 26；兩輪之間下緣 11.5',
+    lyre: '琴臂：ABS 實心角形管，沿 HORN_PATH 掃出（根部 x −50、高 29.4、|z| 32.2，中段往外鼓到 |z| 39.4，琴軛處 |z| 38.4，角尖往外捲到 |z| 45），橢圓斷面前後半軸 5.2 → 1.5、內外半軸 2.3 → 0.9，6 圈角紋凸起 14%；琴軛翼板 ABS 厚 1.6、底面高 42.6、x −55 → −60.6、|z| 38.2；七道金弦 r 0.5（8 段），上端 x −57.8、間距 6，往前斜下到 x −47.5 的琴橋、收到 0.5 倍，琴橋 3.6 × 2.4 × 20（推估）',
     frontSpoilers: '前下擾流刃：ABS 實心平板厚 1、底面高 11.2、x 66 → 77、半寬 24.5（推估）',
     wheelArches: '前後 R17.5（31 mm 輪胎半徑 15.5 + 2 mm），可裝 26 / 31 mm 輪',
     mounts: '對齊 chassis-midship 的車殼安裝點（SPEC 1.14）',
