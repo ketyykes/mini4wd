@@ -130,6 +130,13 @@
 - 計分：第一次 17/20（11:51–12:25，P16、P17、P19 逾時，同時段我在出陣容圖、另一個 claude 工作階段也在跑，15 分鐘平均負載 8.3）；負載降下後重跑 19/20（12:27–12:49，只剩 P17_phase7_laps 403 s 逾時，上午同一項 147 s；P16_collision_patches 109 s、P18_pairwise 394 s 也都比上午慢 30–50%）。P17 測零件物理、和車殼無關。12:50 單獨重跑 P17_phase7_laps：**通過，181 s**（上限 300 s；同時 7 個 subagent 開工、負載 18）。
 - 11:00 截止後使用者兩次下 `/goal`：先「繼續直到做完為止」，12:3x 改成「做到今天晚上六點為止」→ 新截止 18:00。
 
+## iter-144（12:50 派工，13:0x–13:48 交件，14:3x 判定）：照最終評審修外觀、拆撞色、拆相似配對
+- 7 個 subagent（a：zeus、poseidon、apollo；b：venus、mars、amaterasu；c：minotaur、cerberus、kitsune；d：shiva、pele、quetzal；e：heimdall、sleipnir、kunpeng；f：firebird、tanngrisnir、gundestrup；g：舊版 6 款平面微調與配色），`shared/stage10/brief-iter144.md`：全陣容配色表（拆藍金、白、紅橘、木色撞色群）、評審逐款點名的問題、神話組配對目標 < 0.78。交件 22 款（mars、serpent 沒交）。合併後神話組 ≥ 0.80：16 → 9 對。
+- Blender 32 samples 3 視角，`BASE=pre144` 做甲乙並排（`shared/reviews/iter-144/`、`iter-144b/`，各 11 款，各一位評審）。
+- **評審偏差與重評**：第一次兩位評審的理由反覆寫「配色跟四視圖一樣」「乙的配色比較接近四視圖」，把四視圖的 AI 隨機配色當成目標（GOAL 明訂配色用文化配色、不照四視圖），只改配色的款幾乎全輸。原因是評審資料夾把四視圖和甲乙放在一起、brief 沒講清楚。判定前先決定：換兩位新評審、22 款全部重評、brief 改成先只看並排判甲乙、判完才看四視圖且只比造型（`brief-review144-v2.md`，結果在 `REVIEW-v2.md`），**以重評為最終判定，不再挑**。兩次評審有 5 款判定相反（venus、yaga 由新變舊；quetzal、apollo、heimdall 由舊變新），單款甲乙並排的雜訊很大。
+- **最終判定（重評）**：保留 8 款——新版較好 kitsune、minotaur、quetzal、apollo、heimdall；看不出差別而且 ≥ 0.80 對數變少 firebird（4 → 3）、mushussu（4 → 3）、gullinbursti（1 → 0）。退回 iter-143 版 14 款：venus、amaterasu、cerberus、gundestrup、pele、shiva、tanngrisnir、khepri（看不出差別、對數沒變少）、kunpeng、poseidon、sleipnir、trojan、yaga、zeus。
+- 判定後：神話組 ≥ 0.80 **16 → 11 對**（tanngrisnir × shiva 0.823 最大）；全部最大 0.842 不變；`tests/bodies.test.js` 通過。body-tris（負載 5 時量）：碰撞格 248–585 ms（subagent 回報的 1000 以上是 7 組同時跑的負載），正面面積 2482–3150。
+
 # 第十階段：神話車殼依 LG1 家族從頭重塑（2026-11-05 12:0x 起，截止 15:30）
 
 ## 第 0 輪（12:00–12:15）
