@@ -27,8 +27,8 @@ const P = {
   yD: monoCurve(XS, [23, 29.4, 33.4, 35.2, 35.4, 33.2, 28.2, 26.6, 26.6, 27.8, 30.4, 32.8, 33, 30.4, 24.6, 22.4, 20.4, 18.7, 17.4]),
   // 中央脊 / 艙蓋半寬
   nw: monoCurve(XS, [5, 6, 7, 7.5, 8, 9, 10.5, 11.5, 11.5, 10.5, 9.5, 9, 9, 8.6, 8.4, 8, 7, 5.6, 4.4]),
-  // 半寬：車尾收成船尾形（17）、後輪 39.6、腰 23.6（大幅收腰）、前輪 35.6（包住 31 mm 輪胎外緣），x 56 以後急收成一根攻城槌樑（16 → 9）
-  hw: monoCurve(XS, [17, 27, 37.4, 39.6, 39.6, 34, 26, 23.6, 24.4, 29.6, 34.2, 35.6, 35.6, 35.2, 30, 16, 11.5, 10, 9]),
+  // 半寬：車尾收成船尾形（17）、後輪 39.6、腰 23.6（大幅收腰）、前輪 35.6，x 42 以後往鼻部收窄（x 56 為 22），再收成一根攻城槌樑（13.5 → 9）
+  hw: monoCurve(XS, [17, 24, 34, 39.6, 39.6, 34, 26, 23.6, 24.4, 29.6, 34.2, 35.6, 35.6, 35.2, 22, 13.5, 11.5, 10, 9]),
   // 側裙下緣：兩輪之間 10.5（底盤側框頂 9.4 之上，包住電池艙側面）、鼻部 15
   yLow: monoCurve(XS, [21, 18.5, 15.5, 13.5, 13, 11.5, 10.5, 10.5, 10.5, 10.5, 11, 13, 13, 13.5, 14.2, 14.6, 15, 15, 15]),
 };
@@ -186,11 +186,11 @@ const segDist = (px, py, ax, ay, bx, by) => {
 
 /** @type {number[][]} 鋸齒鬃鰭的齒尖 [x, y] 與齒後缺口深度：齒尖沿一條往車尾升高的直線排列，越往後齒越大 */
 const TEETH = [
-  [-15, 40, 2],
-  [-28, 42, 2.4],
-  [-41, 43.6, 2.6],
-  [-54, 45, 2.8],
-  [-67, 46, 0],
+  [-15, 42, 2],
+  [-28, 44, 2.4],
+  [-41, 45.6, 2.6],
+  [-54, 47, 2.8],
+  [-67, 48, 0],
 ];
 /** @type {number} 鰭上緣青銅鑲邊的寬度：齒尖連線往下這麼多以內是青銅，再往下是黑釉鰭心 */
 const FIN_RIM = 4.4;
@@ -198,7 +198,7 @@ const FIN_RIM = 4.4;
 const FIN_T = 1.2;
 
 /** @type {{ y: number, thick: number, pitchDeg: number, pivot: number[], halfSpan: number }} 青銅翼刃：水平板繞 z 軸抬起後緣 */
-const WING = { y: 40.4, thick: 1.0, pitchDeg: 5, pivot: [-63, 40.4], halfSpan: 30 };
+const WING = { y: 40.4, thick: 1.0, pitchDeg: 5, pivot: [-63, 40.4], halfSpan: 27 };
 
 /** @type {import('./polyBody.js').PolyBodyConfig & { mythSeries: string, mythTheme: string }} 車殼設定（神話組欄位由下方匯出時補進 BodyDef） */
 const CONFIG = {
@@ -245,7 +245,7 @@ const CONFIG = {
     {
       /** @type {number[][]} 鰭心上緣（齒尖連線往下 FIN_RIM），由前往後 */
       const coreTop = TEETH.map(([tx, ty]) => [tx, ty - FIN_RIM]);
-      coreTop[coreTop.length - 1] = [-65.2, 41.4];
+      coreTop[coreTop.length - 1] = [-65.2, 43.4];
       /** @type {number[][]} 鰭心外形：前端從臀脊（x −12）起，後緣比鰭的後緣內縮約 2 mm */
       const core = [[-12, P.yN(-12) - 1], ...coreTop, [-66.6, 36.2], [-64.6, P.yN(-64.6) - 1]];
       for (const x of [-56, -48, -40, -30, -20]) {
@@ -288,12 +288,12 @@ const CONFIG = {
       /** @type {(u0: number, v0: number, u1: number, v1: number) => void} 回紋線段（u 沿翼展、v 從帶下緣往前緣） */
       const stroke = (u0, v0, u1, v1) => {
         const g = new THREE.BoxGeometry(Math.abs(v1 - v0) + 0.7, 0.14, Math.abs(u1 - u0) + 0.7);
-        g.translate(-71.6 + (v0 + v1) / 2, y + thick + 0.09, -28 + (u0 + u1) / 2);
+        g.translate(-71.6 + (v0 + v1) / 2, y + thick + 0.09, -21 + (u0 + u1) / 2);
         inlay.push(g);
       };
-      stroke(0, 0, 56, 0);
-      stroke(0, 5.4, 56, 5.4);
-      for (let k = 0; k < 8; k++) {
+      stroke(0, 0, 42, 0);
+      stroke(0, 5.4, 42, 5.4);
+      for (let k = 0; k < 6; k++) {
         const u = 7 * k;
         stroke(u + 0.8, 0, u + 0.8, 4);
         stroke(u + 0.8, 4, u + 5.2, 4);
@@ -454,7 +454,7 @@ const CONFIG = {
     });
     // 頭燈：前擋泥板前緣頂面一對往鼻根斜收的琥珀色斜縫（寬 1.4 mm）
     parts.push({
-      geometry: kit.decal((x, y, z) => (onSide(x, z) || onCrest(x, z) ? -1 : 0.7 - segDist(x, Math.abs(z), 50.5, 26.5, 57.5, 19.5)), { offset: 0.14 }),
+      geometry: kit.decal((x, y, z) => (onSide(x, z) || onCrest(x, z) ? -1 : 0.7 - segDist(x, Math.abs(z), 49.5, 25, 55.5, 17.5)), { offset: 0.14 }),
       mat: 'dGlow',
       name: 'decal-slit-lamps',
     });
@@ -463,10 +463,10 @@ const CONFIG = {
   src: {
     density_g_cm3: 'SPEC 1.14：ABS 約 1.05 g/cm³（推估）',
     wallThickness_mm: '推估：射出 ABS 殼 0.8 mm（同其他車殼）',
-    geometry: '本檔站位產生器 P（推估）：殼 x −70 → 77、翼端板後緣 −74.2；中線頂：臀脊 32.4、活板門 34.6（x 4）→ 鼻尖 17.8；擋泥板頂：後輪 35.4、腰 26.6、前輪 33；半寬：車尾 17、後輪 39.6、腰 23.6、前輪 35.6（到 x 50 仍 35.2，包住輪胎外緣 34.25）、攻城槌樑 16 → 9',
+    geometry: '本檔站位產生器 P（推估）：殼 x −70 → 77、翼端板後緣 −74.2；中線頂：臀脊 32.4、活板門 34.6（x 4）→ 鼻尖 17.8；擋泥板頂：後輪 35.4、腰 26.6、前輪 33；半寬：車尾 17、後輪 39.6、腰 23.6、前輪 35.6（x 42 以後收窄：x 50 為 31、x 56 為 22）、攻城槌樑 13.5 → 9',
     wheelArches: '前後 R17.5（31 mm 輪胎半徑 15.5 + 2 mm，同 zeppelin / griffin），cutZFrom 21；輪拱內襯用 buildProfileLiner（沿剖面反查殼內面）',
     windows: '舷窗：米科諾斯島浮雕陶甕木馬側面的舷窗（MYTH_RESEARCH G2）；本款 5 個 φ3.4 mm 圓窗貼紙，沿腰線稜上方的橡木肩帶排成一排（數量與尺寸自訂）',
-    crestWing: '鋸齒背鰭（厚 1.2 mm，齒尖 40 → 46，青銅鑲邊與黑釉鰭心兩片同厚）、青銅翼刃（厚 1.0 mm、翼展 60、後緣抬高 5°）、翼端板與斜撐（厚 1.2 mm）為實心 ABS 件，質量 = 封閉體積 × 1.05 g/cm³（推估）',
+    crestWing: '鋸齒背鰭（厚 1.2 mm，齒尖 42 → 48，青銅鑲邊與黑釉鰭心兩片同厚）、青銅翼刃（厚 1.0 mm、翼展 54、後緣抬高 5°）、翼端板與斜撐（厚 1.2 mm）為實心 ABS 件，質量 = 封閉體積 × 1.05 g/cm³（推估）',
     mounts: '對齊 chassis-midship 的車殼安裝點（SPEC 1.14）',
   },
 };
