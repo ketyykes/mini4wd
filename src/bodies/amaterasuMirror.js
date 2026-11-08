@@ -200,13 +200,13 @@ const baseBand = (x) => 2.2 * smoothstep(73, 58, x);
 const materials = () => ({
   // 朱紅：側裙、翼柱
   vermilion: namedMaterial('paint-shrine-vermilion', { color: 0xd23a22, metalness: 0.1, roughness: 0.3, clearcoat: 0.9, clearcoatRoughness: 0.08 }),
-  // 金色金屬漆：鼻面板
+  // 日金金屬漆：車身主色
   sunGold: namedMaterial('paint-sun-gold', { color: 0xe8b43c, metalness: 0.75, roughness: 0.22, clearcoat: 0.8, clearcoatRoughness: 0.1 }),
-  // 銅鏡（真金屬；名稱含 -brass → Blender metallic）
+  // 白銅鏡面：尾翼雙盤、鼻側鏡刃（真金屬；名稱含 -brass → Blender metallic）
   mirror: namedMaterial('trim-white-bronze-mirror-brass', { color: 0xeef0f3, metalness: 0.9, roughness: 0.1, clearcoat: 0.6 }),
-  // 白色尾翼支柱（緞面射出件）
+  // 朱紅尾翼支柱（緞面射出件）
   pylon: namedMaterial('paint-pylon-vermilion-abs', { color: 0xd23a22, roughness: 0.4 }),
-  // 鼻側薄片、翼板描邊、鏡緣：金色金屬漆
+  // 鏡緣、進氣口側壁：金色金屬
   clawGold: namedMaterial('trim-claw-gold-brass', { color: 0xc9a54a, metalness: 0.85, roughness: 0.25 }),
   glass: namedMaterial('pc-smoke-tint', { color: 0x2a2730, roughness: 0.05, specularIntensity: 0.6, transparent: true, opacity: 0.55, envMapIntensity: 0.5, depthWrite: false, side: THREE.DoubleSide }),
   urushi: namedMaterial('paint-urushi-black', { color: 0x141416, roughness: 0.55, clearcoat: 0.2 }),
