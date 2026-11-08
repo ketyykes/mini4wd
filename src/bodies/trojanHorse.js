@@ -4,10 +4,10 @@
 // 鬃 → 鋸齒背鰭：從活板門後緣沿臀脊一路升到車尾的鋸齒鰭（5 齒，齒尖往後勾；青銅鑲邊＋黑釉鰭心），同時是科林斯式頭盔的鬃冠；
 // 鰭尾托著一片青銅翼刃（後掠梯形、翼面一條回紋鑲嵌、兩端小翼端板、左右各一支從後擋泥板長出的斜撐）。
 // 藏兵：座艙是深胡桃木活板門，門縫一圈琥珀色火光；橡木肩帶上一排透出火光的圓舷窗（青銅窗框）；鼻側一對琥珀色斜縫頭燈。
-// 木作：淺橡木木板車身（等距接縫）、3 道青銅鉚釘箍帶橫跨車身；深胡桃木下半車身上是青銅回紋與放射尖齒紋，分割線從鼻尖往後上掃。
+// 木作：淺橡木木板車身（等距接縫）、3 道青銅鉚釘箍帶橫跨車身；中褐胡桃木下半車身上是青銅回紋與放射尖齒紋，分割線從鼻尖往後上掃。
 // 四個 R17.5 輪拱：31 mm 大輪不切輪拱也能裝。
 // 設計：shared/design/body-trojan-horse/DESIGN.md（MYTH_RESEARCH G1、G2）。剖面為本檔站位產生器（推估）。
-// 塗裝全為自創：淺橡木＋深胡桃木（霧面）＋青銅（金屬）＋琥珀色火光；不含任何廠商 / 作品名稱、商標或文字。
+// 塗裝全為自創：淺橡木＋中褐胡桃木（霧面）＋青銅（金屬）＋琥珀色火光；不含任何廠商 / 作品名稱、商標或文字。
 import * as THREE from 'three';
 import { makePolyBody, finPlate, flatPlate } from './polyBody.js';
 import { namedMaterial, decalMaterial, mergeGeos, lerp } from './loft.js';
@@ -155,19 +155,19 @@ export function buildBellySkirt({ x0, x1, zIn, zOut, yTop, yBot = 10.5, t = 1.2,
 /** @type {() => Record<string, THREE.Material>} */
 const materials = () => ({
   // 木作：霧面（roughness 0.62–0.72、幾乎無清漆）
-  oak: namedMaterial('paint-oak-light', { color: 0xc79a5e, roughness: 0.64, clearcoat: 0.05 }),
-  walnut: namedMaterial('paint-walnut-dark', { color: 0x3d2414, roughness: 0.7, clearcoat: 0.04 }),
+  oak: namedMaterial('paint-oak-light', { color: 0xdcb886, roughness: 0.64, clearcoat: 0.05 }),
+  walnut: namedMaterial('paint-walnut-dark', { color: 0x74471f, roughness: 0.7, clearcoat: 0.04 }),
   // 青銅（真金屬：名稱以 -brass 結尾，Blender 換成 metallic 1）：包頭、翼刃
   bronze: namedMaterial('trim-bronze-brass', { color: 0xb8823e, metalness: 0.8, roughness: 0.3, clearcoat: 0.3 }),
   bronze2: namedMaterial('trim-bronze-brass', { color: 0xb8823e, metalness: 0.8, roughness: 0.3, clearcoat: 0.3, side: THREE.DoubleSide }),
   // 鋸齒鬃鰭的鰭心：黑釉（帶光澤的釉面，和霧面木作做出對比）
   slip2: namedMaterial('paint-slip-black', { color: 0x16110e, roughness: 0.38, clearcoat: 0.45, clearcoatRoughness: 0.2, side: THREE.DoubleSide }),
   inner: namedMaterial('shell-inner-dark', { color: 0x1e1712, roughness: 0.85, side: THREE.BackSide }),
-  edge: namedMaterial('shell-edge-walnut', { color: 0x3d2414, roughness: 0.7, side: THREE.DoubleSide }),
+  edge: namedMaterial('shell-edge-walnut', { color: 0x74471f, roughness: 0.7, side: THREE.DoubleSide }),
   liner: namedMaterial('shell-wheelwell-walnut', { color: 0x2c1a0f, roughness: 0.8, side: THREE.DoubleSide }),
   dGroove: decalMaterial('decal-walnut-groove', { color: 0x1c1109, roughness: 0.8 }),
   // 木板接縫：深木色（不是黑），霧面
-  dSeam: decalMaterial('decal-plank-seam-walnut', { color: 0x7a5230, roughness: 0.8 }),
+  dSeam: decalMaterial('decal-plank-seam-walnut', { color: 0x9a6b3c, roughness: 0.8 }),
   dBronze: decalMaterial('decal-bronze', { color: 0xc48c44, roughness: 0.32, metalness: 0.75 }),
   // 鉚釘頭：比箍帶深的青銅
   dRivet: decalMaterial('decal-bronze-rivet', { color: 0x5e3d1c, roughness: 0.4, metalness: 0.6 }),
