@@ -2,7 +2,7 @@
 // 照四視圖 11 建模：鈍而高的珍珠白船首、寬方的車身、長座艙、平的後甲板、車尾單柱撐起的尾翼；平面改成前三叉、後魚尾，和其他款拉開。
 // 元素：
 // (1) 三叉戟 → 鼻頭三支同高的珍珠白尖（中尖從船首下方伸出、兩支外尖往外再往前彎，俯視是往前的 Ψ）；車尾一支三叉戟立柱穿過尾翼（後視 Ψ）；
-// (2) 浪花／海 → 魚尾形尾翼（後緣中央 V 形凹口）；側裙下緣一條希臘波浪捲紋（running wave）；
+// (2) 浪花／海 → 魚尾形尾翼（後緣中央 V 形凹口）；側裙下緣往外翻的浪唇，上面一條長浪線捲成兩個大浪；
 // (3) 浪峰 → 側面一道起伏的浪形分色線。
 // 設計：shared/design/body-poseidon-trident/DESIGN.md（典故來源與文物對應寫在 DESIGN.md）。剖面為本檔站位產生器（推估）。
 // 塗裝全為自創，不含任何廠商 / 作品名稱、商標或文字。
@@ -46,15 +46,15 @@ const browY = (x) => {
 
 /** @type {Record<string, (x: number) => number>} */
 const P = {
-  // 中線殼頂：船首鼻端高 23.8（鈍而高），往後經 x 60 的 25.8 爬升到座艙段 33；後甲板 32 平平收到車尾
-  yTop: monoCurve(XS, [31.5, 32, 32, 31.8, 32, 32.6, 33, 33, 32.8, 32.8, 32.8, 32.4, 28.4, 25.8, 25.8, 25.2, 23.8]),
+  // 中線殼頂：船首鼻端高 23.8（鈍而高），往後經 x 60 的 25.8 爬升到座艙段 33；座艙後的後甲板緩緩降到車尾 28.8（尾翼單柱露出更長）
+  yTop: monoCurve(XS, [28.8, 29.4, 30.2, 31.1, 32, 32.6, 33, 33, 32.8, 32.8, 32.8, 32.4, 28.4, 25.8, 25.8, 25.2, 23.8]),
   // 肩稜線基本高度（前後輪上方再沿眉線拱起）
-  yS: monoCurve(XS, [27, 27, 27, 26.8, 26, 25.5, 25.5, 25.5, 26, 27.5, 29.5, 28.5, 25.5, 22.5, 21, 20, 19]),
+  yS: monoCurve(XS, [25, 25.4, 26, 26.4, 26, 25.5, 25.5, 25.5, 26, 27.5, 29.5, 28.5, 25.5, 22.5, 21, 20, 19]),
   // 俯視半寬：前輪上方寬浮筒（37.5），往前收成船首（x 61 有 14、鼻端 6），船首下方伸出三叉戟的中尖，兩側另有兩支外尖；兩輪之間的側箱 27.5（把底盤側框蓋住）、後輪上方 30.5，
   // 車尾收窄到 13，兩側由魚尾形尾翼的兩片尾鰭往後伸出
   hw: monoCurve(XS_HW, [13, 18, 26.5, 30.5, 29, 27.5, 27.5, 27.5, 30.5, 37.5, 24, 14, 9, 6]),
-  // 側裙下緣：兩輪之間壓到 11.5，把底盤側框封起來
-  yLow: monoCurve(XS, [13, 12.5, 12, 11.5, 11.5, 11.5, 11.5, 11.5, 11.5, 11.5, 11.5, 11.5, 11.8, 12.2, 12.4, 12.6, 12.8]),
+  // 側裙下緣：兩輪之間壓到 10.2（底盤側壁頂 9.4 的正上方），側面看不到車身和底盤之間的縫
+  yLow: monoCurve(XS, [13, 12.5, 12, 11.5, 10.6, 10.2, 10.2, 10.2, 10.2, 10.6, 11.5, 11.5, 11.8, 12.2, 12.4, 12.6, 12.8]),
   // 珍珠白中脊半寬（鼻端整支中尖都是白色 → 座艙兩側 → 後甲板收窄）
   spine: monoCurve(XS, [8, 9, 10, 11, 12, 12.5, 12.5, 12.5, 12.5, 12, 11, 10, 9.5, 9.5, 9.5, 9.5, 9.5]),
 };
@@ -62,8 +62,11 @@ const P = {
 /** @type {(x: number) => number} 肩稜線（含眉線） */
 const shoulderY = (x) => smoothMax(P.yS(x), browY(x), 1.2);
 
+/** @type {(x: number) => number} 浪唇側裙往外翻的量（兩輪之間 4.2，靠近輪拱收回 0） */
+const sillFlare = (x) => 0 * smoothstep(23, 15, Math.abs(x));
+
 /**
- * 半剖面 7 點：中線 → 微圓的頂面 → 肩稜線（銳利）→ 微外張的側裙
+ * 半剖面 8 點：中線 → 微圓的頂面 → 肩稜線（銳利）→ 微外張的側裙 → 下緣往外翻的浪唇（兩輪之間）
  * @type {(x: number) => number[][]}
  */
 const profile = (x) => {
@@ -72,14 +75,16 @@ const profile = (x) => {
   const s = Math.min(shoulderY(x), t - 0.5);
   const lo = P.yLow(x);
   const d = t - s;
+  const f = sillFlare(x);
   return [
     [0, t],
     [0.34 * h, t - 0.08 * d],
     [0.64 * h, t - 0.3 * d],
     [0.87 * h, t - 0.68 * d],
     [h, s],
-    [h + 0.8, lerp(s, lo, 0.5)],
-    [h + 1.2, lo],
+    [h + 0.8, lerp(s, lo, 0.45)],
+    [h + 1.1 + 0.35 * f, lerp(s, lo, 0.78)],
+    [h + 1.2 + f, lo],
   ];
 };
 
@@ -175,23 +180,47 @@ const TRIDENT_HEAD = (() => {
   return [[-21, TRIDENT_BAR_Y], [21, TRIDENT_BAR_Y], ...prong(17.5, 2, 47.6), ...prong(0, 2.4, 48.6), ...prong(-17.5, 2, 47.6)];
 })();
 
+/** @type {number} 側裙長浪線的週期（兩輪之間只有 2 個浪峰，各捲一個大浪） */
+const SURF_PERIOD = 24;
+
 /**
- * 希臘波浪捲紋（running wave）：底線＋每格一個往後捲的半圓渦（2D 距離，負值 = 在紋樣內）
- * @type {(u: number, v: number, v0: number, period: number) => number}
+ * 捲浪螺線：從浪峰底部往後、往上再往前捲進中心的 1.7 圈內縮螺線（2D 距離，負值 = 在紋樣內）
+ * @type {(x: number, v: number, xc: number, vc: number, r0: number, w: number) => number}
  */
-const runningWave = (u, v, v0, period) => {
-  const w = 0.35;
-  const k = Math.floor(u / period);
-  const lu = u - (k + 0.5) * period;
-  const r = period * 0.3;
-  const cv = v0 + r + 0.3;
-  // 渦：從底線往上繞 3/4 圈的圓弧
-  const ang = Math.atan2(v - cv, lu);
-  const arcOk = ang > -Math.PI / 2 && ang < Math.PI * 0.95;
-  const dArc = arcOk ? Math.abs(Math.hypot(lu, v - cv) - r) - w : 9;
-  // 底線（每格從前一個渦的底部拉到這個渦的起點）
-  const dBase = Math.abs(v - v0) - w;
-  return Math.min(dArc, dBase);
+const curlDist = (x, v, xc, vc, r0, w) => {
+  const rho = Math.hypot(x - xc, v - vc);
+  // 由正下方起算、順時針（往後 → 上 → 前）的角度
+  const a0 = Math.atan2(v - vc, x - xc);
+  let th = (-Math.PI / 2 - a0) % (Math.PI * 2);
+  if (th < 0) {
+    th += Math.PI * 2;
+  }
+  const span = Math.PI * 1.7;
+  let best = 9;
+  for (const t of [th, th + Math.PI * 2]) {
+    if (t <= span) {
+      const rs = r0 * (1 - 0.62 * (t / span));
+      best = Math.min(best, Math.abs(rho - rs) - w * (1 - 0.35 * (t / span)));
+    }
+  }
+  return best;
+};
+
+/**
+ * 側裙長浪線：一條長週期的起伏流線，兩個浪峰（x −12、12）各捲成一個大浪（x 為車身座標，負值 = 在紋樣內）
+ * @type {(x: number, v: number, v0: number) => number}
+ */
+const surfDist = (x, v, v0) => {
+  const amp = 0.7;
+  const yMain = v0 + amp * Math.sin((2 * Math.PI * (x + 18)) / SURF_PERIOD);
+  // 主浪線：線寬 0.9，兩端收細
+  const dMain = Math.max(Math.abs(v - yMain) - 0.45 * smoothstep(23, 18, Math.abs(x)) - 0.05, Math.abs(x) - 22.5);
+  const r0 = 1.5;
+  let dCurl = 9;
+  for (const xc of [-12, 12]) {
+    dCurl = Math.min(dCurl, curlDist(x, v, xc, v0 + amp + r0, r0, 0.45));
+  }
+  return Math.min(dMain, dCurl);
 };
 
 /** @type {() => Record<string, THREE.Material>} */
@@ -226,7 +255,7 @@ export const poseidonTridentBody = makePolyBody({
   form: 'wave-ring',
   roof: 'canopy',
   wing: 'trident-disc',
-  theme: '三叉戟與浪：鈍而高的珍珠白船首，下方與兩側伸出三支同高的珍珠白尖（俯視是往前的 Ψ）；珍珠白中脊從船首一路到車尾；海藍車身、側面起伏的浪形分色線下是深海藍，側裙底緣一條希臘波浪捲紋；車尾收窄，單柱撐起白邊深海藍魚尾形尾翼（後緣中央 V 形凹口），一支大三叉戟立柱從尾翼中央穿出',
+  theme: '三叉戟與浪：鈍而高的珍珠白船首，下方與兩側伸出三支同高的珍珠白尖（俯視是往前的 Ψ）；珍珠白中脊從船首一路到車尾；海藍車身、側面起伏的浪形分色線下是深海藍，側裙下緣往外翻成浪唇、壓到底盤側壁正上方，浪唇上一條長浪線捲成兩個大浪；車尾收窄，單柱撐起白邊深海藍魚尾形尾翼（後緣中央 V 形凹口），一支大三叉戟立柱從尾翼中央穿出',
   material: 'ABS',
   density_g_cm3: 1.05,
   wallThickness_mm: 0.8,
@@ -251,8 +280,8 @@ export const poseidonTridentBody = makePolyBody({
   },
   sideZMin: 30,
   zones: () => [
-    // 側裙底緣：深海軍藍（希臘波浪捲紋貼在這一圈上）
-    { mat: 'navy', keep: (x, y) => P.yLow(x) + 4.6 - y },
+    // 側裙浪唇：深海軍藍（長浪線與捲浪貼在這一圈上）
+    { mat: 'navy', keep: (x, y) => P.yLow(x) + 6.8 - y },
     // 珍珠白中脊
     { mat: 'pearl', keep: (x, y, z) => P.spine(x) - Math.abs(z) },
     // 浪形分色線以下：深海藍
@@ -276,14 +305,20 @@ export const poseidonTridentBody = makePolyBody({
 
     // ── 車尾：單柱（珍珠白）撐起深海藍魚尾形尾翼，三叉戟立柱從尾翼中央穿出（珍珠白，後視 Ψ）──
     {
-      const yDeck = P.yTop(-53) - 1;
+      // 單柱做成一道浪峰立板：前緣是往上捲的浪面，後緣越過車尾往下收
+      /** @type {(x: number) => number} 後甲板中線高度（埋進殼面 1 mm） */
+      const deckY = (x) => P.yTop(Math.max(x, -70)) - 1;
       const pylon = [
-        [-53, yDeck],
-        [-57, DISC.y + 0.2],
-        [-66.5, DISC.y + 0.2],
-        [-65.5, P.yTop(-65.5) - 1],
+        [-48.5, deckY(-48.5)],
+        [-52.5, deckY(-52.5) + 1.8],
+        [-55.2, DISC.y - 0.6],
+        [-56.5, DISC.y + 0.2],
+        [-72.8, DISC.y + 0.2],
+        [-73.4, 33.2],
+        [-71.6, 30.4],
+        [-69.6, deckY(-69.6)],
       ];
-      parts.push({ geometry: finPlate(pylon, 0, 1.8), mat: 'pearl', solid: true, outline: true, name: 'disc-pylon' });
+      parts.push({ geometry: finPlate(pylon, 0, 2), mat: 'pearl', solid: true, outline: true, name: 'disc-pylon' });
       /** @type {number[][]} 魚尾形尾翼整圈外形（+z 半邊往後繞到 −z 半邊） */
       const fluke = [...FLUKE, ...FLUKE.slice(1, -1).reverse().map(([x, z]) => [x, -z])];
       parts.push({ geometry: flatPlate(fluke, DISC.y, DISC.t), mat: 'deepSolid', solid: true, outline: true, name: 'fluke-wing' });
@@ -315,11 +350,11 @@ export const poseidonTridentBody = makePolyBody({
         mat: 'dPearl',
         name: `decal-wave-line-${side}`,
       });
-      // 側裙底緣的希臘波浪捲紋（珍珠白，前後輪之間）
+      // 側裙浪唇上的長浪線與兩個捲浪（珍珠白，前後輪之間）
       parts.push({
-        geometry: kit.decal(sideDecal((u, v) => Math.max(runningWave(u + 40, v, P.yLow(side * u) + 0.9, 5.2), Math.abs(u) - 22), { x0: 0, y0: 0, zMin: 12, side })),
+        geometry: kit.decal(sideDecal((u, v) => surfDist(side * u, v, P.yLow(side * u) + 4.5), { x0: 0, y0: 0, zMin: 12, side })),
         mat: 'dPearl',
-        name: `decal-running-wave-${side}`,
+        name: `decal-surf-wave-${side}`,
       });
     }
     // 座艙罩珍珠白細框
