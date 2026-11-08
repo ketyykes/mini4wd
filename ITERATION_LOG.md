@@ -141,6 +141,20 @@
 - 判定後：神話組 ≥ 0.80 **16 → 11 對**（tanngrisnir × shiva 0.823 最大）；全部最大 0.842 不變；`tests/bodies.test.js` 通過。
 - 計分（14:19–15:14，退回 14 款後的版本）：**17/20**，P16_every_body_lap 912 s、P17_phase7_laps 315 s、P18_pairwise 2375 s 逾時（上午同項 298 s；計分期間同時有 Blender、評審、iter-145 的 4 組 subagent 與另一個專案的工作階段，平均負載約 12）。程式碼凍結後在空檔重跑。body-tris（負載 5 時量）：碰撞格 248–585 ms（subagent 回報的 1000 以上是 7 組同時跑的負載），正面面積 2482–3150。
 
+## iter-145（15:1x 派工，15:33–15:49 交件，16:0x 判定）：平面微調拆配對＋小破綻
+- 5 個 subagent，只動平面、不改配色與招牌元素（`shared/stage10/brief-iter145.md`）：a tanngrisnir；b mushussu（yaga 已換 iter-144 版，只剩 mushussu）；c firebird、khepri；d quetzal、shiva；e trojan、minotaur。全部合併後神話組 ≥ 0.80：11 → 2 對。
+- 對照組 `render/out/pre145/`：iter-144 退回的款用 pre144 的圖；iter-144 保留的 4 款從 iter-144 並排評審圖的新版那排裁切。評審用第二版 brief（先只看並排，判完才看四視圖、只比造型）。
+- 判定（`shared/reviews/iter-145/REVIEW.md`）：tanngrisnir 新版較好（鼻頭軛改直橫木，不再像鬍子）→ 保留；mushussu、shiva、trojan 看不出差別、≥ 0.80 對數變少 → 保留；firebird、khepri、minotaur、quetzal 主線版些微較好 → 退回 iter-144 版。
+- 判定後神話組 ≥ 0.80：**11 → 7 對**（tanngrisnir × shiva 0.823、khepri × gundestrup 0.820、minotaur × tanngrisnir 0.817、khepri × firebird 0.812、mushussu × firebird 側 0.810、tanngrisnir × amaterasu 0.803、quetzal × shiva 側 0.801）；全部最大 0.842。
+
+## iter-146（16:0x–16:41）：拆最後 2 對（tanngrisnir × amaterasu、× shiva）
+- 1 個 subagent 只動 amaterasu、shiva 的平面。amaterasu 交件（× tanngrisnir 0.803 → 0.790）；shiva 能拆掉配對的版本正面面積 2984–2999 超過 2950，沒交。
+- amaterasu 甲乙並排（`shared/reviews/iter-146/REVIEW.md`）：主線版些微較好（新版後輪後緣沒包住、看得到底盤）→ 退回，程式與 iter-145 相同（app `976edf0`）。
+
+## 延長收尾（16:4x–18:00）
+- 64 samples 5 視角重出這段時間改過的 14 款：apollo、heimdall、gullinbursti、venus、kitsune、yaga（15:21–15:43）；minotaur、quetzal、firebird、mushussu、trojan、tanngrisnir（16:12–16:31）；shiva（16:38）；其餘 10 款沿用 11:00 的 64 samples 圖（amaterasu 用 `pre144` 的圖）。`lineup_myth*.png`、`before_after_myth_p13.png`、`fourview_vs_model_p13.png` 重出成 24 款。
+- 最終陣容盲評（`shared/reviews/final-p13d/`，兩位評審各自同時看舊 16 款與最終 24 款）：最終 7.29 / 7.64、舊 7.36 / 7.57，**平均 7.47 vs 7.47 打平**（11:00 時 7.21 vs 7.43）。炫砲度 7 / 7.5、多樣性 7.5 / 8。長得像的配對：最終 7 / 8 組、舊 7 / 7 組。兩位都建議把 heimdall、firebird、minotaur、kunpeng（＋cerberus）換回第十二階段舊版造型（與 PROGRESS 待決第 3 項相同，等使用者決定）。
+
 # 第十階段：神話車殼依 LG1 家族從頭重塑（2026-11-05 12:0x 起，截止 15:30）
 
 ## 第 0 輪（12:00–12:15）
