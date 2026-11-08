@@ -16,8 +16,8 @@ import { monoCurve, buildStations, smoothNormals } from './gazelleLeap.js';
 const XS = [-64, -58, -52, -46, -38, -28, -16, -4, 8, 20, 30, 40, 46, 52, 58, 62, 66];
 /** @type {Record<string, (x: number) => number>} */
 const P = {
-  // 半寬：前寬後窄——前擋泥板是 ±42.6 的寬肩，x 40 之後往前收窄（x 52 為 ±17），收成 ±12.5 → ±9.2 的楔形短鼻；收腰 ±31、後擋泥板只到 ±30.6（俯視後輪露在車身外）、車尾收成 ±22；新月尾翼翼端伸到 ±44，比車尾寬
-  hw: monoCurve(XS, [22, 23.5, 29, 30.5, 30.6, 31, 31, 31.4, 33.5, 39.6, 41.6, 42.6, 33.5, 17, 12.5, 10.8, 9.2]),
+  // 半寬：前寬後窄——前擋泥板是 ±42.6 的寬肩，x 46 之後收成 ±15 → ±9.5 的楔形短鼻；收腰 ±31、後擋泥板只到 ±30.6（俯視後輪露在車身外）、車尾 ±25；新月尾翼翼端伸到 ±44，比車尾寬
+  hw: monoCurve(XS, [25, 27.4, 30, 30.5, 30.6, 31, 31, 31.4, 36.5, 39.6, 41.6, 42.6, 41, 26, 15, 11.5, 9.5]),
   // 中央頂線：車尾高，往前平順降到鼻端 19
   yC: monoCurve(XS, [33.4, 35.2, 35.8, 35.6, 35, 34.4, 33.6, 32.8, 31.6, 30.4, 29.4, 28.6, 27.6, 25, 22, 20.2, 19]),
   // 擋泥板肩（0.55 半寬）：前擋泥板比引擎蓋高
@@ -175,8 +175,7 @@ const materials = () => ({
   gold: namedMaterial('trim-horn-brass', { color: 0xd2a23c, metalness: 0.85, roughness: 0.3, side: THREE.DoubleSide }),
   // 尾翼頂面的陶土色新月條
   clay2: namedMaterial('paint-terracotta-clay', { color: 0xc8662e, roughness: 0.42, clearcoat: 0.45, clearcoatRoughness: 0.3, side: THREE.DoubleSide }),
-  // 座艙罩底下的座艙內襯：接近黑的深茶色霧面（座艙補光下才不會反白）
-  cockpit: namedMaterial('cockpit-dark', { color: 0x080605, roughness: 0.95, side: THREE.DoubleSide }),
+  cockpit: namedMaterial('shell-inner-dark', { color: 0x14100e, roughness: 0.9, side: THREE.DoubleSide }),
   // 大型多面座艙罩：深茶色煙燻 PC
   glass: namedMaterial('pc-tint-umber-smoke', { color: 0x2a1c14, roughness: 0.06, specularIntensity: 0.6, transparent: true, opacity: 0.84, envMapIntensity: 0.5, depthWrite: false, side: THREE.DoubleSide }),
   inner: namedMaterial('shell-inner-dark', { color: 0x1a1716, roughness: 0.85, side: THREE.BackSide }),
@@ -439,7 +438,7 @@ const CONFIG = {
   src: {
     density_g_cm3: 'SPEC 1.14：ABS 約 1.05 g/cm³（推估）',
     wallThickness_mm: '推估：射出 ABS 殼 0.8 mm（同其他車殼）',
-    geometry: '本檔站位產生器 P（推估，造型比例取自 shared/design/body-minotaur-maze/fourview.png 與 fourview_trace.txt，縮到底盤尺寸）：殼長 130（−64 ~ 鼻端 66）；鼻端楔形中線 27.6 → 19，上面疊三層階梯（每層高 1.5，前端 x 65.4 / 60 / 54.4、後端半寬 16 / 12 / 8）、中央頂 35.8、座艙罩頂約 37.8、牛角中央 37.4 → 角尖約 48；寬：前擋泥板 ±42.6、收腰 ±31、後擋泥板 ±30.6、車尾 ±22、鼻端 ±9.2；牛角 ±45',
+    geometry: '本檔站位產生器 P（推估，造型比例取自 shared/design/body-minotaur-maze/fourview.png 與 fourview_trace.txt，縮到底盤尺寸）：殼長 130（−64 ~ 鼻端 66）；鼻端楔形中線 27.6 → 19，上面疊三層階梯（每層高 1.5，前端 x 65.4 / 60 / 54.4、後端半寬 16 / 12 / 8）、中央頂 35.8、座艙罩頂約 37.8、牛角中央 37.4 → 角尖約 48；寬：前擋泥板 ±42.6、收腰 ±31、後擋泥板 ±30.6、車尾 ±25、鼻端 ±9.5；牛角 ±45',
     wheelArches: '前後 R15.2（26 mm 輪胎半徑 13 + 2.2 mm）',
     wing: '牛角尾翼：ABS 橢圓斷面實體件（中央前後 12.8、高 3.2，往角尖收到 0.7，推估），中心 x −66、半翼展 45、角尖前彎 6、上翹 10.6；後掠中央單柱厚 2.4；角根環箍 ABS 0.7 mm 寬',
     mounts: '對齊 chassis-midship 的車殼安裝點（SPEC 1.14）',

@@ -135,7 +135,11 @@
 - Blender 32 samples 3 視角，`BASE=pre144` 做甲乙並排（`shared/reviews/iter-144/`、`iter-144b/`，各 11 款，各一位評審）。
 - **評審偏差與重評**：第一次兩位評審的理由反覆寫「配色跟四視圖一樣」「乙的配色比較接近四視圖」，把四視圖的 AI 隨機配色當成目標（GOAL 明訂配色用文化配色、不照四視圖），只改配色的款幾乎全輸。原因是評審資料夾把四視圖和甲乙放在一起、brief 沒講清楚。判定前先決定：換兩位新評審、22 款全部重評、brief 改成先只看並排判甲乙、判完才看四視圖且只比造型（`brief-review144-v2.md`，結果在 `REVIEW-v2.md`），**以重評為最終判定，不再挑**。兩次評審有 5 款判定相反（venus、yaga 由新變舊；quetzal、apollo、heimdall 由舊變新），單款甲乙並排的雜訊很大。
 - **最終判定（重評）**：保留 8 款——新版較好 kitsune、minotaur、quetzal、apollo、heimdall；看不出差別而且 ≥ 0.80 對數變少 firebird（4 → 3）、mushussu（4 → 3）、gullinbursti（1 → 0）。退回 iter-143 版 14 款：venus、amaterasu、cerberus、gundestrup、pele、shiva、tanngrisnir、khepri（看不出差別、對數沒變少）、kunpeng、poseidon、sleipnir、trojan、yaga、zeus。
-- 判定後：神話組 ≥ 0.80 **16 → 11 對**（tanngrisnir × shiva 0.823 最大）；全部最大 0.842 不變；`tests/bodies.test.js` 通過。body-tris（負載 5 時量）：碰撞格 248–585 ms（subagent 回報的 1000 以上是 7 組同時跑的負載），正面面積 2482–3150。
+- **換色改用陣容判斷（15:0x 使用者要求「改用整排陣容圖來判斷換色要不要留」）**：逐款評審一次只看一台車，看不到撞色。先決定規則：兩位新評審盲評兩個 24 款陣容（front34 從並排評審圖裁切，兩邊同樣縮放），平均較高的採用。
+  - 第一次：現行（14 款退回）vs 換色（14 款全換 iter-144 版）→ 現行 7.71 / 7.36、換色 7.64 / 7.21，平均 7.54 vs 7.43，**整批換色不採用**（換色版多出一群灰車 zeus、sleipnir、tanngrisnir、gundestrup；cerberus 變黑撞 pele）。兩位評審都獨立建議「以現行為底，換上 venus、yaga」（`shared/reviews/lineup-144/`）。
+  - 第二次：現行 vs 只換 venus、yaga → 現行 7.57 / 7.36、換色 7.64 / 7.43，平均 7.47 vs 7.54，**採用 venus（玫瑰粉）、yaga（苔綠風化木）**；長得像的配對 9→7、10→8（拆掉三台木紋車，venus 成為唯一的粉紅車）（`shared/reviews/lineup-144z/`）。
+- 判定後：神話組 ≥ 0.80 **16 → 11 對**（tanngrisnir × shiva 0.823 最大）；全部最大 0.842 不變；`tests/bodies.test.js` 通過。
+- 計分（14:19–15:14，退回 14 款後的版本）：**17/20**，P16_every_body_lap 912 s、P17_phase7_laps 315 s、P18_pairwise 2375 s 逾時（上午同項 298 s；計分期間同時有 Blender、評審、iter-145 的 4 組 subagent 與另一個專案的工作階段，平均負載約 12）。程式碼凍結後在空檔重跑。body-tris（負載 5 時量）：碰撞格 248–585 ms（subagent 回報的 1000 以上是 7 組同時跑的負載），正面面積 2482–3150。
 
 # 第十階段：神話車殼依 LG1 家族從頭重塑（2026-11-05 12:0x 起，截止 15:30）
 
