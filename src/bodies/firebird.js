@@ -17,15 +17,15 @@ import { buildArchWell, chassisBlockedNearArch } from './kitsuneNinetail.js';
 /** @typedef {import('./loft.js').BodyPart} BodyPart */
 
 /** @type {number} 車尾封口 x（火羽大翼再往後伸） */
-const X_REAR = -66;
+const X_REAR = -60;
 /** @type {number} 鼻尖 x */
 const X_FRONT = 75;
 /** @type {number[]} 站位參數表（x 由後到前，前後軸 x = ±40） */
-const XS = [-66, -62, -54, -40, -28, -14, 0, 14, 28, 40, 48, 56, 62, 67, 71, 75];
+const XS = [-60, -57, -51, -40, -28, -14, 0, 14, 28, 40, 48, 56, 62, 67, 71, 75];
 /** @type {Record<string, (x: number) => number>} */
 const P = {
-  // 俯視半寬（肩稜線）：尖鼻 2.5 → 前翼子板 39.5 → 前輪後方往內收成 28 的細腰 → 往後鼓成側箱 39.5（四視圖俯視側箱最寬處）→ 後輪 38.5 → 收成窄車尾 14（火羽大翼的翼根）
-  hw: monoCurve(XS, [14, 18, 27, 38.5, 39.5, 39.5, 33, 28, 33.5, 39.5, 37.5, 30, 21.5, 14.5, 8.5, 2.5]),
+  // 俯視半寬（肩稜線）：尖鼻 2.5 → 前翼子板 39.5 → 前輪後方往內收成 28 的細腰 → 往後鼓成側箱 39.5（四視圖俯視側箱最寬處）→ 後輪 38.5 → 收成短而窄的車尾 16（火羽大翼往後懸出）
+  hw: monoCurve(XS, [16, 20.5, 28, 38.5, 39.5, 39.5, 33, 28, 33.5, 39.5, 37.5, 30, 21.5, 14.5, 8.5, 2.5]),
   // 中線高度：鼻尖 15.2 → 一路斜升的長楔形引擎蓋 30.5（x 40）→ 低矮的座艙頂 34.6（x 0）→ 後甲板 32.3 → 車尾 29.5
   yTop: monoCurve(XS, [29.5, 30.5, 31.5, 32.3, 33, 34, 34.6, 34, 32.2, 30.5, 28.4, 26, 23.4, 20.6, 18, 15.2]),
   // 車頂（座艙 / 背脊）平台半寬：座艙段 12，往鼻尖收成 0.8 的刀稜
@@ -67,7 +67,7 @@ const profile = (x) => {
 };
 
 /** @type {{ x: number, pts: number[][] }[]} 車尾與鼻端每 1 mm 一站，中段每 2 mm */
-const STATIONS = [...buildStations(X_REAR, -58, 1, profile).slice(0, -1), ...buildStations(-58, 58, 2, profile).slice(0, -1), ...buildStations(58, X_FRONT, 1, profile)];
+const STATIONS = [...buildStations(X_REAR, -54, 1, profile).slice(0, -1), ...buildStations(-54, 58, 2, profile).slice(0, -1), ...buildStations(58, X_FRONT, 1, profile)];
 
 /** @type {{ x: number, y: number, radius: number, cutZFrom: number }[]} 前後輪拱（R17.5：31 mm 輪胎半徑 15.5 + 2 mm） */
 const ARCHES = [
@@ -244,14 +244,34 @@ const wingPlate = (pts, thick, lift, sg) => {
 };
 
 /**
+ * 殼頂面在 (x, |z|) 的高度：沿半剖面折線（中線 → 肩稜線）內插，超出肩線回傳肩線高度
+ * @type {(x: number, az: number) => number}
+ */
+const deckY = (x, az) => {
+  const pts = profile(x).slice(0, 5);
+  for (let i = 0; i < pts.length - 1; i++) {
+    const [z0, y0] = pts[i];
+    const [z1, y1] = pts[i + 1];
+    if (az >= z0 && az <= z1) {
+      return lerp(y0, y1, (az - z0) / (z1 - z0));
+    }
+  }
+  return pts[pts.length - 1][1];
+};
+
+/**
  * 火羽尖翼：左右各一片，每片 3 層羽片疊合，各由一片往後掠的灰色翼柱從後甲板撐起
  * @type {() => Record<string, THREE.BufferGeometry>}
  */
 const buildPlumeWings = () => {
   /** @type {Record<string, THREE.BufferGeometry[]>} */
   const groups = { ash2: [] };
-  // 翼柱側視輪廓：底緣埋進後甲板（甲板下 1.5），頂緣貼到翼底，前緣往後掠
-  const stalk = [[-41, P.yTop(-41) - 1.5], [-46, WING_ROOT.y + 1.2], [-58, WING_ROOT.y + 1.2], [-60, P.yTop(-60) - 1.5]];
+  // 翼柱側視輪廓：頂緣貼到翼底、前緣往後掠；底緣沿翼柱外側那一面的殼頂高度往下埋 0.8，整段貼著後甲板，不留縫
+  /** @type {number[][]} */
+  const stalk = [[-46, WING_ROOT.y + 1.2], [-58, WING_ROOT.y + 1.2]];
+  for (let x = -58.5; x <= -41; x += 1.75) {
+    stalk.push([x, deckY(x, STALK_Z + STALK_T / 2) - 0.8]);
+  }
   for (const sg of [-1, 1]) {
     const g = new THREE.ExtrudeGeometry(new THREE.Shape(stalk.map(([x, y]) => new THREE.Vector2(x, y))), { depth: STALK_T, bevelEnabled: false });
     g.translate(0, 0, sg * STALK_Z - STALK_T / 2);
@@ -439,9 +459,9 @@ export const firebirdBody = makePolyBody({
     wallThickness_mm: '推估：射出 ABS 殼 0.8 mm（同其他款）',
     fourview: 'shared/design/body-firebird/fourview.png（四視圖 12）與 fourview_trace.txt：長楔形鼻、座艙位置、側箱、分成兩半往上翹的鷗翼照圖，高度縮到合法範圍（推估）',
     geometry:
-      '本檔站位產生器 P（推估）：殼 x −66 → 75；肩線半寬 鼻尖 2.5、前翼子板 39.5、座艙前細腰 28、側箱 39.5、後輪 38.5、車尾 14（＋牆腳外張 0.8，外框半寬 ≤ 48.0）；中線 鼻尖 15.2、引擎蓋 30.5（x 40）、座艙頂 34.6、車尾 29.5；翼子板刀稜 33.2；側裙下緣 10.5',
+      '本檔站位產生器 P（推估）：殼 x −60 → 75；肩線半寬 鼻尖 2.5、前翼子板 39.5、座艙前細腰 28、側箱 39.5、後輪 38.5、車尾 16（＋牆腳外張 0.8，外框半寬 ≤ 48.0）；中線 鼻尖 15.2、引擎蓋 30.5（x 40）、座艙頂 34.6、車尾 29.5；翼子板刀稜 33.2；側裙下緣 10.5',
     wheelArches: '前後 R17.5（31 mm 輪胎半徑 15.5 + 2 mm），不切輪拱可裝；輪拱內襯＋輪胎內側環形擋板（buildArchWell）',
-    wings: '火羽尖翼：翼根基準 (x −40, y 34, |z| 16)、上反角 32°，灰色翼柱 |z| 16.5、厚 1.4（x −41 → −60）；每片 3 層羽片（翼尖 u 37.5 / 36.5 / 35.5、v 26 / 20 / 14，板厚 1.0 / 0.8 / 0.6，逐層疊高）；ABS 實心件（推估），質量 = 封閉體積 × 1.05 g/cm³',
+    wings: '火羽尖翼：翼根基準 (x −40, y 34, |z| 16)、上反角 32°，灰色翼柱 |z| 16.5、厚 1.4（x −41 → −58.5，底緣沿殼頂往下埋 0.8）；每片 3 層羽片（翼尖 u 37.5 / 36.5 / 35.5、v 26 / 20 / 14，板厚 1.0 / 0.8 / 0.6，逐層疊高）；ABS 實心件（推估），質量 = 封閉體積 × 1.05 g/cm³',
     livery: '箭形座艙 x −16 → 36、最寬半寬 10.8；側箱黑漆 x −23.5 → 23、上緣 y 15 → 24.5；捲莖週期 11、漿果半徑 0.95；百葉 5 道；漸層羽緣 x0 −22、後掠 0.35、瓣寬 7（皆為塗裝分區 / 貼紙，推估）',
     myth: '火鳥尾羽（Afanasyev 故事，DESIGN.md 研究一節）、Khokhloma 漆器黑紅金與捲莖漿果紋（MYTH_RESEARCH 斯拉夫節）；不做鳥頭、鳥身、鳥爪',
     mounts: '對齊 chassis-midship 的車殼安裝點（SPEC 1.14）',
