@@ -159,7 +159,7 @@ export function buildProfileLiner(arch, zFrom, profileFn, inset = 1.2) {
 /** @type {() => Record<string, THREE.Material>} */
 const materials = () => ({
   // 青金石珍珠漆（亮面清漆＋微金屬）：鞘翅量體、翼面外排羽格
-  lapis: namedMaterial('paint-lapis-pearl', { color: 0x1f4f96, roughness: 0.26, metalness: 0.35, clearcoat: 1.0, clearcoatRoughness: 0.06 }),
+  lapis: namedMaterial('paint-lapis-pearl', { color: 0x22348c, roughness: 0.26, metalness: 0.35, clearcoat: 1.0, clearcoatRoughness: 0.06 }),
   // 玄武岩黑：收腰與側裙（霧面）
   basalt: namedMaterial('paint-basalt-black', { color: 0x1c1e23, roughness: 0.66 }),
   // 彩陶綠松石（亮面釉）：前擋泥板到鼻尖、翼面內排羽格
@@ -374,6 +374,19 @@ export const khepriScarabBody = makePolyBody({
     // ---- 貼紙 ----
     // 鞘翅縱紋：每片鞘翅 3 道金色細線（寬 0.7 mm），沿擋泥板拱頂往車尾收攏
     const STRIAE = [0.36, 0.6, 0.8];
+    // 鞘翅上的綠松石彩陶帶：第 1、2 道縱紋之間填滿綠松石（胸飾金框裡的綠松石鑲嵌），金色縱紋壓在帶的兩緣
+    parts.push({
+      geometry: kit.decal((x, y, z) => {
+        if (x > -4 || x < -62) {
+          return -1;
+        }
+        const h = P.hw(x);
+        const az = Math.abs(z);
+        return Math.min(az - STRIAE[0] * h, STRIAE[1] * h - az, y - P.yA(x) - 1.2, -4 - x, x + 62);
+      }),
+      mat: 'dTurquoise',
+      name: 'decal-elytra-turquoise-band',
+    });
     parts.push({
       geometry: kit.decal((x, y, z) => {
         if (x > -4 || x < -62) {
@@ -386,7 +399,7 @@ export const khepriScarabBody = makePolyBody({
           d = Math.min(d, Math.abs(az - f * h));
         }
         return Math.min(0.35 - d, y - P.yA(x) - 1.2, -4 - x, x + 62);
-      }),
+      }, { offset: 0.1 }),
       mat: 'dGold',
       name: 'decal-elytra-striae',
     });
@@ -447,7 +460,7 @@ export const khepriScarabBody = makePolyBody({
     geometry: '本檔站位產生器 P（推估）：殼長 141（鞘翅尾端 −65 ~ 鼻尖 76），含日盤外框 x −66.3 ~ 76.1（142.4）；鞘翅量體頂 39、前擋泥板量體頂 36.2、收腰頂 33.4（頂面填平）、翼面後緣頂約 41.1（全車最高）；寬：鞘翅 ±44.4、前擋泥板 ±41.6、收腰 ±20.5、鼻尖 ±8',
     wheelArches: '前後 R17.5（31 mm 輪胎半徑 15.5 + 2 mm，同 zeppelin / griffin），可裝 26 / 31 mm 輪',
     disc: '有翼日盤尾翼：日盤是金色實心 ABS 電鍍盤 R9.6 × 1.6 mm（20 段）、往後躺 0.12 弧度（約 6.9°），中心 x −56、y 35.8，盤前緣埋進鞘翅縫；盤面紅玉髓盤心 R6.4；盤緣金色圓環（管半徑 0.7）。兩片翼：翼根 |z| 9 接日盤、翼尖 |z| 43，前緣在 x −50，到鞘翅拱頂為止沿殼面起伏（高出殼面 0.5 mm）、拱頂以外每 1 mm 降 0.5 mm（翼尖離開殼面微微上翹），弦長 14 → 10 mm、每片羽尖再多 2.6 mm（每側 6 片羽），和日盤同一個斜度往後上翹；金色底板厚 0.9 mm，上面每片羽 2 格鑲嵌（綠松石、青金石，厚 0.45 mm）。座艙罩：金色實心橢球 21 × 10.4 × 13.6 mm（下半埋進殼內）。質量 = 封閉體積 × 1.05 g/cm³（推估）',
-    palette: '色碼取 MYTH_RESEARCH 3-2（推估，E2 Met 16.1.3 胸飾材質）：金 #C9A227、青金石 #26619C（鞘翅珍珠漆用較深的 #1F4F96）、紅玉髓 #B1342A、綠松石 #3FB8AF（前段彩陶釉用 #2F9E98）',
+    palette: '色碼取 MYTH_RESEARCH 3-2（推估，E2 Met 16.1.3 胸飾材質）：金 #C9A227、青金石 #26619C（鞘翅珍珠漆用偏紫的深群青 #22348C，和釉磚藍拉開）、紅玉髓 #B1342A、綠松石 #3FB8AF（前段彩陶釉用 #2F9E98；鞘翅上每側一條綠松石帶）',
     mounts: '對齊 chassis-midship 的車殼安裝點（SPEC 1.14）',
   },
 });
