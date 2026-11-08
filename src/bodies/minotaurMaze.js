@@ -1,9 +1,9 @@
 // 米諾陶洛斯（body-minotaur-maze，神話組・希臘）：照四視圖 18 的「三層階梯鼻、大型多面座艙罩、高車尾、單柱牛角新月尾翼」建模；車上沒有牛的頭、臉、眼、鼻孔、鼻環。
-// 牛角 → 尾翼：一片加粗的金色新月形尾翼，中央最低、兩端往上翹並往前彎（後視、俯視都是新月），單柱撐在車尾中線，整片高過座艙罩頂。
+// 牛角 → 尾翼：一支粗壯的金色牛角（克諾索斯「聖角」的 U 形）橫在車尾後方，中段平、外段急翹成兩支尖角，角根兩道黑色環箍；後掠單柱撐在車尾中線，角尖高過座艙罩頂。
 // 迷宮 → 階梯鼻與紋樣：楔形鼻上疊三層同心梯形階梯（正視三圈梯形、側視三階，一圈比一圈小），頂面陶土橘、側面與正面奶油白；座艙罩正前方一道橫向細線迷宮帶；
-// 座艙罩後方到車尾的背脊上一整條奶油白底黑回紋帶；側面下半是壁畫藍板塊，板塊上奶油白連續回紋帶，上緣一條金色阿里阿德涅之線。
+// 座艙罩後方到車尾的背脊上一整條黑釉底陶土色回紋帶；引擎蓋與後甲板外側斜面各一段黑釉紋樣帶，帶內一列金色雙斧（labrys）；側面下半是亮面黑釉板塊，板塊上陶土色連續回紋帶，上緣一條金色阿里阿德涅之線。
 // 設計：shared/design/body-minotaur-maze/DESIGN.md（MYTH_RESEARCH G6、G9、G10、G12、G13）。剖面為本檔站位產生器（推估）；塗裝全為自創，不含任何文字、號碼或商標。
-// 塗裝：陶土橘（霧面）為主色，克諾索斯壁畫藍（緞面）做側面下半，奶油白做回紋與描線，金色做尾翼與細線。
+// 塗裝：陶土橘（半光澤釉面）為主色，黑釉（黑繪陶）做側面下半與紋樣帶，陶土色做黑釉上的留白紋樣，奶油白做階梯側面與描線，金色做牛角與雙斧。
 import * as THREE from 'three';
 import { makePolyBody, finPlate, sweepEllipse } from './polyBody.js';
 import { namedMaterial, decalMaterial, sideDecal, mergeGeos, lerp } from './loft.js';
@@ -21,9 +21,9 @@ const P = {
   // 中央頂線：車尾高，往前平順降到鼻端 19
   yC: monoCurve(XS, [33.4, 35.2, 35.8, 35.6, 35, 34.4, 33.6, 32.8, 31.6, 30.4, 29.4, 28.6, 27.6, 25, 22, 20.2, 19]),
   // 擋泥板肩（0.55 半寬）：前擋泥板比引擎蓋高
-  yF: monoCurve(XS, [34, 36.2, 36.8, 36.4, 35.4, 33, 29.4, 28.4, 29.2, 31, 31.6, 31.4, 30.2, 26.8, 23, 21, 19.8]),
+  yF: monoCurve(XS, [33.2, 35.2, 35.8, 35.6, 35, 33, 29.4, 28.4, 29.2, 31, 31.6, 31.4, 30.2, 26.8, 23, 21, 19.8]),
   // 肩稜（最寬處）
-  yE: monoCurve(XS, [30, 32.6, 33, 32.6, 31.6, 29, 25, 24, 24.8, 27, 28, 27.8, 27, 24.6, 21.8, 20.2, 19]),
+  yE: monoCurve(XS, [29.2, 31.6, 32, 31.8, 31.2, 29, 25, 24, 24.8, 27, 28, 27.8, 27, 24.6, 21.8, 20.2, 19]),
   // 側壁下緣
   yLow: monoCurve(XS, [16.4, 14.6, 13.6, 13, 12.9, 12.7, 12.5, 12.5, 12.5, 12.5, 12.6, 13, 13.4, 13.6, 14.2, 14.6, 15]),
 };
@@ -136,6 +136,26 @@ const TIERS = [
 /** @type {number} 每層高度 */
 const TIER_H = 1.5;
 
+/**
+ * 雙斧（labrys）：中央一支柄（沿 b 方向），兩側各一片外緣呈弧形的斧刃（沿 a 方向張開），單位 k
+ * @type {(a: number, b: number, k: number) => number} 回傳距離（負值 = 圖形內）
+ */
+const labrysSd = (a, b, k) => {
+  const ua = Math.abs(a) / k;
+  const ub = b / k;
+  // 柄：寬 0.5、長 7
+  const handle = Math.max(ua - 0.25, Math.abs(ub) - 3.5);
+  // 斧刃：從柄往外 0.5 → 3，半高從 0.7 張到 2.2，外緣是以柄為圓心半徑 3 的弧
+  const t = Math.min(1, Math.max(0, (ua - 0.5) / 2.5));
+  const blade = Math.max(0.5 - ua, Math.abs(ub) - lerp(0.7, 2.2, t), Math.hypot(ua, ub * 0.55) - 3);
+  return Math.min(handle, blade) * k;
+};
+/** @type {{ x0: number, x1: number, xs: number[], k: number }[]} 引擎蓋／後甲板外側斜面的黑釉紋樣帶：前後端、帶內雙斧的 x、雙斧單位 */
+const LABRYS_BANDS = [
+  { x0: 1, x1: 35, xs: [7, 18, 29], k: 1.3 },
+  { x0: -58, x1: -31, xs: [-52, -43.5, -35], k: 1.05 },
+];
+
 /** @type {{ x0: number, hz: number }} 座艙罩前方橫向迷宮帶：帶後緣 x、半寬（線性回紋沿 z 走） */
 const MAZE = { x0: 17, hz: 14.4 };
 
@@ -144,17 +164,17 @@ const SPINE = { x0: -64, x1: -27, hz: 4.2 };
 
 /** @type {() => Record<string, THREE.Material>} */
 const materials = () => ({
-  // 陶土橘（霧面）：主色
-  clay: namedMaterial('paint-terracotta-clay', { color: 0xc4652f, roughness: 0.7, clearcoat: 0.04 }),
-  // 克諾索斯壁畫藍（緞面）：側面下半
-  blue: namedMaterial('paint-fresco-blue', { color: 0x2e5b85, roughness: 0.48, clearcoat: 0.2, clearcoatRoughness: 0.35 }),
+  // 陶土橘（半光澤釉面）：主色
+  clay: namedMaterial('paint-terracotta-clay', { color: 0xc8662e, roughness: 0.42, clearcoat: 0.45, clearcoatRoughness: 0.3 }),
+  // 黑釉（亮面）：側面下半，黑繪陶的光亮黑釉
+  glaze: namedMaterial('paint-slip-black-gloss', { color: 0x161312, roughness: 0.3, clearcoat: 0.8, clearcoatRoughness: 0.15 }),
   // 階梯鼻的側面與正面：奶油白
   cream2: namedMaterial('paint-fresco-cream', { color: 0xefe4c8, roughness: 0.55, side: THREE.DoubleSide }),
   black2: namedMaterial('paint-slip-black', { color: 0x1b1817, roughness: 0.52, clearcoat: 0.15, clearcoatRoughness: 0.4, side: THREE.DoubleSide }),
   // 牛角新月尾翼：金
   gold: namedMaterial('trim-horn-brass', { color: 0xd2a23c, metalness: 0.85, roughness: 0.3, side: THREE.DoubleSide }),
   // 尾翼頂面的陶土色新月條
-  clay2: namedMaterial('paint-terracotta-clay', { color: 0xc4652f, roughness: 0.7, clearcoat: 0.04, side: THREE.DoubleSide }),
+  clay2: namedMaterial('paint-terracotta-clay', { color: 0xc8662e, roughness: 0.42, clearcoat: 0.45, clearcoatRoughness: 0.3, side: THREE.DoubleSide }),
   cockpit: namedMaterial('shell-inner-dark', { color: 0x14100e, roughness: 0.9, side: THREE.DoubleSide }),
   // 大型多面座艙罩：深茶色煙燻 PC
   glass: namedMaterial('pc-tint-umber-smoke', { color: 0x2a1c14, roughness: 0.06, specularIntensity: 0.6, transparent: true, opacity: 0.84, envMapIntensity: 0.5, depthWrite: false, side: THREE.DoubleSide }),
@@ -163,6 +183,10 @@ const materials = () => ({
   liner: namedMaterial('shell-wheelwell-umber', { color: 0x2a201b, roughness: 0.8, side: THREE.DoubleSide }),
   dCream: decalMaterial('decal-fresco-cream', { color: 0xefe4c8, roughness: 0.6 }),
   dBlack: decalMaterial('decal-slip-black', { color: 0x1b1918, roughness: 0.5 }),
+  // 黑釉底上的陶土色紋樣（留白的陶土）
+  dClay: decalMaterial('decal-reserved-clay', { color: 0xd8773a, roughness: 0.45 }),
+  // 金色雙斧
+  dGold: decalMaterial('decal-labrys-gold', { color: 0xe0b04a, metalness: 0.8, roughness: 0.3 }),
   // 阿里阿德涅之線：微微發光的金線
   dThread: decalMaterial('decal-ariadne-glow', { color: 0xf2c24e, emissive: 0xffb428, emissiveIntensity: 0.45, roughness: 0.3, metalness: 0.4 }),
   lamp: namedMaterial('lamp-warm-white', { color: 0xfff1d0, emissive: 0xffe2a0, emissiveIntensity: 0.7, roughness: 0.15 }),
@@ -188,12 +212,12 @@ const CANOPY = {
   })(),
 };
 
-/** @type {{ xMid: number, yMid: number, span: number, sweep: number, lift: number }} 新月尾翼：中央 (x, y)、半翼展、翼端往前彎的量、翼端上翹的量 */
-const HORN = { xMid: -61, yMid: 41.2, span: 44, sweep: 8, lift: 5.6 };
-/** @type {(s: number) => number[]} 新月尾翼中心線（s = −1 ~ 1，左翼端 → 右翼端） */
-const hornPoint = (s) => [HORN.xMid + HORN.sweep * s * s, HORN.yMid + HORN.lift * Math.abs(s) ** 2.2, HORN.span * s];
-/** @type {number[][]} 新月尾翼中心線取樣 */
-const HORN_PATH = Array.from({ length: 11 }, (_, i) => hornPoint(-1 + (2 * i) / 10));
+/** @type {{ xMid: number, yMid: number, span: number, sweep: number, lift: number }} 牛角尾翼：中央 (x, y)、半翼展、角尖往前彎的量、角尖上翹的量 */
+const HORN = { xMid: -66, yMid: 37.4, span: 45, sweep: 6, lift: 10.6 };
+/** @type {(s: number) => number[]} 牛角尾翼中心線（s = −1 ~ 1，左角尖 → 右角尖）：中段平、外段急翹（克諾索斯「聖角」的 U 形） */
+const hornPoint = (s) => [HORN.xMid + HORN.sweep * Math.abs(s) ** 2.4, HORN.yMid + HORN.lift * Math.abs(s) ** 2.8, HORN.span * s];
+/** @type {number[][]} 牛角尾翼中心線取樣 */
+const HORN_PATH = Array.from({ length: 15 }, (_, i) => hornPoint(-1 + (2 * i) / 14));
 
 /** @type {import('./polyBody.js').PolyBodyConfig & { mythSeries: string, mythTheme: string }} 車殼設定 */
 const CONFIG = {
@@ -206,7 +230,7 @@ const CONFIG = {
   form: 'stepped-labyrinth-nose',
   roof: 'canopy',
   wing: 'horn-crescent-mono',
-  theme: '陶土橘＋壁畫藍雙色四驅車：±42.6 的寬肩前擋泥板、疊在楔形鼻上的三層同心梯形階梯（頂面陶土橘、側面與正面奶油白，一圈比一圈小）、座艙罩正前方的橫向細線迷宮帶、大型梯形剖面深茶色座艙罩、窄而高的車尾（俯視後輪外露）；擋泥板肩稜上奶油白描線，座艙罩後方到車尾的背脊一整條奶油白底黑回紋帶；側面下半壁畫藍板塊從收腰往車尾斜升，板塊上奶油白連續回紋帶，上緣一條發光金線（阿里阿德涅之線）；車尾單柱撐起加粗的金色牛角新月尾翼，高過座艙罩頂，中央最低、兩端上翹前彎，頂面一道陶土色新月條',
+  theme: '陶土橘＋黑釉黑繪陶四驅車：±42.6 的寬肩前擋泥板、疊在楔形鼻上的三層同心梯形階梯（頂面陶土橘、側面與正面奶油白，一圈比一圈小）、座艙罩正前方的橫向細線迷宮帶、大型梯形剖面深茶色座艙罩、窄而高的車尾（俯視後輪外露）；擋泥板肩稜上奶油白描線，座艙罩後方到車尾的背脊一整條黑釉底陶土色回紋帶，引擎蓋與後甲板外側斜面的黑釉紋樣帶上一列金色雙斧；側面下半亮面黑釉板塊從收腰往車尾斜升，板塊上陶土色連續回紋帶，上緣一條發光金線（阿里阿德涅之線）；車尾後掠單柱撐起一支粗壯的金色牛角（U 形聖角：中段平、外段急翹成兩支尖角，角根黑色環箍），角尖高過座艙罩頂',
   material: 'ABS',
   density_g_cm3: 1.05,
   wallThickness_mm: 0.8,
@@ -222,8 +246,8 @@ const CONFIG = {
   canopy: CANOPY,
   sideZMin: 28,
   zones: () => [
-    // 側面下半壁畫藍板塊
-    { mat: 'blue', keep: (x, y, z) => (onSide(x, z) ? splitY(x) - y : -1) },
+    // 側面下半黑釉板塊
+    { mat: 'glaze', keep: (x, y, z) => (onSide(x, z) ? splitY(x) - y : -1) },
     { mat: 'clay', keep: () => 1 },
   ],
   mats: { inner: 'inner', edge: 'edge', cap: 'clay', cockpit: 'cockpit', glass: 'glass', mount: 'mount' },
@@ -231,30 +255,34 @@ const CONFIG = {
   extras: (kit) => {
     /** @type {BodyPart[]} */
     const parts = [];
-    // ── 牛角新月尾翼（金）：扁橢圓斷面沿新月中心線掃掠，弦長中央 24 → 翼端 2.4、厚 2.2 → 1.0 ──
-    /** @type {(t: number) => number} 從中央到翼端的比例（0 中央、1 翼端） */
+    // ── 牛角尾翼（金）：圓潤的橢圓斷面沿 U 形中心線掃掠，中央粗（前後 12.8、高 3.2）往角尖收成尖錐 ──
+    /** @type {(t: number) => number} 從中央到角尖的比例（0 中央、1 角尖） */
     const fromMid = (t) => Math.abs(2 * t - 1);
+    /** @type {(t: number) => number} 斷面縮放：中段保持粗壯，外段收尖 */
+    const taper = (t) => 1 - fromMid(t) ** 1.6;
     parts.push({
-      geometry: smoothNormals(sweepEllipse(HORN_PATH, 32, (t) => [lerp(12, 1.2, fromMid(t) ** 1.25), lerp(1.1, 0.5, fromMid(t))], 10)),
+      geometry: smoothNormals(sweepEllipse(HORN_PATH, 40, (t) => [lerp(0.35, 6.4, taper(t)), lerp(0.35, 1.6, taper(t))], 12)),
       mat: 'gold',
       solid: true,
       outline: true,
       name: 'horn-crescent-wing',
     });
-    // 頂面一道陶土色新月條（弦長約 1/3、貼在翼頂）
-    parts.push({
-      geometry: smoothNormals(
-        sweepEllipse(
-          HORN_PATH.map(([x, y, z]) => [x, y + 0.8, z]),
-          32,
-          (t) => [lerp(3.6, 0.4, fromMid(t) ** 1.25), 0.4],
-          8,
-        ),
-      ),
-      mat: 'clay2',
-      solid: true,
-      name: 'horn-crescent-stripe',
-    });
+    // 角根兩道黑色環箍（角身的年輪紋，也是陶器上的黑釉色）
+    for (const sg of [-1, 1]) {
+      for (const s0 of [0.34, 0.44]) {
+        const c = hornPoint(sg * s0);
+        const t = 0.5 + (sg * s0) / 2;
+        const ring = new THREE.CylinderGeometry(1, 1, 1, 12, 1, false);
+        ring.scale(lerp(0.35, 6.4, taper(t)) + 0.12, 0.7, lerp(0.35, 1.6, taper(t)) + 0.12);
+        // 圓柱軸轉到 z（翼展方向），再依中心線斜度微傾
+        ring.rotateX(Math.PI / 2);
+        const d = hornPoint(sg * (s0 + 0.02));
+        const tilt = Math.atan2(d[1] - c[1], Math.abs(d[2] - c[2]));
+        ring.rotateX(-sg * tilt);
+        ring.translate(c[0], c[1], c[2]);
+        parts.push({ geometry: ring, mat: 'black2', solid: true, outline: true, name: `horn-ring-${sg}-${s0}` });
+      }
+    }
     // 中央單柱（黑，厚 2.4）：從車尾殼面升到翼底
     {
       /** @type {(x: number) => number} 中線殼面高度 */
@@ -262,14 +290,14 @@ const CONFIG = {
       const pylon = finPlate(
         [
           [-53.6, deckY(-53.6) - 1],
-          [-56.4, HORN.yMid + 0.4],
-          [-64.4, HORN.yMid + 0.4],
+          [-57.4, HORN.yMid + 0.4],
+          [-66.4, HORN.yMid + 0.4],
           [-63.4, deckY(-63.4) - 1],
         ],
         0,
         2.4,
       );
-      parts.push({ geometry: pylon, mat: 'black2', solid: true, name: 'horn-wing-pylon' });
+      parts.push({ geometry: pylon, mat: 'black2', solid: true, outline: true, name: 'horn-wing-pylon' });
     }
 
     // ── 三層階梯鼻：每層一片 0.8 mm 殼板（頂面、兩側、正面；奶油白，側面與正面露出白邊），頂面另貼一層陶土橘色片（裝飾，浮 0.05 mm）──
@@ -343,10 +371,10 @@ const CONFIG = {
       mat: 'dCream',
       name: 'decal-shoulder-lines',
     });
-    // 背脊回紋帶：奶油白底（寬 8.4）上的黑色連續回紋（含上下邊線），從座艙罩後緣到車尾
+    // 背脊回紋帶：黑釉底（寬 8.4）上的陶土色連續回紋（含上下邊線），從座艙罩後緣到車尾
     parts.push({
       geometry: kit.decal((x, y, z) => (x > SPINE.x0 && x < SPINE.x1 ? SPINE.hz - Math.abs(z) : -1), { offset: 0.1 }),
-      mat: 'dCream',
+      mat: 'dBlack',
       name: 'decal-spine-band',
     });
     parts.push({
@@ -357,17 +385,45 @@ const CONFIG = {
         // 回紋帶的上下邊線在 v = −0.9 與 4.8，中心 1.95 對齊車身中線
         return -greekKey(x, z + KEY_Y0 + 1.95);
       }, { offset: 0.12 }),
-      mat: 'dBlack',
+      mat: 'dClay',
       name: 'decal-spine-key',
     });
-    // 側裙回紋帶（奶油白，壁畫藍底上）：兩輪拱之間
+    // 側裙回紋帶（陶土色，黑釉底上）：兩輪拱之間
     for (const side of [-1, 1]) {
       const opt = { x0: 0, y0: 0, zMin: 26, side };
       /** @type {(u: number, v: number) => number} */
       const key = (u, v) => Math.max(greekKey(u + 60, v), 2.2 - archRingDist(side * u, v), Math.abs(u) - 22.6);
-      parts.push({ geometry: kit.decal(sideDecal(key, opt), { offset: 0.1 }), mat: 'dCream', name: `decal-greek-key-${side}` });
+      parts.push({ geometry: kit.decal(sideDecal(key, opt), { offset: 0.1 }), mat: 'dClay', name: `decal-greek-key-${side}` });
     }
-    // 阿里阿德涅之線：沿壁畫藍板塊上緣上方 1.1 mm 的金線（寬 1.1），避開輪拱
+    // 引擎蓋與後甲板外側斜面上的黑釉紋樣帶（黑繪陶的帶狀裝飾），帶內一列留白的金色雙斧，雙斧柄沿車寬方向
+    for (const band of LABRYS_BANDS) {
+      parts.push({
+        geometry: kit.decal((x, y, z) => {
+          if (onSide(x, z) || x < band.x0 || x > band.x1) {
+            return -1;
+          }
+          const az = Math.abs(z) / P.hw(x);
+          return Math.min(az - 0.62, 0.94 - az) * P.hw(x);
+        }, { offset: 0.1 }),
+        mat: 'dBlack',
+        name: `decal-labrys-band-${band.x0}`,
+      });
+      parts.push({
+        geometry: kit.decal((x, y, z) => {
+          if (onSide(x, z)) {
+            return -1;
+          }
+          let d = Infinity;
+          for (const ax of band.xs) {
+            d = Math.min(d, labrysSd(x - ax, Math.abs(z) - 0.78 * P.hw(ax), band.k));
+          }
+          return -d;
+        }, { offset: 0.13 }),
+        mat: 'dGold',
+        name: `decal-labrys-row-${band.x0}`,
+      });
+    }
+    // 阿里阿德涅之線：沿黑釉板塊上緣上方 1.1 mm 的金線（寬 1.1），避開輪拱
     parts.push({
       geometry: kit.decal((x, y, z) => (onSide(x, z) ? Math.min(0.55 - Math.abs(y - splitY(x) - 1.1), archRingDist(x, y) - 1) : -1), { offset: 0.12 }),
       mat: 'dThread',
@@ -382,9 +438,9 @@ const CONFIG = {
   src: {
     density_g_cm3: 'SPEC 1.14：ABS 約 1.05 g/cm³（推估）',
     wallThickness_mm: '推估：射出 ABS 殼 0.8 mm（同其他車殼）',
-    geometry: '本檔站位產生器 P（推估，造型比例取自 shared/design/body-minotaur-maze/fourview.png 與 fourview_trace.txt，縮到底盤尺寸）：殼長 130（−64 ~ 鼻端 66）；鼻端楔形中線 27.6 → 19，上面疊三層階梯（每層高 1.5，前端 x 65.4 / 60 / 54.4、後端半寬 16 / 12 / 8）、中央頂 35.8、座艙罩頂約 37.8、新月尾翼中央 41.2 → 翼端約 46.8；寬：前擋泥板 ±42.6、收腰 ±31、後擋泥板 ±30.6、車尾 ±25、鼻端 ±9.5；新月尾翼 ±44',
+    geometry: '本檔站位產生器 P（推估，造型比例取自 shared/design/body-minotaur-maze/fourview.png 與 fourview_trace.txt，縮到底盤尺寸）：殼長 130（−64 ~ 鼻端 66）；鼻端楔形中線 27.6 → 19，上面疊三層階梯（每層高 1.5，前端 x 65.4 / 60 / 54.4、後端半寬 16 / 12 / 8）、中央頂 35.8、座艙罩頂約 37.8、牛角中央 37.4 → 角尖約 48；寬：前擋泥板 ±42.6、收腰 ±31、後擋泥板 ±30.6、車尾 ±25、鼻端 ±9.5；牛角 ±45',
     wheelArches: '前後 R15.2（26 mm 輪胎半徑 13 + 2.2 mm）',
-    wing: '新月尾翼：ABS 扁橢圓斷面實體件（弦長 24 → 2.4、厚 2.2 → 1.0，推估），半翼展 44、翼端前彎 8、上翹 5.6；中央單柱厚 2.4',
+    wing: '牛角尾翼：ABS 橢圓斷面實體件（中央前後 12.8、高 3.2，往角尖收到 0.7，推估），中心 x −66、半翼展 45、角尖前彎 6、上翹 10.6；後掠中央單柱厚 2.4；角根環箍 ABS 0.7 mm 寬',
     mounts: '對齊 chassis-midship 的車殼安裝點（SPEC 1.14）',
   },
 };
