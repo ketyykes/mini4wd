@@ -2,11 +2,11 @@
 // Magnus 1916 英譯 Afanasyev：「a little hut standing on cocks' feet and turning round」，要對它說「背對森林站好」才會停下開門。
 // 造型：一台前低後高的半罩露輪楔形車（LG1 半罩露輪攻擊型），小屋用「屋頂斷面」和零件表現，車上不做雞腳、不畫雅加婆婆：
 // 低矮的圓木甲板車身上，一座陡斜的人字木瓦屋頂從車頭的屋脊線一路升高到車尾，當座艙罩與後罩；車尾封口就是小屋的山牆（白色博風板＋琥珀圓窗）；
-// 屋脊兩側各一扇往車頭收窄的琥珀暖光窗當座艙窗；右側屋面一根微微後傾、立起來的紅磚煙囪，管口拖著一片往後飄的白色煙鰭；
+// 跨過屋脊、往車頭收窄的一整片深琥珀窗當座艙窗；右側屋面一根微微後傾、立起來的紅磚煙囪，管口拖著一片往後飄的白色煙鰭；
 // 兩輪之間的圓木牆上每側三扇深棕細木框的琥珀小窗——izba 正面「三扇窗」的排法，車身側面一眼就是一間木屋；
 // 後翼是一道柵欄：每側三片尖頂白木樁當翼端板、兩根紅色橫木就是上下兩段翼面；
-// 「會走路的小屋」只用姿態暗示：前輪罩整個切開、露出前輪，車身往前低頭；切口後方的甲板上每側三片往後掠的大型橘黃爪痕鰭（三道平行斜劃的爪痕，不做腳）。
-// 配色：風化深色舊木（霧面、圓木縫塞苔綠）＋苔綠木瓦屋頂（霧面）＋骨白木作（霧面）＋紅色橫木與窗框＋橘黃爪痕鰭＋琥珀窗光。
+// 「會走路的小屋」只用姿態暗示：前輪罩整個切開、露出前輪，車身往前低頭（不做腳）。
+// 配色：風化深色舊木（霧面、圓木縫塞苔綠）＋苔綠木瓦屋頂（霧面）＋骨白木作（霧面）＋紅色橫木與窗框＋琥珀窗。
 // 設計：shared/design/body-yaga-hut/DESIGN.md（研究一節列出實際打開的來源）。剖面為本檔站位產生器（推估）。
 // 不含任何廠商 / 作品名稱、商標、文字或人臉。
 import * as THREE from 'three';
@@ -173,10 +173,10 @@ const onShingles = (x, y, z) => onRoof(x, y, z) && Math.abs(z) < gableHw(x) - 0.
 /** @type {{ x0: number, x1: number }} 座艙窗的前後緣 x */
 const PANE = { x0: -12, x1: 15 };
 /**
- * 座艙窗（俯視 (x, |z|)）：屋脊兩側屋面上各一扇琥珀窗，外緣跟著屋簷往車頭收窄，像被屋脊樑分成兩片的擋風玻璃；負值 = 窗內
+ * 座艙窗（俯視 (x, |z|)）：跨過屋脊的一整片窗，外緣跟著屋簷往車頭收窄；負值 = 窗內
  * @type {(x: number, az: number) => number}
  */
-const paneSd = (x, az) => Math.max(PANE.x0 - x, x - PANE.x1, 2.6 - az, az - (gableHw(x) - 3));
+const paneSd = (x, az) => Math.max(PANE.x0 - x, x - PANE.x1, az - (gableHw(x) - 3));
 
 /** @type {() => Record<string, THREE.Material>} */
 const materials = () => ({
@@ -193,16 +193,14 @@ const materials = () => ({
   rail: namedMaterial('paint-izba-red', { color: 0xb3302a, roughness: 0.48, clearcoat: 0.3 }),
   // 煙囪：紅磚＋白灰管口環（霧面）
   brick: namedMaterial('paint-brick-red', { color: 0x9b4a32, roughness: 0.78, clearcoat: 0.0 }),
-  // 窗內暖光：較深的琥珀底色＋低強度自發光（不過曝），由深色木窗框框住
-  window: namedMaterial('lamp-window-amber', { color: 0x9c5418, emissive: 0x8a3806, emissiveIntensity: 0.15, roughness: 0.3, clearcoat: 0.5 }),
-  // 側牆小窗的窗光：比座艙窗亮一階的暖黃琥珀，和原木褐拉開明度（深棕細窗框之內才看得出是一扇亮著的窗）
-  windowWarm: namedMaterial('lamp-window-amber-warm', { color: 0xe0a048, emissive: 0xb86410, emissiveIntensity: 0.35, roughness: 0.3, clearcoat: 0.5 }),
+  // 窗玻璃：深琥珀色亮面（不發光），由深色木窗框框住
+  window: namedMaterial('paint-window-amber-dark', { color: 0x9a4e12, roughness: 0.2, clearcoat: 0.8 }),
+  // 側牆小窗的玻璃：比座艙窗亮一階的琥珀（不發光），和原木褐拉開明度
+  windowWarm: namedMaterial('paint-window-amber-warm', { color: 0xc98a3c, roughness: 0.3, clearcoat: 0.5 }),
   // 側裙（腰部遮住底盤的踏板）：深炭灰
   sill: namedMaterial('paint-sill-charcoal', { color: 0x2c2f33, roughness: 0.62, clearcoat: 0.08 }),
   // 往後飄的煙鰭（霧面暖灰白；材質與網格名稱都不含 smoke，避免 Blender 當成玻璃）
   plume: namedMaterial('paint-ash-plume', { color: 0xe8e4dc, roughness: 0.92, clearcoat: 0.0, side: THREE.DoubleSide }),
-  // 前輪切口後方的導流片（橘黃，緞面）
-  vane: namedMaterial('paint-vane-ochre', { color: 0xf0a020, roughness: 0.5, clearcoat: 0.15, side: THREE.DoubleSide }),
   hole: namedMaterial('plastic-chimney-black', { color: 0x120d0a, roughness: 0.9 }),
   inner: namedMaterial('shell-inner-dark', { color: 0x1e1712, roughness: 0.85, side: THREE.BackSide }),
   edge: namedMaterial('shell-edge-wood', { color: 0x3a302a, roughness: 0.7, side: THREE.DoubleSide }),
@@ -275,32 +273,6 @@ const buildFenceWing = () => {
   const upper = new THREE.BoxGeometry(5.8, 1.1, span);
   upper.translate(-53.3, 44.3, 0);
   return { pickets: mergeGeos(pickets), rails: mergeGeos([lower, upper]) };
-};
-
-/** @type {{ xb: number, z: number }[]} 每側三片爪痕鰭：前端 x 與中心 |z|（越外側越靠前，跟著甲板外緣；間距 3.5 mm，三片分得開） */
-const VANES = [
-  { xb: 22, z: 21.4 },
-  { xb: 24.5, z: 24.9 },
-  { xb: 27, z: 28.4 },
-];
-
-/**
- * 前輪切口後方甲板上的爪痕鰭：每側三片往後掠的刀形薄板（長 20、高出甲板約 8、厚 1.1 mm，根部埋進甲板），
- * 前端低、往後上方斜升到尖端，三片平行錯開成三道斜劃的爪痕
- * @type {() => THREE.BufferGeometry}
- */
-const buildVanes = () => {
-  /** @type {THREE.BufferGeometry[]} */
-  const geos = [];
-  for (const sg of [-1, 1]) {
-    for (const { xb, z } of VANES) {
-      const shape = new THREE.Shape([[xb, 25.2], [xb - 15.5, 25.2], [xb - 20, 34.2], [xb - 7.5, 29.4]].map(([x, y]) => new THREE.Vector2(x, y)));
-      const g = new THREE.ExtrudeGeometry(shape, { depth: 1.1, bevelEnabled: false });
-      g.translate(0, 0, sg * z - 0.55);
-      geos.push(g);
-    }
-  }
-  return mergeGeos(geos);
 };
 
 /** @type {number} 煙囪所在的 z（立在右側屋面上） */
@@ -447,7 +419,7 @@ export const yagaHutBody = makePolyBody({
   form: 'log-hut',
   roof: 'closed',
   wing: 'chimney-stack',
-  theme: '前低後高的半罩露輪楔形車：圓木甲板車身（側面 2 根橫向圓木＋內收的深色裙身、白色封簷板肩線）上一座陡斜的人字木瓦屋頂，從車頭一路升高到車尾當座艙罩與後罩，車尾封口是小屋的山牆（白色博風板、琥珀圓窗）；屋脊兩側一對琥珀暖光座艙窗、右側屋面立起的紅磚煙囪拖著一片白色煙鰭；兩輪之間圓木牆上每側三扇深棕細木框的琥珀小窗；後翼是一道柵欄（每側三片尖頂白木樁當翼端板、兩根紅色橫木當上下兩段翼面）；前輪罩整個切開露出前輪，切口後方每側三片往後掠的大型橘黃爪痕鰭，車身往前低頭',
+  theme: '前低後高的半罩露輪楔形車：圓木甲板車身（側面 2 根橫向圓木＋內收的深色裙身、白色封簷板肩線）上一座陡斜的人字木瓦屋頂，從車頭一路升高到車尾當座艙罩與後罩，車尾封口是小屋的山牆（白色博風板、琥珀圓窗）；跨過屋脊的一整片深琥珀座艙窗、右側屋面立起的紅磚煙囪拖著一片白色煙鰭；兩輪之間圓木牆上每側三扇深棕細木框的琥珀小窗；後翼是一道柵欄（每側三片尖頂白木樁當翼端板、兩根紅色橫木當上下兩段翼面）；前輪罩整個切開露出前輪，車身往前低頭',
   material: 'ABS',
   density_g_cm3: 1.05,
   wallThickness_mm: 0.8,
@@ -486,13 +458,11 @@ export const yagaHutBody = makePolyBody({
     const gable = buildRearGable();
     parts.push({ geometry: gable.boards, mat: 'white2', solid: true, outline: true, name: 'gable-bargeboards' });
     parts.push({ geometry: gable.ring, mat: 'white', solid: true, name: 'gable-window-frame' });
-    parts.push({ geometry: gable.pane, mat: 'window', solid: true, name: 'lamp-gable-window' });
+    parts.push({ geometry: gable.pane, mat: 'window', solid: true, name: 'gable-window-pane' });
     // 柵欄翼：白木樁翼端板＋兩根紅色橫木翼面
     const fence = buildFenceWing();
     parts.push({ geometry: fence.pickets, mat: 'white2', solid: true, outline: true, name: 'fence-wing-pickets' });
     parts.push({ geometry: fence.rails, mat: 'rail', solid: true, outline: true, name: 'fence-wing-rails' });
-    // 前輪切口後方的橘黃導流片
-    parts.push({ geometry: buildVanes(), mat: 'vane', solid: true, outline: true, name: 'deck-vanes' });
     // 往後倒的煙囪與白色煙鰭
     const ch = buildChimneyPlume();
     parts.push({ geometry: ch.stack, mat: 'brick', solid: true, outline: true, name: 'chimney-stack' });
@@ -608,11 +578,11 @@ export const yagaHutBody = makePolyBody({
       mat: 'dGroove',
       name: 'decal-speed-lines',
     });
-    // 側牆三扇小窗：暖黃琥珀窗光＋和圓木同色系的深棕細窗框（0.6 mm 窗框、上方略寬的簷板、下方窗台、一道細十字窗格），像嵌在圓木牆裡的木框窗
+    // 側牆三扇小窗：琥珀玻璃＋和圓木同色系的深棕細窗框（0.6 mm 窗框、上方略寬的簷板、下方窗台、一道細十字窗格），像嵌在圓木牆裡的木框窗
     parts.push({
       geometry: kit.decal((x, y, z) => (onSideWall(x, y, z) ? -sideWindow(x, y).rect : -1), { offset: 0.16 }),
       mat: 'windowWarm',
-      name: 'lamp-side-windows',
+      name: 'side-window-panes',
     });
     parts.push({
       geometry: kit.decal((x, y, z) => {
@@ -629,11 +599,11 @@ export const yagaHutBody = makePolyBody({
       mat: 'dFrameWood',
       name: 'decal-side-window-frame',
     });
-    // 座艙窗：屋脊兩側一對琥珀暖光窗（V5 有色不透明座艙）＋白色窗框（寬 1.2）＋外圈藍色描邊＋深色木內框與一道窗格
+    // 座艙窗：跨過屋脊的一整片深琥珀窗（V5 有色不透明座艙，不發光）＋白色窗框（寬 1.2）＋外圈藍色描邊＋深色木內框與一道橫窗格
     parts.push({
       geometry: kit.decal((x, y, z) => (onShingles(x, y, z) ? -paneSd(x, Math.abs(z)) : -1), { offset: 0.16 }),
       mat: 'window',
-      name: 'lamp-cockpit',
+      name: 'cockpit-window-pane',
     });
     parts.push({
       geometry: kit.decal((x, y, z) => {
@@ -668,19 +638,6 @@ export const yagaHutBody = makePolyBody({
       mat: 'dFrameWood',
       name: 'decal-window-sash-wood',
     });
-    // 頭燈（V14，自創形狀）：鼻端兩側甲板上一對順著車長方向的暖光細縫＋紅框
-    /** @type {(x: number, z: number) => number} */
-    const lampSd = (x, z) => Math.max(Math.abs(x - 52.5) - 3.4, Math.abs(Math.abs(z) - 8) - 0.9);
-    parts.push({
-      geometry: kit.decal((x, y, z) => (onRoof(x, y, z) && x > 48 ? -lampSd(x, z) : -1), { offset: 0.16 }),
-      mat: 'window',
-      name: 'lamp-head',
-    });
-    parts.push({
-      geometry: kit.decal((x, y, z) => (onRoof(x, y, z) && x > 48 ? Math.min(lampSd(x, z), 0.55 - lampSd(x, z)) : -1), { offset: 0.18 }),
-      mat: 'dRed',
-      name: 'decal-head-frame',
-    });
     return parts;
   },
   src: {
@@ -689,11 +646,10 @@ export const yagaHutBody = makePolyBody({
     geometry: `本檔站位產生器 P（推估）：前低後高的楔形車，殼 x ${X_REAR} ~ ${X_FRONT}；斷面是「圓木牆＋微拱甲板＋中央人字屋頂」：甲板外緣（肩線）後輪上方 28.6、前輪位置 25.6、鼻端 15.8；人字屋頂屋簷半寬 後段 15 → 往車頭收窄，屋脊 x 28 起離開甲板、後輪上方最高 40.8、車尾山牆 37.6；圓木牆半寬：腰身 29、後翼子板 41、車尾 17、甲板外伸 0.3（外框半寬約 41.4，≤ 48）；煙鰭頂 48.1（全車最高）、柵欄翼木樁尖頂 46.6`,
     wheelArches: '前後 R15（26 mm 輪胎半徑 13 + 2 mm）；31 mm 輪不切輪拱時間隙不足（需切輪拱）；前輪罩整個切開露出前輪（x 25 ~ 57、|z| ≥ 23.6），輪拱內襯只做後輪；前後都有輪胎內側環形擋板（buildArchWell）擋住殼內空腔',
     logs: '圓木：每側 2 根，殼面剖面每根鼓起 min(0.8, 0.2 × 圓木高) mm（車頭圓木變細時跟著縮，x 46 → 56 漸收為 0）；接縫為銳利稜線＋0.7 mm 深色填縫貼紙（推估）',
-    cockpit: '座艙窗：屋脊兩側屋面上各一扇琥珀暖光窗（貼紙，x −12 ~ 15、|z| 2.6 → 屋簷內 3 mm）＋白色窗框（寬 1.2）、外圈 0.7 mm 藍色描邊、深色木內框與一道窗格（推估）',
+    cockpit: '座艙窗：跨過屋脊的一整片深琥珀窗（貼紙，x −12 ~ 15、到屋簷內 3 mm）＋白色窗框（寬 1.2）、外圈 0.7 mm 藍色描邊、深色木內框與一道窗格（推估）',
     gable: '車尾山牆：封口本身是人字屋頂＋圓木牆的斷面；白色 Λ 形博風板（板高 1.7、厚 0.9 mm）＋直徑 4.2 的琥珀圓窗與白窗框；ABS 實心件（推估）',
     fence: '柵欄翼：每側三片尖頂木樁（寬 3.2、厚 1.2 mm，尖頂 43.2 / 45 / 46.6，根部 y 27.6 埋進後甲板）＋兩根橫木翼面（下段 6.6 × 1.2、上段 5.8 × 1.1，翼展 58.4 mm）；ABS 實心件（推估），質量 = 封閉體積 × 1.05 g/cm³',
     exhaust: '煙囪：右側屋面（z 6）立起、往後傾約 14° 的紅磚方煙囪（方形斷面邊長約 4.2 mm 的實心方柱）＋白灰管口環（邊長約 4.9、厚 1.3 mm）與黑色管口；管口後方一片往後飄的白色薄鰭（長約 21、頂 48.1、厚 1 mm）；均為 ABS 實心件（推估），質量 = 封閉體積 × 1.05 g/cm³',
-    vanes: '爪痕鰭：前輪切口後方甲板上每側三片往後掠的刀形薄板（長 20、頂 y 34.2、厚 1.1 mm，|z| 21.4 / 24.9 / 28.4，前端 x 22 / 24.5 / 27），橘黃；ABS 實心件（推估）',
     sideWindows: '側牆小窗：兩輪之間圓木牆上每側三扇（中心 x −13 / −4 / 5，玻璃 5.6 × 4.8）＋0.6 mm 深棕木窗框、上方簷板 7.4 × 0.6、下方窗台 7.1 × 0.5、0.4 mm 十字窗格，全為貼紙（推估）',
     mounts: '對齊 chassis-midship 的車殼安裝點（SPEC 1.14）',
   },
