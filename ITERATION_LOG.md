@@ -157,6 +157,19 @@
 - 最終陣容盲評（`shared/reviews/final-p13d/`，兩位評審各自同時看舊 16 款與最終 24 款）：最終 7.29 / 7.64、舊 7.36 / 7.57，**平均 7.47 vs 7.47 打平**（11:00 時 7.21 vs 7.43）。炫砲度 7 / 7.5、多樣性 7.5 / 8。長得像的配對：最終 7 / 8 組、舊 7 / 7 組。兩位都建議把 heimdall、firebird、minotaur、kunpeng（＋cerberus）換回第十二階段舊版造型（與 PROGRESS 待決第 3 項相同，等使用者決定）。
 - 參考用陣容評審（`shared/reviews/lineup-old4/`，程式不動）：最終 vs「heimdall、firebird、minotaur、kunpeng 換回舊版」，兩位 7.36 / 7.71 vs 7.43 / 7.64，平均打平；只有 kunpeng 兩位一致判舊版較好。對照圖 `render/out/lineup_myth_alt_old4.png`、`lineup_myth_alt_kunpeng.png`。另把 `README.md` 車殼數更新為 43 款。
 
+## iter-147（11/8 22:0x – 11/9 00:32）：第二次延長，照 18:00 最終評審修弱款、拆相似配對
+- 使用者 21:5x 把截止延到 11/9 08:30。22:1x–23:06 使用者要求暫停，9 組 subagent 停下（還沒提交），23:07 重新派工。
+- **kunpeng 退回第十二階段版**：陣容盲評（`shared/reviews/lineup-147k/`）兩位 7.57 / 7.71（舊版）vs 7.50 / 7.64（現行）→ 採用。k 組再把碎鰭合成一整片羽階鵬翼（`81199b3`）。
+- 8 組交件（`shared/stage10/brief-iter147.md`）：a zeus（斜躺大閃電、兩端叉刃）、poseidon（側裙壓到底盤、牙狀浪紋改長流線）；b venus（前段加體積、扇形扇貝立體稜、拿掉像嘴的圓環）、mars（封側板、斜插長矛尾鰭）；c minotaur（拿掉成對雙斧帶、牛角後移）、cerberus（拿掉像牙的金線與回紋，改鎖鏈）＋cerberus 換色 1 個（暫不合併，待陣容評審）；d amaterasu（兩片金盤改單面八花形大鏡翼、封側面破口）；e shiva（車尾延長蓋底盤）、quetzal（前段填實、翼下立板）；apollo 沒交；f heimdall（號角鼻錐、彩虹改細光帶）、sleipnir（封側箱、馬蹄鐵尾翼）；g tanngrisnir（立體公羊角與戰車輪）、gullinbursti（鋸齒背鰭改刀片鬃片）；trojan 沒交；h khepri（金珠改黑曜石菱形罩、寬鏟鼻）、gundestrup（金環改 U 形頸環）、mushussu（城垛降低、輪室內襯改藍）、yaga（拿掉爪痕鰭與發光窗）。
+- 意外：worktree 共用 git stash，k 組 pop 到 f 組的 sleipnir 改動（已救回並比對一致）；之後禁止用 stash。`/tmp/heavy-lock.sh` 在 23:53–00:02 間消失，00:0x 照原規則重建並通知 nextjspickball。
+- 合併後主線神話組 IoU ≥ 0.80：**7 → 1 對**（trojan × shiva 0.808）；全部最大 0.842。
+- 逐款甲乙並排（`shared/reviews/iter-147/`，兩位評審，判定規則事先訂好）：兩票新版、或一票新版一票看不出差別 → 保留；兩票相反或都看不出差別 → 只有該款 ≥ 0.80 對數變少才保留；其他退回。結果（評審 1／評審 2，新＝本輪較好、舊＝主線較好、平＝看不出差別）：
+  - 保留：amaterasu 新／新、gullinbursti 新／新、mars 新／新、sleipnir 新／新、tanngrisnir 新／新、yaga 新／新、zeus 新／新；minotaur 舊／新（相反，× tanngrisnir 1 → 0 對）；mushussu 平／平（× firebird 1 → 0）；quetzal 平／平（× shiva、× pele 1 → 0）。
+  - 退回：cerberus 舊／舊、khepri 舊／舊、kunpeng 修鰭版 舊／舊（回第十二階段原版）、poseidon 舊／舊；heimdall 新／舊（相反，對數 0 → 0）；gundestrup 平／平（khepri 退回後 × khepri 仍 0.820，對數沒變少）；shiva 平／平（主線舊版在新陣容裡 0 對，新版 × trojan 0.808）；**venus 新／新但兩位都說新版扇貝很像 Shell（殼牌）標誌 → 退回**。
+  - 另兩位提到 poseidon 的三叉戟可能聯想到 Maserati（兩版都有，三叉戟是波賽頓本身的持物，保留）、tanngrisnir 大捲羊角可能聯想 Dodge／RAM（輕微）。
+- 判定後主線（app `d1bfe76`）神話組 IoU ≥ 0.80：**3 對**（khepri × gundestrup 0.820、khepri × firebird 0.812、venus × mars 側 0.805）；全部最大 0.842。計分 **20/20**（00:19–00:32，負載 2–4）。
+
+
 # 第十階段：神話車殼依 LG1 家族從頭重塑（2026-11-05 12:0x 起，截止 15:30）
 
 ## 第 0 輪（12:00–12:15）
