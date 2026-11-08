@@ -3,8 +3,8 @@
 // (1) 黑曜石 → 殼面：全車黑曜石色亮面漆，面切成多道銳利稜線（打製黑曜石的貝殼狀斷口感）；
 // (2) 熔岩裂紋 → livery：殼面上一張不規則的發光橘紅裂紋網，側面兩道往後掃的熔岩紅斜切色塊；前葉子板側面 4 道直條鰓縫、鼻段兩道往後流的縱向熔岩裂縫，縫底都是發光的熔岩；
 // (3) 火山口 → 車頂進氣口：座艙後方一座矮的圓錐形進氣口，口內是發光的熔岩盤；
-// (4) 噴發的弧線 → 天鵝頸翼：一支從車尾甲板升起、往後彎下的弧形單柱（四視圖 16 的招牌造型），加兩道從後輪上方往後拱起的熔岩紅噴發弧，三點托住一片黑曜石後掠翼（前緣一道發光熔岩帶）。
-// 姿態：低而尖的楔形鼻、前擋泥板兩團肩部量體、長座艙，車尾天鵝頸是全車最高點。
+// (4) 噴發的弧線 → 天鵝頸單柱翼：一支從車尾甲板升起、往後彎下的弧形單柱，吊著一片熔岩紅的後掠翼（四視圖 16 的招牌造型）。
+// 姿態：低而尖的楔形鼻、前擋泥板兩團肩部量體、長座艙，車尾單柱翼是全車最高點。
 // 設計：shared/design/body-pele-lava/DESIGN.md（來源與四視圖對照）。剖面為本檔站位產生器（推估）。不含任何文字。
 import * as THREE from 'three';
 import { makePolyBody, flatPlate, sweepEllipse, finPlate } from './polyBody.js';
@@ -189,9 +189,7 @@ const SPINE = [
 
 /** @type {number} 翼面底高 */
 const WING_Y = 41.6;
-/** @type {number} 翼面厚 */
-const WING_T = 2.4;
-/** @type {number[][]} 翼面半邊外形 (x, z)：前緣後掠（往兩側噴開的熔岩）、翼梢往後尖出，後緣中央 V 形缺口 */
+/** @type {number[][]} 後掠翼半邊外形 (x, z)：前緣後掠、翼梢往後尖出 */
 const WING_HALF = [
   [-61.5, 0],
   [-62.5, 18],
@@ -202,47 +200,11 @@ const WING_HALF = [
   [-69.5, 0],
 ];
 
-/**
- * 左右對稱的水平板：半邊外形 (x, z) 鏡射成整片
- * @type {(half: number[][], y: number, t: number) => THREE.BufferGeometry}
- */
-const mirroredPlate = (half, y, t) => {
-  const left = half.slice(1, -1).reverse().map(([x, z]) => [x, -z]);
-  return flatPlate([...half, ...left], y, t);
-};
-
-/** @type {() => THREE.BufferGeometry} 翼面（黑曜石） */
-const buildWing = () => mirroredPlate(WING_HALF, WING_Y, WING_T);
-
-/** @type {number[][]} 翼面前緣的熔岩發光帶半邊外形 (x, z)：沿前緣、寬 2.4 */
-const WING_GLOW_HALF = [
-  [-61.4, 0],
-  [-62.4, 18],
-  [-66.4, 34],
-  [-73.2, 45.6],
-  [-74.2, 44.6],
-  [-68.6, 34],
-  [-64.6, 18],
-  [-63.8, 0],
-];
-
-/** @type {number[][]} 噴發弧中心線 (x, y, z)：從後輪上方的肩部升起，往後拱起，末端埋進翼面（右側） */
-const ARC = [
-  [-37.5, 30.6, 20],
-  [-43.5, 36.8, 20.6],
-  [-51, 40.8, 21.2],
-  [-58.5, 42.4, 21.8],
-  [-66.5, 42, 22.4],
-];
-
-/**
- * 噴發弧：沿中心線掃出的橢圓斷面（半厚 2.3、半高由根部 2.6 收到 1.8），左右各一支，像兩道往後噴出的熔岩弧
- * @type {() => THREE.BufferGeometry}
- */
-const buildArcs = () => {
-  /** @type {(sg: number) => THREE.BufferGeometry} */
-  const one = (sg) => sweepEllipse(ARC.map(([x, y, z]) => [x, y, sg * z]), 24, (t) => [2.3, lerp(2.6, 1.8, t)], 10);
-  return mergeGeos([one(1), one(-1)]);
+/** @type {() => THREE.BufferGeometry} 後掠翼（厚 2.2） */
+const buildWing = () => {
+  const right = WING_HALF;
+  const left = WING_HALF.slice(1, -1).reverse().map(([x, z]) => [x, -z]);
+  return flatPlate([...right, ...left], WING_Y, 2.2);
 };
 
 /** @type {number[]} 前葉子板側面鰓縫的 x（前輪拱後緣 57.5 之前的側壁，4 道間距 2.6） */
@@ -369,10 +331,7 @@ export const peleLavaBody = makePolyBody({
     parts.push({ geometry: lavaPool, mat: 'glow', solid: true, name: 'crater-lava' });
     // 天鵝頸單柱與後掠翼
     parts.push({ geometry: mergeGeos([buildNeck(), finPlate(SPINE, 0, 3.6)]), mat: 'obsidian2', solid: true, outline: true, name: 'swan-neck-pylon' });
-    parts.push({ geometry: buildWing(), mat: 'obsidian2', solid: true, outline: true, name: 'swan-neck-wing' });
-    parts.push({ geometry: mirroredPlate(WING_GLOW_HALF, WING_Y + WING_T, 0.3), mat: 'glow', solid: true, outline: true, name: 'wing-lava-edge' });
-    // 兩道噴發弧：從後輪上方升起，托住翼梢端板
-    parts.push({ geometry: buildArcs(), mat: 'lava2', solid: true, outline: true, name: 'eruption-arcs' });
+    parts.push({ geometry: buildWing(), mat: 'lava2', solid: true, outline: true, name: 'swan-neck-wing' });
 
     /** @type {(x: number, z: number) => boolean} 在側壁上（肩線以外） */
     const onSide = (x, z) => Math.abs(z) > P.hw(x) - 1.3;
@@ -440,7 +399,7 @@ export const peleLavaBody = makePolyBody({
     density_g_cm3: 'SPEC 1.14：ABS 約 1.05 g/cm³（推估）',
     wallThickness_mm: '推估：射出 ABS 殼 0.8 mm（同其他款）',
     geometry: '本檔站位產生器 P（推估），比例取自四視圖 16（shared/design/body-pele-lava/fourview_trace.txt）縮到底盤：鼻尖 x 77（離地 15）、車尾 −62；半寬車尾 30 / 後輪 26（後輪露出）/ 側艙 35（x −5 切進 7 mm 的 V 形裂口）/ 前輪 26（前輪露出）/ 鼻尖 8；肩線 32 高過 R17.5 輪拱；座艙罩頂約 39；天鵝頸頂 48.4（全車最高）',
-    wing: '天鵝頸單柱（扁橢圓斷面 5.2 × 11 → 6.8，前面接中線脊鰭厚 3.6）、黑曜石後掠翼（半展 47.5、厚 2.4，往後伸到 x −75，後緣中央 V 形缺口到 x −69.5；前緣發光熔岩帶寬 2.4、厚 0.3）、兩道噴發弧（橢圓斷面半厚 2.3、半高 2.6 → 1.8，|z| 20 → 22.4，從 x −37.5 拱到翼面下）、火山口進氣口（底半徑 10.5、高 2.6 的旋轉體）：ABS 實心件（推估），質量 = 封閉體積 × 1.05 g/cm³；單柱、噴發弧與火山口底部埋進殼面',
+    wing: '天鵝頸單柱（扁橢圓斷面 5.2 × 11 → 6.8，前面接中線脊鰭厚 3.6）、後掠翼（半展 47.5、厚 2.2，往後伸到 x −75，比車尾殼面再後 13 mm；後緣中央 V 形缺口到 x −69.5）、火山口進氣口（底半徑 10.5、高 2.6 的旋轉體）：ABS 實心件（推估），質量 = 封閉體積 × 1.05 g/cm³；單柱與火山口底部埋進殼面',
     myth: 'Pele 與火山、熔岩、黑曜石的關聯：見 shared/design/body-pele-lava/DESIGN.md 列出的來源；只用自然元素，不做神像與人形',
     mounts: '對齊 chassis-midship 的車殼安裝點（SPEC 1.14）',
   },

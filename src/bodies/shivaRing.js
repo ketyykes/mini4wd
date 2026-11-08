@@ -1,10 +1,10 @@
 // 舞王火環（body-shiva-ring，神話組・印度）：只用舞王（Nataraja）銅像上的「物」——火焰光環（prabhamandala）、髮間新月、手中的沙漏形達瑪如鼓。
 // 不做神像、人形、臉、手、第三隻眼，也不做三叉戟。照四視圖 24 建模：
-// (1) 火焰環 → 車尾一圈貼著甲板的環形尾翼：車身紫的橫向橢圓環（頂內緣金邊）往後上方傾斜 8°，外緣是一圈不等長、往車尾掠的橘焰舌（車尾那側長）；車尾甲板往上長出兩片厚側鰭，和環一體；
-// (2) 新月 → 鼻部弧線：前擋泥板是左右兩團隆起、中間夾一道低谷，正視是一道往上彎的新月；側面前輪後方各一枚金色新月徽（鼻頭正中不放東西）；
+// (1) 火焰環 → 車尾一圈平放的環形尾翼：車身紫的細斷面環（頂內緣金邊）往後上方傾斜 4°，外緣是一圈不等長、往車尾掠的橘焰舌（車尾那側長）；車尾兩側車身往上長出兩支細長側鰭，和環一體托在車尾上方；
+// (2) 新月 → 鼻部弧線：前擋泥板是左右兩團隆起、中間夾一道低谷，正視是一道往上彎的新月；鼻段中央低谷再立一枚角尖往上翹的金色新月鰭；
 // (3) 達瑪如鼓 → 側艙收腰：俯視是前後兩端寬、中段收細的沙漏形，側面進氣口畫成兩個尖對尖的三角形（鼓身的剪影）；
-// (4) 配色：靛紫金屬漆為主色，全長漸層——鼻尖深靛 → 紫（擋泥板峰線亮紫）→ 洋紅 → 車尾橘焰（火焰環映在車尾）；金（環內緣、新月、肩線）。
-// 姿態：鼻尖低而尖，前擋泥板兩團肩部量體罩住前輪，座艙後背線緩升到車尾，火焰環低貼車尾甲板。
+// (4) 配色：鼻段橘焰，往車尾經洋紅漸層到紫金屬漆（主色），一排往後竄的番紅火舌細線；金（環內緣、新月、肩線）。
+// 姿態：鼻尖低而尖，前擋泥板兩團肩部量體罩住前輪，座艙後背線緩升到車尾，火焰環是全車最高點——前低後高的楔形。
 // 設計：shared/design/body-shiva-ring/DESIGN.md（文物來源與四視圖對照）。剖面為本檔站位產生器（推估）。不含任何文字。
 import * as THREE from 'three';
 import { makePolyBody, finPlate } from './polyBody.js';
@@ -22,8 +22,8 @@ const X_NOSE = 77.5;
 const XS = [-70, -66, -58, -48, -40, -30, -20, -8, 4, 16, 26, 34, 42, 50, 56, 62, 68, 72, 77.5];
 /** @type {Record<string, (x: number) => number>} */
 const P = {
-  // 俯視半寬：沙漏形——前輪上方 45.5 外擴的鼓面（下緣抬到 18，只是一圈外擴的擋泥板）、兩輪之間收到 22.5（鼓腰，下緣抬高到 17，側裙在底盤側面零件上方）、後輪段 28.5（胎面外露，車尾的寬度交給火焰環），鼻段收成長尖鼻
-  hw: monoCurve(XS, [15, 20, 24, 26, 25, 24.5, 23.5, 23, 22.5, 23, 28, 38, 45.5, 42, 30, 18.5, 11.5, 8, 4.5]),
+  // 俯視半寬：沙漏形——前輪上方 40 外擴的鼓面（下緣抬到 18，只是一圈外擴的擋泥板）、兩輪之間收到 22.5（鼓腰，下緣抬高到 17，側裙在底盤側面零件上方）、後輪段 28.5（胎面外露，車尾的寬度交給火焰環），鼻段收成長尖鼻
+  hw: monoCurve(XS, [15, 20, 24, 26, 25, 24.5, 23.5, 23, 22.5, 23, 27, 35, 43, 39.5, 28, 18.5, 11.5, 8, 4.5]),
   // 中線頂：前段是兩團擋泥板之間的低谷，座艙段 34，車尾 30
   yC: monoCurve(XS, [30, 31.5, 32.5, 33, 33, 33.5, 34, 34, 33.5, 32.5, 31, 29.5, 28.5, 27, 25.5, 23, 19.5, 17, 13]),
   // 擋泥板峰線（z ≈ 0.8 半寬）：前輪上方 34 高過中線 5.5（新月的兩角），車身段略低於中線
@@ -77,12 +77,12 @@ const ARCHES = [
   { x: -40, y: 13, radius: 17.5, cutZFrom: 23 },
 ];
 
-/** @type {{ xc: number, y: number, a: number, b: number, ai: number, bi: number }} 火焰環：中心 x −54、環底（環心處）36；外橢圓半軸 15 × 29.5、內孔 9.5 × 22（橫向的環形尾翼，兩端伸出車身外，貼著車尾甲板，不像頂在上面的盤子） */
-const RING = { xc: -57, y: 35.5, a: 17, b: 22, ai: 11, bi: 16 };
+/** @type {{ xc: number, y: number, a: number, b: number, ai: number, bi: number }} 火焰環：中心 x −48.8、環底（環心處）42；外橢圓半軸 24 × 25.5、內孔 16.5 × 19（全車的主角，俯視是車尾一個大圓） */
+const RING = { xc: -48.8, y: 42, a: 24, b: 25.5, ai: 16.5, bi: 19 };
 /** @type {number} 焰舌數（奇數：車尾正中是一支焰舌） */
 const FLAME_N = 17;
 /** @type {number} 焰舌伸出環帶外緣的長度 */
-const FLAME_H = 2.8;
+const FLAME_H = 3.2;
 
 /**
  * 環上一點：參數角 t、徑向倍率 k（1 = 外橢圓）、徑向外加 d mm
@@ -173,9 +173,9 @@ const loop = (a, b, d, reverse = false) => {
 };
 
 /** @type {number} 環板厚（細斷面） */
-const RING_T = 2.4;
+const RING_T = 1.6;
 /** @type {number} 環往後上方傾斜的角度（以環心為軸，車尾端抬高、車頭端壓低） */
-const RING_TILT = (8 * Math.PI) / 180;
+const RING_TILT = (4 * Math.PI) / 180;
 /** @type {(x: number) => number} 傾斜後環底在 x 處的高度 */
 const ringUnderY = (x) => RING.y + (RING.xc - x) * Math.tan(RING_TILT);
 
@@ -190,52 +190,90 @@ const tiltRing = (g) => {
   return g;
 };
 
-/** @type {() => THREE.BufferGeometry} 環帶（寬約 6、厚 2.4），往後上方傾斜 */
+/** @type {() => THREE.BufferGeometry} 細斷面環帶（寬約 7、厚 1.6），往後上方傾斜 */
 const buildRingBand = () => tiltRing(slabWithHole(loop(RING.a, RING.b, () => 0), loop(RING.ai, RING.bi, () => 0, true), RING.y, RING_T, 0.4));
 /** @type {() => THREE.BufferGeometry} 環頂內緣的金色細邊（寬 1.4、厚 0.3） */
 const buildRingInlay = () => tiltRing(slabWithHole(loop(RING.ai + 1.4, RING.bi + 1.4, () => 0), loop(RING.ai, RING.bi, () => 0, true), RING.y + RING_T, 0.3, 0.08));
 /** @type {() => THREE.BufferGeometry} 焰舌圈：環帶外緣往外、往車尾掠出的不等長焰舌（厚 0.9），內緣埋進環帶 */
 const buildFlameRing = () => tiltRing(slabWithHole(flameLoop(), loop(RING.a - 0.8, RING.b - 0.8, () => 0, true), RING.y + RING_T / 2 - 0.45, 0.9, 0.25));
 
-/** @type {number} 環座側鰭的 |z|（中心；落在環帶寬度中間） */
-const FIN_Z = 19;
+/** @type {number} 環座側鰭的 |z|（中心；外側面和車尾側壁齊平） */
+const FIN_Z = 22.6;
 /** @type {number} 環座側鰭厚 */
-const FIN_T = 3.2;
+const FIN_T = 1.8;
 /**
- * 環座側鰭側視外形 (x, y)：車尾甲板往上長出的厚鰭——前緣從後輪上方以長的內凹弧線往後上方升起，頂邊貼環底一段，後緣陡落後順著甲板往後收；底邊埋進殼面
+ * 環座側鰭側視外形 (x, y)：車尾兩側車身往上長出的細長臂——前緣從後輪前方的肩部以長的內凹弧線往後上方升起，頂邊只貼環底一小段，後緣陡落後順著甲板往後收；底邊埋進殼面
  * @type {number[][]}
  */
 const RING_FIN = (() => {
   /** @type {number[][]} */
   const pts = [];
-  // 前緣：x −28 → −50 的內凹弧（先貼著殼面、後段陡升到環底）
+  // 前緣：x −20 → −42 的內凹弧（先貼著殼面、後段陡升到環底）
   for (let i = 0; i <= 10; i++) {
     const t = i / 10;
-    const x = lerp(-28, -50, t);
+    const x = lerp(-20, -42, t);
     pts.push([x, lerp(29.8, ringUnderY(x) + 0.3, t ** 2.4)]);
   }
-  // 頂邊貼環底 x −52 → −56
-  pts.push([-52, ringUnderY(-52) + 0.3], [-56, ringUnderY(-56) + 0.3]);
-  // 後緣：先陡落、再順著甲板往後收到 x −62
+  // 頂邊貼環底到 x −49
+  pts.push([-45.5, ringUnderY(-45.5) + 0.3], [-49, ringUnderY(-49) + 0.3]);
+  // 後緣：先陡落、再順著甲板往後收到 x −58
   for (let i = 1; i <= 6; i++) {
     const t = i / 6;
-    pts.push([lerp(-56, -62, t ** 1.6), lerp(ringUnderY(-56) + 0.3, 29.8, t ** 0.45)]);
+    pts.push([lerp(-49, -58, t ** 1.6), lerp(ringUnderY(-49) + 0.3, 29.8, t ** 0.45)]);
   }
-  pts.push([-62, 27], [-28, 27]);
+  pts.push([-58, 27], [-20, 27]);
   return pts;
 })();
 
-/** @type {{ c1: number[], r1: number, c2: number[], r2: number }} 側面新月徽：前輪後方側壁上一枚角尖朝前上方的金色新月（大圓扣掉偏前上方的小圓） */
-const SIDE_MOON = { c1: [12, 23.8], r1: 4.4, c2: [13.7, 25.6], r2: 3.7 };
-
 /**
- * 側面新月徽的有號距離（正值 = 新月內）
- * @type {(x: number, y: number) => number}
+ * 新月外形 (x, y)：大圓（圓心 c1、半徑 r1）扣掉偏向一側的小圓（c2、r2），兩角朝小圓那一側
+ * @type {(c1: number[], r1: number, c2: number[], r2: number, n: number) => number[][]}
  */
-const sideMoonSd = (x, y) => {
-  const { c1, r1, c2, r2 } = SIDE_MOON;
-  return Math.min(r1 - Math.hypot(x - c1[0], y - c1[1]), Math.hypot(x - c2[0], y - c2[1]) - r2);
+const crescentOutline = (c1, r1, c2, r2, n) => {
+  /** @type {(p: number[], c: number[], r: number) => boolean} */
+  const inside = (p, c, r) => Math.hypot(p[0] - c[0], p[1] - c[1]) < r;
+  /** @type {(c: number[], r: number, t: number) => number[]} */
+  const at = (c, r, t) => [c[0] + r * Math.cos(t), c[1] + r * Math.sin(t)];
+  // 大圓上落在小圓外的弧：從小圓圓心方向的反面往兩側找邊界角
+  const dir = Math.atan2(c2[1] - c1[1], c2[0] - c1[0]);
+  const step = Math.PI / 720;
+  let span = 0;
+  while (span < Math.PI && !inside(at(c1, r1, dir + Math.PI + span + step), c2, r2)) {
+    span += step;
+  }
+  /** @type {number[][]} */
+  const out = [];
+  for (let i = 0; i <= n; i++) {
+    out.push(at(c1, r1, dir + Math.PI - span + (2 * span * i) / n));
+  }
+  // 小圓上落在大圓內的弧（由大圓弧終點接回起點）
+  const e0 = out[n];
+  const e1 = out[0];
+  const a0 = Math.atan2(e0[1] - c2[1], e0[0] - c2[0]);
+  let a1 = Math.atan2(e1[1] - c2[1], e1[0] - c2[0]);
+  while (a1 > a0) {
+    a1 -= 2 * Math.PI;
+  }
+  for (let i = 1; i < n; i++) {
+    out.push(at(c2, r2, a0 + ((a1 - a0) * i) / n));
+  }
+  return out;
 };
+
+/** @type {number} 新月鰭跟著鼻段往前下斜的角度（rad） */
+const CRESCENT_TILT = -0.22;
+/**
+ * 鼻段新月鰭的側視外形 (x, y)：立在鼻段中央低谷、兩角朝上的新月（碗底埋進殼面 1 mm），整片跟著鼻段往前下斜
+ * @type {number[][]}
+ */
+const CRESCENT = crescentOutline([58, 29.5], 6, [58, 32.1], 5.4, 18).map(([x, y]) => {
+  const dx = x - 58;
+  const dy = y - 24.8;
+  return [58 + dx * Math.cos(CRESCENT_TILT) - dy * Math.sin(CRESCENT_TILT), 24.8 + dx * Math.sin(CRESCENT_TILT) + dy * Math.cos(CRESCENT_TILT)];
+});
+
+/** @type {() => THREE.BufferGeometry} 新月鰭（中線上，厚 1.2） */
+const buildCrescent = () => finPlate(CRESCENT, 0, 1.2);
 
 /**
  * 輪拱內襯：輪拱切口後面的一段圓柱面（只取上半圈），z 從側壁內面往內 depth
@@ -272,6 +310,17 @@ const buildLiner = (arch, depth) => {
 };
 
 /**
+ * 番紅火舌細線的位置：中線在 x 30，往兩側每 1 mm 後退 0.55 mm，再加一排往車尾竄的火舌（每 8 mm 一支、深 7 mm）
+ * @type {(z: number) => number}
+ */
+const flameEdgeX = (z) => {
+  const az = Math.abs(z);
+  const u = ((az / 8) % 1 + 1) % 1;
+  const q = 1 - Math.abs(2 * u - 1);
+  return 30 - 0.55 * az - 7 * q ** 2.5;
+};
+
+/**
  * 達瑪如鼓剪影（側面進氣口）：x −23 → −1 兩個尖對尖的三角形，鼓腰在 x −12；回傳正值 = 剪影內
  * @type {(x: number, y: number) => number}
  */
@@ -283,37 +332,20 @@ const damaruSd = (x, y) => {
 
 /** @type {number} 車身主色：紫金屬漆 */
 const VIOLET_HEX = 0x4a2390;
-/** @type {THREE.Color[]} 漸層色標：紫 → 洋紅 → 橘焰 */
-const GRAD_STOPS = [new THREE.Color(VIOLET_HEX), new THREE.Color(0xc42a6a), new THREE.Color(0xe8611c)];
-/** @type {THREE.Color} 鼻尖的深靛（往後 NOSE_LEN 內漸變到紫） */
-const NOSE_INDIGO = new THREE.Color(0x221060);
-/** @type {THREE.Color} 前擋泥板峰線上的亮紫（金屬光） */
-const PEAK_VIOLET = new THREE.Color(0x7a4ad0);
-/** @type {number} 鼻段深靛漸層長度（mm） */
-const NOSE_LEN = 44;
+/** @type {THREE.Color[]} 漸層色標：橘焰 → 洋紅 → 紫 */
+const GRAD_STOPS = [new THREE.Color(0xe8611c), new THREE.Color(0xc42a6a), new THREE.Color(VIOLET_HEX)];
 /** @type {number} 漸層長度（沿 x，mm） */
-const GRAD_LEN = 40;
-/** @type {(z: number) => number} 漸層前緣（車頭側全紫）：中線 x −14，往兩側每 1 mm 前移 0.4 mm */
-const gradEndX = (z) => -14 + 0.4 * Math.abs(z);
+const GRAD_LEN = 46;
+/** @type {(z: number) => number} 漸層起點（平滑的橘焰分界，不含火舌）：中線 x 30，往兩側每 1 mm 後退 0.55 mm */
+const gradStartX = (z) => 30 - 0.55 * Math.abs(z);
 
 /**
- * 漸層顏色（線性色彩空間）：從前緣往車尾 GRAD_LEN 內，紫 → 洋紅 → 橘焰（火焰環映在車尾）
+ * 漸層顏色（線性色彩空間）：從橘焰分界往車尾 GRAD_LEN 內，橘 → 洋紅 → 紫
  * @type {(x: number, y: number, z: number) => number[]}
  */
 const gradientColor = (x, y, z) => {
-  const t = Math.min(1, Math.max(0, (gradEndX(z) - x) / GRAD_LEN));
-  let c;
-  if (x > gradEndX(z)) {
-    // 鼻段：鼻尖深靛 → 紫，擋泥板峰線一帶提亮（橫向金屬光帶）
-    const u = Math.min(1, Math.max(0, (X_NOSE - x) / NOSE_LEN));
-    c = NOSE_INDIGO.clone().lerp(GRAD_STOPS[0], smoothstep(0, 1, u));
-    const peak = Math.exp(-(((Math.abs(z) - 0.8 * P.hw(x)) / 5) ** 2));
-    c.lerp(PEAK_VIOLET, 0.45 * peak);
-  } else if (t < 0.5) {
-    c = GRAD_STOPS[0].clone().lerp(GRAD_STOPS[1], t * 2);
-  } else {
-    c = GRAD_STOPS[1].clone().lerp(GRAD_STOPS[2], t * 2 - 1);
-  }
+  const t = Math.min(1, Math.max(0, (gradStartX(z) - x) / GRAD_LEN));
+  const c = t < 0.5 ? GRAD_STOPS[0].clone().lerp(GRAD_STOPS[1], t * 2) : GRAD_STOPS[1].clone().lerp(GRAD_STOPS[2], t * 2 - 1);
   return [c.r, c.g, c.b];
 };
 
@@ -321,10 +353,11 @@ const gradientColor = (x, y, z) => {
 const materials = () => ({
   indigo: namedMaterial('paint-shiva-violet-metallic', { color: VIOLET_HEX, roughness: 0.3, metalness: 0.45, clearcoat: 0.9, clearcoatRoughness: 0.08 }),
   strut: namedMaterial('paint-shiva-violet-metallic', { color: VIOLET_HEX, roughness: 0.3, metalness: 0.45, clearcoat: 0.9, clearcoatRoughness: 0.08 }),
-  // 漸層貼紙：深靛 → 紫 → 洋紅 → 橘（頂點色）
+  // 漸層貼紙：橘 → 洋紅 → 紫（頂點色）
   dGrad: decalMaterial('decal-gradient-orange-violet', { vertexColors: true, roughness: 0.3, metalness: 0.3, clearcoat: 0.9, clearcoatRoughness: 0.08 }),
+  orange: namedMaterial('paint-flame-orange', { color: 0xe8611c, roughness: 0.3, clearcoat: 0.9, clearcoatRoughness: 0.1 }),
   sill: namedMaterial('paint-violet-deep', { color: 0x34176a, roughness: 0.45, metalness: 0.25, clearcoat: 0.4 }),
-  // 真金屬：火焰環內緣（Blender 依 -brass 結尾換成金屬）
+  // 真金屬：火焰環帶、新月片（Blender 依 -brass 結尾換成金屬）
   gold: namedMaterial('trim-gold-brass', { color: 0xd9a93a, roughness: 0.3, metalness: 0.85, clearcoat: 0.3, side: THREE.DoubleSide }),
   // 焰舌：橘焰亮漆，低強度自發光
   flame: namedMaterial('lamp-flame-tongue', { color: 0xff7a1f, emissive: 0xff5a10, emissiveIntensity: 0.35, roughness: 0.3, clearcoat: 0.6, side: THREE.DoubleSide }),
@@ -350,7 +383,7 @@ export const shivaRingBody = makePolyBody({
   form: 'damaru-waist',
   roof: 'canopy',
   wing: 'flame-ring',
-  theme: '舞王銅像的火焰光環、新月與達瑪如鼓，不做神像：車尾一圈貼著甲板、往後上方傾斜的車身紫橫向橢圓火焰環（外緣 17 支不等長、往後掠的橘焰舌，頂內緣金邊），由車尾甲板長出的兩片厚側鰭一體托住；前擋泥板兩團隆起夾一道低谷，正視是往上彎的新月，側面前輪後方各一枚金色新月徽；俯視是沙漏形的鼓腰（兩輪之間腰線以下外伸側箱封住底盤），側面進氣口是兩個尖對尖的三角形；靛紫為主色，鼻尖深靛往車尾經紫、洋紅漸層到橘焰，配金',
+  theme: '舞王銅像的火焰光環、新月與達瑪如鼓，不做神像：車尾一圈往後上方傾斜的車身紫細斷面火焰環（外緣 17 支不等長、往後掠的橘焰舌，頂內緣金邊），由車尾兩側車身長出的兩支細長側鰭一體托起，是全車最高點；前擋泥板兩團隆起夾一道低谷，正視是往上彎的新月，鼻段中央低谷立一枚金色新月鰭；俯視是沙漏形的鼓腰（兩輪之間腰線以下外伸側箱封住底盤），側面進氣口是兩個尖對尖的三角形；橘焰鼻段往車尾經洋紅漸層到紫金屬漆，配番紅火舌細線與金',
   material: 'ABS',
   density_g_cm3: 1.05,
   wallThickness_mm: 0.8,
@@ -380,9 +413,11 @@ export const shivaRingBody = makePolyBody({
   zones: () => [
     // 下裙（腰線以下）：深紫半霧面
     { mat: 'sill', keep: (x, y) => yWaist(x) - 0.05 - y },
+    // 橘焰：鼻段（往車尾接漸層貼紙）
+    { mat: 'orange', keep: (x, y, z) => x - gradStartX(z) },
     { mat: 'indigo', keep: () => 1 },
   ],
-  capFrontBands: [{ mat: 'indigo' }],
+  capFrontBands: [{ mat: 'orange' }],
   mats: { inner: 'inner', edge: 'edge', cap: 'sill', cockpit: 'cockpit', glass: 'glass', mount: 'mount' },
   materials,
   extras: (kit) => {
@@ -398,17 +433,20 @@ export const shivaRingBody = makePolyBody({
     parts.push({ geometry: mergeGeos([buildRingBand(), finPlate(RING_FIN, FIN_Z, FIN_T), finPlate(RING_FIN, -FIN_Z, FIN_T)]), mat: 'strut', solid: true, outline: true, name: 'flame-ring-body' });
     parts.push({ geometry: buildRingInlay(), mat: 'gold', solid: true, outline: true, name: 'flame-ring-inlay' });
     parts.push({ geometry: buildFlameRing(), mat: 'flame', solid: true, outline: true, name: 'flame-ring-tongues' });
+    // 鼻段新月鰭
+    parts.push({ geometry: buildCrescent(), mat: 'gold', solid: true, outline: true, name: 'nose-crescent' });
 
     /** @type {(x: number, z: number) => boolean} 在側壁上（肩線以外） */
     const onSide = (x, z) => Math.abs(z) > P.hw(x) - 1.2;
-    // 全長漸層：鼻尖深靛 → 紫（擋泥板峰線亮紫）→ 洋紅 → 車尾橘焰（腰線以上，含座艙罩以外的頂面與側壁）
+    // 橘到紫的漸層：腰線以上、橘焰分界往後 GRAD_LEN（含座艙罩以外的頂面與側壁）
     parts.push({
       geometry: kit.decal(
         (x, y, z) => {
           if (y < yWaist(x) + 0.05) {
             return -1;
           }
-          return 1;
+          const d = gradStartX(z) - x;
+          return Math.min(d + 0.5, GRAD_LEN + 1 - d);
         },
         { offset: 0.03, color: gradientColor },
       ),
@@ -420,6 +458,18 @@ export const shivaRingBody = makePolyBody({
       geometry: kit.decal((x, y, z) => (!onSide(x, z) || x < X_TAIL + 1.5 || x > X_NOSE - 3 ? -1 : 0.32 - Math.abs(y - (P.yS(x) - 1.3)))),
       mat: 'dGold',
       name: 'decal-shoulder-gold',
+    });
+    // 橘焰分界的番紅細邊（火舌外緣一道亮邊）
+    parts.push({
+      geometry: kit.decal((x, y, z) => {
+        if (y < yWaist(x) + 0.3 || kit.underCanopy(x, z) > -0.6) {
+          return -1;
+        }
+        const d = x - flameEdgeX(z);
+        return d < 0 ? -1 : 0.9 - d;
+      }),
+      mat: 'dSaffron',
+      name: 'decal-flame-edge',
     });
     // 達瑪如鼓進氣口：番紅色剪影上幾道黑色橫縫＋金邊
     parts.push({
@@ -458,12 +508,6 @@ export const shivaRingBody = makePolyBody({
       mat: 'dGold',
       name: 'decal-damaru-rim',
     });
-    // 側面新月徽（左右各一，金）
-    parts.push({
-      geometry: kit.decal((x, y, z) => (!onSide(x, z) || x < 6 || x > 18 ? -1 : sideMoonSd(x, y)), { offset: 0.12 }),
-      mat: 'dGold',
-      name: 'decal-side-crescent',
-    });
     // 細縫頭燈：前擋泥板前緣、峰線外側的一對斜長光條
     parts.push({
       geometry: kit.decal(
@@ -484,8 +528,8 @@ export const shivaRingBody = makePolyBody({
   src: {
     density_g_cm3: 'SPEC 1.14：ABS 約 1.05 g/cm³（推估）',
     wallThickness_mm: '推估：射出 ABS 殼 0.8 mm（同其他款）',
-    geometry: '本檔站位產生器 P（推估），比例取自四視圖 24（shared/design/body-shiva-ring/fourview_trace.txt）縮到底盤：鼻尖 x 77.5（離地 13）、車尾 −70；沙漏平面半寬 後輪 28.5 / 鼓腰 22.5 / 前輪 45.5（鼓面）；肩線 32 高過 R17.5 輪拱；座艙罩頂約 40.5；火焰環低貼車尾甲板（環底 35.5）',
-    wing: '火焰環（外 17 × 22、內孔 11 × 16 的橫向橢圓環，厚 2.4，環心 x −57、環底 35.5，以環心為軸往後上方傾斜 8°）、金色內緣（寬 1.4、厚 0.3）、焰舌圈（17 支、最長伸出 2.8、車頭側短車尾側長，厚 0.9）、環座側鰭（|z| 19、厚 3.2，左右各一）：ABS 實心件（推估），質量 = 封閉體積 × 1.05 g/cm³；側鰭下緣埋進殼面',
+    geometry: '本檔站位產生器 P（推估），比例取自四視圖 24（shared/design/body-shiva-ring/fourview_trace.txt）縮到底盤：鼻尖 x 77.5（離地 13）、車尾 −70；沙漏平面半寬 後輪 28.5 / 鼓腰 22.5 / 前輪 40（鼓面）；肩線 32 高過 R17.5 輪拱；座艙罩頂約 40.5；火焰環車尾端頂 45.2（全車最高）',
+    wing: '細斷面火焰環（外 24 × 25.5、內孔 16.5 × 19 的橢圓環，厚 1.6，以環心為軸往後上方傾斜 4°）、金色內緣（寬 1.4、厚 0.3）、焰舌圈（17 支、最長伸出 3.2、車頭側短車尾側長，厚 0.9）、環座側鰭（|z| 22.6、厚 1.8，左右各一）、鼻段新月鰭（厚 1.2）：ABS 實心件（推估），質量 = 封閉體積 × 1.05 g/cm³；側鰭與新月鰭下緣埋進殼面',
     myth: '舞王銅像的火焰光環（prabhamandala）、髮間新月、達瑪如鼓：見 shared/design/body-shiva-ring/DESIGN.md 列出的博物館頁面；只用持物與象徵，不做神像',
     mounts: '對齊 chassis-midship 的車殼安裝點（SPEC 1.14）',
   },

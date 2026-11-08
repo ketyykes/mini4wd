@@ -6,7 +6,7 @@
 // 兩輪之間的圓木牆上每側三扇深棕細木框的琥珀小窗——izba 正面「三扇窗」的排法，車身側面一眼就是一間木屋；
 // 後翼是一道柵欄：每側三片尖頂白木樁當翼端板、兩根紅色橫木就是上下兩段翼面；
 // 「會走路的小屋」只用姿態暗示：前輪罩整個切開、露出前輪，車身往前低頭；切口後方的甲板上每側三片往後掠的大型橘黃爪痕鰭（三道平行斜劃的爪痕，不做腳）。
-// 配色：風化深色舊木（霧面、圓木縫塞苔綠）＋苔綠木瓦屋頂（霧面）＋骨白木作（霧面）＋紅色橫木與窗框＋橘黃爪痕鰭＋琥珀窗光。
+// 配色：原木暖褐（霧面）＋深炭灰木瓦屋頂（霧面）＋白色木作（霧面）＋紅色橫木與窗框＋橘黃爪痕鰭＋琥珀窗光。
 // 設計：shared/design/body-yaga-hut/DESIGN.md（研究一節列出實際打開的來源）。剖面為本檔站位產生器（推估）。
 // 不含任何廠商 / 作品名稱、商標、文字或人臉。
 import * as THREE from 'three';
@@ -27,8 +27,8 @@ const XS = [-67, -62, -54, -40, -28, -14, 0, 14, 28, 40, 48, 55, 61, 68];
 /** @type {Record<string, (x: number) => number>} */
 const P = {
   // 圓木牆面半寬（接縫處）：俯視是往後展開的楔形（V3）——尖窄車頭（3.4）→ 前輪位置 37.4（前輪罩切開後只剩中央 ±23.6 的引擎蓋）→
-  // 兩輪之間 29 的細腰 → 後輪上方最寬的後翼子板 41 → 後輪之後急收成窄船尾（x −54 只剩 24，後輪後半露在殼外）→ 車尾 17（車尾山牆只比人字屋頂寬一點）；腰段下層裙身的內收量由 skirtIn 限制在 |z| ≥ 28
-  hw: monoCurve(XS, [17, 21, 24, 41, 37.5, 30.5, 29, 29.5, 33.5, 37.4, 23, 9, 4.8, 3.4]),
+  // 兩輪之間 29 的細腰 → 後輪上方最寬的後翼子板 41 → 收窄的船尾 17（車尾山牆只比人字屋頂寬一點）；腰段下層裙身的內收量由 skirtIn 限制在 |z| ≥ 28
+  hw: monoCurve(XS, [17, 22.5, 33, 41, 37.5, 30.5, 29, 29.5, 33.5, 37.4, 23, 9, 4.8, 3.4]),
   // 屋脊（人字屋頂的頂線）：從鼻端 16.6 貼著甲板往後，x 28 起離開甲板一路升高，後輪上方最高 40.8，到車尾山牆緩降到 37.6；
   // 側視是一片往前低頭的楔形屋頂
   yTop: monoCurve(XS, [37.6, 38.4, 39.4, 40.8, 40.6, 38.2, 35, 31.4, 27.8, 26.6, 25, 22, 19, 16.6]),
@@ -180,15 +180,15 @@ const paneSd = (x, az) => Math.max(PANE.x0 - x, x - PANE.x1, 2.6 - az, az - (gab
 
 /** @type {() => Record<string, THREE.Material>} */
 const materials = () => ({
-  // 原木：風化發灰的深色舊木（霧面，roughness 0.65–0.75）
-  log: namedMaterial('paint-log-pine', { color: 0x64553f, roughness: 0.7, clearcoat: 0.03 }),
-  logDark: namedMaterial('paint-log-pine-aged', { color: 0x534636, roughness: 0.72, clearcoat: 0.03 }),
-  // 木瓦屋頂（長了苔的舊白楊木瓦：苔綠，霧面），甲板外緣底與車頭封口是 izba 彩繪的藍
-  shingle: namedMaterial('paint-shingle-charcoal', { color: 0x4a5a34, roughness: 0.74, clearcoat: 0.04 }),
+  // 原木：霧面（roughness 0.65–0.75）
+  log: namedMaterial('paint-log-pine', { color: 0x8c5a32, roughness: 0.7, clearcoat: 0.03 }),
+  logDark: namedMaterial('paint-log-pine-aged', { color: 0x74482a, roughness: 0.72, clearcoat: 0.03 }),
+  // 木瓦屋頂（風化的白楊木瓦：深炭灰，霧面），甲板外緣底與車頭封口是 izba 彩繪的藍
+  shingle: namedMaterial('paint-shingle-charcoal', { color: 0x3a3e44, roughness: 0.74, clearcoat: 0.04 }),
   soffit: namedMaterial('paint-izba-blue', { color: 0x2a5aa0, roughness: 0.6, clearcoat: 0.08 }),
-  // 骨白木作：封簷板、博風板、柵欄木樁（泛黃的骨白漆，霧面）
-  white: namedMaterial('paint-nalichnik-white', { color: 0xe8dcc0, roughness: 0.6, clearcoat: 0.05 }),
-  white2: namedMaterial('paint-nalichnik-white', { color: 0xe8dcc0, roughness: 0.6, clearcoat: 0.05, side: THREE.DoubleSide }),
+  // 白色木作：封簷板、博風板、柵欄木樁（白漆，霧面）
+  white: namedMaterial('paint-nalichnik-white', { color: 0xf0ece2, roughness: 0.6, clearcoat: 0.05 }),
+  white2: namedMaterial('paint-nalichnik-white', { color: 0xf0ece2, roughness: 0.6, clearcoat: 0.05, side: THREE.DoubleSide }),
   // 柵欄橫木＝兩段翼面（izba 彩繪的紅，緞面）
   rail: namedMaterial('paint-izba-red', { color: 0xb3302a, roughness: 0.48, clearcoat: 0.3 }),
   // 煙囪：紅磚＋白灰管口環（霧面）
@@ -205,18 +205,18 @@ const materials = () => ({
   vane: namedMaterial('paint-vane-ochre', { color: 0xf0a020, roughness: 0.5, clearcoat: 0.15, side: THREE.DoubleSide }),
   hole: namedMaterial('plastic-chimney-black', { color: 0x120d0a, roughness: 0.9 }),
   inner: namedMaterial('shell-inner-dark', { color: 0x1e1712, roughness: 0.85, side: THREE.BackSide }),
-  edge: namedMaterial('shell-edge-wood', { color: 0x3a302a, roughness: 0.7, side: THREE.DoubleSide }),
+  edge: namedMaterial('shell-edge-wood', { color: 0x4a2f1b, roughness: 0.7, side: THREE.DoubleSide }),
   liner: namedMaterial('shell-wheelwell-wood', { color: 0x2e1f14, roughness: 0.8, side: THREE.DoubleSide }),
   mount: namedMaterial('abs-mount-black', { color: 0x222326, roughness: 0.6 }),
-  dGroove: decalMaterial('decal-moss-caulk', { color: 0x5f7a2c, roughness: 0.85 }),
-  // 圓木上下緣的陰影帶（比圓木深兩階）與中段發灰的受光帶 → 讀成一根根圓柱形圓木
-  dLogShade: decalMaterial('decal-log-shade', { color: 0x3b3129, roughness: 0.78 }),
-  dLogLight: decalMaterial('decal-log-highlight', { color: 0x8a7a66, roughness: 0.68 }),
+  dGroove: decalMaterial('decal-moss-caulk', { color: 0x2b2116, roughness: 0.85 }),
+  // 圓木上下緣的陰影帶（比圓木深兩階的木褐）與中段的受光帶 → 讀成一根根圓柱形圓木
+  dLogShade: decalMaterial('decal-log-shade', { color: 0x4e2f19, roughness: 0.78 }),
+  dLogLight: decalMaterial('decal-log-highlight', { color: 0xa66d3c, roughness: 0.68 }),
   // 座艙窗的深色木窗框與窗格
   dFrameWood: decalMaterial('decal-window-frame-wood', { color: 0x3a2414, roughness: 0.7 }),
-  dShingleGap: decalMaterial('decal-shingle-gap', { color: 0x1c2214, roughness: 0.85 }),
-  dShingleDark: decalMaterial('decal-shingle-charcoal-dark', { color: 0x3a4728, roughness: 0.76 }),
-  dWhite: decalMaterial('decal-nalichnik-white', { color: 0xe8dcc0, roughness: 0.6 }),
+  dShingleGap: decalMaterial('decal-shingle-gap', { color: 0x17191c, roughness: 0.85 }),
+  dShingleDark: decalMaterial('decal-shingle-charcoal-dark', { color: 0x2a2d32, roughness: 0.76 }),
+  dWhite: decalMaterial('decal-nalichnik-white', { color: 0xf0ece2, roughness: 0.6 }),
   dRed: decalMaterial('decal-window-red', { color: 0xb3302a, roughness: 0.58 }),
   dBlue: decalMaterial('decal-izba-blue', { color: 0x2a5aa0, roughness: 0.6 }),
 });

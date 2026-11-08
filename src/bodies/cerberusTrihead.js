@@ -1,7 +1,7 @@
 // 三頭犬（body-cerberus-trihead，神話組・希臘）：照四視圖 07 的「從前輪往前伸成細長尖刺的匕首鼻、多面切削的側面、低座艙、高車尾、兩端 Z 字閃電折線的尾翼、俯視 W 形尾」建模，不做犬頭。
-// 「三」：匕首鼻兩側三條等長平行的餘燼橘速度線；尾翼後緣三個等長尖齒（俯視 W 形尾）。
-// 冥府鐵門 livery：槍鐵灰金屬漆為主色，暗青銅做擋泥板頂面色塊、匕首鼻脊稜與尾翼，餘燼橘做描線與速度線，白色加彩細線鑲邊；
-// 側面上層是餘燼橘鎖鏈（冥府的鎖鏈），下層收腰段是血紅飾帶上的黑色回紋（羅浮宮 E 701 卡厄瑞水罐的黑繪陶回紋）。
+// 「三」：匕首鼻兩側三條等長平行的青銅金速度線；尾翼後緣三個等長尖齒（俯視 W 形尾）。
+// 黑繪陶 livery：黑釉為主色，陶土色做擋泥板頂面色塊、刃狀稜、尾翼與描線（切面折線上的對比色描線），白色加彩細線鑲邊；
+// 側面上層是陶土色鎖鏈（冥府的鎖鏈），下層收腰段是陶土飾帶上的黑色回紋（羅浮宮 E 701 卡厄瑞水罐的黑繪陶語彙）。
 // 側面多面切削：肩稜下的上層側壁往下內收到一道腰折線，折線下是往外的裙板，兩輪之間的裙板一路蓋到底盤側框上緣。
 // 設計：shared/design/body-cerberus-trihead/DESIGN.md（MYTH_RESEARCH G3–G5、G12）。全為自創，不含任何文字或商標。
 import * as THREE from 'three';
@@ -132,23 +132,22 @@ const chainSd = (u, v) => {
 
 /** @type {() => Record<string, THREE.Material>} */
 const materials = () => ({
-  // 槍鐵灰金屬漆（主色）：冥府鐵門的冷灰金屬
-  black: namedMaterial('paint-gunmetal-iron', { color: 0x4a5056, metalness: 0.6, roughness: 0.38, clearcoat: 0.5, clearcoatRoughness: 0.25 }),
-  black2: namedMaterial('paint-figure-black', { color: 0x1a1817, roughness: 0.56, clearcoat: 0.12, clearcoatRoughness: 0.4, side: THREE.DoubleSide }),
-  // 背脊頂面：較深的霧面槍鐵灰，掠射角不反成亮面
-  deck: namedMaterial('shell-deck-gunmetal-matte', { color: 0x2c3034, metalness: 0.3, roughness: 0.7 }),
-  // 擋泥板頂面色塊：暗青銅金屬漆
-  clay: namedMaterial('paint-dark-bronze', { color: 0x6e5534, metalness: 0.7, roughness: 0.34, clearcoat: 0.4, clearcoatRoughness: 0.3 }),
-  // 收腰裙板飾帶底色：血紅
-  blood: namedMaterial('paint-blood-red', { color: 0x7e1416, roughness: 0.5, clearcoat: 0.3, clearcoatRoughness: 0.3 }),
+  // 黑釉（緞面）：黑繪陶的半光澤黑
+  black: namedMaterial('paint-figure-black', { color: 0x141110, roughness: 0.56, clearcoat: 0.12, clearcoatRoughness: 0.4 }),
+  black2: namedMaterial('paint-figure-black', { color: 0x141110, roughness: 0.56, clearcoat: 0.12, clearcoatRoughness: 0.4, side: THREE.DoubleSide }),
+  // 背脊頂面霧面黑：掠射角不反成亮面
+  deck: namedMaterial('shell-deck-dark-matte', { color: 0x141110, roughness: 0.85 }),
+  // 陶土色（霧面）
+  clay: namedMaterial('paint-terracotta-clay', { color: 0xa8502c, roughness: 0.7, clearcoat: 0.0 }),
+  clay2: namedMaterial('paint-terracotta-clay', { color: 0xa8502c, roughness: 0.7, clearcoat: 0.0, side: THREE.DoubleSide }),
   inner: namedMaterial('shell-inner-dark', { color: 0x1a1412, roughness: 0.85, side: THREE.BackSide }),
   edge: namedMaterial('shell-edge-black', { color: 0x141110, roughness: 0.7, side: THREE.DoubleSide }),
   cockpit: namedMaterial('shell-inner-dark', { color: 0x0c0a0a, roughness: 0.9, side: THREE.DoubleSide }),
   // 深色煙燻座艙罩（幾乎不透明的黑色 PC，看不到座艙內的東西）
   glass: namedMaterial('pc-tint-black-smoke', { color: 0x120d0c, roughness: 0.08, specularIntensity: 0.5, transparent: true, opacity: 0.88, envMapIntensity: 0.45, depthWrite: false, side: THREE.DoubleSide }),
   liner: namedMaterial('shell-wheelwell-dark', { color: 0x1a1412, roughness: 0.8, side: THREE.DoubleSide }),
-  // 鎖鏈、描線：微微發光的餘燼橘
-  dClay: decalMaterial('decal-ember-orange', { color: 0xe8642a, emissive: 0xc83c0c, emissiveIntensity: 0.35, roughness: 0.45 }),
+  // 刻線、鎖鏈、描線：陶土色
+  dClay: decalMaterial('decal-incised-clay', { color: 0xa8502c, roughness: 0.7 }),
   // 第三色青銅金：匕首鼻脊稜、速度線、尾翼、翼端閃電（名稱含 -brass → 金屬）
   bronze: namedMaterial('trim-bronze-brass', { color: 0xb08d4a, metalness: 0.85, roughness: 0.32, side: THREE.DoubleSide }),
   dBronze: decalMaterial('decal-bronze-leaf', { color: 0xb8954f, metalness: 0.75, roughness: 0.34 }),
@@ -272,7 +271,7 @@ const CONFIG = {
   form: 'trispike-shovel',
   roof: 'canopy',
   wing: 'trifang-zigzag-plate',
-  theme: '槍鐵灰金屬多面切削四驅車：從前輪往前伸成細長尖刺的匕首鼻（中線青銅金脊稜收尖到鼻尖），兩側三條等長平行的餘燼橘速度線；擋泥板頂面暗青銅色塊、白色加彩鑲邊，肩稜與腰折線上的餘燼橘描線；側面上層餘燼橘鎖鏈、收腰裙板上血紅飾帶的黑色回紋；壓低拉長的深色煙燻座艙罩；高車尾單柱撐起後緣三尖齒（俯視 W 形）的青銅金尾翼，兩端往上折成青銅金 Z 字閃電',
+  theme: '黑釉多面切削四驅車：從前輪往前伸成細長尖刺的匕首鼻（中線青銅金脊稜收尖到鼻尖），兩側三條等長平行的青銅金速度線；擋泥板頂面陶土色塊、白色加彩鑲邊，肩稜與腰折線上的陶土色描線；側面上層陶土色鎖鏈、收腰裙板上陶土飾帶的黑色回紋；壓低拉長的深色煙燻座艙罩；高車尾單柱撐起後緣三尖齒（俯視 W 形）的青銅金尾翼，兩端往上折成青銅金 Z 字閃電',
   material: 'ABS',
   density_g_cm3: 1.05,
   wallThickness_mm: 0.8,
@@ -288,11 +287,11 @@ const CONFIG = {
   canopy: CANOPY,
   sideZMin: 26,
   zones: () => [
-    // 收腰段裙板（腰折線以下）的血紅飾帶：回紋的底色，前後離輪拱 2 mm
-    { mat: 'blood', keep: (x, y, z) => (onSide(x, z) ? Math.min(creaseY(x) - 0.4 - y, y - P.yLow(x) - 0.6, FRIEZE.x1 - x, x - FRIEZE.x0, archRingDist(x, y) - 2) : -1) },
-    // 擋泥板頂面暗青銅色塊
+    // 收腰段裙板（腰折線以下）的陶土飾帶：回紋的底色，前後離輪拱 2 mm
+    { mat: 'clay', keep: (x, y, z) => (onSide(x, z) ? Math.min(creaseY(x) - 0.4 - y, y - P.yLow(x) - 0.6, FRIEZE.x1 - x, x - FRIEZE.x0, archRingDist(x, y) - 2) : -1) },
+    // 擋泥板頂面陶土色塊
     { mat: 'clay', keep: (x, y, z) => (onSide(x, z) ? -1 : podBandInset(x, z)) },
-    // 左右色塊之間的頂面（背脊）霧面深槍鐵灰
+    // 左右色塊之間的頂面（背脊）霧面黑
     { mat: 'deck', keep: (x, y, z) => (onSide(x, z) ? -1 : 0.5 * P.hw(x) - Math.abs(z)) },
     { mat: 'black', keep: () => 1 },
   ],
@@ -393,7 +392,7 @@ const CONFIG = {
         }
         return d;
       }, { offset: 0.1 }),
-      mat: 'dClay',
+      mat: 'dBronze',
       name: 'decal-speed-lines',
     });
     // 尾燈：車尾一整條橫貫的細長紅燈條（不做成左右一對燈點）
