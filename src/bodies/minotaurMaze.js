@@ -1,7 +1,7 @@
 // 米諾陶洛斯（body-minotaur-maze，神話組・希臘）：照四視圖 18 的「三層階梯鼻、大型多面座艙罩、高車尾、單柱牛角新月尾翼」建模；車上沒有牛的頭、臉、眼、鼻孔、鼻環。
-// 牛角 → 尾翼：一支粗壯的金色牛角（克諾索斯「聖角」的 U 形）橫在車尾後方，中段平、外段急翹成兩支尖角，角根兩道黑色環箍；後掠單柱撐在車尾中線，角尖高過座艙罩頂。
+// 牛角 → 尾翼：一支粗壯的金色牛角（克諾索斯「聖角」的 U 形）橫在車尾正後方（俯視是車尾後方一道寬新月），中段平、外段急翹成兩支尖角，角根兩道黑色環箍；車尾中線一支長後掠單柱（黑）往後伸撐住角的中段，角尖高過座艙罩頂。
 // 迷宮 → 階梯鼻與紋樣：楔形鼻上疊三層同心梯形階梯（正視三圈梯形、側視三階，一圈比一圈小），頂面陶土橘、側面與正面奶油白；座艙罩正前方一道橫向細線迷宮帶；
-// 座艙罩後方到車尾的背脊上一整條黑釉底陶土色回紋帶；引擎蓋與後甲板外側斜面各一段黑釉紋樣帶，帶內一列金色雙斧（labrys）；側面下半是亮面黑釉板塊，板塊上陶土色連續回紋帶，上緣一條金色阿里阿德涅之線。
+// 座艙罩後方到車尾的背脊上一整條黑釉底陶土色回紋帶；後甲板外側斜面一段黑釉紋樣帶，帶內一列金色雙斧（labrys），引擎蓋不放成對的紋樣塊；側面下半是亮面黑釉板塊，板塊上陶土色連續回紋帶，上緣一條金色阿里阿德涅之線。
 // 設計：shared/design/body-minotaur-maze/DESIGN.md（MYTH_RESEARCH G6、G9、G10、G12、G13）。剖面為本檔站位產生器（推估）；塗裝全為自創，不含任何文字、號碼或商標。
 // 塗裝：陶土橘（半光澤釉面）為主色，黑釉（黑繪陶）做側面下半與紋樣帶，陶土色做黑釉上的留白紋樣，奶油白做階梯側面與描線，金色做牛角與雙斧。
 import * as THREE from 'three';
@@ -150,11 +150,8 @@ const labrysSd = (a, b, k) => {
   const blade = Math.max(0.5 - ua, Math.abs(ub) - lerp(0.7, 2.2, t), Math.hypot(ua, ub * 0.55) - 3);
   return Math.min(handle, blade) * k;
 };
-/** @type {{ x0: number, x1: number, xs: number[], k: number }[]} 引擎蓋／後甲板外側斜面的黑釉紋樣帶：前後端、帶內雙斧的 x、雙斧單位 */
-const LABRYS_BANDS = [
-  { x0: 1, x1: 35, xs: [7, 18, 29], k: 1.3 },
-  { x0: -58, x1: -31, xs: [-52, -43.5, -35], k: 1.05 },
-];
+/** @type {{ x0: number, x1: number, xs: number[], k: number }[]} 後甲板外側斜面的黑釉紋樣帶：前後端、帶內雙斧的 x、雙斧單位 */
+const LABRYS_BANDS = [{ x0: -58, x1: -31, xs: [-52, -43.5, -35], k: 1.05 }];
 
 /** @type {{ x0: number, hz: number }} 座艙罩前方橫向迷宮帶：帶後緣 x、半寬（線性回紋沿 z 走） */
 const MAZE = { x0: 17, hz: 14.4 };
@@ -212,8 +209,8 @@ const CANOPY = {
   })(),
 };
 
-/** @type {{ xMid: number, yMid: number, span: number, sweep: number, lift: number }} 牛角尾翼：中央 (x, y)、半翼展、角尖往前彎的量、角尖上翹的量 */
-const HORN = { xMid: -66, yMid: 37.4, span: 45, sweep: 6, lift: 10.6 };
+/** @type {{ xMid: number, yMid: number, span: number, sweep: number, lift: number }} 牛角尾翼：中央 (x, y)（在車尾 x −64 之後）、半翼展、角尖往前彎的量、角尖上翹的量 */
+const HORN = { xMid: -77, yMid: 37.4, span: 45, sweep: 4, lift: 10.6 };
 /** @type {(s: number) => number[]} 牛角尾翼中心線（s = −1 ~ 1，左角尖 → 右角尖）：中段平、外段急翹（克諾索斯「聖角」的 U 形） */
 const hornPoint = (s) => [HORN.xMid + HORN.sweep * Math.abs(s) ** 2.4, HORN.yMid + HORN.lift * Math.abs(s) ** 2.8, HORN.span * s];
 /** @type {number[][]} 牛角尾翼中心線取樣 */
@@ -230,7 +227,7 @@ const CONFIG = {
   form: 'stepped-labyrinth-nose',
   roof: 'canopy',
   wing: 'horn-crescent-mono',
-  theme: '陶土橘＋黑釉黑繪陶四驅車：±42.6 的寬肩前擋泥板、疊在楔形鼻上的三層同心梯形階梯（頂面陶土橘、側面與正面奶油白，一圈比一圈小）、座艙罩正前方的橫向細線迷宮帶、大型梯形剖面深茶色座艙罩、窄而高的車尾（俯視後輪外露）；擋泥板肩稜上奶油白描線，座艙罩後方到車尾的背脊一整條黑釉底陶土色回紋帶，引擎蓋與後甲板外側斜面的黑釉紋樣帶上一列金色雙斧；側面下半亮面黑釉板塊從收腰往車尾斜升，板塊上陶土色連續回紋帶，上緣一條發光金線（阿里阿德涅之線）；車尾後掠單柱撐起一支粗壯的金色牛角（U 形聖角：中段平、外段急翹成兩支尖角，角根黑色環箍），角尖高過座艙罩頂',
+  theme: '陶土橘＋黑釉黑繪陶四驅車：±42.6 的寬肩前擋泥板、疊在楔形鼻上的三層同心梯形階梯（頂面陶土橘、側面與正面奶油白，一圈比一圈小）、座艙罩正前方的橫向細線迷宮帶、大型梯形剖面深茶色座艙罩、窄而高的車尾（俯視後輪外露）；擋泥板肩稜上奶油白描線，座艙罩後方到車尾的背脊一整條黑釉底陶土色回紋帶，後甲板外側斜面的黑釉紋樣帶上一列金色雙斧；側面下半亮面黑釉板塊從收腰往車尾斜升，板塊上陶土色連續回紋帶，上緣一條發光金線（阿里阿德涅之線）；車尾中線長後掠單柱往後撐起一支橫在車尾正後方的粗壯金色牛角（U 形聖角：中段平、外段急翹成兩支尖角，角根黑色環箍），角尖高過座艙罩頂',
   material: 'ABS',
   density_g_cm3: 1.05,
   wallThickness_mm: 0.8,
@@ -255,13 +252,13 @@ const CONFIG = {
   extras: (kit) => {
     /** @type {BodyPart[]} */
     const parts = [];
-    // ── 牛角尾翼（金）：圓潤的橢圓斷面沿 U 形中心線掃掠，中央粗（前後 12.8、高 3.2）往角尖收成尖錐 ──
+    // ── 牛角尾翼（金）：圓潤的橢圓斷面沿 U 形中心線掃掠，中央粗（前後 16、高 3.2）往角尖收成尖錐 ──
     /** @type {(t: number) => number} 從中央到角尖的比例（0 中央、1 角尖） */
     const fromMid = (t) => Math.abs(2 * t - 1);
     /** @type {(t: number) => number} 斷面縮放：中段保持粗壯，外段收尖 */
     const taper = (t) => 1 - fromMid(t) ** 1.6;
     parts.push({
-      geometry: smoothNormals(sweepEllipse(HORN_PATH, 40, (t) => [lerp(0.35, 6.4, taper(t)), lerp(0.35, 1.6, taper(t))], 12)),
+      geometry: smoothNormals(sweepEllipse(HORN_PATH, 40, (t) => [lerp(0.35, 8, taper(t)), lerp(0.35, 1.6, taper(t))], 12)),
       mat: 'gold',
       solid: true,
       outline: true,
@@ -273,7 +270,7 @@ const CONFIG = {
         const c = hornPoint(sg * s0);
         const t = 0.5 + (sg * s0) / 2;
         const ring = new THREE.CylinderGeometry(1, 1, 1, 12, 1, false);
-        ring.scale(lerp(0.35, 6.4, taper(t)) + 0.12, 0.7, lerp(0.35, 1.6, taper(t)) + 0.12);
+        ring.scale(lerp(0.35, 8, taper(t)) + 0.12, 0.7, lerp(0.35, 1.6, taper(t)) + 0.12);
         // 圓柱軸轉到 z（翼展方向），再依中心線斜度微傾
         ring.rotateX(Math.PI / 2);
         const d = hornPoint(sg * (s0 + 0.02));
@@ -283,19 +280,20 @@ const CONFIG = {
         parts.push({ geometry: ring, mat: 'black2', solid: true, outline: true, name: `horn-ring-${sg}-${s0}` });
       }
     }
-    // 中央單柱（黑，厚 2.4）：從車尾殼面升到翼底
+    // 中央單柱（黑，厚 3）：從後甲板殼面往後上方伸到車尾正後方的角底，後端下緣加深成楔形
     {
       /** @type {(x: number) => number} 中線殼面高度 */
       const deckY = (x) => kit.surf.topY(x, 0);
       const pylon = finPlate(
         [
-          [-53.6, deckY(-53.6) - 1],
-          [-57.4, HORN.yMid + 0.4],
-          [-66.4, HORN.yMid + 0.4],
+          [-50, deckY(-50) - 1],
+          [-71, HORN.yMid + 0.4],
+          [-83, HORN.yMid + 0.4],
+          [-80, HORN.yMid - 3],
           [-63.4, deckY(-63.4) - 1],
         ],
         0,
-        2.4,
+        3,
       );
       parts.push({ geometry: pylon, mat: 'black2', solid: true, outline: true, name: 'horn-wing-pylon' });
     }
@@ -395,7 +393,7 @@ const CONFIG = {
       const key = (u, v) => Math.max(greekKey(u + 60, v), 2.2 - archRingDist(side * u, v), Math.abs(u) - 22.6);
       parts.push({ geometry: kit.decal(sideDecal(key, opt), { offset: 0.1 }), mat: 'dClay', name: `decal-greek-key-${side}` });
     }
-    // 引擎蓋與後甲板外側斜面上的黑釉紋樣帶（黑繪陶的帶狀裝飾），帶內一列留白的金色雙斧，雙斧柄沿車寬方向
+    // 後甲板外側斜面上的黑釉紋樣帶（黑繪陶的帶狀裝飾），帶內一列留白的金色雙斧，雙斧柄沿車寬方向
     for (const band of LABRYS_BANDS) {
       parts.push({
         geometry: kit.decal((x, y, z) => {
@@ -438,9 +436,9 @@ const CONFIG = {
   src: {
     density_g_cm3: 'SPEC 1.14：ABS 約 1.05 g/cm³（推估）',
     wallThickness_mm: '推估：射出 ABS 殼 0.8 mm（同其他車殼）',
-    geometry: '本檔站位產生器 P（推估，造型比例取自 shared/design/body-minotaur-maze/fourview.png 與 fourview_trace.txt，縮到底盤尺寸）：殼長 130（−64 ~ 鼻端 66）；鼻端楔形中線 27.6 → 19，上面疊三層階梯（每層高 1.5，前端 x 65.4 / 60 / 54.4、後端半寬 16 / 12 / 8）、中央頂 35.8、座艙罩頂約 37.8、牛角中央 37.4 → 角尖約 48；寬：前擋泥板 ±42.6、收腰 ±31、後擋泥板 ±30.6、車尾 ±25、鼻端 ±9.5；牛角 ±45',
+    geometry: '本檔站位產生器 P（推估，造型比例取自 shared/design/body-minotaur-maze/fourview.png 與 fourview_trace.txt，縮到底盤尺寸）：殼長 130（−64 ~ 鼻端 66），含牛角 151.6（−85 ~ 66.6）；鼻端楔形中線 27.6 → 19，上面疊三層階梯（每層高 1.5，前端 x 65.4 / 60 / 54.4、後端半寬 16 / 12 / 8）、中央頂 35.8、座艙罩頂約 37.8、牛角中央 37.4 → 角尖約 48.3；寬：前擋泥板 ±42.6、收腰 ±31、後擋泥板 ±30.6、車尾 ±25、鼻端 ±9.5；牛角 ±45',
     wheelArches: '前後 R15.2（26 mm 輪胎半徑 13 + 2.2 mm）',
-    wing: '牛角尾翼：ABS 橢圓斷面實體件（中央前後 12.8、高 3.2，往角尖收到 0.7，推估），中心 x −66、半翼展 45、角尖前彎 6、上翹 10.6；後掠中央單柱厚 2.4；角根環箍 ABS 0.7 mm 寬',
+    wing: '牛角尾翼：ABS 橢圓斷面實體件（中央前後 16、高 3.2，往角尖收到 0.7，推估），中心 x −77、半翼展 45、角尖前彎 4、上翹 10.6；後掠中央單柱厚 3（x −50 → −83）；角根環箍 ABS 0.7 mm 寬',
     mounts: '對齊 chassis-midship 的車殼安裝點（SPEC 1.14）',
   },
 };
