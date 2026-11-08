@@ -1,7 +1,7 @@
-// 維納斯扇貝（body-venus-scallop，神話組・羅馬）——照四視圖 31 建模的低趴楔形車：扇形扇貝面的厚鼻 → 長斜引擎蓋 → 圓潤的珍珠座艙 → 後甲板橫條紋 → 往後上方斜切的 3 階尾翼（頂階是寬展扇貝翼）。
+// 維納斯扇貝（body-venus-scallop，神話組・羅馬）——照四視圖 31 建模的低趴楔形車：整片扇貝面的鼻 → 長斜引擎蓋 → 圓潤的珍珠座艙 → 後甲板橫條紋 → 往後上方斜切的 3 階尾翼（頂階是寬展扇貝翼）。
 // 只用維納斯的象徵物，不做人像：
-// 扇貝殼 → 加厚的鼻部頂面是一片扇形的珍珠白扇貝（鉸邊在鼻尖、兩條金色直邊往後張開、往座艙一側是凸起的金色波浪唇邊，殼面上一道道凸起的玫瑰粉肋稜往後張開；肋的延長線交在車頭前方很遠處，不收到車上任何一點）；頂階尾翼是一片往兩側後掠的寬展扇貝翼（波浪後緣）。
-// 珍珠 → 渾圓的座艙罩。
+// 扇貝殼 → 整個鼻部頂面是一片珍珠白扇貝（鉸邊在鼻尖、往座艙一側是凸起的金色波浪唇邊、凸起的玫瑰粉平行波浪肋）；頂階尾翼是一片往兩側後掠的寬展扇貝翼（波浪後緣）。不做從單點放射的紋樣。
+// 珍珠 → 鼻部扇貝中心置中一顆珍珠（金框）、渾圓的座艙罩。
 // 玫瑰 → 前後輪之間的側面三片珍珠白花瓣（金邊），畫在深玫瑰下半車身上。
 // 配色：玫瑰粉珍珠為主色（腰線以下漸深成深玫瑰），珍珠白為圖形色（扇貝鼻、尾翼翼板、花瓣、甲板條紋）、金點綴。造型柔和，和同為羅馬的 mars-spear（尖銳、紅銅黑）明顯不同。
 // 四個 R17.5 輪拱：31 mm 大輪不切輪拱也能裝。
@@ -18,12 +18,12 @@ import { buildBellySkirt } from './trojanHorse.js';
 const XS = [-70, -64, -56, -48, -40, -30, -20, -10, 0, 10, 20, 30, 40, 48, 56, 64, 70, 74, 77];
 /** @type {Record<string, (x: number) => number>} */
 const P = {
-  // 中線甲板（不含座艙罩）：低平後甲板 31.8 → 引擎蓋緩降到鼻尖 22.2（扇貝鼻是有厚度的殼，不是薄板）
-  yHood: monoCurve(XS, [30, 31.2, 31.8, 31.8, 31.4, 30.4, 29.6, 29.2, 28.8, 28.6, 28.4, 28.2, 28, 27.4, 26.4, 25, 23.8, 23, 22.2]),
+  // 中線甲板（不含座艙罩）：低平後甲板 31.8 → 引擎蓋長斜面一路降到鼻尖 17.8（扇面鼻較厚）
+  yHood: monoCurve(XS, [30, 31.2, 31.8, 31.8, 31.4, 30.4, 29.6, 29.2, 28.8, 28.6, 28.4, 28.2, 28, 26.8, 24.6, 22, 20, 18.8, 17.8]),
   // 擋泥板頂：壓低貼著輪拱（前輪 32.6、後輪 33），兩輪之間降成 27.6 的腰線
-  yD: monoCurve(XS, [28, 31, 32.6, 33, 33, 31, 28.8, 27.8, 27.6, 27.8, 28.8, 31.4, 32.6, 32.4, 30.8, 27.8, 25.6, 24, 22.4]),
-  // 半寬：車尾 33.6（避開後上導輪）、後輪 40、腰 30.4、前輪 37.2，過了前輪外擴成扇貝鼻（x 64–70 半寬 46，鼻尖 41）
-  hw: monoCurve(XS, [33.6, 38.6, 40, 40, 39.6, 36.8, 32.8, 30.8, 30.4, 30.8, 32.4, 35.4, 37.2, 39.2, 43.4, 46, 46.4, 45, 41]),
+  yD: monoCurve(XS, [28, 31, 32.6, 33, 33, 31, 28.8, 27.8, 27.6, 27.8, 28.8, 31.4, 32.6, 32.2, 29.6, 25.4, 22.4, 20.4, 18.8]),
+  // 半寬：車尾 33.6（避開後上導輪）、後輪 40、腰 30.4、前輪 37.2，過了前輪才外擴成比前輪還寬的扇面鼻（x 64–74 半寬 46–47，鼻尖 42）
+  hw: monoCurve(XS, [33.6, 38.6, 40, 40, 39.6, 36.8, 32.8, 30.8, 30.4, 30.8, 32.4, 35.4, 37.2, 39.2, 43.4, 46.4, 47, 46, 42]),
   // 側裙下緣
   yLow: monoCurve(XS, [22, 19, 14.8, 13, 13, 13.4, 14.4, 14.6, 14.6, 14.6, 14.2, 13, 13, 13.5, 14, 14.4, 14.6, 14.8, 15]),
 };
@@ -81,14 +81,10 @@ const onCanopy = (x, z) => canH(x) > 0.5 && Math.abs(z) < Math.min(canW(x), P.hw
 /** @type {(x: number, y: number) => boolean} 在腰線稜以下的側面 */
 const belowBelt = (x, y) => y < beltY(x) - 0.3;
 
-/** @type {number} 扇貝鉸點 x（鼻尖前一點，扇形從這裡往後張開） */
-const HINGE_X = 79;
-/** @type {number} 扇貝半徑（到波浪外緣的波谷） */
-const SHELL_R = 36;
-/** @type {number} 扇貝半張角（弧度） */
-const SHELL_HALF = (68 * Math.PI) / 180;
-/** @type {number} 波浪外緣的波長（沿弧長） */
-const SHELL_WAVE = 7.2;
+/** @type {number[]} 鼻部扇貝中心的珍珠 [x, z]（置中） */
+const LAMP = [68.5, 0];
+/** @type {number} 珍珠半徑 */
+const LAMP_R = 3;
 
 /** @type {{ x0: number, x1: number, y: number }[]} 往後上方斜切的 3 階尾翼：每階翼板的前後緣 x 與高度（後一階比前一階高 3、往後退 7） */
 const TAIL_STEPS = [
@@ -101,29 +97,22 @@ const TAIL_Z = 20;
 /** @type {number} 頂階扇貝翼的半展長 */
 const WING_Z = 46.5;
 /** @type {number} 翼板厚 */
-const TAIL_T = 0.5;
+const TAIL_T = 0.6;
 
-/** @type {(x: number, z: number) => number} 波浪外緣的半徑（波峰往外凸 1.6） */
-const shellRim = (x, z) => {
-  const c = Math.cos((Math.PI * SHELL_R * Math.atan2(z, HINGE_X - x)) / SHELL_WAVE);
-  return SHELL_R + 1.6 * c * c;
+/** @type {() => Record<string, THREE.Material>} */
+/** @type {(x: number, z: number) => number} 到扇貝波浪外緣的距離（正值 = 在扇貝內） */
+const noseEdge = (x, z) => {
+  const c = Math.cos((Math.PI * z) / 6.5);
+  return x - (46 - 1.4 * c * c);
 };
-/** @type {(x: number, z: number) => number} 到扇形兩條直邊的距離（正值 = 在張角內） */
-const shellSide = (x, z) => {
-  const dx = HINGE_X - x;
-  return dx * Math.sin(SHELL_HALF) - Math.abs(z) * Math.cos(SHELL_HALF);
-};
-/** @type {(x: number, z: number) => number} 到波浪外緣的距離（正值 = 在扇貝內） */
-const noseEdge = (x, z) => shellRim(x, z) - Math.hypot(HINGE_X - x, z);
-/** @type {(x: number, y: number, z: number) => number} 扇貝範圍（頂面、腰線以上）的有號距離 */
+/** @type {(x: number, y: number, z: number) => number} 扇貝範圍（頂面、腰線以上、珍珠以外）的有號距離 */
 const noseSd = (x, y, z) => {
   if (x > 76.6 || y < P.yLow(x) + 3) {
     return -1;
   }
-  return Math.min(noseEdge(x, z), shellSide(x, z), P.hw(x) - 3.5 - Math.abs(z));
+  return Math.min(noseEdge(x, z), P.hw(x) - 3.5 - Math.abs(z), Math.hypot(x - LAMP[0], z - LAMP[1]) - LAMP_R - 1.2);
 };
 
-/** @type {() => Record<string, THREE.Material>} */
 const materials = () => ({
   // 玫瑰粉珍珠：車身主色（亮面＋高清漆）
   rose: namedMaterial('paint-rose-pearl', { color: 0xe892aa, roughness: 0.24, clearcoat: 1, clearcoatRoughness: 0.08 }),
@@ -141,6 +130,8 @@ const materials = () => ({
   inner: namedMaterial('shell-inner-dark', { color: 0x2a2226, roughness: 0.85, side: THREE.BackSide }),
   edge: namedMaterial('shell-edge-pearl', { color: 0xe8d8dc, roughness: 0.5, side: THREE.DoubleSide }),
   liner: namedMaterial('shell-wheelwell-dark', { color: 0x2a2024, roughness: 0.8, side: THREE.DoubleSide }),
+  // 珍珠頭燈：帶淡淡自發光的珍珠色
+  lamp: namedMaterial('lamp-pearl', { color: 0xfff6ee, emissive: 0xfff0e6, emissiveIntensity: 0.35, roughness: 0.12, clearcoat: 1 }),
   dWhite: decalMaterial('decal-pearl-white', { color: 0xf6f0ea, roughness: 0.3 }),
   dGold: decalMaterial('decal-gold', { color: 0xd8b25a, roughness: 0.28, metalness: 0.8 }),
   mount: namedMaterial('abs-mount-black', { color: 0x222326, roughness: 0.6 }),
@@ -157,7 +148,7 @@ const CONFIG = {
   form: 'scallop-wedge',
   roof: 'canopy',
   wing: 'scallop-step',
-  theme: '照四視圖 31 的低趴楔形車：加厚的鼻部頂面是一片扇形的珍珠白扇貝（鉸邊在鼻尖、金色直邊與凸起的金色波浪唇邊、往後張開的玫瑰粉凸起肋稜）；長斜引擎蓋、渾圓的座艙、後甲板兩道橫條紋；車尾是往後上方斜切的 3 階尾翼（珍珠白後掠翼板，頂階是往兩側後掠到車身外的寬展扇貝翼、玫瑰粉斜切階梯端板）；前後輪之間三片珍珠白花瓣、深玫瑰側裙；玫瑰粉珍珠為主色、腰線以下深玫瑰，珍珠白與金為圖形色',
+  theme: '照四視圖 31 的低趴楔形車：整個鼻部頂面是一片珍珠白扇貝（凸起的金色波浪唇邊、凸起且互相平行的玫瑰粉波浪肋），扇貝中央一顆金框珍珠；長斜引擎蓋、渾圓的座艙、後甲板兩道橫條紋；車尾是往後上方斜切的 3 階尾翼（珍珠白後掠翼板，頂階是往兩側後掠到車身外的寬展扇貝翼、玫瑰粉斜切階梯端板）；前後輪之間三片珍珠白花瓣、深玫瑰側裙；玫瑰粉珍珠為主色、腰線以下深玫瑰，珍珠白與金為圖形色',
   material: 'ABS',
   density_g_cm3: 1.05,
   wallThickness_mm: 0.8,
@@ -234,6 +225,17 @@ const CONFIG = {
       name: 'side-skirts',
     });
 
+    // ── 珍珠：半埋在鼻部扇貝中心的一顆扁球（16×10 分段，左右置中） ──
+    {
+      /** @type {THREE.BufferGeometry[]} */
+      const lamps = [];
+      const g = new THREE.SphereGeometry(LAMP_R, 16, 10);
+      g.scale(1, 0.7, 1);
+      g.translate(LAMP[0], top(LAMP[0], 0) - 0.4, 0);
+      lamps.push(g);
+      parts.push({ geometry: mergeGeos(lamps), mat: 'lamp', solid: true, outline: true, name: 'pearl-center' });
+    }
+
     // 輪拱內襯（前後）
     parts.push({
       geometry: mergeGeos([buildArchLiner(ARCHES[0], 21, 33.4, 0.35, Math.PI - 0.35), buildArchLiner(ARCHES[1], 21, 34, 0.35, Math.PI - 0.35)]),
@@ -243,7 +245,8 @@ const CONFIG = {
     });
 
     // ── 貼紙 ──
-    // 鼻部扇貝：鼻部頂面一片扇形的珍珠白扇貝（車頭的主角），鉸邊在鼻尖，兩條直邊往後張開到波浪外緣
+    // 鼻部扇貝：整個鼻部頂面是一片珍珠白扇貝（車頭的主角），鉸邊在鼻尖，往座艙那一側是波浪外緣（每 6.5 mm 一個波峰）；
+    //   肋是互相平行的玫瑰粉波浪肋（沿 x，每 6.5 mm 一條，對齊波峰），不收到任何一點
     /**
      * 沿殼面的一條凸肋（梯形截面：底寬 2w、頂寬 1.2w、高 h，兩端封口）
      * @type {(pts: number[][], w: number, h: number) => THREE.BufferGeometry}
@@ -286,59 +289,40 @@ const CONFIG = {
       g.computeVertexNormals();
       return g;
     };
-    // 扇貝的肋稜：往後張開的玫瑰粉凸稜（梯形截面、高 1.3），延長線交在鼻尖前方 13 mm 的 x 90（車外），只在扇貝面內、離鉸點 8 mm 以後才開始
+    // 扇貝的平行波浪肋：沿 x、每 6.5 mm 一條，凸起 0.8（玫瑰粉），只在扇貝面內
     {
-      /** @type {number} 肋稜延長線的交點 x */
-      const ribOx = 90;
       /** @type {THREE.BufferGeometry[]} */
       const ribs = [];
-      for (let k = -4; k <= 4; k++) {
-        /** @type {number} 肋稜方向（弧度，0 = 往正後方） */
-        const ang = k * 0.15;
+      for (let k = -6; k <= 6; k++) {
         /** @type {number[][]} */
         let run = [];
-        for (let x = 44; x <= 72; x += 1.4) {
-          const z = (ribOx - x) * Math.tan(ang);
-          if (noseSd(x, top(x, z), z) > 1.4 && Math.hypot(HINGE_X - x, z) > 10) {
+        for (let x = 44; x <= 76.6; x += 1.6) {
+          const z = 6.5 * k + 0.6 * Math.sin(0.5 * x);
+          if (noseSd(x, top(x, z), z) > 1.4) {
             run.push([x, z]);
           } else if (run.length > 0) {
             if (run.length > 2) {
-              ribs.push(bead(run, 0.7, 1.3));
+              ribs.push(bead(run, 0.55, 0.8));
             }
             run = [];
           }
         }
         if (run.length > 2) {
-          ribs.push(bead(run, 0.7, 1.3));
+          ribs.push(bead(run, 0.55, 0.8));
         }
       }
       parts.push({ geometry: mergeGeos(ribs), mat: 'rose2', solid: true, outline: true, name: 'nose-scallop-ribs' });
-      // 扇貝的厚唇邊：波浪外緣＋兩條直邊，凸起 1.4 的金色唇邊（扇貝殼的厚邊）
+      // 扇貝的波浪後緣：凸起 1.2 的金色唇邊（扇貝殼的厚邊）
       /** @type {number[][]} */
       const rim = [];
-      /** @type {number[][]} */
-      const sideL = [];
-      /** @type {number[][]} */
-      const sideR = [];
-      for (let a = -SHELL_HALF; a <= SHELL_HALF + 1e-6; a += 0.02) {
-        const r0 = SHELL_R - 0.6;
-        const c = Math.cos((Math.PI * SHELL_R * a) / SHELL_WAVE);
-        const r = r0 + 1.6 * c * c;
-        const x = HINGE_X - r * Math.cos(a);
-        const z = r * Math.sin(a);
+      for (let z = -40; z <= 40; z += 0.65) {
+        const c = Math.cos((Math.PI * z) / 6.5);
+        const x = 46 - 1.4 * c * c + 0.6;
         if (Math.abs(z) < P.hw(x) - 3.6) {
           rim.push([x, z]);
         }
       }
-      for (let r = 4; r <= SHELL_R - 0.6; r += 1.2) {
-        const x = HINGE_X - (r * Math.cos(SHELL_HALF) + 0.5);
-        const z = r * Math.sin(SHELL_HALF) - 0.5;
-        if (x < 76.4 && z < P.hw(x) - 3.6) {
-          sideL.push([x, z]);
-          sideR.push([x, -z]);
-        }
-      }
-      parts.push({ geometry: mergeGeos([bead(rim, 0.8, 1.4), bead(sideL, 0.6, 1.0), bead(sideR, 0.6, 1.0)]), mat: 'gold', solid: true, outline: true, name: 'nose-scallop-rim' });
+      parts.push({ geometry: bead(rim, 0.7, 1.2), mat: 'gold', solid: true, outline: true, name: 'nose-scallop-rim' });
     }
     // 扇貝外緣金線（波浪後緣＋左右兩側）
     parts.push({
@@ -346,12 +330,21 @@ const CONFIG = {
         if (x > 76.6 || x < 42 || y < P.yLow(x) + 3) {
           return -1;
         }
-        const rear = Math.min(0.4 - Math.abs(noseEdge(x, z) - 0.25), shellSide(x, z) + 0.4, P.hw(x) - 3.5 - Math.abs(z) + 0.4);
-        const side = Math.min(0.4 - Math.abs(shellSide(x, z) - 0.25), noseEdge(x, z) + 0.4, P.hw(x) - 3.5 - Math.abs(z) + 0.4);
+        const rear = Math.min(0.4 - Math.abs(noseEdge(x, z) - 0.25), P.hw(x) - 3.5 - Math.abs(z) + 0.4);
+        const side = Math.min(0.4 - Math.abs(P.hw(x) - 3.75 - Math.abs(z)), noseEdge(x, z));
         return Math.max(rear, side);
       }, { offset: 0.1 }),
       mat: 'dGold',
       name: 'decal-nose-scallop-rim',
+    });
+    // 珍珠金框
+    parts.push({
+      geometry: kit.decal((x, y, z) => {
+        const d = Math.hypot(x - LAMP[0], z - LAMP[1]);
+        return Math.min(d - LAMP_R + 0.2, LAMP_R + 0.9 - d);
+      }, { offset: 0.1 }),
+      mat: 'dGold',
+      name: 'decal-lamp-bezels',
     });
     // 後甲板兩道橫向珍珠白條紋
     parts.push({

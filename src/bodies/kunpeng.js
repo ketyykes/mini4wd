@@ -1,11 +1,11 @@
 // 鯤鵬（body-kunpeng，神話組・中國）：《莊子・逍遙遊》「北冥有魚，其名為鯤……化而為鳥，其名為鵬」。
 // 不做魚頭、鳥頭與眼睛，「化」用三種元素表現：
-// (1) 鰭 → 翼的變形：車身中段兩側一對後掠的小鰭刀（墨黑），到車尾放大成一整片後掠寬翼（前段青綠 → 留白 → 翼尖蘸墨，後緣是羽階），
-//     翼根埋進窄車尾，下方一道內凹弧面的整流肋把翼片接到殼側面；翼片是倒角板，不加細桿；
+// (1) 鰭 → 翼的變形：車身中段兩側一對後掠的小鰭刀（墨黑），到車尾放大成上下兩層、往後上方揚起的寬翼片（青綠 → 留白，後緣是層疊的羽階，
+//     上層翼尖往上折、蘸墨）；翼片是倒角板，不加細桿；
 // (2) 水 → 風的漸變 livery：前半墨黑亮面（深水）、後半留白霧面（長風），中間是往後上方斜掃、一條比一條細的青綠條帶；
 //     前半有三層浪頭帶與淡金水波線（水擊三千里），後半是青綠人字羽紋；
 // (3) 配色與材質：水墨黑白＋松花石青綠珍珠漆＋淡金線（水波線與一道串起前後翼根的車側金線，都是貼紙），朱砂紅只用在一枚無字印章。
-// 低扁全罩的尖楔車身，頂部一道兩端尖的長條透明窗（水天之間）；前輪 R17.5 輪拱、後輪在窄車尾外側由鵬翼罩住（26 / 31 mm 輪都可裝）。
+// 低扁全罩的尖楔車身，頂部一道兩端尖的長條透明窗（水天之間）；前輪 R17.5 輪拱、後輪在窄車尾外側由翼片罩住（26 / 31 mm 輪都可裝）。
 // 設計：shared/design/body-kunpeng/DESIGN.md（典故與文物對應 MYTH_RESEARCH 第 7 節 Z1–Z4；黑名單 7-3）。剖面為本檔站位產生器（推估）。
 // 不寫任何文字（含「Kunpeng」字樣）、不做晶片紋、不做紅色魚身 / 海豚形、不做龍角龍鬚。
 import * as THREE from 'three';
@@ -175,7 +175,7 @@ const materials = () => ({
   // 墨黑帶一點深海藍（深水），和後半的留白（長風）冷暖、明暗都拉開
   ink: namedMaterial('paint-ink-black-pearl', { color: 0x12202e, roughness: 0.3, metalness: 0.3, clearcoat: 0.9, clearcoatRoughness: 0.1 }),
   ink2: namedMaterial('paint-ink-black-pearl', { color: 0x12202e, roughness: 0.3, metalness: 0.3, clearcoat: 0.9, clearcoatRoughness: 0.1, side: THREE.DoubleSide }),
-  // 青綠：松花石硯的綠（MYTH_RESEARCH 7-2 配色，推估色碼），珍珠金屬漆（條帶與鵬翼前段）
+  // 青綠：松花石硯的綠（MYTH_RESEARCH 7-2 配色，推估色碼），珍珠金屬漆（條帶與下層翼片）
   teal: namedMaterial('paint-songhua-green-pearl', { color: 0x4f7f6f, roughness: 0.3, metalness: 0.35, clearcoat: 0.9, clearcoatRoughness: 0.1 }),
   teal2: namedMaterial('paint-songhua-green-pearl', { color: 0x4f7f6f, roughness: 0.3, metalness: 0.35, clearcoat: 0.9, clearcoatRoughness: 0.1, side: THREE.DoubleSide }),
   paper: namedMaterial('paint-rice-paper-white', { color: 0xece8de, roughness: 0.66, clearcoat: 0.05 }),
@@ -329,138 +329,90 @@ const FIN = {
     [-2, 33],
   ],
 };
-/** @type {(b: Blade) => THREE.BufferGeometry} 右側鰭刀：上下緣倒 0.45 mm 圓角的平板（射出件的倒角邊），再上反 */
-const buildBlade = (b) => dihedral(bevelPlate(b.poly, b.y, b.thick, 0.45), b.y, b.pivotZ, b.dihedral);
-
-/** @type {number} 鵬翼底面高（高於 31 mm 後輪頂 28.5） */
-const WING_Y = 30.8;
-/** @type {number} 鵬翼板厚 */
-const WING_THICK = 1.4;
-/** @type {number} 鵬翼上反角（度；接近 3/4 視角仰角時近側翼面會側對鏡頭、讀成細桿，所以只給小角度） */
-const WING_DIHEDRAL = 7;
-/** @type {number} 鵬翼上反支點 |z| */
-const WING_PIVOT_Z = 20;
-/** @type {number} 鵬翼仰角（度）：以前緣翼根 x −10 為支點，往車尾逐漸揚起（側視讀成往後上方展開的翼） */
-const WING_PITCH = 3.5;
-/** @type {number} 鵬翼仰角支點 x */
-const WING_PITCH_X = -10;
-
 /**
- * 鵬翼（右側，左側鏡射）：一整片後掠寬翼，翼根埋進窄車尾殼面（x −10 → −55），往外後方展到 |z| 48.5；
- * 同一塊板依前緣 → 後緣分三段顏色：前段青綠（鰭）→ 中後段留白（翼）→ 翼尖墨黑（蘸墨），三段共面、共用分色線，讀成同一片翼；
- * 後緣切成三級往後尖的羽階（層疊的羽）
- * @type {{ mat: string, name: string, poly: number[][] }[]}
+ * @type {Blade} 下層翼片：鰭刀放大、後移，罩在後輪上方（底面 y 30.6，高於 31 mm 後輪頂 28.5），翼尖上揚到約 y 35；
+ * 上反角只給 8°：角度接近常用的 3/4 視角仰角時，近側翼片會剛好側對鏡頭，看起來像一根懸空的細桿。
+ * 後緣刻兩級羽階（層疊的羽）。俯視面積不再加大：車尾外側正是 halo-orbit 環翼的位置，翼片往外後方加寬會把俯視 IoU 推過門檻
  */
-const WING_ZONES = [
-  {
-    mat: 'teal2',
-    name: 'wing-front',
-    poly: [
-      [-10, 17.5],
-      [-28, 33],
-      [-44, 45.4],
-      [-54, 46.97],
-      [-36, 14.9],
-    ],
-  },
-  {
-    mat: 'paper2',
-    name: 'wing-main',
-    poly: [
-      [-36, 14.9],
-      [-54, 46.97],
-      [-58, 47.6],
-      [-61, 47.9],
-      [-58, 40],
-      [-70, 38.5],
-      [-61.5, 33.5],
-      [-65, 29],
-      [-57.5, 24],
-      [-60, 20.5],
-      [-55, 13],
-    ],
-  },
-  {
-    mat: 'inkMatte',
-    name: 'wing-tips',
-    poly: [
-      [-61, 47.9],
-      [-67, 48.5],
-      [-74.5, 47.5],
-      [-72, 44],
-      [-74, 41],
-      [-70, 38.5],
-      [-58, 40],
-    ],
-  },
+const VANE_LOW = {
+  y: 30.6,
+  thick: 1.5,
+  dihedral: 8,
+  pivotZ: 25,
+  poly: [
+    [-12, 17.5],
+    [-28, 33],
+    [-44, 45.4],
+    [-56, 46.8],
+    [-53.5, 41],
+    [-49.5, 39],
+    [-50.5, 34.5],
+    [-46, 29.5],
+    [-38.5, 17.5],
+  ],
+};
+/**
+ * @type {Blade} 上層翼片（鵬翼）：再放大、再後移；翼根貼著窄車尾頂面（x −55 ~ −36，埋進殼面），往外後方展成弦長 13–19 mm、翼展到 |z| 約 39 的寬翼，
+ * 和下層前後、上下錯開成兩層。翼身上反只給 6°（和下層同理：上反角接近 3/4 視角仰角時，近側翼面會側對鏡頭、讀成細刃），
+ * 外段（翼尖）沿一條折線再往上折，見 VANE_TIP
+ */
+const VANE_UP = {
+  y: 32.6,
+  thick: 1.4,
+  dihedral: 6,
+  pivotZ: 15,
+  poly: [
+    [-36, 13],
+    [-49, 28],
+    [-57, 39.5],
+    [-70, 38.5],
+    [-66, 28],
+    [-61, 19],
+    [-55, 13],
+  ],
+};
+/** @type {[number, number][]} 鵬翼翼尖的折線（x, z）：翼尖沿這條線再往上折 */
+const TIP_HINGE = [
+  [-57, 39.5],
+  [-70, 38.5],
 ];
-
-/** @type {(poly: number[][]) => THREE.BufferGeometry} 右側翼段：上下緣倒 0.4 mm 圓角的平板（射出件的倒角邊），先上反、再加仰角 */
-const buildWingZone = (poly) => {
-  const g = dihedral(bevelPlate(poly, WING_Y, WING_THICK, 0.4), WING_Y, WING_PIVOT_Z, WING_DIHEDRAL);
-  g.translate(-WING_PITCH_X, -WING_Y, 0);
-  g.rotateZ((-WING_PITCH * Math.PI) / 180);
-  g.translate(WING_PITCH_X, WING_Y, 0);
-  return g;
+/**
+ * @type {number} 鵬翼翼尖再往上折的角度（度）：加上翼身上反共約 50°，翼尖在側視與兩個 3/4 視角都露出翼面，讀成一片揚起的羽翼。
+ * 合計 25–35° 時翼面剛好和 3/4 視角的視線平行，翼尖會側對鏡頭、看起來像一根黑桿
+ */
+const TIP_FOLD = 44;
+/**
+ * @type {Blade} 鵬翼翼尖：同一片翼面折上去的墨黑翼尖（留白的翼蘸了墨），弦長 10–13 mm，後緣是兩級羽階；和翼身之間是一道倒角分件線
+ */
+const VANE_TIP = {
+  ...VANE_UP,
+  poly: [
+    [-57, 39.5],
+    [-60, 45],
+    [-67, 48.5],
+    [-74.5, 47.5],
+    [-72, 44],
+    [-74, 41],
+    [-70, 38.5],
+  ],
 };
 
-/** @type {(x: number, z: number) => number} 鵬翼底面在 (x, |z|) 處的高度（上反＋仰角，小角度近似） */
-const wingUnderY = (x, z) => WING_Y + (z - WING_PIVOT_Z) * Math.tan((WING_DIHEDRAL * Math.PI) / 180) + (WING_PITCH_X - x) * Math.tan((WING_PITCH * Math.PI) / 180);
-
-/** @type {{ x0: number, x1: number, reach: number }} 翼根整流肋：x 範圍與伸出殼面的最大寬度 */
-const FILLET = { x0: -20, x1: -59, reach: 5 };
-
-/** @type {(x: number) => number} 鵬翼內緣 |z|（翼根線 x −10 → −55，再沿後緣往外到 x −60） */
-const wingInnerZ = (x) => (x >= -55 ? lerp(13, 17.5, (x + 55) / 45) : lerp(13, 20.5, (-55 - x) / 5));
-/** @type {(x: number) => number} 鵬翼前緣 |z|（x −10 → −28 → −44） */
-const wingLeadZ = (x) => (x >= -28 ? lerp(17.5, 33, (-10 - x) / 18) : lerp(33, 45.4, Math.min(1, (-28 - x) / 16)));
+/** @type {(b: Blade) => THREE.BufferGeometry} 右側翼片：上下緣倒 0.45 mm 圓角的平板（射出件的倒角邊），再上反 */
+const buildBlade = (b) => dihedral(bevelPlate(b.poly, b.y, b.thick, 0.45), b.y, b.pivotZ, b.dihedral);
 
 /**
- * 翼根整流肋（右側）：沿翼根從殼側面（y 24）以內凹弧面往外上方接到鵬翼底面，把翼片和窄車尾連成一體（翼片不再像浮在後輪上方）；
- * 外緣 = 殼面 + reach（兩端漸收到 0），外緣在 |z| 24.75（31 mm 後輪內側面）處的高度 ≥ 30，不碰後輪。
- * 和車殼一體射出的薄殼面（A → M → B 三點的弧面帶，殼面積 × 壁厚計質量），背面藏在殼內與翼下
+ * 鵬翼翼尖（右側）：平板先沿 TIP_HINGE（板厚中面）往上折 TIP_FOLD 度，再和翼身一起上反
  * @type {() => THREE.BufferGeometry}
  */
-const buildRootFillet = () => {
-  const n = 25;
-  /** @type {number[][][]} 每站斷面 [x, y, z] × 3 */
-  const rings = [];
-  for (let i = 0; i <= n; i++) {
-    const x = lerp(FILLET.x0, FILLET.x1, i / n);
-    const t = i / n;
-    const taper = Math.min(1, t / 0.18, (1 - t) / 0.18);
-    // 翼片在殼面外的起點：殼面和翼內緣取大（車尾殼頂低於翼面時，整流肋就是從殼側面撐到翼底的立肋）
-    const zRoot = Math.max(shellZ(x, wingUnderY(x, 16) + 0.6), wingInnerZ(x));
-    const zOut = Math.min(wingLeadZ(x) - 1, zRoot + FILLET.reach * Math.max(0.05, taper));
-    const yB = wingUnderY(x, zOut) + 0.3;
-    const zA = Math.max(2, shellZ(x, 24) - 0.8);
-    // 內凹弧：A、B 中點往殼面與翼底的轉角拉 35%
-    const corner = [Math.max(zA, zRoot), yB];
-    const mid = [(zA + zOut) / 2, (24 + yB) / 2];
-    const zM = lerp(mid[0], corner[0], 0.35);
-    const yM = lerp(mid[1], corner[1], 0.35);
-    rings.push([
-      [x, 24, zA],
-      [x, yM, zM],
-      [x, yB, zOut],
-    ]);
-  }
-  /** @type {number[]} */
-  const pos = [];
-  const m = rings[0].length;
-  for (let i = 0; i < n; i++) {
-    for (let k = 0; k < m - 1; k++) {
-      const a = rings[i][k];
-      const b = rings[i][k + 1];
-      const c = rings[i + 1][k + 1];
-      const d = rings[i + 1][k];
-      pos.push(...a, ...b, ...c, ...a, ...c, ...d);
-    }
-  }
-  const g = new THREE.BufferGeometry();
-  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
-  g.computeVertexNormals();
-  return g;
+const buildTip = () => {
+  const g = bevelPlate(VANE_TIP.poly, VANE_TIP.y, VANE_TIP.thick, 0.45);
+  const [[x0, z0], [x1, z1]] = TIP_HINGE;
+  const yMid = VANE_TIP.y + VANE_TIP.thick / 2;
+  const axis = new THREE.Vector3(x1 - x0, 0, z1 - z0).normalize();
+  // 折線方向由前往後（−x）：繞這條軸轉正角時，外側（+z）往上
+  const m = new THREE.Matrix4().makeTranslation(x0, yMid, z0).multiply(new THREE.Matrix4().makeRotationAxis(axis, (TIP_FOLD * Math.PI) / 180)).multiply(new THREE.Matrix4().makeTranslation(-x0, -yMid, -z0));
+  g.applyMatrix4(m);
+  return dihedral(g, VANE_TIP.y, VANE_TIP.pivotZ, VANE_TIP.dihedral);
 };
 
 export const kunpengBody = makePolyBody({
@@ -473,7 +425,7 @@ export const kunpengBody = makePolyBody({
   form: 'wave-wedge',
   roof: 'clear',
   wing: 'fin-vanes',
-  theme: '《莊子・逍遙遊》鯤化為鵬，不做魚頭與鳥頭：低扁的尖楔車身前半墨黑亮面（深水）、後半留白霧面（長風），中間是往後上方斜掃、一條比一條細的青綠條帶；車身中段一對後掠小鰭刀，到車尾放大成一整片由青綠漸到留白、翼尖蘸墨的後掠鵬翼，翼根以整流肋長進車尾，車側一道金線串起前後翼根；前半浪頭帶與淡金水波線、後半青綠人字羽紋，頂部一道水天之間的長條透明窗',
+  theme: '《莊子・逍遙遊》鯤化為鵬，不做魚頭與鳥頭：低扁的尖楔車身前半墨黑亮面（深水）、後半留白霧面（長風），中間是往後上方斜掃、一條比一條細的青綠條帶；車身中段一對後掠小鰭刀，到車尾放大成上下兩層往後上方揚起的翼片，車側一道金線串起前後翼根；前半浪頭帶與淡金水波線、後半青綠人字羽紋，頂部一道水天之間的長條透明窗',
   material: 'ABS',
   density_g_cm3: 1.05,
   wallThickness_mm: 0.8,
@@ -521,15 +473,18 @@ export const kunpengBody = makePolyBody({
       name: 'arch-liners',
     });
 
-    // 鰭 → 翼：鰭刀（墨黑）→ 鵬翼（青綠 → 留白 → 墨黑翼尖），顏色跟著塗裝由深到淺；翼根下方整流肋把翼片接進車尾
-    const fin = buildBlade(FIN);
-    parts.push({ geometry: mergeGeos([fin, mirrorZ(fin)]), mat: 'ink2', solid: true, outline: true, name: 'fin-blades' });
-    for (const zone of WING_ZONES) {
-      const g = buildWingZone(zone.poly);
-      parts.push({ geometry: mergeGeos([g, mirrorZ(g)]), mat: zone.mat, solid: true, outline: true, name: zone.name });
+    // 鰭 → 翼：鰭刀（墨黑）→ 下層翼片（青綠）→ 上層翼片（留白＋墨黑翼尖），顏色跟著塗裝由深到淺，讀成同一個形狀的三個階段
+    /** @type {[Blade, string, string][]} */
+    const blades = [
+      [FIN, 'ink2', 'fin-blades'],
+      [VANE_LOW, 'teal2', 'wing-vanes-lower'],
+      [VANE_UP, 'paper2', 'wing-vanes-upper'],
+      [VANE_TIP, 'inkMatte', 'wing-vanes-upper-tips'],
+    ];
+    for (const [blade, mat, name] of blades) {
+      const g = blade === VANE_TIP ? buildTip() : buildBlade(blade);
+      parts.push({ geometry: mergeGeos([g, mirrorZ(g)]), mat, solid: true, outline: true, name });
     }
-    const fillet = buildRootFillet();
-    parts.push({ geometry: mergeGeos([fillet, mirrorZ(fillet)]), mat: 'paper2', shell: true, outline: true, name: 'wing-root-fillets' });
 
     // 水波 livery（墨黑區）：從鼻尖沿肩部往後掃的一道米白浪頭帶（上緣是起伏的浪頭，往鼻尖收細）、頂面再一道較細的浪、側面下方再一道浪（三層浪），
     // 之間與上下共三道淡金細浪線（只到前輪前方，前端收尖）；
@@ -571,7 +526,7 @@ export const kunpengBody = makePolyBody({
       mat: 'dGold',
       name: 'decal-wave-lines',
     });
-    // 車側金線：沿側線（剖面最寬處）從鰭刀翼根往後拉到鵬翼翼根的一道貼身金線（1 mm），把前後翼片串起來
+    // 車側金線：沿側線（剖面最寬處）從鰭刀翼根往後拉到下層翼片翼根的一道貼身金線（1 mm），把前後翼片串起來
     parts.push({
       geometry: kit.decal((x, y, z) => (x > 16 || x < -38 || Math.abs(z) < 0.6 * sec(x).hw ? -1 : 0.5 - Math.abs(y - (sec(x).ySh + 0.4))), { offset: 0.12 }),
       mat: 'dGold',
@@ -617,7 +572,7 @@ export const kunpengBody = makePolyBody({
     density_g_cm3: 'SPEC 1.14：ABS 約 1.05 g/cm³（推估）',
     wallThickness_mm: '推估：射出 ABS 殼 0.8 mm（同其他款）；水天窗片同厚度，以殼面積計入質量',
     geometry: '本檔站位產生器 P＋endFactor（推估）：長 150（鼻尖 x 78、車尾 x −72，≤ 153 避免立體橋刮底）；前低後高的楔形：殼頂 36.6（座艙段）、鼻尖離地約 16、車頭以 (1 − u^1.5)^0.9 收尖；前輪拱 R17.5（31 mm 輪半徑 15.5 + 2 mm）；窄車尾半寬 20、下緣約 16.5–17（在後輪內側、底盤上方）；側進氣口為前輪拱後方深 0.6 的斜長槽',
-    wings: '鰭刀（x −12 ~ 16、厚 1.6、上反 10°）、鵬翼（x −74.5 ~ −10、翼展到 |z| 48.5、厚 1.6、上反 7°、底面 y 30.8，高於 31 mm 後輪頂 28.5 與後上導輪 20.5；同一塊板分青綠 / 留白 / 墨黑三段共面分色，後緣羽階）、翼根整流肋（x −64 ~ −14，殼側面 y 24 → 翼底、伸出殼面最多 5 mm，外緣在 |z| 24.75 處高於 30），均為 ABS 實心件（推估），翼板上下緣倒圓角 0.4（2 段），質量 = 封閉體積 × 1.05 g/cm³；翼根埋進殼面',
+    wings: '鰭刀（x −12 ~ 16、厚 1.6、上反 10°）、下層翼片（x −56 ~ −12、厚 1.5、上反 8°、後緣兩級羽階、底面 y 30.6，高於 31 mm 後輪頂 28.5 與後上導輪 20.5）、上層翼片（鵬翼，x −72.5 ~ −36、厚 1.4、翼身上反 6°、弦長 12–19 mm；翼尖沿折線再上折 44°、分件上墨黑、後緣兩級羽階，翼尖頂約 y 42），均為 ABS 實心件（推估），上下緣倒圓角 0.45（2 段），質量 = 封閉體積 × 1.05 g/cm³；翼根埋進殼面',
     myth: '典故《莊子・逍遙遊》（MYTH_RESEARCH Z1）：「化而為鳥」做成鰭 → 翼的三段變形與水 → 風的漸變塗裝，「水擊三千里」做成浪頭帶與水波線；上下兩段、水與風同一件的構成參考故宮〈松花石鯤鵬硯〉故文001376（Z4：下方波濤、上方雲海），不做魚首、鳥首',
     mounts: '對齊 chassis-midship 的車殼安裝點（SPEC 1.14）',
   },

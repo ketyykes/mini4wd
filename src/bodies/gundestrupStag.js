@@ -1,7 +1,7 @@
 // Gundestrup 銀釜（body-gundestrup-stag，神話組・凱爾特）：丹麥 Gundestrup 銀釜——銀為主、局部鍍金、repoussé 錘起的銀板、嵌玻璃。
 // 車上不做鹿：主題用「銀釜」「torc 頸環」「鹿角的分叉線」三種元素表現。
 // 造型（F3 半罩露輪）：鼻端一路下壓的銀色楔形尖鼻，前輪罩切開一個圓弧開口（釜口的弧）露出前輪，開口外圍一圈鍍金邊與鉚釘；
-// 中段細長的深藍玻璃座艙罩，罩後半圈披一道 U 形扭絞金 torc（開口朝前、兩端圓球頭，C8）；
+// 中段深藍玻璃座艙罩外面套一圈扭絞金 torc（開口朝前、兩端圓球頭，C8）；
 // 車尾一片拋光銀大翼，兩端是鍍金的四叉翼端板（鹿角的分叉抽象成端板後緣的四道叉，C2）。
 // 塗裝：錘起銀板＋腹側氧化暗銀；鼻尖往後掃、接到 torc 圓球頭的兩道鍍金條紋、頂面兩道鉚接板縫；側面一條氧化暗底的浮雕帶，
 // 上面是 La Tène 單向波卷紋與圓泡釘（C7）。
@@ -254,8 +254,8 @@ const ENDPLATE_PTS = [
   [-56, 35.2],
   [-52, 29.6],
 ];
-/** @type {{ xc: number, a: number, b: number, open: number }} 座艙後半圈的 torc 頸環：俯視橢圓中心 x、前後半長、半寬、開口半角（度，開口朝前；只繞座艙罩後半，像披在罩後的 U 形頸環） */
-const TORC = { xc: -7, a: 26, b: 12.5, open: 100 };
+/** @type {{ xc: number, a: number, b: number, open: number }} 座艙外圍的 torc：俯視橢圓中心 x、前後半長、半寬、開口半角（度，開口朝前） */
+const TORC = { xc: -5, a: 19, b: 13, open: 28 };
 /** @type {number[]} 頂面兩道鉚接板縫的 x */
 const SEAM_XS = [20, -29];
 
@@ -283,29 +283,27 @@ export const gundestrupStagBody = makePolyBody({
   form: 'stag-arch',
   roof: 'canopy',
   wing: 'fork-endplate',
-  theme: 'Gundestrup 銀釜的元素（不做鹿）：錘起銀板的楔形尖鼻車身、前輪罩圓弧開口露出前輪（鍍金邊＋鉚釘圈）、細長深藍玻璃座艙罩後半圈披 U 形扭絞金 torc、車尾拋光銀大翼配鍍金四叉翼端板（鹿角的分叉線）；鼻尖接到 torc 的兩道鍍金條紋、鉚接板縫、側面 La Tène 波卷紋與圓泡釘浮雕帶',
+  theme: 'Gundestrup 銀釜的元素（不做鹿）：錘起銀板的楔形尖鼻車身、前輪罩圓弧開口露出前輪（鍍金邊＋鉚釘圈）、深藍玻璃座艙罩外套一圈扭絞金 torc、車尾拋光銀大翼配鍍金四叉翼端板（鹿角的分叉線）；鼻尖接到 torc 的兩道鍍金條紋、鉚接板縫、側面 La Tène 波卷紋與圓泡釘浮雕帶',
   material: 'ABS',
   density_g_cm3: 1.05,
   wallThickness_mm: 0.8,
   stations: STATIONS,
-  // 細長座艙罩讓殼面變多：網格邊長放寬一點，面數不超過原本
-  step: 0.56,
   // 平滑剖面，沒有銳利稜線（錘起的銀板）
   hard: [],
   wheelArches: ARCHES,
   openings: [{ id: '前輪露出圓弧開口', shape: 'fn', sd: frontCutSd }],
   canopy: {
     section: 'ellipse',
-    // 中段座艙罩：x 16 → −30，最寬 8.5、最高 5（細長淚滴形的低矮有色座艙 V5）
+    // 中段座艙罩：x 12 → −22，最寬 11、最高 5.2（罩頂約 39.2，小而低的有色座艙 V5）
     stations: (() => {
       /** @type {{ x: number, yBase: number, yTop: number, halfW: number }[]} */
       const out = [];
       const n = 24;
       for (let i = 0; i <= n; i++) {
         const u = i / n;
-        const x = lerp(16, -30, u);
-        const halfW = i === 0 || i === n ? 2 : 8.5 * Math.sin(Math.PI * u ** 0.9) ** 0.5;
-        const rise = 5 * Math.sin(Math.PI * u ** 0.85) ** 0.6;
+        const x = lerp(12, -22, u);
+        const halfW = i === 0 || i === n ? 2.5 : 11 * Math.sin(Math.PI * u ** 0.9) ** 0.5;
+        const rise = 5.2 * Math.sin(Math.PI * u ** 0.85) ** 0.6;
         out.push({ x, yBase: 0, yTop: rise, halfW });
       }
       return out;
@@ -374,7 +372,7 @@ export const gundestrupStagBody = makePolyBody({
       name: 'fork-endplates',
     });
 
-    // 座艙後半圈的扭絞 torc（C8）：貼著殼面繞座艙罩後半，開口大大朝前（U 形）、兩端收成圓球頭；斷面半徑沿弧長週期起伏（18 個扭節），像扭絞金條
+    // 座艙外圍的扭絞 torc（C8）：貼著殼面繞座艙罩一圈，開口朝前、兩端收成圓球頭；斷面半徑沿弧長週期起伏（18 個扭節），像扭絞金條
     {
       /** @type {number[][]} */
       const torcPts = [];
@@ -511,7 +509,7 @@ export const gundestrupStagBody = makePolyBody({
     geometry: '本檔站位產生器 P（推估）：殼長 148（車尾 x −68 → 鼻尖 80），翼端板叉尖到 x −69（外框長 149，≤ 153 不刮立體橋）；殼頂 34–35.2、座艙罩頂約 39.2、翼面頂約 43.8、翼端板叉尖 47.6；後擋泥板半寬 45.5、前肩 45（x 30）、細腰 27.5（側裙下緣 y 11 在底盤側框上緣 9.4 之上）、鼻尖 3.5；x 40 → 80 殼頂以約 0.5 的斜率下壓成楔形',
     wheelArches: '前後 R17.5（31 mm 輪胎半徑 15.5 + 2 mm），切口從 |z| 32 起；前輪罩另開側視斜橢圓開口（中心 x 39、y 22，半軸 17 × 14，長軸前上傾 50°，|z| ≥ 26）露出輪胎；後輪內襯深 7 mm，前後都有胎內側環形擋板',
     wing: '尾翼：弦 16、翼展 ±38.6、厚 1.0 mm 的單片翼（前緣 y 41.6、後緣 43.2）；翼端板厚 1.4 mm、板底 |z| 37、外傾 8°，後緣分四叉；ABS 實心件（推估），質量 = 封閉體積 × 1.05 g/cm³',
-    torc: '扭絞 torc：俯視橢圓 52 × 25 mm 的後半圈繞座艙罩，開口朝前 200°，斷面半徑 1.0 ± 0.22（18 個扭節）、兩端圓球 R1.9，ABS 實心件（推估）',
+    torc: '扭絞 torc：俯視橢圓 38 × 26 mm 繞座艙罩，開口朝前 56°，斷面半徑 1.0 ± 0.22（18 個扭節）、兩端圓球 R1.9，ABS 實心件（推估）',
     myth: 'Gundestrup 銀釜：銀為主、鍍金、repoussé、嵌玻璃（MYTH_RESEARCH C1）；分叉鹿角與 torc（C2、C8）；La Tène 捲曲曲線（C7，只用單向波卷，不用三臂 triskele）',
     mounts: '對齊 chassis-midship 的車殼安裝點（SPEC 1.14）',
   },

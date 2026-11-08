@@ -20,8 +20,8 @@ import { monoCurve, buildStations } from './gazelleLeap.js';
 const XS = [-65, -60, -53, -46, -40, -32, -22, -12, -2, 8, 18, 28, 36, 42, 50, 56, 62, 68, 72, 76];
 /** @type {Record<string, (x: number) => number>} */
 const P = {
-  // 俯視半寬：後擋泥板（鞘翅）±44.4、收腰 ±20.5（x 8；x 18 是 ±21）、前擋泥板 ±41.6；鼻錐只微收成寬扁鏟（鼻尖 ±29.5，推日的鏟面）
-  hw: monoCurve(XS, [18, 30, 40.5, 44, 44.4, 44.2, 41.5, 33.5, 24.5, 20.5, 21, 33.5, 41.4, 41.6, 40, 38, 35.5, 33.5, 31.5, 29.5]),
+  // 俯視半寬：後擋泥板（鞘翅）±44.4、收腰 ±20.5（x 8；x 18 是 ±21）、前擋泥板 ±41.6；鼻錐往前收成扁鏟（鼻尖 ±8）
+  hw: monoCurve(XS, [18, 30, 40.5, 44, 44.4, 44.2, 41.5, 33.5, 24.5, 20.5, 21, 33.5, 41.4, 41.6, 35, 26.5, 19.5, 14, 11, 8]),
   // 中央脊線頂（鞘翅縫裡的金脊）：後段 33.8、收腰 32.6、前擋泥板 33，往前降到鼻尖 18
   ySpine: monoCurve(XS, [27, 30.2, 32.8, 33.6, 33.8, 33.6, 33.2, 32.8, 32.6, 32.6, 32.8, 33, 33, 32.4, 30.2, 27.4, 24, 21, 19.4, 18]),
   // 擋泥板量體頂（每片鞘翅 / 前擋泥板的拱頂）：後 39、收腰 33.4、前 36.2；鼻尖 18.2
@@ -76,8 +76,8 @@ const ARCHES = [
 
 /** @type {number} 分區界線：綠松石前段的後緣 x */
 const X_PRONOTUM = 23;
-/** @type {{ x0: number, x1: number, hw: number, rise: number, sink: number }} 座艙罩（沿中脊的細長菱形斷面低罩，前後兩端收尖，俯視像一條龍骨）：後端 x0、前端 x1、最大半寬、高出脊頂、埋進殼內 */
-const COCKPIT = { x0: -22, x1: 26, hw: 4.4, rise: 3.2, sink: 1.2 };
+/** @type {{ x: number, rx: number, ry: number, rz: number }} 座艙罩（收腰上方的金色不透明小罩） */
+const COCKPIT = { x: 6, rx: 10.5, ry: 5.2, rz: 6.8 };
 
 /** @type {number} 胸飾鑲嵌格帶的中心 x（橫跨前擋泥板前緣） */
 const X_INLAY = 56.2;
@@ -166,8 +166,8 @@ const materials = () => ({
   faience: namedMaterial('paint-faience-turquoise', { color: 0x2f9e98, roughness: 0.34, clearcoat: 0.6 }),
   // 真金屬金（名稱含 -brass → Blender metallic）
   gold: namedMaterial('trim-gold-brass', { color: 0xc9a227, metalness: 0.82, roughness: 0.32, clearcoat: 0.3 }),
-  // 座艙罩：黑曜石色不透明亮面（菱形斷面的稜線靠反光讀出來）
-  canopy: namedMaterial('trim-canopy-obsidian', { color: 0x15171d, roughness: 0.14, metalness: 0.2, clearcoat: 1.0, clearcoatRoughness: 0.04 }),
+  // 座艙罩：金色不透明（名稱含 -brass → Blender 金屬）
+  cockpitGold: namedMaterial('trim-gold-canopy-brass', { color: 0xd4ad3a, metalness: 0.8, roughness: 0.22, clearcoat: 0.6 }),
   // 紅玉髓：拋光寶石（亮面，只用在日盤盤心與鑲嵌格）
   carnelian: namedMaterial('paint-carnelian-red', { color: 0xb1342a, roughness: 0.28, clearcoat: 0.8 }),
   inner: namedMaterial('shell-inner-dark', { color: 0x1a1b1f, roughness: 0.85, side: THREE.BackSide }),
@@ -309,13 +309,11 @@ export const khepriScarabBody = makePolyBody({
   form: 'scarab-dome',
   roof: 'closed',
   wing: 'sun-disc',
-  theme: '推日的聖甲蟲用元素表現的擋泥板肌肉車：兩片青金石鞘翅＝分開的後擋泥板大量體、中央金縫線相合，綠松石前擋泥板往前只微收成推日的寬扁鏟鼻，中段深收腰上沿中脊一條黑曜石細長菱形座艙罩；車尾是有翼日盤尾翼（紅玉髓日盤＋左右兩片金框鑲嵌羽格的翼，從鞘翅尾端長出來、後緣上翹），鼻尖一枚小日盤徽記',
+  theme: '推日的聖甲蟲用元素表現的擋泥板肌肉車：兩片青金石鞘翅＝分開的後擋泥板大量體、中央金縫線相合，綠松石前擋泥板一路收成扁鏟鼻尖，中段深收腰上一個金色小座艙；車尾是有翼日盤尾翼（紅玉髓日盤＋左右兩片金框鑲嵌羽格的翼，從鞘翅尾端長出來、後緣上翹），鼻尖一枚小日盤徽記',
   material: 'ABS',
   density_g_cm3: 1.05,
   wallThickness_mm: 0.8,
   stations: STATIONS,
-  // 寬鏟鼻讓殼面變大：網格邊長放寬一點，面數維持原本水準
-  step: 0.52,
   // 縫底與肩線是銳利稜線
   hard: [2, 6],
   wheelArches: ARCHES,
@@ -365,28 +363,12 @@ export const khepriScarabBody = makePolyBody({
       rim.rotateX(Math.PI / 2);
       parts.push({ geometry: placeDisc(rim), mat: 'gold', solid: true, outline: true, name: 'sun-disc-rim' });
     }
-    // 座艙：收腰正上方細長的菱形斷面低罩（頂脊、兩側稜、底埋進殼內），前後兩端收尖，俯視是長菱形
+    // 座艙：收腰正上方一個小的金色不透明座艙罩（橢球，下半埋進殼內）
     {
-      /** @type {number[][][]} */
-      const rings = [];
-      const n = 14;
-      for (let i = 0; i <= n; i++) {
-        const u = i / n;
-        const x = lerp(COCKPIT.x0, COCKPIT.x1, u);
-        // 最寬處偏後（u 0.42），前端收得比後端長
-        const k = Math.max(0, u < 0.42 ? Math.sin((Math.PI / 2) * (u / 0.42)) : Math.cos((Math.PI / 2) * ((u - 0.42) / 0.58)));
-        const w = Math.max(0.25, COCKPIT.hw * k ** 0.8);
-        const h = Math.max(0.2, COCKPIT.rise * k ** 0.7);
-        const y0 = P.ySpine(x);
-        rings.push([
-          [x, y0 + h, 0],
-          [x, y0 + 0.35 * h, w],
-          [x, y0 - COCKPIT.sink, 0.7 * w],
-          [x, y0 - COCKPIT.sink, -0.7 * w],
-          [x, y0 + 0.35 * h, -w],
-        ]);
-      }
-      parts.push({ geometry: closedLoft(rings), mat: 'canopy', solid: true, outline: true, name: 'cockpit-canopy' });
+      const dome = new THREE.SphereGeometry(1, 16, 10);
+      dome.scale(COCKPIT.rx, COCKPIT.ry, COCKPIT.rz);
+      dome.translate(COCKPIT.x, P.ySpine(COCKPIT.x) - 0.8, 0);
+      parts.push({ geometry: dome, mat: 'cockpitGold', solid: true, outline: true, name: 'cockpit-dome' });
     }
 
     // ---- 貼紙 ----
