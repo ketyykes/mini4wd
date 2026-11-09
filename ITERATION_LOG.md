@@ -170,6 +170,31 @@
 - 判定後主線（app `d1bfe76`）神話組 IoU ≥ 0.80：**3 對**（khepri × gundestrup 0.820、khepri × firebird 0.812、venus × mars 側 0.805）；全部最大 0.842。計分 **20/20**（00:19–00:32，負載 2–4）。
 
 
+## iter-148（00:35–01:2x）：拆最後 3 對、venus 重做、apollo 太素
+- 3 組（`shared/stage10/brief-iter148.md`）：a venus（前段加厚封起來、鼻面改海浪泡沫圓捲，沒有放射扇形，× mars 側 0.805 → 0.770）；b khepri（保留金色圓頂，鞘翅肩橫切、鼻錐收尖，× gundestrup 0.820 → 0.776、× firebird 0.812 → 0.759）＋firebird 試做 4 根平行長尾羽（像手指，沒交）；c apollo（琴臂改外捲渦卷金角、斜拉弦、中央脊板）＋apollo 換色 1 個（金色回紋帶，暫不合併）。
+- 三款都合併時主線神話組 ≥ 0.80 為 **0 對**（最大 0.799）。
+- 逐款甲乙並排（`shared/reviews/iter-148/`，兩位）：apollo 新／新 → 保留；khepri 舊／舊（收腰變長、底盤露出多、側面方塊面板）→ 退回；venus 舊／舊（新版橫向浪花像蛋糕糖霜）→ 退回。評審 1 提到主線版 venus 的白色扇貝從正上方看「可能聯想到 Shell，低到中」，評審 2 判兩版都不像（平行肋、粉白配色）。
+- 判定後主線（app `c427d7a`）神話組 ≥ 0.80 仍 3 對（khepri × gundestrup、khepri × firebird、venus × mars 側）。
+- 計分（01:22–02:4x）**16/20**：P16（collision_patches、vz_race）、P18（arch_cut、chassis_mesh_clearance）、P19_ranking_motion、P20 全部是**逾時**（每項 900–1100 s）。原因：主 agent 直接跑 `node scripts/score.mjs`，沒有先拿外層 `/tmp/heavy-lock.sh`，和 nextjspickball 的 E2E 同時跑（開始時負載 17）。程式和 20/20 的 `d1bfe76` 只差 apollo 一款。之後計分一律包外層鎖，iter-149 合併後重跑。
+- 陣容盲評（`shared/reviews/lineup-148/`，乙＝現行 24 款、甲＝舊 16 款）：現行 7.57 / 7.21 vs 舊 7.64 / 7.29，平均 7.39 vs 7.465，仍略輸。兩位都說 zeus ↔ poseidon 最容易搞混，都建議舊版 cerberus、minotaur（評審 2 再加 firebird、sleipnir）。
+- 舊版 4 款放回量 IoU：舊 sleipnir × venus 俯視 0.859（超過全部 0.85 的硬性上限）→ 不能用；只放回 cerberus、minotaur 新增 1 對（trojan × cerberus 0.804）。陣容盲評（`shared/reviews/lineup-149cm/`）：舊版兩款 7.79 / 7.50 vs 現行 7.43 / 7.57，平均舊版較高；但兩位都說舊 minotaur 讀成牛頭、舊 cerberus 紅座艙像眼睛、尖刺像獠牙（違反元素化）→ 不直接採用，iter-149 e 組先修臉感再做一次陣容評審。
+
+## iter-149（02:47–05:2x）：陣容評審點名的配對與臉牙——5 組都沒交出可採用的版本
+- 派工晚了一小時（iter-148 計分逾時），5 組（`shared/stage10/brief-iter149.md`）：a zeus／poseidon、b gundestrup／mars、c firebird、d amaterasu、e 舊版 cerberus／minotaur 修臉感。每組跑 65 分鐘只用了 12–19 次工具（量測排隊、全表 IoU 一次 5–10 分鐘），04:00 都沒有交件；主 agent 給 a、b、c 延長到 04:45、d 到 05:10，範圍縮到各自提出的具體做法。
+- 結果：
+  - a poseidon 拿掉兩支白色外尖（車頭成對的牙）→ 俯視變成普通收窄船首，新增 7 對 ≥ 0.80（最高 0.817）→ 不能用；zeus 鑿形鼻只寫了草稿（`/tmp/a149/zeus-new.js`），沒量測。
+  - b gundestrup 車尾後延 3.6 mm → × khepri 0.820 → 0.804，但 × mushussu 0.797 → 0.809（新增）→ 不交。
+  - c firebird 收窄前翼子板與車尾（`/tmp/mini4wd-p13/c149/firebird.v1-narrow.js`）→ × khepri 0.812 → 0.791，但主 agent 量全表新增 × poseidon 0.806，總數仍 3 對 → 不採用。
+  - e 舊 cerberus 尖刺後縮、擋泥板加寬（`/tmp/mini4wd-p13/e149-cerberus-wip.diff`）→ × trojan 0.804 → 0.784，正面面積、質量沒量，座艙紅眼與 minotaur 牛頭都沒修 → **舊版兩款不採用**（違反元素化）。
+  - d amaterasu：提出整流罩接鏡翼、後擋泥板眉線的做法，延長段結果見下。
+- 主線維持 app `c427d7a`；05:2x 拿外層鎖重新計分。
+- d amaterasu 延長段（05:37 回報）：沒交。主線版整車 132.88 g（26 mm），離上限 133 g 只剩 0.12 g，草稿（`/tmp/mini4wd-p13/d149-amaterasu-draft.js`，鏡台整流罩＋後擋泥板眉線）粗估 134–135 g 超重，也沒量 IoU → 保留主線版。
+- 計分：05:19 持外層鎖開跑，到 08:24 仍沒跑完（`/tmp/mini4wd-p13/score-148b.txt` 只有開頭一行；之後外層鎖狀態顯示被 nextjspickball 的 E2E 持有，兩邊負載互相拖慢）→ **`c427d7a` 沒有有效分數**。最後一次有效的完整計分是 `976edf0` 的 20/20（11/8 17:00）；`c427d7a` 與 `d1bfe76`（iter-147，20/20）只差 apollo 一款。
+
+## 第二次延長結束（11/9 08:30）
+- 主線 app `c427d7a`：iter-147 的 10 款新版＋iter-148 的 apollo；kunpeng 用第十二階段版；其他款維持 22:00 版。神話組 IoU ≥ 0.80 從 7 對降到 3 對，全部 43 款最大 0.842（< 0.85）。
+- 沒做到：iter-149 沒有可採用的改動；最終計分沒跑完；apollo 只有 32 samples 3 視角的圖（沒補 64 samples 5 視角）；陣容圖沒重出、沒做最終陣容盲評；SPEC 1.14b 沒重產；worktree 沒移除。最近一次陣容盲評（lineup-148）現行 7.39 vs 舊 16 款 7.465，仍略輸。
+
 # 第十階段：神話車殼依 LG1 家族從頭重塑（2026-11-05 12:0x 起，截止 15:30）
 
 ## 第 0 輪（12:00–12:15）
